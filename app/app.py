@@ -95,35 +95,52 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     else "/static/images/default-cover.jpg"
                 )
 
-                # Use .postInfo to get category and language, and clean up the strings
-                post_info = post.select_one(".postInfo").text.strip()
-                category_match = re.search(r"Category: (.+?)\s+Language:", post_info)
+                # New scraping logic with more robust regex patterns
+                # Extracting from .postInfo
+                category_match = re.search(
+                    r"Category: (.+?)<br\s*/>", str(post.select_one(".postInfo"))
+                )
                 category = (
-                    category_match.group(1).strip().replace("&nbsp;", "")
+                    category_match.group(1)
+                    .strip()
+                    .replace("&nbsp;", "")
+                    .replace(" ", "")
                     if category_match
                     else None
                 )
                 language_match = re.search(
-                    r"Language: (.+?)(?:\s+Keywords:|$)", post_info
+                    r"Language: (.+?)<span", str(post.select_one(".postInfo"))
                 )
-                language = language_match.group(1).strip() if language_match else None
+                language = (
+                    language_match.group(1).strip().replace("&nbsp;", "")
+                    if language_match
+                    else None
+                )
 
-                # Use .postContent to find post date, format, bitrate, and file size with regex
-                post_content = post.select_one(".postContent").text.strip()
-                post_date_match = re.search(r"Posted: (.+)", post_content)
+                # Extracting from .postContent
+                post_content_html = str(post.select_one(".postContent"))
+
+                post_date_match = re.search(r"Posted: (.+?)<br", post_content_html)
                 post_date = (
                     post_date_match.group(1).strip() if post_date_match else None
                 )
 
-                format_match = re.search(r"Format: (.+?) /", post_content)
+                format_match = re.search(
+                    r"Format: <span[^>]*>([\w?]+)<\/span>", post_content_html
+                )
                 format = format_match.group(1).strip() if format_match else None
 
-                bitrate_match = re.search(r"Bitrate: (.+?)<", post_content)
+                bitrate_match = re.search(
+                    r"Bitrate: <span[^>]*>([\w?\s]+)<\/span>", post_content_html
+                )
                 bitrate = bitrate_match.group(1).strip() if bitrate_match else None
 
-                file_size_match = re.search(r"File Size: (.+?) MBs", post_content)
+                file_size_match = re.search(
+                    r"File Size: <span[^>]*>([\d\.]+?)<\/span> (MBs|GBs)",
+                    post_content_html,
+                )
                 file_size = (
-                    file_size_match.group(1).strip() + " MBs"
+                    f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
                     if file_size_match
                     else None
                 )
