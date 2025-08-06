@@ -61,8 +61,6 @@ print(f"PAGE_LIMIT: {PAGE_LIMIT}")
 print(f"FLASK_PORT: {FLASK_PORT}")
 
 
-print("------------------------------------------Running from local (version 1.0)------------------------------------------")
-
 @app.context_processor
 def inject_nav_link():
     return {

@@ -1,4 +1,3 @@
-/*------------------------------------------Running from local (version 1.0)------------------------------------------*/
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -134,13 +133,6 @@ img.cover {
 .error-message {
     color: red;
 }
-/* New style for metadata cell */
-.info-results {
-  font-size: 0.8em;
-}
-.keyword-results {
-  font-size: 0.6em;
-}
 
 /* Spinner animation */
 @keyframes spin {
@@ -150,4 +142,67 @@ img.cover {
     100% {
         transform: rotate(360deg);
     }
+}
+
+/* New style for metadata cell */
+.category-results {
+    font-size: 0.6em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.keyword-results {
+    font-size: 0.6em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+/* Default styles for small screens (vertical layout) */
+.property-results-container {
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
+    font-size: 0.6em;
+}
+
+.property-results-container span:not(:last-child)::after {
+    /* Hide the separator by default on small screens */
+    content: none;
+}
+
+/* Styles for large screens (horizontal layout) */
+@media (min-width: 768px) {
+    .property-results-container {
+        flex-direction: row; /* Arrange items horizontally */
+        justify-content: left; /* Distribute items evenly */
+        align-items: center; /* Vertically align items in the middle */
+    }
+
+    .property-results-container span:not(:last-child)::after {
+        /* Add and style the separator on large screens */
+        content: "|";
+        padding: 0 10px; /* Adjust spacing around the separator */
+        color: #ccc; /* A subtle color for the separator */
+    }
+
+/* New style for metadata cell */
+.category-results {
+    font-size: 0.6em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 450px;
+}
+
+.keyword-results {
+    font-size: 0.6em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 450px;
+}
+
 }

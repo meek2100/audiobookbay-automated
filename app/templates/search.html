@@ -1,5 +1,3 @@
-<!-- Running from local (version 1.0) -->
-
 {% extends "base.html" %}
 
 {% block title %}Search{% endblock %}
@@ -43,17 +41,19 @@
         <tr>
             <td><img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"></td>
             <td><p>{{ book.title }}</p>
+                <div class="property-results-container">
+                    <span>Language: {{ book.language }}</span>
+                    <span>Bitrate: {{ book.bitrate }}</span>
+                    <span>Format: {{ book.format }}</span>
+                    <span>File Size: {{ book.file_size }}</span>
+                    <span>Posted: {{ book.post_date }}</span>
+                </div>
+                <p class="category-results">
+                    Categories: {{ book.category }}
+                </p>
                 <p class="keyword-results">
-                    Category: {{ book.category }}<br>
                     Keywords: {{ book.keywords }}
                 </p>
-            </td>
-            <td class="info-results">
-                Language: {{ book.language }}<br><br>
-                Bitrate: {{ book.bitrate }}<br>
-                Format: {{ book.format }}<br>
-                File Size: {{ book.file_size }}<br>
-                Posted: {{ book.post_date }}<br>
             </td>
             <td> 
                 <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
