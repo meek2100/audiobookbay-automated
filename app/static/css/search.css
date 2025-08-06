@@ -1,3 +1,4 @@
+/*------------------------------------------Running from local (version 1.0)------------------------------------------*/
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -133,7 +134,6 @@ img.cover {
 .error-message {
     color: red;
 }
-
 /* New style for metadata cell */
 .info-results {
   font-size: 0.8em;
