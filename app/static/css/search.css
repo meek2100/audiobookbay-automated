@@ -134,6 +134,11 @@ img.cover {
     color: red;
 }
 
+/* New style for metadata cell */
+.metadata-results {
+  font-size: 0.8em;
+}
+
 /* Spinner animation */
 @keyframes spin {
     0% {

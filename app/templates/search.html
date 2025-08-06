@@ -41,6 +41,14 @@
         <tr>
             <td><img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"></td>
             <td>{{ book.title }}</td>
+            <td class="metadata-results">
+                Language: {{ book.language }}<br>
+                Category: {{ book.category }}<br>
+                Format: {{ book.format }}<br>
+                Bitrate: {{ book.bitrate }}<br>
+                File Size: {{ book.file_size }}<br>
+                Posted: {{ book.post_date }}<br>
+            </td>
             <td> 
                 <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
                 <button onclick="sendToQB('{{ book.link|escape }}', '{{ book.title|escape }}')">Download to Server</button>
