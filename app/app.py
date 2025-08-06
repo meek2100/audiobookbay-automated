@@ -95,55 +95,63 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     else "/static/images/default-cover.jpg"
                 )
 
-                # New scraping logic with more robust regex patterns
                 # Extracting from .postInfo
-                category_match = re.search(
-                    r"Category: (.+?)<br\s*/>", str(post.select_one(".postInfo"))
+                post_info_text = post.select_one(".postInfo").get_text(
+                    separator=" ", strip=True
                 )
+
+                category_match = re.search(r"Category: (.+?) Language:", post_info_text)
                 category = (
-                    category_match.group(1)
-                    .strip()
-                    .replace("&nbsp;", "")
-                    .replace(" ", "")
+                    category_match.group(1).strip().replace("&nbsp;", "")
                     if category_match
                     else None
                 )
+
                 language_match = re.search(
-                    r"Language: (.+?)<span", str(post.select_one(".postInfo"))
+                    r"Language: (.+?)(?: Keywords:|$)", post_info_text
                 )
-                language = (
-                    language_match.group(1).strip().replace("&nbsp;", "")
-                    if language_match
-                    else None
+                language = language_match.group(1).strip() if language_match else None
+
+                # Extracting from the specific paragraph within .postContent
+                post_details_p = post.find(
+                    "p", string=lambda text: "Posted:" in str(text)
                 )
 
-                # Extracting from .postContent
-                post_content_html = str(post.select_one(".postContent"))
+                post_date = None
+                format = None
+                bitrate = None
+                file_size = None
 
-                post_date_match = re.search(r"Posted: (.+?)<br", post_content_html)
-                post_date = (
-                    post_date_match.group(1).strip() if post_date_match else None
-                )
+                if post_details_p:
+                    post_details_html = str(
+                        post_details_p
+                    )  # Get the HTML of this specific paragraph
 
-                format_match = re.search(
-                    r"Format: <span[^>]*>([\w?]+)<\/span>", post_content_html
-                )
-                format = format_match.group(1).strip() if format_match else None
+                    post_date_match = re.search(r"Posted: (.+?)<br", post_details_html)
+                    post_date = (
+                        post_date_match.group(1).strip() if post_date_match else None
+                    )
 
-                bitrate_match = re.search(
-                    r"Bitrate: <span[^>]*>([\w?\s]+)<\/span>", post_content_html
-                )
-                bitrate = bitrate_match.group(1).strip() if bitrate_match else None
+                    format_match = re.search(
+                        r"Format: <span[^>]*>([\w?]+)<\/span>", post_details_html
+                    )
+                    format = format_match.group(1).strip() if format_match else None
 
-                file_size_match = re.search(
-                    r"File Size: <span[^>]*>([\d\.]+?)<\/span> (MBs|GBs)",
-                    post_content_html,
-                )
-                file_size = (
-                    f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
-                    if file_size_match
-                    else None
-                )
+                    bitrate_match = re.search(
+                        r"Bitrate: <span[^>]*>([\w?\s]+)<\/span>", post_details_html
+                    )
+                    bitrate = bitrate_match.group(1).strip() if bitrate_match else None
+
+                    # Updated regex for file_size to handle both MBs and GBs
+                    file_size_match = re.search(
+                        r"File Size: <span[^>]*>([\d\.]+?)<\/span> (MBs|GBs)",
+                        post_details_html,
+                    )
+                    file_size = (
+                        f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
+                        if file_size_match
+                        else None
+                    )
 
                 results.append(
                     {
