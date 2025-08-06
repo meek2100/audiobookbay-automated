@@ -135,8 +135,11 @@ img.cover {
 }
 
 /* New style for metadata cell */
-.metadata-results {
+.info-results {
   font-size: 0.8em;
+}
+.keyword-results {
+  font-size: 0.6em;
 }
 
 /* Spinner animation */

@@ -40,12 +40,16 @@
         {% for book in books %}
         <tr>
             <td><img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"></td>
-            <td>{{ book.title }}</td>
-            <td class="metadata-results">
-                Language: {{ book.language }}<br>
-                Category: {{ book.category }}<br>
-                Format: {{ book.format }}<br>
+            <td><p>{{ book.title }}</p>
+                <p class="keyword-results">
+                    Category: {{ book.category }}<br>
+                    Keywords: {{ book.keywords }}
+                </p>
+            </td>
+            <td class="info-results">
+                Language: {{ book.language }}<br><br>
                 Bitrate: {{ book.bitrate }}<br>
+                Format: {{ book.format }}<br>
                 File Size: {{ book.file_size }}<br>
                 Posted: {{ book.post_date }}<br>
             </td>

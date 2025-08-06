@@ -95,12 +95,15 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     else "/static/images/default-cover.jpg"
                 )
 
+                # New scraping logic with more robust regex patterns
                 # Extracting from .postInfo
                 post_info_text = post.select_one(".postInfo").get_text(
                     separator=" ", strip=True
                 )
 
-                category_match = re.search(r"Category: (.+?) Language:", post_info_text)
+                category_match = re.search(
+                    r"Category: (.+?)\s+Language:", post_info_text
+                )
                 category = (
                     category_match.group(1).strip().replace("&nbsp;", "")
                     if category_match
@@ -108,9 +111,16 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                 )
 
                 language_match = re.search(
-                    r"Language: (.+?)(?: Keywords:|$)", post_info_text
+                    r"Language: (.+?)(?:\s+Keywords:|$)", post_info_text
                 )
                 language = language_match.group(1).strip() if language_match else None
+
+                keywords_match = re.search(r"Keywords: (.+)", post_info_text)
+                keywords = (
+                    keywords_match.group(1).strip().replace("&nbsp;", " ")
+                    if keywords_match
+                    else None
+                )
 
                 # Extracting from the specific paragraph within .postContent
                 post_details_p = post.find(
@@ -123,9 +133,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                 file_size = None
 
                 if post_details_p:
-                    post_details_html = str(
-                        post_details_p
-                    )  # Get the HTML of this specific paragraph
+                    post_details_html = str(post_details_p)
 
                     post_date_match = re.search(r"Posted: (.+?)<br", post_details_html)
                     post_date = (
@@ -142,7 +150,6 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     )
                     bitrate = bitrate_match.group(1).strip() if bitrate_match else None
 
-                    # Updated regex for file_size to handle both MBs and GBs
                     file_size_match = re.search(
                         r"File Size: <span[^>]*>([\d\.]+?)<\/span> (MBs|GBs)",
                         post_details_html,
@@ -160,6 +167,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                         "cover": cover,
                         "category": category,
                         "language": language,
+                        "keywords": keywords,
                         "post_date": post_date,
                         "format": format,
                         "bitrate": bitrate,
