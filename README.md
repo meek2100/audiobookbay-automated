@@ -49,6 +49,7 @@ DL_CATEGORY=abb-downloader     # torrent category for downloads
 SAVE_PATH_BASE=/audiobooks     # Root path for audiobook downloads (relative to torrent)
 ABB_HOSTNAME='audiobookbay.is' # Default
 PAGE_LIMIT=5                   # Defaults to 5 if not set, more than this may probably rate limit.
+FLASK_PORT=5078                # Port used by docker container
 ```
 The following optional variables add an additional entry to the navigation bar. This is useful for linking to your audiobook player or another related service:
 
@@ -80,6 +81,8 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
          - DL_CATEGORY=abb-downloader
          - SAVE_PATH_BASE=/audiobooks
          - ABB_HOSTNAME='audiobookbay.is' #Default
+         - PAGE_LIMIT=5 #Default
+         - FLASK_PORT=5078 #Default
          - NAV_LINK_NAME=Open Audiobook Player #Optional
          - NAV_LINK_URL=https://audiobooks.yourdomain.com/ #Optional
    ```
@@ -110,6 +113,9 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
     # AudiobookBar Hostname
     ABB_HOSTNAME='audiobookbay.is' #Default
     # ABB_HOSTNAME='audiobookbay.lu' #Alternative
+
+    PAGE_LIMIT=5 #Default
+    FLASK_PORT=5078 #Default
 
     # Optional Navigation Bar Entry
     NAV_LINK_NAME=Open Audiobook Player
