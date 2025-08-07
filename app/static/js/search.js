@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   // Initialize filtering if results are present
   if (document.querySelectorAll(".result-row").length > 0) {
-    populateFilters();
+    initializeFilters();
     document
       .getElementById("filter-button")
       .addEventListener("click", applyFilters);
@@ -11,9 +11,20 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+let datePicker;
+
+function initializeFilters() {
+    populateSelectFilters();
+    // Initialize the date range picker
+    datePicker = flatpickr("#date-range-filter", {
+        mode: "range",
+        dateFormat: "Y-m-d"
+    });
+}
+
 // --- Filtering Functions ---
 
-function populateFilters() {
+function populateSelectFilters() {
   const languages = new Set();
   const bitrates = new Set();
   const formats = new Set();
@@ -55,14 +66,35 @@ function populateFilters() {
   });
 }
 
+function parseFileSizeToMB(sizeString) {
+    if (!sizeString || sizeString === "N/A") return null;
+
+    const parts = sizeString.trim().split(/\s+/);
+    if (parts.length < 2) return null;
+
+    const size = parseFloat(parts[0]);
+    const unit = parts[1].toUpperCase();
+
+    if (isNaN(size)) return null;
+
+    if (unit.startsWith("GB")) {
+        return size * 1024;
+    }
+    if (unit.startsWith("TB")) {
+        return size * 1024 * 1024;
+    }
+    // Assume MB if not GB or TB
+    return size;
+}
+
+
 function applyFilters() {
   const language = document.getElementById("language-filter").value;
   const bitrate = document.getElementById("bitrate-filter").value;
   const format = document.getElementById("format-filter").value;
-  const maxSize = parseFloat(
-    document.getElementById("file-size-filter").value
-  );
-  const postDate = document.getElementById("post-date-filter").value;
+  const minSize = parseFloat(document.getElementById("min-size-filter").value);
+  const maxSize = parseFloat(document.getElementById("max-size-filter").value);
+  const selectedDates = datePicker.selectedDates;
 
   document.querySelectorAll(".result-row").forEach((row) => {
     let visible = true;
@@ -76,34 +108,36 @@ function applyFilters() {
     if (format && row.dataset.format !== format) {
       visible = false;
     }
-
-    if (!isNaN(maxSize)) {
-      const fileSizeParts = row.dataset.fileSize.split(" ");
-      const fileSize = parseFloat(fileSizeParts[0]);
-      const fileUnit = fileSizeParts[1];
-      let sizeInMb = fileSize;
-      if (fileUnit === "GBs") {
-        sizeInMb = fileSize * 1024;
-      }
-      if (sizeInMb > maxSize) {
-        visible = false;
-      }
+    
+    // File size range filtering
+    const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
+    if (rowSizeMB !== null) {
+        if (!isNaN(minSize) && rowSizeMB < minSize) {
+            visible = false;
+        }
+        if (!isNaN(maxSize) && rowSizeMB > maxSize) {
+            visible = false;
+        }
     }
 
-    if (postDate) {
-      try {
-        const filterDate = new Date(postDate);
-        const rowDateStr = row.dataset.postDate.replace(
-          /(\d{1,2})\s(\w{3})\s(\d{4})/,
-          "$2 $1, $3"
-        );
-        const rowDate = new Date(rowDateStr);
-        if (rowDate < filterDate) {
-          visible = false;
+    // Date range filtering
+    if (selectedDates.length === 2) {
+        try {
+            const startDate = selectedDates[0];
+            const endDate = selectedDates[1];
+            // Standardize the date format from the HTML before parsing
+            const rowDateStr = row.dataset.postDate.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
+            const rowDate = new Date(rowDateStr);
+
+            // Set time to 0 to compare dates only
+            rowDate.setHours(0, 0, 0, 0);
+
+            if (rowDate < startDate || rowDate > endDate) {
+                visible = false;
+            }
+        } catch (e) {
+            console.error("Invalid date format", e);
         }
-      } catch (e) {
-        console.error("Invalid date format", e);
-      }
     }
 
     row.style.display = visible ? "" : "none";
@@ -114,8 +148,12 @@ function clearFilters() {
   document.getElementById("language-filter").value = "";
   document.getElementById("bitrate-filter").value = "";
   document.getElementById("format-filter").value = "";
-  document.getElementById("file-size-filter").value = "";
-  document.getElementById("post-date-filter").value = "";
+  document.getElementById("min-size-filter").value = "";
+  document.getElementById("max-size-filter").value = "";
+  if (datePicker) {
+      datePicker.clear();
+  }
+  
   document.querySelectorAll(".result-row").forEach((row) => {
     row.style.display = "";
   });

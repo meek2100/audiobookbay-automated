@@ -3,10 +3,12 @@
 {% block title %}Search{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}" defer></script>
 {% endblock %}
 
@@ -40,19 +42,24 @@
 
 {% if books %}
 <div id="filter-container">
-    <select id="language-filter">
-        <option value="">All Languages</option>
-    </select>
-    <select id="bitrate-filter">
-        <option value="">All Bitrates</option>
-    </select>
-    <select id="format-filter">
-        <option value="">All Formats</option>
-    </select>
-    <input type="text" id="file-size-filter" placeholder="Max File Size (MB)">
-    <input type="text" id="post-date-filter" placeholder="Posted After (YYYY-MM-DD)">
-    <button id="filter-button">Filter</button>
-    <button id="clear-button">Clear</button>
+    <div class="filter-controls">
+        <select id="language-filter">
+            <option value="">All Languages</option>
+        </select>
+        <select id="bitrate-filter">
+            <option value="">All Bitrates</option>
+        </select>
+        <select id="format-filter">
+            <option value="">All Formats</option>
+        </select>
+        <input type="text" id="min-size-filter" placeholder="Min Size (MB)">
+        <input type="text" id="max-size-filter" placeholder="Max Size (MB)">
+        <input type="text" id="date-range-filter" placeholder="Select Date Range">
+    </div>
+    <div class="filter-buttons">
+        <button id="filter-button">Filter</button>
+        <button id="clear-button">Clear</button>
+    </div>
 </div>
 {% endif %}
 
