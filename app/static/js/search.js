@@ -12,9 +12,11 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 let datePicker;
+let fileSizeSlider;
 
 function initializeFilters() {
     populateSelectFilters();
+    initializeFileSizeSlider();
     // Initialize the date range picker
     datePicker = flatpickr("#date-range-filter", {
         mode: "range",
@@ -22,7 +24,63 @@ function initializeFilters() {
     });
 }
 
+// --- Helper Functions ---
+function parseFileSizeToMB(sizeString) {
+    if (!sizeString || sizeString.trim().toLowerCase() === 'n/a') return null;
+    const parts = sizeString.trim().split(/\s+/);
+    if (parts.length < 2) return null;
+    const size = parseFloat(parts[0]);
+    const unit = parts[1].toUpperCase();
+    if (isNaN(size)) return null;
+    if (unit.startsWith("TB")) return size * 1024 * 1024;
+    if (unit.startsWith("GB")) return size * 1024;
+    return size; // Assume MB
+}
+
+function formatFileSize(mb) {
+    if (mb === null || isNaN(mb)) return "N/A";
+    if (mb >= 1024 * 1024) {
+        return (mb / (1024 * 1024)).toFixed(2) + " TB";
+    }
+    if (mb >= 1024) {
+        return (mb / 1024).toFixed(2) + " GB";
+    }
+    return mb.toFixed(2) + " MB";
+}
+
+
 // --- Filtering Functions ---
+function initializeFileSizeSlider() {
+    const sliderElement = document.getElementById('file-size-slider');
+    const allSizes = Array.from(document.querySelectorAll('.result-row'))
+        .map(row => parseFileSizeToMB(row.dataset.fileSize))
+        .filter(size => size !== null);
+
+    if (allSizes.length < 2) {
+        // Not enough data for a range slider, hide it
+        document.querySelector('.file-size-filter-wrapper').style.display = 'none';
+        return;
+    }
+
+    const minSize = Math.min(...allSizes);
+    const maxSize = Math.max(...allSizes);
+
+    fileSizeSlider = noUiSlider.create(sliderElement, {
+        start: [minSize, maxSize],
+        connect: true,
+        range: {
+            'min': minSize,
+            'max': maxSize
+        },
+        // Tooltips are for handle values, we use a separate element for the range display
+    });
+
+    const rangeValuesDisplay = document.getElementById('slider-range-values');
+    fileSizeSlider.on('update', function (values) {
+        const [minVal, maxVal] = values.map(v => formatFileSize(parseFloat(v)));
+        rangeValuesDisplay.textContent = `${minVal} - ${maxVal}`;
+    });
+}
 
 function populateSelectFilters() {
   const languages = new Set();
@@ -66,57 +124,28 @@ function populateSelectFilters() {
   });
 }
 
-function parseFileSizeToMB(sizeString) {
-    if (!sizeString || sizeString === "N/A") return null;
-
-    const parts = sizeString.trim().split(/\s+/);
-    if (parts.length < 2) return null;
-
-    const size = parseFloat(parts[0]);
-    const unit = parts[1].toUpperCase();
-
-    if (isNaN(size)) return null;
-
-    if (unit.startsWith("GB")) {
-        return size * 1024;
-    }
-    if (unit.startsWith("TB")) {
-        return size * 1024 * 1024;
-    }
-    // Assume MB if not GB or TB
-    return size;
-}
-
-
 function applyFilters() {
   const language = document.getElementById("language-filter").value;
   const bitrate = document.getElementById("bitrate-filter").value;
   const format = document.getElementById("format-filter").value;
-  const minSize = parseFloat(document.getElementById("min-size-filter").value);
-  const maxSize = parseFloat(document.getElementById("max-size-filter").value);
   const selectedDates = datePicker.selectedDates;
+  const sizeRange = fileSizeSlider ? fileSizeSlider.get().map(parseFloat) : null;
+
 
   document.querySelectorAll(".result-row").forEach((row) => {
     let visible = true;
 
-    if (language && row.dataset.language !== language) {
-      visible = false;
-    }
-    if (bitrate && row.dataset.bitrate !== bitrate) {
-      visible = false;
-    }
-    if (format && row.dataset.format !== format) {
-      visible = false;
-    }
+    if (language && row.dataset.language !== language) visible = false;
+    if (bitrate && row.dataset.bitrate !== bitrate) visible = false;
+    if (format && row.dataset.format !== format) visible = false;
     
     // File size range filtering
-    const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
-    if (rowSizeMB !== null) {
-        if (!isNaN(minSize) && rowSizeMB < minSize) {
-            visible = false;
-        }
-        if (!isNaN(maxSize) && rowSizeMB > maxSize) {
-            visible = false;
+    if (sizeRange) {
+        const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
+        if (rowSizeMB !== null) {
+            if (rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1]) {
+                visible = false;
+            }
         }
     }
 
@@ -148,11 +177,8 @@ function clearFilters() {
   document.getElementById("language-filter").value = "";
   document.getElementById("bitrate-filter").value = "";
   document.getElementById("format-filter").value = "";
-  document.getElementById("min-size-filter").value = "";
-  document.getElementById("max-size-filter").value = "";
-  if (datePicker) {
-      datePicker.clear();
-  }
+  if (datePicker) datePicker.clear();
+  if (fileSizeSlider) fileSizeSlider.reset();
   
   document.querySelectorAll(".result-row").forEach((row) => {
     row.style.display = "";
@@ -163,13 +189,13 @@ function clearFilters() {
 
 function showLoadingSpinner() {
   const buttonSpinner = document.getElementById("button-spinner");
-  buttonSpinner.style.display = "inline-block";
+  if(buttonSpinner) buttonSpinner.style.display = "inline-block";
   setTimeout(showScrollingMessages, 5000);
 }
 
 function hideLoadingSpinner() {
   const buttonSpinner = document.getElementById("button-spinner");
-  buttonSpinner.style.display = "none";
+  if(buttonSpinner) buttonSpinner.style.display = "none";
   hideScrollingMessages();
 }
 
@@ -210,6 +236,7 @@ let intervalId = null;
 function showScrollingMessages() {
   const messageScroller = document.getElementById("message-scroller");
   const scrollingMessage = document.getElementById("scrolling-message");
+  if(!scrollingMessage) return;
   const shuffledMessages = messages.sort(() => Math.random() - 0.5);
   messageScroller.style.display = "block";
   scrollingMessage.textContent = shuffledMessages[messageIndex];
@@ -225,7 +252,7 @@ function hideScrollingMessages() {
     clearInterval(intervalId);
     intervalId = null;
   }
-  messageScroller.style.display = "none";
+  if(messageScroller) messageScroller.style.display = "none";
 }
 
 function sendToQB(link, title) {

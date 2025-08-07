@@ -4,11 +4,13 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}" defer></script>
 {% endblock %}
 
@@ -52,8 +54,13 @@
         <select id="format-filter">
             <option value="">All Formats</option>
         </select>
-        <input type="text" id="min-size-filter" placeholder="Min Size (MB)">
-        <input type="text" id="max-size-filter" placeholder="Max Size (MB)">
+        
+        <div class="file-size-filter-wrapper">
+            <label>File Size:</label>
+            <div id="file-size-slider"></div>
+            <div id="slider-range-values"></div>
+        </div>
+
         <input type="text" id="date-range-filter" placeholder="Select Date Range">
     </div>
     <div class="filter-buttons">
