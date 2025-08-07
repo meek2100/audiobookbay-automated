@@ -44,7 +44,7 @@ NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
 NAV_LINK_URL = os.getenv("NAV_LINK_URL")
 
 # Define the port to be used
-FLASK_PORT = int(os.getenv("FLASK_PORT", 5078))
+FLASK_PORT = int(os.getenv("PORT", 5078))
 
 # Print configuration
 print(f"ABB_HOSTNAME: {ABB_HOSTNAME}")
@@ -58,7 +58,7 @@ print(f"SAVE_PATH_BASE: {SAVE_PATH_BASE}")
 print(f"NAV_LINK_NAME: {NAV_LINK_NAME}")
 print(f"NAV_LINK_URL: {NAV_LINK_URL}")
 print(f"PAGE_LIMIT: {PAGE_LIMIT}")
-print(f"FLASK_PORT: {FLASK_PORT}")
+print(f"PORT: {FLASK_PORT}")
 
 
 @app.context_processor
