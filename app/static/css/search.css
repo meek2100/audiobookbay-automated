@@ -171,6 +171,7 @@ img.cover {
     justify-content: space-between; /* Pushes controls left and buttons right */
     align-items: center;
     width: 100%;
+    gap: 15px; /* Add gap between controls and buttons */
 }
 
 .filter-controls {
@@ -178,11 +179,13 @@ img.cover {
     gap: 15px;
     align-items: center;
     flex-wrap: wrap;
+    flex-grow: 1; /* Allow this container to grow */
 }
 
 .filter-buttons {
     display: flex;
     gap: 10px;
+    flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
 #filter-container select, #filter-container input {
@@ -213,10 +216,11 @@ img.cover {
     display: flex;
     align-items: center;
     gap: 10px;
+    width: 100%; /* Make the wrapper take full width of its parent */
 }
 
 #file-size-slider {
-    width: 200px;
+    flex-grow: 1; /* Allow the slider to take up the remaining space */
 }
 
 #slider-range-values {
