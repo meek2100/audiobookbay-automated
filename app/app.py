@@ -101,6 +101,9 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
     }
     results = []
+
+    print(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
+
     for page in range(1, max_pages + 1):
         url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}"
         try:
@@ -262,18 +265,17 @@ def sanitize_title(title):
 @app.route("/", methods=["GET", "POST"])
 def search():
     books = []
+    query = ""
     try:
         if request.method == "POST":  # Form submitted
             query = request.form["query"]
-            # Convert to all lowercase
-            query = query.lower()
             if query:  # Only search if the query is not empty
                 books = search_audiobookbay(query)
-        return render_template("search.html", books=books)
+        return render_template("search.html", books=books, query=query)
     except Exception as e:
         print(f"[ERROR] Failed to search: {e}")
         return render_template(
-            "search.html", books=books, error=f"Failed to search. {str(e)}"
+            "search.html", books=books, error=f"Failed to search. {str(e)}", query=query
         )
 
 
