@@ -21,6 +21,8 @@ form {
     justify-content: center; /* Center the form content */
     align-items: center; /* Center the form content vertically */
 }
+/* This overly broad rule was removed */
+/*
 input[type="text"] {
     padding: 10px;
     border: none;
@@ -28,6 +30,7 @@ input[type="text"] {
     width: 300px;
     font-size: 1rem;
 }
+*/
 button {
     padding: 10px 20px;
     width: 100%;
@@ -71,6 +74,11 @@ img.cover {
     padding: 10px; /* Adjust padding as needed */
     box-sizing: border-box; /* Ensure padding is included in the width */
     margin-bottom: 10px; /* Add some space between the input and button */
+    /* Properties from the old input[type="text"] rule are now here */
+    border: none;
+    border-radius: 5px;
+    width: 300px;
+    font-size: 1rem;
 }
 .search-button {
     width: auto; /* Set the button width to auto */
