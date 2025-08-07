@@ -164,6 +164,8 @@ img.cover {
     margin-bottom: 20px;
     width: 90%;
     max-width: 1000px;
+    padding: 0 15px; /* Add padding to align content */
+    box-sizing: border-box; /* Ensure padding is included in the width */
 }
 
 .filter-row {
