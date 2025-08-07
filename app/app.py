@@ -69,6 +69,16 @@ def inject_nav_link():
     }
 
 
+def is_url_valid(url):
+    try:
+        # Use a HEAD request to check the URL without downloading the full content
+        response = requests.head(url, timeout=5, allow_redirects=True)
+        # Check if the status code is in the 2xx range
+        return response.status_code // 100 == 2
+    except requests.exceptions.RequestException:
+        return False
+
+
 # Helper function to search AudiobookBay
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     headers = {
@@ -76,89 +86,98 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     }
     results = []
     for page in range(1, max_pages + 1):
-        url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}&cat=undefined%2Cundefined"
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            print(
-                f"[ERROR] Failed to fetch page {page}. Status Code: {response.status_code}"
-            )
+        url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}"
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            # Raise an exception for bad status codes (4xx or 5xx)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"[ERROR] Failed to fetch page {page}. Reason: {e}")
             break
 
         soup = BeautifulSoup(response.text, "html.parser")
-        for post in soup.select(".post"):
-            try:
-                title = post.select_one(".postTitle > h2 > a").text.strip()
-                link = f"https://{ABB_HOSTNAME}{post.select_one('.postTitle > h2 > a')['href']}"
-                cover = (
-                    post.select_one("img")["src"]
-                    if post.select_one("img")
-                    else "/static/images/default-cover.jpg"
-                )
+        posts = soup.select(".post")
 
-                # New scraping logic with more robust regex patterns
-                # Extracting from .postInfo
-                post_info_text = post.select_one(".postInfo").get_text(
-                    separator=" ", strip=True
+        # If no posts are found on the page, stop paginating
+        if not posts:
+            print(f"No more results found on page {page}.")
+            break
+
+        print(f"Processing {len(posts)} posts on page {page}...")
+
+        for post in posts:
+            try:
+                title_element = post.select_one(".postTitle > h2 > a")
+                if not title_element:
+                    continue  # Skip post if title is not found
+
+                title = title_element.text.strip()
+                link = f"https://{ABB_HOSTNAME}{title_element['href']}"
+
+                # Check if the cover URL is valid, otherwise use the default
+                cover_url = (
+                    post.select_one("img")["src"] if post.select_one("img") else None
+                )
+                if cover_url and is_url_valid(cover_url):
+                    cover = cover_url
+                else:
+                    cover = "/static/images/default_cover.jpg"
+
+                # --- More robust scraping for post metadata ---
+
+                post_info = post.select_one(".postInfo")
+                post_info_text = (
+                    post_info.get_text(separator=" ", strip=True) if post_info else ""
                 )
 
                 category_match = re.search(
-                    r"Category: (.+?)\s+Language:", post_info_text
+                    r"Category:\s*(.*?)\s*Language:", post_info_text, re.DOTALL
                 )
-                category = (
-                    category_match.group(1).strip().replace("&nbsp;", "")
-                    if category_match
-                    else None
-                )
+                category = category_match.group(1).strip() if category_match else "N/A"
 
                 language_match = re.search(
-                    r"Language: (.+?)(?:\s+Keywords:|$)", post_info_text
+                    r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL
                 )
-                language = language_match.group(1).strip() if language_match else None
+                language = language_match.group(1).strip() if language_match else "N/A"
 
-                keywords_match = re.search(r"Keywords: (.+)", post_info_text)
-                keywords = (
-                    keywords_match.group(1).strip().replace("&nbsp;", " ")
-                    if keywords_match
-                    else None
+                keywords_match = re.search(
+                    r"Keywords:\s*(.*)", post_info_text, re.DOTALL
                 )
+                keywords = keywords_match.group(1).strip() if keywords_match else "N/A"
 
-                # Extracting from the specific paragraph within .postContent
-                post_details_p = post.find(
-                    "p", string=lambda text: "Posted:" in str(text)
+                # Find the paragraph with post details, which is consistently centered
+                details_paragraph = post.select_one(
+                    ".postContent p[style*='text-align:center']"
                 )
 
-                post_date = None
-                format = None
-                bitrate = None
-                file_size = None
+                post_date, book_format, bitrate, file_size = "N/A", "N/A", "N/A", "N/A"
 
-                if post_details_p:
-                    post_details_html = str(post_details_p)
+                if details_paragraph:
+                    details_html = str(details_paragraph)
 
-                    post_date_match = re.search(r"Posted: (.+?)<br", post_details_html)
+                    post_date_match = re.search(r"Posted:\s*([^<]+)", details_html)
                     post_date = (
-                        post_date_match.group(1).strip() if post_date_match else None
+                        post_date_match.group(1).strip() if post_date_match else "N/A"
                     )
 
                     format_match = re.search(
-                        r"Format: <span[^>]*>([\w?]+)<\/span>", post_details_html
+                        r"Format:\s*<span[^>]*>([^<]+)</span>", details_html
                     )
-                    format = format_match.group(1).strip() if format_match else None
+                    book_format = (
+                        format_match.group(1).strip() if format_match else "N/A"
+                    )
 
                     bitrate_match = re.search(
-                        r"Bitrate: <span[^>]*>([\w?\s]+)<\/span>", post_details_html
+                        r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html
                     )
-                    bitrate = bitrate_match.group(1).strip() if bitrate_match else None
+                    bitrate = bitrate_match.group(1).strip() if bitrate_match else "N/A"
 
                     file_size_match = re.search(
-                        r"File Size: <span[^>]*>([\d\.]+?)<\/span> (MBs|GBs)",
-                        post_details_html,
+                        r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)",
+                        details_html,
                     )
-                    file_size = (
-                        f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
-                        if file_size_match
-                        else None
-                    )
+                    if file_size_match:
+                        file_size = f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
 
                 results.append(
                     {
@@ -169,13 +188,13 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                         "language": language,
                         "keywords": keywords,
                         "post_date": post_date,
-                        "format": format,
+                        "format": book_format,
                         "bitrate": bitrate,
                         "file_size": file_size,
                     }
                 )
             except Exception as e:
-                print(f"[ERROR] Skipping post due to error: {e}")
+                print(f"[ERROR] Could not process a post. Details: {e}")
                 continue
     return results
 
