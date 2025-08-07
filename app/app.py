@@ -144,7 +144,9 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     post_info.get_text(separator=" ", strip=True) if post_info else ""
                 )
 
-                language_match = re.search(r"Language:\s*([^<]+)", post_info_text)
+                language_match = re.search(
+                    r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL
+                )
                 language = language_match.group(1).strip() if language_match else "N/A"
 
                 details_paragraph = post.select_one(
