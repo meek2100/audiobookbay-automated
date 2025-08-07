@@ -39,3 +39,7 @@ h1 {
     margin: 0 auto;
     width: fit-content; 
 }
+
+.noUi-horizontal .noUi-tooltip {
+    bottom: -120% !important;
+}
