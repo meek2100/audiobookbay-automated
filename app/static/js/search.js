@@ -17,11 +17,7 @@ let fileSizeSlider;
 function initializeFilters() {
     populateSelectFilters();
     initializeFileSizeSlider();
-    // Initialize the date range picker
-    datePicker = flatpickr("#date-range-filter", {
-        mode: "range",
-        dateFormat: "Y-m-d"
-    });
+    initializeDateRangePicker();
 }
 
 // --- Helper Functions ---
@@ -50,6 +46,35 @@ function formatFileSize(mb) {
 
 
 // --- Filtering Functions ---
+
+function initializeDateRangePicker() {
+    const allDates = Array.from(document.querySelectorAll('.result-row'))
+        .map(row => {
+            const dateStr = row.dataset.postDate;
+            if (!dateStr || dateStr === 'N/A') return null;
+            // Standardize the date format for reliable parsing
+            const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
+            const date = new Date(formattedStr);
+            return isNaN(date) ? null : date;
+        })
+        .filter(date => date !== null);
+
+    let options = {
+        mode: "range",
+        dateFormat: "Y-m-d"
+    };
+
+    if (allDates.length > 0) {
+        const minDate = new Date(Math.min.apply(null, allDates));
+        const maxDate = new Date(Math.max.apply(null, allDates));
+        options.minDate = minDate;
+        options.maxDate = maxDate;
+    }
+
+    datePicker = flatpickr("#date-range-filter", options);
+}
+
+
 function initializeFileSizeSlider() {
     const sliderElement = document.getElementById('file-size-slider');
     const allSizes = Array.from(document.querySelectorAll('.result-row'))
@@ -156,21 +181,27 @@ function applyFilters() {
 
     // Date range filtering
     if (selectedDates.length === 2) {
-        try {
-            const startDate = selectedDates[0];
-            const endDate = selectedDates[1];
-            // Standardize the date format from the HTML before parsing
-            const rowDateStr = row.dataset.postDate.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
-            const rowDate = new Date(rowDateStr);
+        const rowDateStr = row.dataset.postDate;
+        if (!rowDateStr || rowDateStr === 'N/A') {
+            visible = false; // Hide items with no date if a date filter is active
+        } else {
+            try {
+                const startDate = selectedDates[0];
+                const endDate = selectedDates[1];
+                // Standardize the date format from the HTML before parsing
+                const formattedStr = rowDateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
+                const rowDate = new Date(formattedStr);
 
-            // Set time to 0 to compare dates only
-            rowDate.setHours(0, 0, 0, 0);
+                // Set time to 0 to compare dates only
+                rowDate.setHours(0, 0, 0, 0);
 
-            if (rowDate < startDate || rowDate > endDate) {
+                if (rowDate < startDate || rowDate > endDate) {
+                    visible = false;
+                }
+            } catch (e) {
+                console.error("Invalid date format", e);
                 visible = false;
             }
-        } catch (e) {
-            console.error("Invalid date format", e);
         }
     }
 
