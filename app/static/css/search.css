@@ -144,23 +144,6 @@ img.cover {
     }
 }
 
-/* New style for metadata cell */
-.category-results {
-    font-size: 0.6em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 300px;
-}
-
-.keyword-results {
-    font-size: 0.6em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 300px;
-}
-
 /* Default styles for small screens (vertical layout) */
 .property-results-container {
     display: flex;
@@ -187,22 +170,5 @@ img.cover {
         padding: 0 10px; /* Adjust spacing around the separator */
         color: #ccc; /* A subtle color for the separator */
     }
-
-/* New style for metadata cell */
-.category-results {
-    font-size: 0.6em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 450px;
-}
-
-.keyword-results {
-    font-size: 0.6em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 450px;
-}
 
 }
