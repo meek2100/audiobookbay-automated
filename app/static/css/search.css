@@ -160,7 +160,7 @@ img.cover {
 #filter-container {
     display: flex;
     flex-direction: column; /* Stack the rows vertically */
-    gap: 15px; /* Space between the two rows */
+    gap: 25px; /* Increase space between the two rows for tooltips */
     margin-bottom: 20px;
     width: 90%;
     max-width: 1000px;
@@ -229,6 +229,7 @@ img.cover {
     border-radius: 5px;
     border: 1px solid #ccc;
     box-shadow: none;
+    height: 10px; /* Make the slider bar thinner */
 }
 
 .noUi-connect {
@@ -236,11 +237,16 @@ img.cover {
 }
 
 .noUi-handle {
-    border: 1px solid #d9d9d9;
+    width: 20px;  /* Smaller handle width */
+    height: 20px; /* Smaller handle height */
+    right: -10px; /* Adjust position for smaller size */
+    top: -6px;   /* Adjust position for smaller size */
     border-radius: 50%;
     background: #fff;
+    border: 1px solid #d9d9d9;
     box-shadow: none;
     outline: none;
+    cursor: grab;
 }
 
 .noUi-handle:after, .noUi-handle:before {
@@ -254,6 +260,15 @@ img.cover {
     border-radius: 5px;
     padding: 4px 8px;
     font-size: 0.8em;
+    white-space: nowrap; /* Prevent tooltip text from wrapping */
+}
+
+/* Position tooltips on opposite sides */
+.noUi-handle-lower .noUi-tooltip {
+    transform: translateY(-150%); /* Move top tooltip up */
+}
+.noUi-handle-upper .noUi-tooltip {
+    transform: translateY(150%); /* Move bottom tooltip down */
 }
 
 
