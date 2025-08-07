@@ -223,13 +223,6 @@ img.cover {
     flex-grow: 1; /* Allow the slider to take up the remaining space */
 }
 
-#slider-range-values {
-    font-size: 0.9em;
-    color: #f0f0f0;
-    min-width: 150px; /* Prevent layout shift */
-    text-align: center;
-}
-
 /* noUiSlider Customization */
 .noUi-target {
     background: #e0e0e0;
@@ -252,6 +245,15 @@ img.cover {
 
 .noUi-handle:after, .noUi-handle:before {
     display: none; /* Hide default pseudo-elements */
+}
+
+.noUi-tooltip {
+    background: #512da8;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 0.8em;
 }
 
 

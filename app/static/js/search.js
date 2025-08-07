@@ -65,20 +65,25 @@ function initializeFileSizeSlider() {
     const minSize = Math.min(...allSizes);
     const maxSize = Math.max(...allSizes);
 
+    // formatter for the tooltips
+    const formatter = {
+      to: function(value) {
+        return formatFileSize(value);
+      },
+      from: function(value) {
+        // This is needed for the slider to read its own formatted values
+        return Number(parseFileSizeToMB(value));
+      }
+    };
+
     fileSizeSlider = noUiSlider.create(sliderElement, {
         start: [minSize, maxSize],
         connect: true,
+        tooltips: [formatter, formatter], // Use the formatter for both tooltips
         range: {
             'min': minSize,
             'max': maxSize
-        },
-        // Tooltips are for handle values, we use a separate element for the range display
-    });
-
-    const rangeValuesDisplay = document.getElementById('slider-range-values');
-    fileSizeSlider.on('update', function (values) {
-        const [minVal, maxVal] = values.map(v => formatFileSize(parseFloat(v)));
-        rangeValuesDisplay.textContent = `${minVal} - ${maxVal}`;
+        }
     });
 }
 
