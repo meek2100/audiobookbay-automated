@@ -252,7 +252,7 @@ img.cover {
 .noUi-horizontal .noUi-handle {
     width: 20px;
     height: 20px;
-    right: 0px;
+    right: -11px;
     top: -6px;
 }
 
