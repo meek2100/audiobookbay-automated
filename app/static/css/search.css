@@ -245,6 +245,19 @@ img.cover {
     background: #8e24aa;
 }
 
+.noUi-horizontal {
+    height: 10px;
+}
+
+.noUi-horizontal .noUi-handle {
+    width: 20px;
+    height: 20px;
+}
+
+.noUi-horizontal .noUi-tooltip {
+    bottom: -160%;
+}
+
 .noUi-handle {
     border: 1px solid #d9d9d9;
     border-radius: 50%;

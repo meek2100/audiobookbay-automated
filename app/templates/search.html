@@ -3,14 +3,14 @@
 {% block title %}Search{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/flatpickr.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/nouislider.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/js/flatpickr.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/js/nouislider.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}" defer></script>
 {% endblock %}
 
