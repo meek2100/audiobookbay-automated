@@ -70,17 +70,33 @@ def inject_nav_link():
 
 
 def is_url_valid(url):
+    """
+    Checks if URL is valid and returns a 200 status code. Primarily used to check if cover images are accessible.
+
+    Args:
+        url (str): The URL to check.
+    """
     try:
-        # Use a HEAD request to check the URL without downloading the full content
-        response = requests.head(url, timeout=5, allow_redirects=True)
-        # Check if the status code is in the 2xx range
-        return response.status_code // 100 == 2
+        # Use a HEAD request with a short timeout and stream parameter
+        response = requests.head(url, timeout=3, allow_redirects=True, stream=True)
+        return response.status_code == 200
     except requests.exceptions.RequestException:
         return False
 
 
 # Helper function to search AudiobookBay
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
+    """
+    Searches AudiobookBay for a given query and scrapes the results.
+
+    Args:
+        query (str): The search term.
+        max_pages (int): The maximum number of pages to scrape.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary represents a book
+              and contains its details.
+    """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
     }
@@ -123,29 +139,14 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                 else:
                     cover = "/static/images/default_cover.jpg"
 
-                # --- More robust scraping for post metadata ---
-
                 post_info = post.select_one(".postInfo")
                 post_info_text = (
                     post_info.get_text(separator=" ", strip=True) if post_info else ""
                 )
 
-                category_match = re.search(
-                    r"Category:\s*(.*?)\s*Language:", post_info_text, re.DOTALL
-                )
-                category = category_match.group(1).strip() if category_match else "N/A"
-
-                language_match = re.search(
-                    r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL
-                )
+                language_match = re.search(r"Language:\s*([^<]+)", post_info_text)
                 language = language_match.group(1).strip() if language_match else "N/A"
 
-                keywords_match = re.search(
-                    r"Keywords:\s*(.*)", post_info_text, re.DOTALL
-                )
-                keywords = keywords_match.group(1).strip() if keywords_match else "N/A"
-
-                # Find the paragraph with post details, which is consistently centered
                 details_paragraph = post.select_one(
                     ".postContent p[style*='text-align:center']"
                 )
@@ -184,9 +185,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                         "title": title,
                         "link": link,
                         "cover": cover,
-                        "category": category,
                         "language": language,
-                        "keywords": keywords,
                         "post_date": post_date,
                         "format": book_format,
                         "bitrate": bitrate,
