@@ -156,6 +156,37 @@ img.cover {
     content: none;
 }
 
+/* New Filter Styles */
+#filter-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+#filter-container select, #filter-container input {
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+#filter-container button {
+    padding: 8px 15px;
+    border-radius: 5px;
+    border: none;
+    background-color: #512da8;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#filter-container button:hover {
+    background-color: #673ab7;
+}
+
+
 /* Styles for large screens (horizontal layout) */
 @media (min-width: 768px) {
     .property-results-container {

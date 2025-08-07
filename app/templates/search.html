@@ -6,6 +6,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 {% endblock %}
 
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/search.js') }}" defer></script>
+{% endblock %}
+
 {% block content %}
 
 <div class="title-container">
@@ -13,12 +17,12 @@
 </div>
 <form method="post" class="search-container" onsubmit="showLoadingSpinner()">
     <input type="text" name="query" placeholder="Enter book name" class="search-bar" required>
-<button type="submit" class="search-button">
-    <span class="button-text">Search</span>
-    <div class="button-spinner" id="button-spinner" style="display: none;">
-        <div class="spinner"></div>
-    </div>
-</button>
+    <button type="submit" class="search-button">
+        <span class="button-text">Search</span>
+        <div class="button-spinner" id="button-spinner" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+    </button>
 </form>
 
 <div class="message-scroller" id="message-scroller">
@@ -34,11 +38,33 @@
   <p class="error-message">{{ error }}</p>
 {% endif %}
 
+{% if books %}
+<div id="filter-container">
+    <select id="language-filter">
+        <option value="">All Languages</option>
+    </select>
+    <select id="bitrate-filter">
+        <option value="">All Bitrates</option>
+    </select>
+    <select id="format-filter">
+        <option value="">All Formats</option>
+    </select>
+    <input type="text" id="file-size-filter" placeholder="Max File Size (MB)">
+    <input type="text" id="post-date-filter" placeholder="Posted After (YYYY-MM-DD)">
+    <button id="filter-button">Filter</button>
+    <button id="clear-button">Clear</button>
+</div>
+{% endif %}
 
 <table>
-    <tbody>
+    <tbody id="results-table-body">
         {% for book in books %}
-        <tr>
+        <tr class="result-row"
+            data-language="{{ book.language }}"
+            data-bitrate="{{ book.bitrate }}"
+            data-format="{{ book.format }}"
+            data-file-size="{{ book.file_size }}"
+            data-post-date="{{ book.post_date }}">
             <td><img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"></td>
             <td><p>{{ book.title }}</p>
                 <div class="property-results-container">
@@ -49,7 +75,7 @@
                     <span>Posted: {{ book.post_date }}</span>
                 </div>
             </td>
-            <td> 
+            <td>
                 <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
                 <button onclick="sendToQB('{{ book.link|escape }}', '{{ book.title|escape }}')">Download to Server</button>
             </td>
@@ -57,82 +83,5 @@
         {% endfor %}
     </tbody>
 </table>
-
-<script>
-    function showLoadingSpinner() {
-        const buttonSpinner = document.getElementById('button-spinner');
-        buttonSpinner.style.display = 'inline-block';
-        setTimeout(showScrollingMessages, 5000);
-    }
-
-    function hideLoadingSpinner() {
-        const buttonSpinner = document.getElementById('button-spinner');
-        const buttonText = document.querySelector('.button-text');
-        buttonSpinner.style.display = 'none';
-        hideScrollingMessages();
-    }
-
-    const messages = [
-        "Searching... This better be worth it!",
-        "Hold on, this takes a while...",
-        "Still searching... Maybe grab a snack?",
-        "Patience, young grasshopper...",
-        "Wow, this is taking a minute!",
-        "Don’t worry, I got this!",
-        "Maybe go for a walk?",
-        "Still thinking... Almost there!",
-        "Finding the best results for you!",
-        "Hang tight! Searching magic happening!",
-        "One moment... while I consult the ancients.",
-        "Beep boop... processing... please wait...",
-        "My hamsters are running on a wheel, almost there!",
-        "Just gathering some pixie dust, be right back!",
-        "Is it lunchtime yet? Oh, searching... right.",
-        "Please remain calm, the search is in progress.",
-        "Warning: Search may cause extreme awesomeness.",
-        "Calculating the optimal route to your results...",
-        "Almost there... just defragmenting my brain.",
-        "Searching... because the internet is a big place!",
-        "Polishing the search results for your viewing pleasure.",
-        "The search is strong with this one.",
-        "Please wait while I summon the search demons.",
-        "Searching in hyperspace... almost there!",
-        "My coffee is kicking in... search commencing!",
-        "Just a few more gigabytes to process...",
-        "Rome wasn't built in a day.",
-        "Don't blame me, the internet is slow today.",
-        "Almost there... just need to find the right key...",
-    ];
-    let messageIndex = 0;
-
-    function showScrollingMessages() {
-        const messageScroller = document.getElementById('message-scroller');
-        const scrollingMessage = document.getElementById('scrolling-message');
-        const shuffledMessages = messages.sort(() => Math.random() - 0.5);
-        messageScroller.style.display = 'block';
-        scrollingMessage.textContent = shuffledMessages[messageIndex];
-        setInterval(() => {
-            messageIndex = (messageIndex + 1) % messages.length;
-            scrollingMessage.textContent = shuffledMessages[messageIndex];
-        }, 5000);
-    }
-
-    function hideScrollingMessages() {
-        const messageScroller = document.getElementById('message-scroller');
-        messageScroller.style.display = 'none';
-    }
-
-    function sendToQB(link, title) {
-        fetch('/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ link: link, title: title })
-        }).then(response => response.json())
-        .then(data => {
-          alert(data.message)
-          hideLoadingSpinner();
-        });
-    }
-</script>
 
 {% endblock %}
