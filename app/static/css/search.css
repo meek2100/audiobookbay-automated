@@ -159,13 +159,18 @@ img.cover {
 /* New Filter Styles */
 #filter-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column; /* Stack the rows vertically */
+    gap: 15px; /* Space between the two rows */
     margin-bottom: 20px;
-    flex-wrap: wrap;
     width: 90%;
     max-width: 1000px;
+}
+
+.filter-row {
+    display: flex;
+    justify-content: space-between; /* Pushes controls left and buttons right */
+    align-items: center;
+    width: 100%;
 }
 
 .filter-controls {

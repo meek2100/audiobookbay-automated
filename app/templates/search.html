@@ -44,28 +44,34 @@
 
 {% if books %}
 <div id="filter-container">
-    <div class="filter-controls">
-        <select id="language-filter">
-            <option value="">All Languages</option>
-        </select>
-        <select id="bitrate-filter">
-            <option value="">All Bitrates</option>
-        </select>
-        <select id="format-filter">
-            <option value="">All Formats</option>
-        </select>
-        
-        <div class="file-size-filter-wrapper">
-            <label>File Size:</label>
-            <div id="file-size-slider"></div>
-            <div id="slider-range-values"></div>
+    <div class="filter-row">
+        <div class="filter-controls">
+            <select id="language-filter">
+                <option value="">All Languages</option>
+            </select>
+            <select id="bitrate-filter">
+                <option value="">All Bitrates</option>
+            </select>
+            <select id="format-filter">
+                <option value="">All Formats</option>
+            </select>
+            <input type="text" id="date-range-filter" placeholder="Select Date Range">
         </div>
-
-        <input type="text" id="date-range-filter" placeholder="Select Date Range">
+        <div class="filter-buttons">
+            <button id="filter-button">Filter</button>
+        </div>
     </div>
-    <div class="filter-buttons">
-        <button id="filter-button">Filter</button>
-        <button id="clear-button">Clear</button>
+    <div class="filter-row">
+        <div class="filter-controls">
+            <div class="file-size-filter-wrapper">
+                <label>File Size:</label>
+                <div id="file-size-slider"></div>
+                <div id="slider-range-values"></div>
+            </div>
+        </div>
+        <div class="filter-buttons">
+             <button id="clear-button">Clear</button>
+        </div>
     </div>
 </div>
 {% endif %}
