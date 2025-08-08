@@ -225,7 +225,7 @@ img.cover {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 550px; /* Give the wrapper a specific width */
+    width: 555px; /* Give the wrapper a specific width */
     max-width: 85vw; /* Helps with responsiveness on smaller screens */
 }
 
