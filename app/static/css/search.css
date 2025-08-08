@@ -178,7 +178,7 @@ img.cover {
 
 .filter-row {
     display: flex;
-    justify-content: space-between; /* Pushes controls left and buttons right */
+    justify-content: center; /* Center the content within the row */
     align-items: center;
     width: 100%;
     gap: 15px; /* Add gap between controls and buttons */
@@ -189,7 +189,6 @@ img.cover {
     gap: 15px;
     align-items: center;
     flex-wrap: wrap;
-    flex-grow: 1; /* Allow this container to grow */
 }
 
 .filter-buttons {
@@ -226,7 +225,8 @@ img.cover {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%; /* Make the wrapper take full width of its parent */
+    width: 600px; /* Give the wrapper a specific width */
+    max-width: 85vw; /* Helps with responsiveness on smaller screens */
 }
 
 #file-size-slider {
