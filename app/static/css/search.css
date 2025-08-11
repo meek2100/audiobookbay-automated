@@ -2,7 +2,10 @@ form {
     margin: 20px 0;
     display: flex;
     justify-content: center; /* Center the form content */
-    align-items: center; /* Center the form content vertically */
+    align-items: center;
+/*
+    gap: 15px
+*/
 }
 /* This overly broad rule was removed */
 /*
@@ -45,13 +48,28 @@ td {
 }
 img.cover {
     border-radius: 5px;
+    max-width: 100px;
+    width: 15vw;
 }
-.search-container {
+/*
+#search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 0 30px;
+    width: 90%;
+    max-width: 1000px;
+    padding: 0 15px;
+    box-sizing: border-box;
+}
+*/
+.search-form {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px; /* Optional: Add some space between the input and button */
+    gap: 10px;
 }
+
 .search-bar {
     width: 100%; /* Make the search bar full width */
     padding: 10px; /* Adjust padding as needed */
@@ -61,8 +79,21 @@ img.cover {
     border: none;
     border-radius: 5px;
     width: 300px;
-    font-size: 1rem;
 }
+
+/*
+.search-bar {
+    width: 90%;
+    padding: 10px; 
+    box-sizing: border-box; 
+    margin-bottom: 10px; 
+    border: none;
+    border-radius: 5px;
+    width: 563px;
+    font-size: 1rem;
+    max-width: 70vw;
+}
+*/
 .search-button {
     width: auto; /* Set the button width to auto */
     padding: 10px 20px; /* Add padding to the button */
@@ -172,6 +203,8 @@ img.cover {
     gap: 15px;
     align-items: center;
     flex-wrap: wrap;
+    width: 563px;
+    max-width: 70vw;
 }
 
 .filter-buttons {
@@ -208,7 +241,7 @@ img.cover {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 555px; /* Give the wrapper a specific width */
+    width: 563px; /* Give the wrapper a specific width */
     max-width: 70vw; /* Helps with responsiveness on smaller screens */
 }
 
@@ -266,7 +299,7 @@ img.cover {
 
 
 /* Styles for large screens (horizontal layout) */
-@media (min-width: 768px) {
+@media (min-width: 905px) {
     .property-results-container {
         flex-direction: row; /* Arrange items horizontally */
         justify-content: left; /* Distribute items evenly */
@@ -281,9 +314,15 @@ img.cover {
     }
 }
 
+p.book-title {
+    font-size: 0.9em;
+}
+
 @media (max-width: 500px) {
+
 .search-bar {
     width: 200px;
 }
+
 }
 

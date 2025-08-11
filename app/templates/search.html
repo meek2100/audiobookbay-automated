@@ -19,7 +19,8 @@
 <div class="title-container">
     <h1>Search AudiobookBay</h1>
 </div>
-<form method="post" class="search-container" onsubmit="showLoadingSpinner()">
+<div class="search-container" id="search-container">
+<form method="post" class="search-form" onsubmit="showLoadingSpinner()">
     <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
     <button type="submit" class="search-button">
         <span class="button-text">Search</span>
@@ -28,7 +29,7 @@
         </div>
     </button>
 </form>
-
+</div>
 <div class="message-scroller" id="message-scroller">
     <p id="scrolling-message"></p>
 </div>
@@ -85,13 +86,13 @@
             data-file-size="{{ book.file_size }}"
             data-post-date="{{ book.post_date }}">
             <td><img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"></td>
-            <td><p>{{ book.title }}</p>
+            <td><p class="book-title">{{ book.title }}</p>
                 <div class="property-results-container">
-                    <span>Language: {{ book.language }}</span>
-                    <span>Bitrate: {{ book.bitrate }}</span>
-                    <span>Format: {{ book.format }}</span>
-                    <span>File Size: {{ book.file_size }}</span>
-                    <span>Posted: {{ book.post_date }}</span>
+                    <span class="book-language">Language: {{ book.language }}</span>
+                    <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
+                    <span class="book-format">Format: {{ book.format }}</span>
+                    <span class="book-file_size">File Size: {{ book.file_size }}</span>
+                    <span class="book-post_date">Posted: {{ book.post_date }}</span>
                 </div>
             </td>
             <td>
