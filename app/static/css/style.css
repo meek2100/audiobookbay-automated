@@ -1,3 +1,21 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #6a1b9a, #8e24aa, #9c27b0);
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+h1 {
+    margin-top: 20px;
+    font-size: 2.5rem;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+}
+
 .navbar {
     width: 100%;
     background-color: rgba(0, 0, 0, 0.3);
@@ -29,13 +47,24 @@
 }
 .title-container {
     text-align: center; 
-    width: 100%; 
-    margin-bottom: 20px; 
+    width: 100%;
+    padding: 0 15px;
+    margin: 20px 0; 
 }
 
 h1 {
     font-size: 2.5rem;
     text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
-    margin: 0 auto;
-    width: fit-content; 
+    width: 90%; 
+}
+
+
+@media (max-width: 500px) {
+h1 {
+    font-size: 2rem;
+}
+
+.navbar a {
+    font-size: 1rem;
+}
 }
