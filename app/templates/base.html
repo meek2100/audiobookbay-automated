@@ -6,9 +6,9 @@
     <title>{% block title %}Flask App{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
+    {% block extra_js %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar -->
     <div class="navbar">
         <a href="{{ url_for('search') }}" class="{% if request.endpoint == 'search' %}active{% endif %}">Search</a>
         <a href="{{ url_for('status') }}" class="{% if request.endpoint == 'status' %}active{% endif %}">Status</a>
@@ -17,7 +17,6 @@
         {% endif %}
     </div>
 
-    <!-- Page Content -->
     <div class="content">
         {% block content %}{% endblock %}
     </div>

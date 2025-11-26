@@ -3,7 +3,15 @@
 {% block title %}Search{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/flatpickr.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/nouislider.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='vendor/js/flatpickr.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/js/nouislider.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/search.js') }}" defer></script>
 {% endblock %}
 
 {% block content %}
@@ -11,16 +19,17 @@
 <div class="title-container">
     <h1>Search AudiobookBay</h1>
 </div>
-<form method="post" class="search-container" onsubmit="showLoadingSpinner()">
-    <input type="text" name="query" placeholder="Enter book name" class="search-bar" required>
-<button type="submit" class="search-button">
-    <span class="button-text">Search</span>
-    <div class="button-spinner" id="button-spinner" style="display: none;">
-        <div class="spinner"></div>
-    </div>
-</button>
+<div class="search-container" id="search-container">
+<form method="post" class="search-form" onsubmit="showLoadingSpinner()">
+    <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
+    <button type="submit" class="search-button">
+        <span class="button-text">Search</span>
+        <div class="button-spinner" id="button-spinner" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+    </button>
 </form>
-
+</div>
 <div class="message-scroller" id="message-scroller">
     <p id="scrolling-message"></p>
 </div>
@@ -34,14 +43,59 @@
   <p class="error-message">{{ error }}</p>
 {% endif %}
 
+{% if books %}
+<div id="filter-container">
+    <div class="filter-row">
+        <div class="filter-controls">
+            <select id="language-filter">
+                <option value="">All Languages</option>
+            </select>
+            <select id="bitrate-filter">
+                <option value="">All Bitrates</option>
+            </select>
+            <select id="format-filter">
+                <option value="">All Formats</option>
+            </select>
+            <input type="text" id="date-range-filter" placeholder="Select Date Range">
+        </div>
+        <div class="filter-buttons">
+            <button id="filter-button">Filter</button>
+        </div>
+    </div>
+    <div class="filter-row">
+        <div class="filter-controls">
+            <div class="file-size-filter-wrapper">
+                <label>File Size:</label>
+                <div id="file-size-slider"></div>
+            </div>
+        </div>
+        <div class="filter-buttons">
+             <button id="clear-button">Clear</button>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <table>
-    <tbody>
+    <tbody id="results-table-body">
         {% for book in books %}
-        <tr>
+        <tr class="result-row"
+            data-language="{{ book.language }}"
+            data-bitrate="{{ book.bitrate }}"
+            data-format="{{ book.format }}"
+            data-file-size="{{ book.file_size }}"
+            data-post-date="{{ book.post_date }}">
             <td><img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"></td>
-            <td>{{ book.title }}</td>
-            <td> 
+            <td><p class="book-title">{{ book.title }}</p>
+                <div class="property-results-container">
+                    <span class="book-language">Language: {{ book.language }}</span>
+                    <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
+                    <span class="book-format">Format: {{ book.format }}</span>
+                    <span class="book-file_size">File Size: {{ book.file_size }}</span>
+                    <span class="book-post_date">Posted: {{ book.post_date }}</span>
+                </div>
+            </td>
+            <td>
                 <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
                 <button onclick="sendToQB('{{ book.link|escape }}', '{{ book.title|escape }}')">Download to Server</button>
             </td>
@@ -49,82 +103,5 @@
         {% endfor %}
     </tbody>
 </table>
-
-<script>
-    function showLoadingSpinner() {
-        const buttonSpinner = document.getElementById('button-spinner');
-        buttonSpinner.style.display = 'inline-block';
-        setTimeout(showScrollingMessages, 5000);
-    }
-
-    function hideLoadingSpinner() {
-        const buttonSpinner = document.getElementById('button-spinner');
-        const buttonText = document.querySelector('.button-text');
-        buttonSpinner.style.display = 'none';
-        hideScrollingMessages();
-    }
-
-    const messages = [
-        "Searching... This better be worth it!",
-        "Hold on, this takes a while...",
-        "Still searching... Maybe grab a snack?",
-        "Patience, young grasshopper...",
-        "Wow, this is taking a minute!",
-        "Don’t worry, I got this!",
-        "Maybe go for a walk?",
-        "Still thinking... Almost there!",
-        "Finding the best results for you!",
-        "Hang tight! Searching magic happening!",
-        "One moment... while I consult the ancients.",
-        "Beep boop... processing... please wait...",
-        "My hamsters are running on a wheel, almost there!",
-        "Just gathering some pixie dust, be right back!",
-        "Is it lunchtime yet? Oh, searching... right.",
-        "Please remain calm, the search is in progress.",
-        "Warning: Search may cause extreme awesomeness.",
-        "Calculating the optimal route to your results...",
-        "Almost there... just defragmenting my brain.",
-        "Searching... because the internet is a big place!",
-        "Polishing the search results for your viewing pleasure.",
-        "The search is strong with this one.",
-        "Please wait while I summon the search demons.",
-        "Searching in hyperspace... almost there!",
-        "My coffee is kicking in... search commencing!",
-        "Just a few more gigabytes to process...",
-        "Rome wasn't built in a day.",
-        "Don't blame me, the internet is slow today.",
-        "Almost there... just need to find the right key...",
-    ];
-    let messageIndex = 0;
-
-    function showScrollingMessages() {
-        const messageScroller = document.getElementById('message-scroller');
-        const scrollingMessage = document.getElementById('scrolling-message');
-        const shuffledMessages = messages.sort(() => Math.random() - 0.5);
-        messageScroller.style.display = 'block';
-        scrollingMessage.textContent = shuffledMessages[messageIndex];
-        setInterval(() => {
-            messageIndex = (messageIndex + 1) % messages.length;
-            scrollingMessage.textContent = shuffledMessages[messageIndex];
-        }, 5000);
-    }
-
-    function hideScrollingMessages() {
-        const messageScroller = document.getElementById('message-scroller');
-        messageScroller.style.display = 'none';
-    }
-
-    function sendToQB(link, title) {
-        fetch('/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ link: link, title: title })
-        }).then(response => response.json())
-        .then(data => {
-          alert(data.message)
-          hideLoadingSpinner();
-        });
-    }
-</script>
 
 {% endblock %}
