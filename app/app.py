@@ -1,6 +1,8 @@
 import os
 import re
 import requests
+import concurrent.futures
+from functools import lru_cache
 from flask import Flask, request, render_template, jsonify
 from bs4 import BeautifulSoup
 from qbittorrentapi import Client
@@ -69,78 +71,41 @@ def inject_nav_link():
     }
 
 
-def is_url_valid(url):
+def fetch_and_parse_page(query, page):
     """
-    Checks if URL is valid and returns a 200 status code. Primarily used to check if cover images are accessible.
-
-    Args:
-        url (str): The URL to check.
-    """
-    try:
-        # Use a HEAD request with a short timeout and stream parameter
-        response = requests.head(url, timeout=3, allow_redirects=True, stream=True)
-        return response.status_code == 200
-    except requests.exceptions.RequestException:
-        return False
-
-
-# Helper function to search AudiobookBay
-def search_audiobookbay(query, max_pages=PAGE_LIMIT):
-    """
-    Searches AudiobookBay for a given query and scrapes the results.
-
-    Args:
-        query (str): The search term.
-        max_pages (int): The maximum number of pages to scrape.
-
-    Returns:
-        list: A list of dictionaries, where each dictionary represents a book
-              and contains its details.
+    Helper function to fetch and parse a single page of results.
+    Used by the ThreadPoolExecutor in search_audiobookbay.
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
     }
-    results = []
+    page_results = []
+    url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}"
 
-    print(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
-
-    for page in range(1, max_pages + 1):
-        url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}"
-        try:
-            response = requests.get(url, headers=headers, timeout=15)
-            # Raise an exception for bad status codes (4xx or 5xx)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            print(f"[ERROR] Failed to fetch page {page}. Reason: {e}")
-            break
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
         posts = soup.select(".post")
 
-        # If no posts are found on the page, stop paginating
         if not posts:
-            print(f"No more results found on page {page}.")
-            break
-
-        print(f"Processing {len(posts)} posts on page {page}...")
+            return []
 
         for post in posts:
             try:
                 title_element = post.select_one(".postTitle > h2 > a")
                 if not title_element:
-                    continue  # Skip post if title is not found
+                    continue
 
                 title = title_element.text.strip()
                 link = f"https://{ABB_HOSTNAME}{title_element['href']}"
 
-                # Check if the cover URL is valid, otherwise use the default
+                # Extract cover URL without validation (Client-side will handle errors)
                 cover_url = (
                     post.select_one("img")["src"] if post.select_one("img") else None
                 )
-                if cover_url and is_url_valid(cover_url):
-                    cover = cover_url
-                else:
-                    cover = "/static/images/default_cover.jpg"
+                cover = cover_url if cover_url else "/static/images/default_cover.jpg"
 
                 post_info = post.select_one(".postInfo")
                 post_info_text = (
@@ -185,7 +150,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     if file_size_match:
                         file_size = f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
 
-                results.append(
+                page_results.append(
                     {
                         "title": title,
                         "link": link,
@@ -198,8 +163,41 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     }
                 )
             except Exception as e:
-                print(f"[ERROR] Could not process a post. Details: {e}")
+                print(f"[ERROR] Could not process a post on page {page}. Details: {e}")
                 continue
+
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Failed to fetch page {page}. Reason: {e}")
+
+    return page_results
+
+
+# Helper function to search AudiobookBay with Caching and Parallelization
+@lru_cache(maxsize=32)
+def search_audiobookbay(query, max_pages=PAGE_LIMIT):
+    """
+    Searches AudiobookBay for a given query and scrapes the results using parallel requests.
+    Results are cached to improve performance for repeated queries.
+    """
+    print(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
+
+    results = []
+
+    # Use ThreadPoolExecutor to fetch pages in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_pages) as executor:
+        # Create a dictionary to map futures to page numbers (optional, useful for debugging)
+        future_to_page = {
+            executor.submit(fetch_and_parse_page, query, page): page
+            for page in range(1, max_pages + 1)
+        }
+
+        for future in concurrent.futures.as_completed(future_to_page):
+            try:
+                page_data = future.result()
+                results.extend(page_data)
+            except Exception as exc:
+                print(f"[ERROR] Page generated an exception: {exc}")
+
     return results
 
 
