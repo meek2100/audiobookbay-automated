@@ -2,7 +2,7 @@ import os
 import re
 import requests
 import concurrent.futures
-from functools import lru_cache
+from cachetools import cached, TTLCache
 from flask import Flask, request, render_template, jsonify
 from bs4 import BeautifulSoup
 from qbittorrentapi import Client
@@ -173,11 +173,12 @@ def fetch_and_parse_page(query, page):
 
 
 # Helper function to search AudiobookBay with Caching and Parallelization
-@lru_cache(maxsize=32)
+# Cache results for 1 hour (3600 seconds), max 32 items
+@cached(cache=TTLCache(maxsize=32, ttl=3600))
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     """
     Searches AudiobookBay for a given query and scrapes the results using parallel requests.
-    Results are cached to improve performance for repeated queries.
+    Results are cached for 1 hour to improve performance.
     """
     print(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
 
