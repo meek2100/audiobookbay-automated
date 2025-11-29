@@ -16,6 +16,6 @@ services:
       - SAVE_PATH_BASE=${SAVE_PATH_BASE}
       - NAV_LINK_NAME=${NAV_LINK_NAME}
       - NAV_LINK_URL=${NAV_LINK_URL}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO} # Defaults to INFO if not set
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
     env_file:
       - .env

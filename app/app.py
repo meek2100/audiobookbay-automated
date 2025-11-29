@@ -65,8 +65,16 @@ FLASK_PORT = int(os.getenv("PORT", 5078))
 logger.info(f"Starting app with Log Level: {LOG_LEVEL_STR}")
 logger.info(f"ABB_HOSTNAME: {ABB_HOSTNAME}")
 logger.info(f"DOWNLOAD_CLIENT: {DOWNLOAD_CLIENT}")
+logger.info(f"DL_HOST: {DL_HOST}")
+logger.info(f"DL_PORT: {DL_PORT}")
 logger.info(f"DL_URL: {DL_URL}")
+logger.info(f"DL_USERNAME: {DL_USERNAME}")
+logger.info(f"DL_CATEGORY: {DL_CATEGORY}")
+logger.info(f"SAVE_PATH_BASE: {SAVE_PATH_BASE}")
+logger.info(f"NAV_LINK_NAME: {NAV_LINK_NAME}")
+logger.info(f"NAV_LINK_URL: {NAV_LINK_URL}")
 logger.info(f"PAGE_LIMIT: {PAGE_LIMIT}")
+logger.info(f"PORT: {FLASK_PORT}")
 
 
 @app.context_processor
