@@ -2,6 +2,7 @@ import os
 import re
 import requests
 import concurrent.futures
+import logging
 from cachetools import cached, TTLCache
 from flask import Flask, request, render_template, jsonify
 from bs4 import BeautifulSoup
@@ -11,10 +12,22 @@ from deluge_web_client import DelugeWebClient as delugewebclient
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 
-app = Flask(__name__)
-
 # Load environment variables
 load_dotenv()
+
+# Configure Logging with Dynamic Levels
+# We read the LOG_LEVEL from environment, defaulting to INFO if not set.
+LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
+
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
 
 ABB_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu")
 
@@ -48,19 +61,12 @@ NAV_LINK_URL = os.getenv("NAV_LINK_URL")
 # Define the port to be used
 FLASK_PORT = int(os.getenv("PORT", 5078))
 
-# Print configuration
-print(f"ABB_HOSTNAME: {ABB_HOSTNAME}")
-print(f"DOWNLOAD_CLIENT: {DOWNLOAD_CLIENT}")
-print(f"DL_HOST: {DL_HOST}")
-print(f"DL_PORT: {DL_PORT}")
-print(f"DL_URL: {DL_URL}")
-print(f"DL_USERNAME: {DL_USERNAME}")
-print(f"DL_CATEGORY: {DL_CATEGORY}")
-print(f"SAVE_PATH_BASE: {SAVE_PATH_BASE}")
-print(f"NAV_LINK_NAME: {NAV_LINK_NAME}")
-print(f"NAV_LINK_URL: {NAV_LINK_URL}")
-print(f"PAGE_LIMIT: {PAGE_LIMIT}")
-print(f"PORT: {FLASK_PORT}")
+# Log configuration at INFO level
+logger.info(f"Starting app with Log Level: {LOG_LEVEL_STR}")
+logger.info(f"ABB_HOSTNAME: {ABB_HOSTNAME}")
+logger.info(f"DOWNLOAD_CLIENT: {DOWNLOAD_CLIENT}")
+logger.info(f"DL_URL: {DL_URL}")
+logger.info(f"PAGE_LIMIT: {PAGE_LIMIT}")
 
 
 @app.context_processor
@@ -82,6 +88,9 @@ def fetch_and_parse_page(query, page):
     page_results = []
     url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}"
 
+    # Debug log for detailed tracing of operations
+    logger.debug(f"Fetching page {page} with URL: {url}")
+
     try:
         response = requests.get(url, headers=headers, timeout=15)
         response.raise_for_status()
@@ -90,6 +99,7 @@ def fetch_and_parse_page(query, page):
         posts = soup.select(".post")
 
         if not posts:
+            logger.debug(f"No posts found on page {page}")
             return []
 
         for post in posts:
@@ -163,11 +173,13 @@ def fetch_and_parse_page(query, page):
                     }
                 )
             except Exception as e:
-                print(f"[ERROR] Could not process a post on page {page}. Details: {e}")
+                # Log as error because parsing logic failing is an issue
+                logger.error(f"Could not process a post on page {page}. Details: {e}")
                 continue
 
     except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Failed to fetch page {page}. Reason: {e}")
+        # Log as error because network failure impacts functionality
+        logger.error(f"Failed to fetch page {page}. Reason: {e}")
 
     return page_results
 
@@ -180,13 +192,14 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     Searches AudiobookBay for a given query and scrapes the results using parallel requests.
     Results are cached for 1 hour to improve performance.
     """
-    print(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
+    # INFO level for business logic events (Searching)
+    logger.info(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
 
     results = []
 
     # Use ThreadPoolExecutor to fetch pages in parallel
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_pages) as executor:
-        # Create a dictionary to map futures to page numbers (optional, useful for debugging)
+        # Create a dictionary to map futures to page numbers
         future_to_page = {
             executor.submit(fetch_and_parse_page, query, page): page
             for page in range(1, max_pages + 1)
@@ -197,7 +210,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                 page_data = future.result()
                 results.extend(page_data)
             except Exception as exc:
-                print(f"[ERROR] Page generated an exception: {exc}")
+                logger.error(f"Page generated an exception: {exc}")
 
     return results
 
@@ -210,9 +223,7 @@ def extract_magnet_link(details_url):
     try:
         response = requests.get(details_url, headers=headers)
         if response.status_code != 200:
-            print(
-                f"[ERROR] Failed to fetch details page. Status Code: {response.status_code}"
-            )
+            logger.error(f"Failed to fetch details page. Status Code: {response.status_code}")
             return None
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -220,7 +231,7 @@ def extract_magnet_link(details_url):
         # Extract Info Hash
         info_hash_row = soup.find("td", string=re.compile(r"Info Hash", re.IGNORECASE))
         if not info_hash_row:
-            print("[ERROR] Info Hash not found on the page.")
+            logger.error("Info Hash not found on the page.")
             return None
         info_hash = info_hash_row.find_next_sibling("td").text.strip()
 
@@ -231,7 +242,8 @@ def extract_magnet_link(details_url):
         trackers = [row.text.strip() for row in tracker_rows]
 
         if not trackers:
-            print("[WARNING] No trackers found on the page. Using default trackers.")
+            # WARN level: Unexpected but application can continue
+            logger.warning("No trackers found on the page. Using default trackers.")
             trackers = [
                 "udp://tracker.openbittorrent.com:80",
                 "udp://opentor.org:2710",
@@ -247,11 +259,12 @@ def extract_magnet_link(details_url):
         )
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
 
-        print(f"[DEBUG] Generated Magnet Link: {magnet_link}")
+        # DEBUG level: Detailed info useful for troubleshooting but noisy
+        logger.debug(f"Generated Magnet Link: {magnet_link}")
         return magnet_link
 
     except Exception as e:
-        print(f"[ERROR] Failed to extract magnet link: {e}")
+        logger.error(f"Failed to extract magnet link: {e}")
         return None
 
 
@@ -272,7 +285,7 @@ def search():
                 books = search_audiobookbay(query)
         return render_template("search.html", books=books, query=query)
     except Exception as e:
-        print(f"[ERROR] Failed to search: {e}")
+        logger.error(f"Failed to search: {e}")
         return render_template(
             "search.html", books=books, error=f"Failed to search. {str(e)}", query=query
         )
@@ -285,6 +298,7 @@ def send():
     details_url = data.get("link")
     title = data.get("title")
     if not details_url or not title:
+        logger.warning("Invalid send request received: missing link or title")
         return jsonify({"message": "Invalid request"}), 400
 
     try:
@@ -316,14 +330,17 @@ def send():
                 magnet_link, save_directory=save_path, label=DL_CATEGORY
             )
         else:
+            logger.error(f"Unsupported download client configured: {DOWNLOAD_CLIENT}")
             return jsonify({"message": "Unsupported download client"}), 400
 
+        logger.info(f"Successfully sent '{title}' to {DOWNLOAD_CLIENT}")
         return jsonify(
             {
                 "message": "Download added successfully! This may take some time, the download will show in Audiobookshelf when completed."
             }
         )
     except Exception as e:
+        logger.error(f"Send failed: {e}")
         return jsonify({"message": str(e)}), 500
 
 
@@ -380,6 +397,7 @@ def status():
             return jsonify({"message": "Unsupported download client"}), 400
         return render_template("status.html", torrents=torrent_list)
     except Exception as e:
+        logger.error(f"Failed to fetch torrent status: {e}")
         return jsonify({"message": f"Failed to fetch torrent status: {e}"}), 500
 
 

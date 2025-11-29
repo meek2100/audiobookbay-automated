@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   audiobookbay-automated:
@@ -16,5 +16,6 @@ services:
       - SAVE_PATH_BASE=${SAVE_PATH_BASE}
       - NAV_LINK_NAME=${NAV_LINK_NAME}
       - NAV_LINK_URL=${NAV_LINK_URL}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO} # Defaults to INFO if not set
     env_file:
       - .env

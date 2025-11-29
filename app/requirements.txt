@@ -6,3 +6,4 @@ python-dotenv
 transmission-rpc
 deluge-web-client
 cachetools
+gunicorn
