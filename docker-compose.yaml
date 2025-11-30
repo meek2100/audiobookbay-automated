@@ -8,6 +8,7 @@ services:
     container_name: audiobookbay-automated
     environment:
       - DOWNLOAD_CLIENT=${DOWNLOAD_CLIENT}
+      - DL_SCHEME=${DL_SCHEME:-http}
       - DL_HOST=${DL_HOST}
       - DL_PORT=${DL_PORT}
       - DL_USERNAME=${DL_USERNAME}
@@ -17,8 +18,10 @@ services:
       - NAV_LINK_NAME=${NAV_LINK_NAME}
       - NAV_LINK_URL=${NAV_LINK_URL}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LISTEN_HOST=${LISTEN_HOST} # Optional: Will auto-detect :: or 0.0.0.0 if left empty
-      - LISTEN_PORT=${LISTEN_PORT:-5078} # Configurable port
-      - PAGE_LIMIT=3 # Reduced default to prevent bans
+      - LISTEN_HOST=${LISTEN_HOST}
+      - LISTEN_PORT=${LISTEN_PORT:-5078}
+      - PAGE_LIMIT=${PAGE_LIMIT:-3}
+      - WORKERS=${WORKERS:-4} # Configurable Gunicorn workers
+      - SECRET_KEY=${SECRET_KEY} # Set this for production security!
     env_file:
       - .env

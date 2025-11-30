@@ -19,11 +19,25 @@ class TorrentManager:
         # Default category matched to README example for consistency
         self.category = os.getenv("DL_CATEGORY", "abb-downloader")
 
+        # Capture scheme once during init
+        self.scheme = os.getenv("DL_SCHEME", "http")
+
         # Normalize connection URL for Deluge or clients that prefer a full URL string
         self.dl_url = os.getenv("DL_URL")
         if not self.dl_url and self.host and self.port:
-            scheme = os.getenv("DL_SCHEME", "http")
-            self.dl_url = f"{scheme}://{self.host}:{self.port}"
+            self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+
+    @staticmethod
+    def _format_size(size_bytes):
+        """
+        Formats bytes into megabytes (MB) string.
+        """
+        if size_bytes is None:
+            return "N/A"
+        try:
+            return f"{float(size_bytes) / (1024 * 1024):.2f} MB"
+        except (ValueError, TypeError):
+            return "N/A"
 
     def add_magnet(self, magnet_link, save_path):
         """
@@ -44,11 +58,10 @@ class TorrentManager:
             qb.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)
 
         elif self.client_type == "transmission":
-            protocol = os.getenv("DL_SCHEME", "http")
             tx = TxClient(
                 host=self.host,
                 port=self.port,
-                protocol=protocol,
+                protocol=self.scheme,
                 username=self.username,
                 password=self.password
             )
@@ -72,11 +85,10 @@ class TorrentManager:
         results = []
 
         if self.client_type == "transmission":
-            protocol = os.getenv("DL_SCHEME", "http")
             tx = TxClient(
                 host=self.host,
                 port=self.port,
-                protocol=protocol,
+                protocol=self.scheme,
                 username=self.username,
                 password=self.password
             )
@@ -88,7 +100,7 @@ class TorrentManager:
                     "name": torrent.name,
                     "progress": round(torrent.progress, 2),
                     "state": torrent.status,
-                    "size": f"{torrent.total_size / (1024 * 1024):.2f} MB",
+                    "size": self._format_size(torrent.total_size),
                 })
 
         elif self.client_type == "qbittorrent":
@@ -100,7 +112,7 @@ class TorrentManager:
                     "name": torrent.name,
                     "progress": round(torrent.progress * 100, 2),
                     "state": torrent.state,
-                    "size": f"{torrent.total_size / (1024 * 1024):.2f} MB",
+                    "size": self._format_size(torrent.total_size),
                 })
 
         elif self.client_type == "delugeweb":
@@ -116,7 +128,7 @@ class TorrentManager:
                         "name": torrent["name"],
                         "progress": round(torrent["progress"], 2),
                         "state": torrent["state"],
-                        "size": f"{torrent['total_size'] / (1024 * 1024):.2f} MB",
+                        "size": self._format_size(torrent["total_size"]),
                     })
 
         else:

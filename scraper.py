@@ -234,12 +234,26 @@ def extract_magnet_link(details_url):
             return None
 
         soup = BeautifulSoup(response.text, "html.parser")
+        info_hash = None
 
+        # Method 1: Look for the specific table cell
         info_hash_row = soup.find("td", string=re.compile(r"Info Hash", re.IGNORECASE))
-        if not info_hash_row:
-            logger.error("Info Hash not found on the page.")
+        if info_hash_row:
+            sibling = info_hash_row.find_next_sibling("td")
+            if sibling:
+                info_hash = sibling.text.strip()
+
+        # Method 2: Fallback regex search for 40-character hex string if table structure fails
+        if not info_hash:
+            logger.debug("Info Hash table cell not found. Attempting regex fallback...")
+            # Pattern matches exactly 40 hex chars, possibly surrounded by whitespace or tags
+            hash_match = re.search(r"\b([a-fA-F0-9]{40})\b", response.text)
+            if hash_match:
+                info_hash = hash_match.group(1)
+
+        if not info_hash:
+            logger.error("Info Hash could not be found on the page.")
             return None
-        info_hash = info_hash_row.find_next_sibling("td").text.strip()
 
         tracker_rows = soup.find_all("td", string=re.compile(r"udp://|http://", re.IGNORECASE))
         trackers = [row.text.strip() for row in tracker_rows]

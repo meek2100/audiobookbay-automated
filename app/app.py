@@ -26,9 +26,13 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Security Configuration
-# In production, ensure SECRET_KEY is set in .env.
-# Fallback provided only for local testing convenience.
-app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
+DEFAULT_SECRET = "change-this-to-a-secure-random-key"
+SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET)
+
+if SECRET_KEY == DEFAULT_SECRET:
+    logger.warning("WARNING: You are using the default insecure SECRET_KEY. Please set a unique SECRET_KEY in your .env file for production!")
+
+app.config['SECRET_KEY'] = SECRET_KEY
 csrf = CSRFProtect(app)
 
 # Initialize Managers
@@ -46,8 +50,10 @@ def inject_nav_link():
 def search():
     """
     Handles the search interface.
-    GET: Renders the search page.
-    POST: Accepts a 'query' form data, scrapes AudiobookBay, and renders results.
+
+    GET: Renders the search page with an empty results table.
+    POST: Accepts 'query' from the form, executes the scraper, and renders
+          the search page populated with results.
     """
     books = []
     query = ""
@@ -77,8 +83,14 @@ def search():
 @app.route("/send", methods=["POST"])
 def send():
     """
-    API endpoint to add a torrent to the configured client.
-    Expected JSON: { "link": str, "title": str }
+    API endpoint to initiate a download.
+
+    Expects JSON payload: { "link": str, "title": str }
+
+    Workflow:
+    1. Extracts the magnet link from the provided AudiobookBay details URL.
+    2. Sanitizes the title for filesystem safety.
+    3. Adds the magnet link to the configured torrent client with the specific save path.
     """
     data = request.json
     details_url = data.get("link")
@@ -111,7 +123,10 @@ def send():
 @app.route("/status")
 def status():
     """
-    Renders the current status of downloads in the configured category.
+    Renders the current status of downloads.
+
+    Fetches the list of active torrents from the configured client that match
+    the application's category label and displays them in a table.
     """
     try:
         torrent_list = torrent_manager.get_status()

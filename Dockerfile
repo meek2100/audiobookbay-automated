@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 2. Copy the rest of the application code
 COPY app .
 # 3. Copy and setup the entrypoint script
-COPY app/entrypoint.sh .
+COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 # Create a non-root user and switch to it for security
