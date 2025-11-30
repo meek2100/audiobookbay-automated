@@ -1,18 +1,17 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10-slim
+# Pinned to specific patch version for stability
+FROM python:3.10.13-slim
 
 # Set the working directory in the container
 WORKDIR /app
 
 # 1. Copy just the requirements first to leverage Docker cache
 COPY app/requirements.txt .
-
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 2. Copy the rest of the application code
 COPY app .
-
 # 3. Copy and setup the entrypoint script
 COPY app/entrypoint.sh .
 RUN chmod +x entrypoint.sh

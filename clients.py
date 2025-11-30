@@ -3,20 +3,23 @@ import logging
 from qbittorrentapi import Client as QbClient
 from transmission_rpc import Client as TxClient
 from deluge_web_client import DelugeWebClient
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 class TorrentManager:
+    """
+    Manages interactions with various torrent clients (qBittorrent, Transmission, Deluge).
+    """
     def __init__(self):
         self.client_type = os.getenv("DOWNLOAD_CLIENT")
         self.host = os.getenv("DL_HOST")
         self.port = os.getenv("DL_PORT")
         self.username = os.getenv("DL_USERNAME")
         self.password = os.getenv("DL_PASSWORD")
-        self.category = os.getenv("DL_CATEGORY", "Audiobookbay-Audiobooks")
+        # Default category matched to README example for consistency
+        self.category = os.getenv("DL_CATEGORY", "abb-downloader")
 
-        # DL_URL logic for Deluge or generic use
+        # Normalize connection URL for Deluge or clients that prefer a full URL string
         self.dl_url = os.getenv("DL_URL")
         if not self.dl_url and self.host and self.port:
             scheme = os.getenv("DL_SCHEME", "http")
@@ -25,6 +28,13 @@ class TorrentManager:
     def add_magnet(self, magnet_link, save_path):
         """
         Adds a magnet link to the configured torrent client.
+
+        Args:
+            magnet_link (str): The magnet URI.
+            save_path (str): The destination path on the server.
+
+        Raises:
+            ValueError: If an unsupported client is configured.
         """
         logger.info(f"Adding torrent to {self.client_type} at {save_path}")
 
@@ -34,8 +44,6 @@ class TorrentManager:
             qb.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)
 
         elif self.client_type == "transmission":
-            # transmission-rpc expects protocol/host/port separated or a URL
-            # We construct parameters based on the lib's expectations
             protocol = os.getenv("DL_SCHEME", "http")
             tx = TxClient(
                 host=self.host,
@@ -57,7 +65,9 @@ class TorrentManager:
     def get_status(self):
         """
         Retrieves the status of torrents in the configured category.
-        Returns a list of dicts: {name, progress, state, size}
+
+        Returns:
+            list: A list of dicts containing 'name', 'progress', 'state', and 'size'.
         """
         results = []
 
@@ -70,10 +80,9 @@ class TorrentManager:
                 username=self.username,
                 password=self.password
             )
+            # Note: Fetching all torrents can be slow with large libraries.
+            # Filtering is done client-side here as RPC filtering varies by version.
             torrents = tx.get_torrents()
-            # Filter logic isn't native to all transmission RPC calls easily,
-            # so we fetch all and might filter UI side or accept all.
-            # The original code fetched all. We'll stick to that but handle safe parsing.
             for torrent in torrents:
                 results.append({
                     "name": torrent.name,
@@ -85,7 +94,6 @@ class TorrentManager:
         elif self.client_type == "qbittorrent":
             qb = QbClient(host=self.host, port=self.port, username=self.username, password=self.password)
             qb.auth_log_in()
-            # qBittorrent supports category filtering natively
             torrents = qb.torrents_info(category=self.category)
             for torrent in torrents:
                 results.append({

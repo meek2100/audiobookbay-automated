@@ -1,6 +1,7 @@
 import os
 import logging
 from flask import Flask, request, render_template, jsonify
+from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
 
 # Import custom modules
@@ -23,6 +24,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# Security Configuration
+# In production, ensure SECRET_KEY is set in .env.
+# Fallback provided only for local testing convenience.
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
+csrf = CSRFProtect(app)
 
 # Initialize Managers
 torrent_manager = TorrentManager()
@@ -48,7 +55,7 @@ def search():
 
     try:
         if request.method == "POST":
-            query = request.form["query"]
+            query = request.form.get("query", "").strip()
             if query:
                 books = search_audiobookbay(query)
 

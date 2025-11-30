@@ -83,7 +83,8 @@ function initializeFileSizeSlider() {
 
     if (allSizes.length < 2) {
         // Not enough data for a range slider, hide it
-        document.querySelector('.file-size-filter-wrapper').style.display = 'none';
+        const wrapper = document.querySelector('.file-size-filter-wrapper');
+        if(wrapper) wrapper.style.display = 'none';
         return;
     }
 
@@ -158,7 +159,7 @@ function applyFilters() {
   const language = document.getElementById("language-filter").value;
   const bitrate = document.getElementById("bitrate-filter").value;
   const format = document.getElementById("format-filter").value;
-  const selectedDates = datePicker.selectedDates;
+  const selectedDates = datePicker ? datePicker.selectedDates : [];
   const sizeRange = fileSizeSlider ? fileSizeSlider.get().map(parseFloat) : null;
 
 
@@ -168,7 +169,7 @@ function applyFilters() {
     if (language && row.dataset.language !== language) visible = false;
     if (bitrate && row.dataset.bitrate !== bitrate) visible = false;
     if (format && row.dataset.format !== format) visible = false;
-    
+
     // File size range filtering
     if (sizeRange) {
         const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
@@ -215,7 +216,7 @@ function clearFilters() {
   document.getElementById("format-filter").value = "";
   if (datePicker) datePicker.clear();
   if (fileSizeSlider) fileSizeSlider.reset();
-  
+
   document.querySelectorAll(".result-row").forEach((row) => {
     row.style.display = "";
   });
@@ -291,10 +292,16 @@ function hideScrollingMessages() {
   if(messageScroller) messageScroller.style.display = "none";
 }
 
-function sendToQB(link, title) {
+function sendTorrent(link, title) {
+  // Retrieve CSRF token from the meta tag
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
   fetch("/send", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+    },
     body: JSON.stringify({ link: link, title: title }),
   })
     .then((response) => response.json())

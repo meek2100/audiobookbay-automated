@@ -25,7 +25,7 @@ AudiobookBay Automated is a lightweight web application designed to simplify aud
 
 ## Why Use This?
 
-AudiobookBay Downloader provides a simple and user-friendly interface for users to download audiobooks without on their own and import them into your libary.
+AudiobookBay Downloader provides a simple and user-friendly interface for users to download audiobooks without searching on their own and import them into your library.
 
 ---
 

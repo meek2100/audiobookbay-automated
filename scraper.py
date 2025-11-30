@@ -41,8 +41,26 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15"
 ]
 
+DEFAULT_TRACKERS = [
+    "udp://tracker.openbittorrent.com:80",
+    "udp://opentor.org:2710",
+    "udp://tracker.ccc.de:80",
+    "udp://tracker.blackunicorn.xyz:6969",
+    "udp://tracker.coppersurfer.tk:6969",
+    "udp://tracker.leechers-paradise.org:6969",
+]
+
 def check_mirror(hostname):
-    """Checks if a specific hostname is reachable."""
+    """
+    Checks if a specific hostname is reachable via a HEAD request.
+
+    Args:
+        hostname (str): The hostname to check (e.g., 'audiobookbay.is').
+
+    Returns:
+        str: The hostname if it is reachable (HTTP 200).
+        None: If the hostname is unreachable or errors occur.
+    """
     url = f"https://{hostname}/"
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
@@ -58,6 +76,10 @@ def check_mirror(hostname):
 def find_best_mirror():
     """
     Finds the fastest working AudiobookBay mirror.
+
+    Returns:
+        str: The hostname of the best mirror.
+        None: If no mirrors are found.
     """
     logger.debug("Checking connectivity for all mirrors...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(ABB_FALLBACK_HOSTNAMES)) as executor:
@@ -72,7 +94,15 @@ def find_best_mirror():
 
 def fetch_and_parse_page(hostname, query, page):
     """
-    Helper function to fetch and parse a single page of results.
+    Fetches and parses a single page of results from the specified hostname.
+
+    Args:
+        hostname (str): The AudiobookBay hostname.
+        query (str): The search query.
+        page (int): The page number to fetch.
+
+    Returns:
+        list: A list of dictionaries, where each dict represents a book found.
     """
     # Anti-Ban Measure: Jitter
     sleep_time = random.uniform(1.0, 3.0)
@@ -109,26 +139,40 @@ def fetch_and_parse_page(hostname, query, page):
                 post_info = post.select_one(".postInfo")
                 post_info_text = post_info.get_text(separator=" ", strip=True) if post_info else ""
 
-                language_match = re.search(r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL)
-                language = language_match.group(1).strip() if language_match else "N/A"
+                language = "N/A"
+                try:
+                    language_match = re.search(r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL)
+                    if language_match:
+                        language = language_match.group(1).strip()
+                except Exception:
+                    pass
 
                 details_paragraph = post.select_one(".postContent p[style*='text-align:center']")
                 post_date, book_format, bitrate, file_size = "N/A", "N/A", "N/A", "N/A"
 
                 if details_paragraph:
                     details_html = str(details_paragraph)
-                    post_date_match = re.search(r"Posted:\s*([^<]+)", details_html)
-                    if post_date_match: post_date = post_date_match.group(1).strip()
 
-                    format_match = re.search(r"Format:\s*<span[^>]*>([^<]+)</span>", details_html)
-                    if format_match: book_format = format_match.group(1).strip()
+                    try:
+                        post_date_match = re.search(r"Posted:\s*([^<]+)", details_html)
+                        if post_date_match: post_date = post_date_match.group(1).strip()
+                    except Exception: pass
 
-                    bitrate_match = re.search(r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html)
-                    if bitrate_match: bitrate = bitrate_match.group(1).strip()
+                    try:
+                        format_match = re.search(r"Format:\s*<span[^>]*>([^<]+)</span>", details_html)
+                        if format_match: book_format = format_match.group(1).strip()
+                    except Exception: pass
 
-                    file_size_match = re.search(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)", details_html)
-                    if file_size_match:
-                        file_size = f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
+                    try:
+                        bitrate_match = re.search(r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html)
+                        if bitrate_match: bitrate = bitrate_match.group(1).strip()
+                    except Exception: pass
+
+                    try:
+                        file_size_match = re.search(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)", details_html)
+                        if file_size_match:
+                            file_size = f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
+                    except Exception: pass
 
                 page_results.append({
                     "title": title,
@@ -202,14 +246,7 @@ def extract_magnet_link(details_url):
 
         if not trackers:
             logger.warning("No trackers found on the page. Using default trackers.")
-            trackers = [
-                "udp://tracker.openbittorrent.com:80",
-                "udp://opentor.org:2710",
-                "udp://tracker.ccc.de:80",
-                "udp://tracker.blackunicorn.xyz:6969",
-                "udp://tracker.coppersurfer.tk:6969",
-                "udp://tracker.leechers-paradise.org:6969",
-            ]
+            trackers = DEFAULT_TRACKERS
 
         trackers_query = "&".join(f"tr={requests.utils.quote(tracker)}" for tracker in trackers)
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"

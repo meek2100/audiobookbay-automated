@@ -7,3 +7,4 @@ transmission-rpc==7.0.11
 deluge-web-client==1.3.0
 cachetools==5.3.3
 gunicorn==22.0.0
+Flask-WTF==1.2.1
