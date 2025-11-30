@@ -52,10 +52,15 @@ function initializeDateRangePicker() {
         .map(row => {
             const dateStr = row.dataset.postDate;
             if (!dateStr || dateStr === 'N/A') return null;
-            // Standardize the date format for reliable parsing
-            const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
-            const date = new Date(formattedStr);
-            return isNaN(date) ? null : date;
+            try {
+                // Standardize the date format for reliable parsing
+                const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
+                const date = new Date(formattedStr);
+                return isNaN(date) ? null : date;
+            } catch (e) {
+                console.error("Date parsing error:", e);
+                return null;
+            }
         })
         .filter(date => date !== null);
 

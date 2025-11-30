@@ -14,7 +14,9 @@ services:
       - DL_USERNAME=${DL_USERNAME}
       - DL_PASSWORD=${DL_PASSWORD}
       - DL_CATEGORY=${DL_CATEGORY}
+      # Note: This path must exist inside the Torrent Client's container, not this application's container
       - SAVE_PATH_BASE=${SAVE_PATH_BASE}
+      - MAGNET_TRACKERS=${MAGNET_TRACKERS}
       - NAV_LINK_NAME=${NAV_LINK_NAME}
       - NAV_LINK_URL=${NAV_LINK_URL}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}

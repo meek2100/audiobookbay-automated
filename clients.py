@@ -98,7 +98,7 @@ class TorrentManager:
             for torrent in torrents:
                 results.append({
                     "name": torrent.name,
-                    "progress": round(torrent.progress, 2),
+                    "progress": round(torrent.progress * 100, 2), # Corrected to 0-100%
                     "state": torrent.status,
                     "size": self._format_size(torrent.total_size),
                 })

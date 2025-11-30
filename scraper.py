@@ -41,14 +41,19 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15"
 ]
 
-DEFAULT_TRACKERS = [
-    "udp://tracker.openbittorrent.com:80",
-    "udp://opentor.org:2710",
-    "udp://tracker.ccc.de:80",
-    "udp://tracker.blackunicorn.xyz:6969",
-    "udp://tracker.coppersurfer.tk:6969",
-    "udp://tracker.leechers-paradise.org:6969",
-]
+# Load trackers from environment variable if present, otherwise use defaults
+trackers_env = os.getenv("MAGNET_TRACKERS")
+if trackers_env:
+    DEFAULT_TRACKERS = [t.strip() for t in trackers_env.split(',') if t.strip()]
+else:
+    DEFAULT_TRACKERS = [
+        "udp://tracker.openbittorrent.com:80",
+        "udp://opentor.org:2710",
+        "udp://tracker.ccc.de:80",
+        "udp://tracker.blackunicorn.xyz:6969",
+        "udp://tracker.coppersurfer.tk:6969",
+        "udp://tracker.leechers-paradise.org:6969",
+    ]
 
 def check_mirror(hostname):
     """
@@ -68,6 +73,8 @@ def check_mirror(hostname):
         response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
+    except requests.Timeout:
+        logger.debug(f"Mirror check timed out: {hostname}")
     except Exception:
         pass
     return None
@@ -250,6 +257,7 @@ def extract_magnet_link(details_url):
             hash_match = re.search(r"\b([a-fA-F0-9]{40})\b", response.text)
             if hash_match:
                 info_hash = hash_match.group(1)
+                logger.warning("Table lookup failed; used regex fallback for info_hash.")
 
         if not info_hash:
             logger.error("Info Hash could not be found on the page.")

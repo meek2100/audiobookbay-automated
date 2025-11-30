@@ -18,10 +18,10 @@ AudiobookBay Automated is a lightweight web application designed to simplify aud
 ## Features
 
 - **Search Audiobook Bay**: Easily search for audiobooks by title or keywords.
-- **View Details**: Displays book titles and covers with quickly links to the full details on AudioBook Bay.
+- **View Details**: Displays book titles and covers with quick links to the full details on AudioBook Bay.
 - **Basic Download Status Page**: Monitor the download status of items in your torrent client that share the specified category assigned.
-- **No AudioBook Bay Account Needed**: The app automatically generates magnet links from the displayed infohashes and push them to your torrent client for downloading.
-- **Automatic Folder Organization**: Once the download is complete, torrent will automatically move the downloaded audiobook files to your save location. Audiobooks are organized into subfolders named after the AudioBook Bay title, making it easy for [**Audiobookshelf**](https://www.audiobookshelf.org/) to automatically add completed downloads to its library.
+- **No AudioBook Bay Account Needed**: The app automatically generates magnet links from the displayed infohashes and pushes them to your torrent client for downloading.
+- **Automatic Folder Organization**: Once the download is complete, the torrent client will automatically move the downloaded audiobook files to your save location. Audiobooks are organized into subfolders named after the AudioBook Bay title, making it easy for [**Audiobookshelf**](https://www.audiobookshelf.org/) to automatically add completed downloads to its library.
 
 ## Why Use This?
 
@@ -144,7 +144,7 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
 
 ## Notes
 
-- **This app does NOT download any material**: It simply generates magnet links and sends them to your qBittorrent client for handling.
+- **This app does NOT download any material**: It simply generates magnet links and sends them to your configured torrent client for handling.
 
 - **Folder Mapping**: **The `SAVE_PATH_BASE` is based on the perspective of your torrent client**, not this app. This app does not move any files; all file handling and organization are managed by the torrent client. Ensure that the `SAVE_PATH_BASE` in your torrent client aligns with your audiobook library (e.g., for Audiobookshelf). Using a path relative to where this app is running, instead of the torrent client, will cause issues.
 
