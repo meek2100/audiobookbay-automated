@@ -1,7 +1,10 @@
-name: Build and Push Multi-Architecture Image
-#Publish GHCR
+name: Build, Test, and Push Image
+
 on:
   push:
+    branches:
+      - main
+  pull_request:
     branches:
       - main
 
@@ -10,9 +13,35 @@ permissions:
   packages: write
 
 jobs:
-  build:
-    name: Build and Push Multi-Architecture Image to GHCR
+  test:
+    name: Run Unit Tests and Linting
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies
+        # Installs the app + dev dependencies defined in pyproject.toml
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
+
+      - name: Run Linter (Flake8)
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run Tests
+        run: pytest
+
+  build:
+    name: Build and Push to GHCR
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout Repository

@@ -5,9 +5,10 @@ from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
 
 # Import custom modules
-from clients import TorrentManager
-from scraper import search_audiobookbay, extract_magnet_link
-from utils import sanitize_title
+# [Modernization] Because we installed via pyproject.toml, standard relative imports work
+from .clients import TorrentManager
+from .scraper import search_audiobookbay, extract_magnet_link
+from .utils import sanitize_title
 
 # Load environment variables
 load_dotenv()
@@ -28,9 +29,14 @@ app = Flask(__name__)
 # Security Configuration
 DEFAULT_SECRET = "change-this-to-a-secure-random-key"
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET)
+APP_ENV = os.getenv("APP_ENV", "development").lower()
 
 if SECRET_KEY == DEFAULT_SECRET:
-    logger.warning("WARNING: You are using the default insecure SECRET_KEY. Please set a unique SECRET_KEY in your .env file for production!")
+    if APP_ENV == "production":
+        logger.critical("CRITICAL SECURITY ERROR: You are running in PRODUCTION with the default insecure SECRET_KEY.")
+        raise ValueError("Application refused to start: Change SECRET_KEY in your .env file for production deployment.")
+    else:
+        logger.warning("WARNING: You are using the default insecure SECRET_KEY. Please set a unique SECRET_KEY in your .env file.")
 
 app.config['SECRET_KEY'] = SECRET_KEY
 csrf = CSRFProtect(app)
@@ -51,13 +57,7 @@ def inject_nav_link():
 
 @app.route("/", methods=["GET", "POST"])
 def search():
-    """
-    Handles the search interface.
-
-    GET: Renders the search page with an empty results table.
-    POST: Accepts 'query' from the form, executes the scraper, and renders
-          the search page populated with results.
-    """
+    """Handles the search interface."""
     books = []
     query = ""
     error_message = None
@@ -73,10 +73,7 @@ def search():
     except Exception as e:
         logger.error(f"Failed to search: {e}")
         error_message = (
-            "Unable to connect to AudiobookBay. This could be due to:\n"
-            "1. AudiobookBay domains are temporarily down or blocked.\n"
-            "2. Network connectivity issues.\n"
-            "3. DNS resolution problems.\n\n"
+            "Unable to connect to AudiobookBay.\n"
             f"Technical Detail: {str(e)}"
         )
         return render_template(
@@ -85,16 +82,7 @@ def search():
 
 @app.route("/send", methods=["POST"])
 def send():
-    """
-    API endpoint to initiate a download.
-
-    Expects JSON payload: { "link": str, "title": str }
-
-    Workflow:
-    1. Extracts the magnet link from the provided AudiobookBay details URL.
-    2. Sanitizes the title for filesystem safety.
-    3. Adds the magnet link to the configured torrent client with the specific save path.
-    """
+    """API endpoint to initiate a download."""
     data = request.json
     details_url = data.get("link")
     title = data.get("title")
@@ -103,21 +91,18 @@ def send():
         logger.warning("Invalid send request received: missing link or title")
         return jsonify({"message": "Invalid request"}), 400
 
-    # Critical Check: Ensure SAVE_PATH_BASE is configured
     if not SAVE_PATH_BASE:
         logger.error("Configuration Error: SAVE_PATH_BASE is missing.")
-        return jsonify({"message": "Server configuration error: SAVE_PATH_BASE is not set. Contact administrator."}), 500
+        return jsonify({"message": "Server configuration error: SAVE_PATH_BASE is not set."}), 500
 
     try:
         magnet_link = extract_magnet_link(details_url)
         if not magnet_link:
             return jsonify({"message": "Failed to extract magnet link"}), 500
 
-        # Create save path using the utility function
         safe_title = sanitize_title(title)
         save_path = f"{SAVE_PATH_BASE}/{safe_title}"
 
-        # Use the TorrentManager to handle the specific client logic
         torrent_manager.add_magnet(magnet_link, save_path)
 
         logger.info(f"Successfully sent '{title}' to {torrent_manager.client_type}")
@@ -130,23 +115,15 @@ def send():
 
 @app.route("/status")
 def status():
-    """
-    Renders the current status of downloads.
-
-    Fetches the list of active torrents from the configured client that match
-    the application's category label and displays them in a table.
-    """
+    """Renders the current status of downloads."""
     try:
         torrent_list = torrent_manager.get_status()
         return render_template("status.html", torrents=torrent_list)
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}")
-        # Return the template with an error message instead of raw JSON
         return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")
 
 if __name__ == "__main__":
-    # This block is used for local development only.
-    # In Docker, Gunicorn is used via entrypoint.sh.
     host = os.getenv("LISTEN_HOST", "0.0.0.0")
     port = int(os.getenv("LISTEN_PORT", 5078))
     app.run(host=host, port=port)

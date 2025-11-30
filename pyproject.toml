@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audiobookbay-automated"
+version = "1.0.0"
+description = "Automated AudiobookBay downloader and torrent manager"
+requires-python = ">=3.10"
+authors = [
+  { name = "Your Name", email = "your@email.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "flask==3.0.3",
+    "requests==2.31.0",
+    "beautifulsoup4==4.12.3",
+    "qbittorrent-api==2024.3.60",
+    "python-dotenv==1.0.1",
+    "transmission-rpc==7.0.11",
+    "deluge-web-client==1.3.0",
+    "cachetools==5.3.3",
+    "gunicorn==22.0.0",
+    "Flask-WTF==1.2.1"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.0",
+    "pytest-flask==1.2.0",
+    "requests-mock==1.11.0",
+    "flake8==6.1.0"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/jamesry96/audiobookbay-automated"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

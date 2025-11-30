@@ -1,8 +1,12 @@
 run:
-	source app/.env/bin/activate && python3.10 app/app.py
+	source .venv/bin/activate && python3 app/app.py
 
 venv:
-	python3.10 -m venv app/.env
+	python3 -m venv .venv
 
-requirements:
-	source app/.env/bin/activate && python3.10 -m pip install -r app/requirements.txt
+# Modern install: Installs deps AND the app in editable mode
+install:
+	source .venv/bin/activate && pip install -e ".[dev]"
+
+# Legacy compatibility if you still type 'make requirements'
+requirements: install
