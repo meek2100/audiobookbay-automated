@@ -4,6 +4,7 @@ import os
 import random
 import re
 import time
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -28,21 +29,14 @@ ABB_FALLBACK_HOSTNAMES = [
     "audiobookbay.nl",
     "audiobookbay.pl",
 ]
-# Deduplicate preserving order
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/114.0",
-    "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/114.0.1823.67",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15",
 ]
 
-# Load trackers from environment variable if present, otherwise use defaults
 trackers_env = os.getenv("MAGNET_TRACKERS")
 if trackers_env:
     DEFAULT_TRACKERS = [t.strip() for t in trackers_env.split(",") if t.strip()]
@@ -58,39 +52,19 @@ else:
 
 
 def check_mirror(hostname):
-    """
-    Checks if a specific hostname is reachable via a HEAD request.
-
-    Args:
-        hostname (str): The hostname to check (e.g., 'audiobookbay.is').
-
-    Returns:
-        str: The hostname if it is reachable (HTTP 200).
-        None: If the hostname is unreachable or errors occur.
-    """
     url = f"https://{hostname}/"
     try:
         headers = {"User-Agent": random.choice(USER_AGENTS)}
-        # Use HEAD request for speed
         response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
-    except requests.Timeout:
-        logger.debug(f"Mirror check timed out: {hostname}")
-    except Exception:
+    except (requests.Timeout, requests.RequestException):
         pass
     return None
 
 
 @cached(cache=TTLCache(maxsize=1, ttl=600))
 def find_best_mirror():
-    """
-    Finds the fastest working AudiobookBay mirror.
-
-    Returns:
-        str: The hostname of the best mirror.
-        None: If no mirrors are found.
-    """
     logger.debug("Checking connectivity for all mirrors...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(ABB_FALLBACK_HOSTNAMES)) as executor:
         future_to_host = {executor.submit(check_mirror, host): host for host in ABB_FALLBACK_HOSTNAMES}
@@ -104,30 +78,14 @@ def find_best_mirror():
 
 
 def fetch_and_parse_page(hostname, query, page):
-    """
-    Fetches and parses a single page of results from the specified hostname.
-
-    Warning: This function relies on specific HTML structure (CSS selectors)
-    of AudiobookBay, which is subject to change.
-
-    Args:
-        hostname (str): The AudiobookBay hostname.
-        query (str): The search query.
-        page (int): The page number to fetch.
-
-    Returns:
-        list: A list of dictionaries, where each dict represents a book found.
-    """
-    # Anti-Ban Measure: Jitter
     sleep_time = random.uniform(1.0, 3.0)
     logger.debug(f"Jitter: Sleeping {sleep_time:.2f}s before fetching page {page}...")
     time.sleep(sleep_time)
 
     headers = {"User-Agent": random.choice(USER_AGENTS)}
     page_results = []
-
-    # Use params for safe encoding of special characters
-    url = f"https://{hostname}/page/{page}/"
+    base_url = f"https://{hostname}"
+    url = f"{base_url}/page/{page}/"
     params = {"s": query}
 
     try:
@@ -148,53 +106,60 @@ def fetch_and_parse_page(hostname, query, page):
                     continue
 
                 title = title_element.text.strip()
-                link = f"https://{hostname}{title_element['href']}"
+                # Robust URL handling: Handles both relative (/abss/...) and absolute (https://...) links
+                link = urljoin(base_url, title_element["href"])
 
-                cover_url = post.select_one("img")["src"] if post.select_one("img") else None
-                cover = cover_url if cover_url else "/static/images/default_cover.jpg"
+                # Refined selector for cover image
+                cover_img = post.select_one(".postContent img")
+                if cover_img and cover_img.has_attr("src"):
+                    cover = urljoin(base_url, cover_img["src"])
+                else:
+                    cover = "/static/images/default_cover.jpg"
 
                 post_info = post.select_one(".postInfo")
                 post_info_text = post_info.get_text(separator=" ", strip=True) if post_info else ""
 
                 language = "N/A"
-                try:
-                    language_match = re.search(r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL)
-                    if language_match:
-                        language = language_match.group(1).strip()
-                except Exception:
-                    pass
+                if post_info_text:
+                    try:
+                        language_match = re.search(r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL)
+                        if language_match:
+                            language = language_match.group(1).strip()
+                    except Exception:
+                        pass
 
                 details_paragraph = post.select_one(".postContent p[style*='text-align:center']")
+
                 post_date, book_format, bitrate, file_size = "N/A", "N/A", "N/A", "N/A"
 
                 if details_paragraph:
                     details_html = str(details_paragraph)
 
                     try:
-                        post_date_match = re.search(r"Posted:\s*([^<]+)", details_html)
-                        if post_date_match:
-                            post_date = post_date_match.group(1).strip()
+                        match = re.search(r"Posted:\s*([^<]+)", details_html)
+                        if match:
+                            post_date = match.group(1).strip()
                     except Exception:
                         pass
 
                     try:
-                        format_match = re.search(r"Format:\s*<span[^>]*>([^<]+)</span>", details_html)
-                        if format_match:
-                            book_format = format_match.group(1).strip()
+                        match = re.search(r"Format:\s*<span[^>]*>([^<]+)</span>", details_html)
+                        if match:
+                            book_format = match.group(1).strip()
                     except Exception:
                         pass
 
                     try:
-                        bitrate_match = re.search(r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html)
-                        if bitrate_match:
-                            bitrate = bitrate_match.group(1).strip()
+                        match = re.search(r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html)
+                        if match:
+                            bitrate = match.group(1).strip()
                     except Exception:
                         pass
 
                     try:
-                        file_size_match = re.search(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)", details_html)
-                        if file_size_match:
-                            file_size = f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
+                        match = re.search(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)", details_html)
+                        if match:
+                            file_size = f"{match.group(1).strip()} {match.group(2).strip()}"
                     except Exception:
                         pass
 
@@ -222,17 +187,13 @@ def fetch_and_parse_page(hostname, query, page):
 
 @cached(cache=TTLCache(maxsize=32, ttl=3600))
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
-    """
-    Searches AudiobookBay using cached mirror and parallel requests.
-    """
     active_hostname = find_best_mirror()
     if not active_hostname:
-        raise Exception("Could not connect to any AudiobookBay mirrors.")
+        logger.error("Could not connect to any AudiobookBay mirrors.")
+        return []
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
     results = []
-
-    # Anti-Ban Measure: Limit concurrency to 2
     safe_workers = min(max_pages, 2)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=safe_workers) as executor:
@@ -251,9 +212,6 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
 
 
 def extract_magnet_link(details_url):
-    """
-    Extracts the magnet link from a specific book details page.
-    """
     headers = {"User-Agent": random.choice(USER_AGENTS)}
     try:
         response = requests.get(details_url, headers=headers)
@@ -264,21 +222,17 @@ def extract_magnet_link(details_url):
         soup = BeautifulSoup(response.text, "html.parser")
         info_hash = None
 
-        # Method 1: Look for the specific table cell
         info_hash_row = soup.find("td", string=re.compile(r"Info Hash", re.IGNORECASE))
         if info_hash_row:
             sibling = info_hash_row.find_next_sibling("td")
             if sibling:
                 info_hash = sibling.text.strip()
 
-        # Method 2: Fallback regex search for 40-character hex string if table structure fails
         if not info_hash:
             logger.debug("Info Hash table cell not found. Attempting regex fallback...")
-            # Pattern matches exactly 40 hex chars, possibly surrounded by whitespace or tags
             hash_match = re.search(r"\b([a-fA-F0-9]{40})\b", response.text)
             if hash_match:
                 info_hash = hash_match.group(1)
-                logger.warning("Table lookup failed; used regex fallback for info_hash.")
 
         if not info_hash:
             logger.error("Info Hash could not be found on the page.")
@@ -287,17 +241,13 @@ def extract_magnet_link(details_url):
         tracker_rows = soup.find_all("td", string=re.compile(r"udp://|http://", re.IGNORECASE))
         trackers = [row.text.strip() for row in tracker_rows]
 
-        # IMPROVED LOGIC: Always append default trackers
         if DEFAULT_TRACKERS:
             trackers.extend(DEFAULT_TRACKERS)
 
-        # Deduplicate trackers while preserving order
         trackers = list(dict.fromkeys(trackers))
-
         trackers_query = "&".join(f"tr={requests.utils.quote(tracker)}" for tracker in trackers)
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
 
-        logger.debug(f"Generated Magnet Link: {magnet_link}")
         return magnet_link
 
     except Exception as e:
