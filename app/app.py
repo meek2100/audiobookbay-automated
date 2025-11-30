@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 load_dotenv()
 
 # Configure Logging with Dynamic Levels
-# We read the LOG_LEVEL from environment, defaulting to INFO if not set.
 LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
 LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
 
@@ -30,7 +29,29 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-ABB_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu")
+# --- Configuration & Hostname Logic ---
+
+# Sanitize the env var in case user included quotes (e.g. ABB_HOSTNAME="audiobookbay.is")
+DEFAULT_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
+
+# List of known AudiobookBay mirrors to try if the default fails
+ABB_FALLBACK_HOSTNAMES = [
+    DEFAULT_HOSTNAME,
+    "audiobookbay.is",
+    "audiobookbay.se",
+    "audiobookbay.li",
+    "audiobookbay.ws",
+    "audiobookbay.la",
+    "audiobookbay.me",
+    "audiobookbay.fi",
+    "theaudiobookbay.com",
+    "audiobookbay.nl",
+    "audiobookbay.pl"
+]
+
+# Deduplicate list while preserving order
+ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
+
 PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", 5))
 
 DOWNLOAD_CLIENT = os.getenv("DOWNLOAD_CLIENT")
@@ -86,7 +107,8 @@ FLASK_PORT = int(os.getenv("PORT", 5078))
 
 # Log configuration
 logger.info(f"Starting app with Log Level: {LOG_LEVEL_STR}")
-logger.info(f"ABB_HOSTNAME: {ABB_HOSTNAME}")
+logger.info(f"Primary ABB_HOSTNAME: {DEFAULT_HOSTNAME}")
+logger.info(f"Fallback Hostnames: {ABB_FALLBACK_HOSTNAMES}")
 logger.info(f"DOWNLOAD_CLIENT: {DOWNLOAD_CLIENT}")
 logger.info(f"DL_HOST: {DL_HOST}")
 logger.info(f"DL_PORT: {DL_PORT}")
@@ -108,20 +130,57 @@ def inject_nav_link():
         "nav_link_url": os.getenv("NAV_LINK_URL"),
     }
 
+# --- Hostname Verification Logic ---
 
-def fetch_and_parse_page(query, page):
+def check_mirror(hostname):
+    """Checks if a specific hostname is reachable."""
+    url = f"https://{hostname}/"
+    try:
+        # Use HEAD request for speed (don't download body)
+        response = requests.head(url, timeout=5, allow_redirects=True)
+        if response.status_code == 200:
+            return hostname
+    except Exception:
+        pass
+    return None
+
+# Cache the working mirror for 10 minutes (600 seconds) to avoid re-checking every search
+@cached(cache=TTLCache(maxsize=1, ttl=600))
+def find_best_mirror():
+    """
+    Finds the fastest working AudiobookBay mirror.
+    Checks all hostnames in parallel and returns the first one that responds.
+    """
+    logger.debug("Checking connectivity for all mirrors...")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(ABB_FALLBACK_HOSTNAMES)) as executor:
+        # Submit all checks at once
+        future_to_host = {executor.submit(check_mirror, host): host for host in ABB_FALLBACK_HOSTNAMES}
+
+        # As soon as one returns a result, use it
+        for future in concurrent.futures.as_completed(future_to_host):
+            result = future.result()
+            if result:
+                logger.info(f"Found active mirror: {result}")
+                return result
+
+    logger.error("No working AudiobookBay mirrors found!")
+    return None
+
+
+def fetch_and_parse_page(hostname, query, page):
     """
     Helper function to fetch and parse a single page of results.
-    Used by the ThreadPoolExecutor in search_audiobookbay.
+    Accepts 'hostname' dynamically to support fallback logic.
     """
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
     }
     page_results = []
-    url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}"
+    # Construct URL using the verified hostname
+    url = f"https://{hostname}/page/{page}/?s={query.replace(' ', '+')}"
 
-    # Debug log for detailed tracing of operations
-    logger.debug(f"Fetching page {page} with URL: {url}")
+    logger.debug(f"Fetching page {page} from {hostname}")
 
     try:
         response = requests.get(url, headers=headers, timeout=15)
@@ -141,7 +200,8 @@ def fetch_and_parse_page(query, page):
                     continue
 
                 title = title_element.text.strip()
-                link = f"https://{ABB_HOSTNAME}{title_element['href']}"
+                # Ensure the link points to the WORKING hostname, not the hardcoded one
+                link = f"https://{hostname}{title_element['href']}"
 
                 # Extract cover URL without validation (Client-side will handle errors)
                 cover_url = (
@@ -221,19 +281,25 @@ def fetch_and_parse_page(query, page):
 @cached(cache=TTLCache(maxsize=32, ttl=3600))
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     """
-    Searches AudiobookBay for a given query and scrapes the results using parallel requests.
-    Results are cached for 1 hour to improve performance.
+    Searches AudiobookBay.
+    1. Finds the best mirror (cached).
+    2. Scrapes results in parallel using that mirror.
     """
-    # INFO level for business logic events (Searching)
-    logger.info(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
+    # Step 1: Get a working hostname
+    active_hostname = find_best_mirror()
+
+    if not active_hostname:
+        raise Exception("Could not connect to any AudiobookBay mirrors.")
+
+    logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
 
     results = []
 
-    # Use ThreadPoolExecutor to fetch pages in parallel
+    # Step 2: Fetch pages in parallel using the active hostname
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_pages) as executor:
         # Create a dictionary to map futures to page numbers
         future_to_page = {
-            executor.submit(fetch_and_parse_page, query, page): page
+            executor.submit(fetch_and_parse_page, active_hostname, query, page): page
             for page in range(1, max_pages + 1)
         }
 
@@ -310,16 +376,33 @@ def sanitize_title(title):
 def search():
     books = []
     query = ""
+    error_message = None
+
     try:
         if request.method == "POST":
             query = request.form["query"]
             if query:  # Only search if the query is not empty
                 books = search_audiobookbay(query)
+
+                # If query is valid but no books found, check if it was a connection issue or just 0 results
+                if not books:
+                     # This check helps distinguish empty results from silent failures
+                     pass
+
         return render_template("search.html", books=books, query=query)
+
     except Exception as e:
         logger.error(f"Failed to search: {e}")
+        # User-friendly error message from PR suggestions
+        error_message = (
+            "Unable to connect to AudiobookBay. This could be due to:\n"
+            "1. AudiobookBay domains are temporarily down or blocked.\n"
+            "2. Network connectivity issues.\n"
+            "3. DNS resolution problems.\n\n"
+            f"Technical Detail: {str(e)}"
+        )
         return render_template(
-            "search.html", books=books, error=f"Failed to search. {str(e)}", query=query
+            "search.html", books=books, error=error_message, query=query
         )
 
 
