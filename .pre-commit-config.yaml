@@ -1,19 +1,24 @@
 repos:
-  # Standard cleanup hooks (whitespace, broken yaml, etc.)
+  # Standard cleanup hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
+
+      # Ensures every file ends with a newline character
       - id: end-of-file-fixer
+
       - id: check-yaml
       - id: check-added-large-files
+
+      # Forces all files to use LF (Unix) line endings
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
 
   # Ruff (Linter & Formatter)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.14
     hooks:
-      # Run the linter (replaces flake8)
       - id: ruff
         args: [--fix]
-      # Run the formatter (replaces black/isort)
       - id: ruff-format
