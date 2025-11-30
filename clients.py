@@ -65,7 +65,8 @@ class TorrentManager:
                 username=self.username,
                 password=self.password
             )
-            tx.add_torrent(magnet_link, download_dir=save_path)
+            # FIX: Added labels parameter to support categories in Transmission
+            tx.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])
 
         elif self.client_type == "delugeweb":
             dw = DelugeWebClient(url=self.dl_url, password=self.password)
