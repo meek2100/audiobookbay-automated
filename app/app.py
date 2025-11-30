@@ -103,7 +103,7 @@ def get_smart_bind_address():
         return '0.0.0.0'
 
 LISTEN_HOST = get_smart_bind_address()
-FLASK_PORT = int(os.getenv("PORT", 5078))
+LISTEN_PORT = int(os.getenv("LISTEN_PORT", 5078))
 
 # Log configuration
 logger.info(f"Starting app with Log Level: {LOG_LEVEL_STR}")
@@ -120,7 +120,7 @@ logger.info(f"NAV_LINK_NAME: {NAV_LINK_NAME}")
 logger.info(f"NAV_LINK_URL: {NAV_LINK_URL}")
 logger.info(f"PAGE_LIMIT: {PAGE_LIMIT}")
 logger.info(f"LISTEN_HOST: {LISTEN_HOST}")
-logger.info(f"PORT: {FLASK_PORT}")
+logger.info(f"LISTEN_PORT: {LISTEN_PORT}")
 
 
 @app.context_processor
@@ -517,4 +517,4 @@ def status():
 
 
 if __name__ == "__main__":
-    app.run(host=LISTEN_HOST, port=FLASK_PORT)
+    app.run(host=LISTEN_HOST, port=LISTEN_PORT)

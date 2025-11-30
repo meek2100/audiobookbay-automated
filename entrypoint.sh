@@ -15,9 +15,9 @@ else
     echo "Using user-defined LISTEN_HOST: $LISTEN_HOST"
 fi
 
-# Use default port 5078 if PORT env var is not set
-export PORT="${PORT:-5078}"
+# Use default port 5078 if LISTEN_PORT env var is not set
+export LISTEN_PORT="${LISTEN_PORT:-5078}"
 
 # Run Gunicorn
 # usage: gunicorn --bind <ADDRESS>:<PORT> ...
-exec gunicorn --bind "${LISTEN_HOST}:${PORT}" --workers 4 app:app
+exec gunicorn --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers 4 app:app
