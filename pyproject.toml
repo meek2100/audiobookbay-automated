@@ -20,7 +20,7 @@ dependencies = [
     "qbittorrent-api==2024.3.60",
     "python-dotenv==1.0.1",
     "transmission-rpc==7.0.11",
-    "deluge-web-client==1.3.0",
+    "deluge-web-client==1.0.7",
     "cachetools==5.3.3",
     "gunicorn==22.0.0",
     "Flask-WTF==1.2.1",

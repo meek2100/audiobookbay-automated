@@ -1,12 +1,13 @@
-import os
-import re
-import requests
 import concurrent.futures
 import logging
-import time
+import os
 import random
+import re
+import time
+
+import requests
 from bs4 import BeautifulSoup
-from cachetools import cached, TTLCache
+from cachetools import TTLCache, cached
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ ABB_FALLBACK_HOSTNAMES = [
     "audiobookbay.fi",
     "theaudiobookbay.com",
     "audiobookbay.nl",
-    "audiobookbay.pl"
+    "audiobookbay.pl",
 ]
 # Deduplicate preserving order
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
@@ -38,13 +39,13 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/114.0",
     "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/113.0",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/114.0.1823.67",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.15",
 ]
 
 # Load trackers from environment variable if present, otherwise use defaults
 trackers_env = os.getenv("MAGNET_TRACKERS")
 if trackers_env:
-    DEFAULT_TRACKERS = [t.strip() for t in trackers_env.split(',') if t.strip()]
+    DEFAULT_TRACKERS = [t.strip() for t in trackers_env.split(",") if t.strip()]
 else:
     DEFAULT_TRACKERS = [
         "udp://tracker.openbittorrent.com:80",
@@ -54,6 +55,7 @@ else:
         "udp://tracker.coppersurfer.tk:6969",
         "udp://tracker.leechers-paradise.org:6969",
     ]
+
 
 def check_mirror(hostname):
     """
@@ -79,6 +81,7 @@ def check_mirror(hostname):
         pass
     return None
 
+
 @cached(cache=TTLCache(maxsize=1, ttl=600))
 def find_best_mirror():
     """
@@ -98,6 +101,7 @@ def find_best_mirror():
                 return result
     logger.error("No working AudiobookBay mirrors found!")
     return None
+
 
 def fetch_and_parse_page(hostname, query, page):
     """
@@ -124,7 +128,7 @@ def fetch_and_parse_page(hostname, query, page):
 
     # Use params for safe encoding of special characters
     url = f"https://{hostname}/page/{page}/"
-    params = {'s': query}
+    params = {"s": query}
 
     try:
         response = requests.get(url, params=params, headers=headers, timeout=15)
@@ -168,35 +172,44 @@ def fetch_and_parse_page(hostname, query, page):
 
                     try:
                         post_date_match = re.search(r"Posted:\s*([^<]+)", details_html)
-                        if post_date_match: post_date = post_date_match.group(1).strip()
-                    except Exception: pass
+                        if post_date_match:
+                            post_date = post_date_match.group(1).strip()
+                    except Exception:
+                        pass
 
                     try:
                         format_match = re.search(r"Format:\s*<span[^>]*>([^<]+)</span>", details_html)
-                        if format_match: book_format = format_match.group(1).strip()
-                    except Exception: pass
+                        if format_match:
+                            book_format = format_match.group(1).strip()
+                    except Exception:
+                        pass
 
                     try:
                         bitrate_match = re.search(r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html)
-                        if bitrate_match: bitrate = bitrate_match.group(1).strip()
-                    except Exception: pass
+                        if bitrate_match:
+                            bitrate = bitrate_match.group(1).strip()
+                    except Exception:
+                        pass
 
                     try:
                         file_size_match = re.search(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)", details_html)
                         if file_size_match:
                             file_size = f"{file_size_match.group(1).strip()} {file_size_match.group(2).strip()}"
-                    except Exception: pass
+                    except Exception:
+                        pass
 
-                page_results.append({
-                    "title": title,
-                    "link": link,
-                    "cover": cover,
-                    "language": language,
-                    "post_date": post_date,
-                    "format": book_format,
-                    "bitrate": bitrate,
-                    "file_size": file_size,
-                })
+                page_results.append(
+                    {
+                        "title": title,
+                        "link": link,
+                        "cover": cover,
+                        "language": language,
+                        "post_date": post_date,
+                        "format": book_format,
+                        "bitrate": bitrate,
+                        "file_size": file_size,
+                    }
+                )
             except Exception as e:
                 logger.error(f"Could not process a post on page {page}. Details: {e}")
                 continue
@@ -205,6 +218,7 @@ def fetch_and_parse_page(hostname, query, page):
         logger.error(f"Failed to fetch page {page}. Reason: {e}")
 
     return page_results
+
 
 @cached(cache=TTLCache(maxsize=32, ttl=3600))
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
@@ -234,6 +248,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                 logger.error(f"Page generated an exception: {exc}")
 
     return results
+
 
 def extract_magnet_link(details_url):
     """

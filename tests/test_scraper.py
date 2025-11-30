@@ -1,4 +1,5 @@
 import requests_mock
+
 from app.scraper import fetch_and_parse_page
 
 # Hermeneutic Circle: Testing the "Parts" (HTML parsing) ensures the "Whole" (User Search) works.
@@ -28,6 +29,7 @@ MOCK_HTML = """
 </html>
 """
 
+
 def test_fetch_and_parse_page_success():
     hostname = "audiobookbay.lu"
     query = "test"
@@ -40,12 +42,13 @@ def test_fetch_and_parse_page_success():
 
         assert len(results) == 1
         book = results[0]
-        assert book['title'] == "Test Audiobook Title"
-        assert book['language'] == "English"
-        assert book['format'] == "MP3"
-        assert book['bitrate'] == "64 kbps"
-        assert book['file_size'] == "100 MB"
-        assert "audiobookbay.lu" in book['link']
+        assert book["title"] == "Test Audiobook Title"
+        assert book["language"] == "English"
+        assert book["format"] == "MP3"
+        assert book["bitrate"] == "64 kbps"
+        assert book["file_size"] == "100 MB"
+        assert "audiobookbay.lu" in book["link"]
+
 
 def test_fetch_and_parse_page_malformed():
     """Test resilience against empty/broken HTML"""
