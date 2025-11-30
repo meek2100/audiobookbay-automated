@@ -103,6 +103,9 @@ def fetch_and_parse_page(hostname, query, page):
     """
     Fetches and parses a single page of results from the specified hostname.
 
+    Warning: This function relies on specific HTML structure (CSS selectors)
+    of AudiobookBay, which is subject to change.
+
     Args:
         hostname (str): The AudiobookBay hostname.
         query (str): The search query.
@@ -118,10 +121,13 @@ def fetch_and_parse_page(hostname, query, page):
 
     headers = {"User-Agent": random.choice(USER_AGENTS)}
     page_results = []
-    url = f"https://{hostname}/page/{page}/?s={query.replace(' ', '+')}"
+
+    # Use params for safe encoding of special characters
+    url = f"https://{hostname}/page/{page}/"
+    params = {'s': query}
 
     try:
-        response = requests.get(url, headers=headers, timeout=15)
+        response = requests.get(url, params=params, headers=headers, timeout=15)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")

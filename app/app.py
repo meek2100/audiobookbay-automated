@@ -39,6 +39,9 @@ csrf = CSRFProtect(app)
 torrent_manager = TorrentManager()
 SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
 
+if not SAVE_PATH_BASE:
+    logger.warning("STARTUP WARNING: SAVE_PATH_BASE is not set. Downloads may be saved to the torrent client's default location.")
+
 @app.context_processor
 def inject_nav_link():
     return {
@@ -99,6 +102,11 @@ def send():
     if not details_url or not title:
         logger.warning("Invalid send request received: missing link or title")
         return jsonify({"message": "Invalid request"}), 400
+
+    # Critical Check: Ensure SAVE_PATH_BASE is configured
+    if not SAVE_PATH_BASE:
+        logger.error("Configuration Error: SAVE_PATH_BASE is missing.")
+        return jsonify({"message": "Server configuration error: SAVE_PATH_BASE is not set. Contact administrator."}), 500
 
     try:
         magnet_link = extract_magnet_link(details_url)
