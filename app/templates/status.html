@@ -10,6 +10,13 @@
 <div class="title-container">
     <h1>Torrent Status</h1>
 </div>
+
+{% if error %}
+<div class="error-message">
+    <p>{{ error }}</p>
+</div>
+{% endif %}
+
 <table>
     <thead>
         <tr>
@@ -20,6 +27,7 @@
         </tr>
     </thead>
     <tbody>
+        {% if torrents %}
         {% for torrent in torrents %}
         <tr>
             <td>{{ torrent.name }}</td>
@@ -28,6 +36,13 @@
             <td>{{ torrent.size }}</td>
         </tr>
         {% endfor %}
+        {% else %}
+        {% if not error %}
+        <tr>
+            <td colspan="4" class="empty-message">No active downloads found in category.</td>
+        </tr>
+        {% endif %}
+        {% endif %}
     </tbody>
 </table>
 {% endblock %}

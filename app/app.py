@@ -141,7 +141,8 @@ def status():
         return render_template("status.html", torrents=torrent_list)
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}")
-        return jsonify({"message": f"Failed to fetch torrent status: {e}"}), 500
+        # Return the template with an error message instead of raw JSON
+        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")
 
 if __name__ == "__main__":
     # This block is used for local development only.

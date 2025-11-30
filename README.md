@@ -36,6 +36,8 @@ AudiobookBay Downloader provides a simple and user-friendly interface for users 
 - **Deluge, qBittorrent or Transmission** (with the WebUI enabled)
 - **Docker** (optional, for containerized deployments)
 
+> **Important for Deluge Users**: You must ensure the **Label** plugin is enabled in your Deluge client (WebUI or GTK). This app relies on the Label plugin to categorize downloads. If the plugin is disabled, downloads may still be added, but they will not be categorized, and the "Status" page will not track them correctly.
+
 ### Environment Variables
 
 The app uses environment variables to configure its behavior. Below are the required variables:

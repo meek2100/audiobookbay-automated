@@ -71,7 +71,17 @@ class TorrentManager:
         elif self.client_type == "delugeweb":
             dw = DelugeWebClient(url=self.dl_url, password=self.password)
             dw.login()
-            dw.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
+            try:
+                # Attempt to add with label
+                dw.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
+            except Exception as e:
+                # If the Label plugin is not enabled, this may fail.
+                # Fallback to adding without label.
+                if "label" in str(e).lower():
+                    logger.warning("Deluge Label plugin likely missing or configured incorrectly. Adding torrent without category/label.")
+                    dw.add_torrent_magnet(magnet_link, save_directory=save_path)
+                else:
+                    raise e
 
         else:
             raise ValueError(f"Unsupported download client configured: {self.client_type}")
