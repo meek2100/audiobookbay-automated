@@ -1,0 +1,27 @@
+{
+    "name": "AudiobookBay Automated Dev",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": ".."
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python"
+            },
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "tamasfe.even-better-toml"
+            ]
+        }
+    },
+    // Forward the Flask port so you can access localhost:5078
+    "forwardPorts": [
+        5078
+    ],
+    // Install dev dependencies automatically after the container builds
+    "postCreateCommand": "pip install -e '.[dev]'",
+    // Run as the non-root user defined in your Dockerfile
+    "remoteUser": "appuser"
+}

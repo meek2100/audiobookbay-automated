@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Flask App",
+            "type": "python",
+            "request": "launch",
+            "module": "flask",
+            "env": {
+                "FLASK_APP": "app.app",
+                "FLASK_DEBUG": "1",
+                "APP_ENV": "development",
+                "SAVE_PATH_BASE": "/tmp/audiobooks_dev", // Safe local dev path
+                "SECRET_KEY": "dev-key"
+            },
+            "args": [
+                "run",
+                "--port",
+                "5078",
+                "--no-debugger",
+                "--no-reload"
+            ],
+            "jinja": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Debug Unit Tests",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "purpose": [
+                "debug-test"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "ms-python.python", // Essential for Python support
+        "ms-python.vscode-pylance", // IntelliSense and type checking
+        "ms-azuretools.vscode-docker", // Manage your containers/images
+        "njpwerner.autodocstring", // Helps generate docstrings (like Google/NumPy style)
+        "tamasfe.even-better-toml", // Syntax highlighting for pyproject.toml
+        "charliermarsh.ruff" // (Optional) Extremely fast linter/formatter replacing flake8
+    ]
+}
