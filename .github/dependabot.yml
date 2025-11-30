@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    # Point to the directory containing requirements.txt
+    directory: "/app"
+
+    # Run weekly (e.g., Monday mornings)
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Los_Angeles"
+
+    # LIMIT NOISE: Group all dependencies into one PR
+    groups:
+      production-dependencies:
+        patterns:
+          - "*"
+
+    # Optional: limit the number of open PRs to prevent flooding if something goes wrong
+    open-pull-requests-limit: 10
+
+    # Optional: Add reviewers or assignees automatically
+    # reviewers:
+    #   - "your-username"

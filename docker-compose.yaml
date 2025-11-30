@@ -19,5 +19,6 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LISTEN_HOST=${LISTEN_HOST} # Optional: Will auto-detect :: or 0.0.0.0 if left empty
       - LISTEN_PORT=${LISTEN_PORT:-5078} # Configurable port
+      - PAGE_LIMIT=3 # Reduced default to prevent bans
     env_file:
       - .env

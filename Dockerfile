@@ -4,8 +4,7 @@ FROM python:3.10-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# 1. Copy just the requirements first.
-# This allows Docker to cache the installed packages if requirements.txt hasn't changed.
+# 1. Copy just the requirements first to leverage Docker cache
 COPY app/requirements.txt .
 
 # Install dependencies
@@ -17,6 +16,10 @@ COPY app .
 # 3. Copy and setup the entrypoint script
 COPY app/entrypoint.sh .
 RUN chmod +x entrypoint.sh
+
+# Create a non-root user and switch to it for security
+RUN useradd -m appuser && chown -R appuser /app
+USER appuser
 
 # Expose the port the app runs on
 EXPOSE 5078

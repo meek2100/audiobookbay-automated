@@ -1,6 +1,6 @@
 # AudiobookBay Automated
 
-AudiobookBay Automated is a lightweight web application designed to simplify audiobook management. It allows users to search [**AudioBook Bay**](https://audiobookbay.lu/) for audiobooks and send magnet links directly to a designated **Deludge, qBittorrent or Transmission** client.
+AudiobookBay Automated is a lightweight web application designed to simplify audiobook management. It allows users to search [**AudioBook Bay**](https://audiobookbay.lu/) for audiobooks and send magnet links directly to a designated **Deluge, qBittorrent or Transmission** client.
 
 ## How It Works
 
@@ -49,8 +49,8 @@ DL_PASSWORD=YOUR_PASSWORD      # torrent password
 DL_CATEGORY=abb-downloader     # torrent category for downloads
 SAVE_PATH_BASE=/audiobooks     # Root path for audiobook downloads (relative to torrent)
 ABB_HOSTNAME='audiobookbay.is' # Default
-PAGE_LIMIT=5                   # Defaults to 5 if not set, more than this may probably rate limit.
-LISTEN_PORT=5078                # Port used by docker container
+PAGE_LIMIT=3                   # Defaults to 3 if not set.
+LISTEN_PORT=5078               # Port used by docker container
 ```
 
 The following optional variables add an additional entry to the navigation bar. This is useful for linking to your audiobook player or another related service:
@@ -68,27 +68,27 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
    version: "3.8"
 
    services:
-     audiobookbay-downloader:
-       image: ghcr.io/jamesry96/audiobookbay-automated:latest
-       ports:
-         - "5078:5078"
-       container_name: audiobookbay-downloader
-       environment:
-         - DOWNLOAD_CLIENT=qbittorrent
-         - DL_SCHEME=http
-         - DL_HOST=192.168.1.123
-         - DL_PORT=8080
-         - DL_USERNAME=admin
-         - DL_PASSWORD=pass
-         - DL_CATEGORY=abb-downloader
-         - SAVE_PATH_BASE=/audiobooks
-         - ABB_HOSTNAME='audiobookbay.is' #Default
-         - PAGE_LIMIT=5 #Default
-         - NAV_LINK_NAME=Open Audiobook Player #Optional
-         - NAV_LINK_URL=https://audiobooks.yourdomain.com/ #Optional
-         - LOG_LEVEL=INFO # Options: DEBUG, INFO, WARNING, ERROR. Defaults to INFO.
-         - LISTEN_HOST= # Optional. Leave blank to auto-detect IPv6 (::) or IPv4 (0.0.0.0).
-         - LISTEN_PORT= # Optional. Leave blank to use default port of 5078.
+   audiobookbay-automated:
+     image: ghcr.io/jamesry96/audiobookbay-automated:latest
+     ports:
+       - "5078:5078"
+     container_name: audiobookbay-automated
+     environment:
+       - DOWNLOAD_CLIENT=qbittorrent
+       - DL_SCHEME=http
+       - DL_HOST=192.168.1.123
+       - DL_PORT=8080
+       - DL_USERNAME=admin
+       - DL_PASSWORD=pass
+       - DL_CATEGORY=abb-downloader
+       - SAVE_PATH_BASE=/audiobooks
+       - ABB_HOSTNAME='audiobookbay.is' #Default
+       - PAGE_LIMIT=3 #Default
+       - NAV_LINK_NAME=Open Audiobook Player #Optional
+       - NAV_LINK_URL=https://audiobooks.yourdomain.com/ #Optional
+       - LOG_LEVEL=INFO # Options: DEBUG, INFO, WARNING, ERROR. Defaults to INFO.
+       - LISTEN_HOST= # Optional. Leave blank to auto-detect IPv6 (::) or IPv4 (0.0.0.0).
+       - LISTEN_PORT= # Optional. Leave blank to use default port of 5078.
    ```
 
 2. **Start the Application**:
@@ -119,11 +119,11 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
    DL_CATEGORY=abb-downloader
    SAVE_PATH_BASE=/audiobooks
 
-   # AudiobookBar Hostname
+   # AudiobookBay Hostname
    ABB_HOSTNAME='audiobookbay.is' #Default
    # ABB_HOSTNAME='audiobookbay.lu' #Alternative
 
-   PAGE_LIMIT=5 #Default
+   PAGE_LIMIT=3 #Default
    FLASK_PORT=5078 #Default
 
    # Optional Navigation Bar Entry
