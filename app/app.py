@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+import socket
 import concurrent.futures
 import logging
 from cachetools import cached, TTLCache
@@ -30,7 +31,6 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 ABB_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu")
-
 PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", 5))
 
 DOWNLOAD_CLIENT = os.getenv("DOWNLOAD_CLIENT")
@@ -58,10 +58,33 @@ SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
 NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
 NAV_LINK_URL = os.getenv("NAV_LINK_URL")
 
-# Define the port to be used
+# --- Intelligent Bind Address Logic ---
+def get_smart_bind_address():
+    """
+    Determines the best bind address.
+    1. If LISTEN_HOST env var is set, use it.
+    2. Try binding to IPv6 '::' (often covers IPv4 too on dual-stack).
+    3. Fallback to '0.0.0.0' (IPv4 only).
+    """
+    env_host = os.getenv("LISTEN_HOST")
+    if env_host:
+        return env_host
+
+    try:
+        # Attempt to create an IPv6 socket and bind to all interfaces
+        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        s.bind(('::', 0))
+        s.close()
+        logger.info("Auto-detected IPv6 support. Binding to '::' (Dual-Stack).")
+        return '::'
+    except Exception:
+        logger.info("IPv6 bind failed. Falling back to '0.0.0.0' (IPv4).")
+        return '0.0.0.0'
+
+LISTEN_HOST = get_smart_bind_address()
 FLASK_PORT = int(os.getenv("PORT", 5078))
 
-# Log configuration at INFO level
+# Log configuration
 logger.info(f"Starting app with Log Level: {LOG_LEVEL_STR}")
 logger.info(f"ABB_HOSTNAME: {ABB_HOSTNAME}")
 logger.info(f"DOWNLOAD_CLIENT: {DOWNLOAD_CLIENT}")
@@ -74,6 +97,7 @@ logger.info(f"SAVE_PATH_BASE: {SAVE_PATH_BASE}")
 logger.info(f"NAV_LINK_NAME: {NAV_LINK_NAME}")
 logger.info(f"NAV_LINK_URL: {NAV_LINK_URL}")
 logger.info(f"PAGE_LIMIT: {PAGE_LIMIT}")
+logger.info(f"LISTEN_HOST: {LISTEN_HOST}")
 logger.info(f"PORT: {FLASK_PORT}")
 
 
@@ -287,7 +311,7 @@ def search():
     books = []
     query = ""
     try:
-        if request.method == "POST":  # Form submitted
+        if request.method == "POST":
             query = request.form["query"]
             if query:  # Only search if the query is not empty
                 books = search_audiobookbay(query)
@@ -410,4 +434,4 @@ def status():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=FLASK_PORT)
+    app.run(host=LISTEN_HOST, port=FLASK_PORT)

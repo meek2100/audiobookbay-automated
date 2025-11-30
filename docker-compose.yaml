@@ -17,5 +17,7 @@ services:
       - NAV_LINK_NAME=${NAV_LINK_NAME}
       - NAV_LINK_URL=${NAV_LINK_URL}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LISTEN_HOST=${LISTEN_HOST} # Optional: Will auto-detect :: or 0.0.0.0 if left empty
+      - PORT=${PORT:-5078}
     env_file:
       - .env

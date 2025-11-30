@@ -14,11 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 2. Copy the rest of the application code
 COPY app .
 
+# 3. Copy and setup the entrypoint script
+COPY app/entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
 # Expose the port the app runs on
 EXPOSE 5078
 
-# Define the command to run the application using Gunicorn for production
-# --workers 4: Handles 4 concurrent requests
-# --bind 0.0.0.0:5078: Listens on all interfaces at port 5078
-# app:app : Refers to the module 'app' (app.py) and the flask instance 'app'
-CMD ["gunicorn", "--bind", "0.0.0.0:5078", "--workers", "4", "app:app"]
+# Define the command to run the application using the intelligent entrypoint
+CMD ["./entrypoint.sh"]
