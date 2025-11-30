@@ -1,10 +1,20 @@
 {
     "recommendations": [
-        "ms-python.python", // Essential for Python support
-        "ms-python.vscode-pylance", // IntelliSense and type checking
-        "ms-azuretools.vscode-docker", // Manage your containers/images
-        "njpwerner.autodocstring", // Helps generate docstrings (like Google/NumPy style)
-        "tamasfe.even-better-toml", // Syntax highlighting for pyproject.toml
-        "charliermarsh.ruff" // (Optional) Extremely fast linter/formatter replacing flake8
+        // --- Essentials ---
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        // --- Modern Python Tools ---
+        "charliermarsh.ruff", // You have this: Excellent replacement for flake8
+        "tamasfe.even-better-toml", // INSTALL THIS: Critical for pyproject.toml
+        "njpwerner.autodocstring", // You have this: Great for docs
+        // --- Web / Flask ---
+        "samuelcolvin.jinjahtml", // You have this: Critical for templates
+        "esbenp.prettier-vscode", // You have this: Formatting CSS/JS
+        // --- Infrastructure ---
+        "ms-azuretools.vscode-docker",
+        "ms-vscode-remote.remote-containers",
+        "redhat.vscode-yaml",
+        "timonwong.shellcheck"
     ]
 }
