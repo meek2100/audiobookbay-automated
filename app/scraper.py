@@ -272,9 +272,12 @@ def extract_magnet_link(details_url):
         tracker_rows = soup.find_all("td", string=re.compile(r"udp://|http://", re.IGNORECASE))
         trackers = [row.text.strip() for row in tracker_rows]
 
-        if not trackers:
-            logger.warning("No trackers found on the page. Using default trackers.")
-            trackers = DEFAULT_TRACKERS
+        # IMPROVED LOGIC: Always append default trackers
+        if DEFAULT_TRACKERS:
+            trackers.extend(DEFAULT_TRACKERS)
+
+        # Deduplicate trackers while preserving order
+        trackers = list(dict.fromkeys(trackers))
 
         trackers_query = "&".join(f"tr={requests.utils.quote(tracker)}" for tracker in trackers)
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
