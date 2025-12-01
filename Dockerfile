@@ -1,6 +1,11 @@
 # Use an official Python runtime as a parent image
 FROM python:3.10.13-slim
 
+# OPTIMIZATION: Prevent Python from writing .pyc files (saves space/io)
+ENV PYTHONDONTWRITEBYTECODE=1
+# OPTIMIZATION: Ensure logs are flushed immediately (easier debugging)
+ENV PYTHONUNBUFFERED=1
+
 # Set the working directory in the container
 WORKDIR /app
 
@@ -39,7 +44,6 @@ USER appuser
 EXPOSE 5078
 
 # Use the bundled python script for health checks
-# FIX: Point to the file inside the app/ directory
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3 /app/app/healthcheck.py
 

@@ -23,7 +23,7 @@ services:
       - LISTEN_HOST=${LISTEN_HOST}
       - LISTEN_PORT=${LISTEN_PORT:-5078}
       - PAGE_LIMIT=${PAGE_LIMIT:-3}
-      - WORKERS=${WORKERS:-4} # Configurable Gunicorn workers
-      - SECRET_KEY=${SECRET_KEY} # Set this for production security!
+      - THREADS=${THREADS:-8}
+      - SECRET_KEY=${SECRET_KEY}
     env_file:
       - .env
