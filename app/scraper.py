@@ -131,7 +131,7 @@ def check_mirror(hostname):
     url = f"https://{hostname}/"
     session = get_session()
     try:
-        # ROBUSTNESS: restore allow_redirects=True for mirrors that redirect to a landing page
+        # ROBUSTNESS: allow_redirects=True is critical for mirrors that redirect to a landing page
         response = session.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
@@ -140,7 +140,11 @@ def check_mirror(hostname):
     return None
 
 
-@cached(cache=TTLCache(maxsize=1, ttl=600))
+# ROBUSTNESS: Create cache object explicitly so we can clear it on failure
+mirror_cache = TTLCache(maxsize=1, ttl=600)
+
+
+@cached(cache=mirror_cache)
 def find_best_mirror():
     logger.debug("Checking connectivity for all mirrors...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(ABB_FALLBACK_HOSTNAMES)) as executor:
@@ -265,12 +269,15 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
     return page_results
 
 
-@cached(cache=TTLCache(maxsize=32, ttl=3600))
+# ROBUSTNESS: Do NOT cache search results in the appliance.
+# Caching failures (e.g. empty lists on network timeout) causes the app to look broken
+# for the TTL duration. Re-scraping on demand is safer for single-user use.
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     active_hostname = find_best_mirror()
     if not active_hostname:
         logger.error("Could not connect to any AudiobookBay mirrors.")
-        return []
+        # ROBUSTNESS: Raise error so the UI shows "Connection Failed" instead of "No Results"
+        raise ConnectionError("No reachable AudiobookBay mirrors found.")
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
     results = []
@@ -293,7 +300,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                 except Exception as exc:
                     logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}")
                     # CRITICAL: Invalidate the mirror cache so we search for a new host on next try
-                    find_best_mirror.cache_clear()
+                    mirror_cache.clear()
     finally:
         session.close()
 
