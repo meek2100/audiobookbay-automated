@@ -297,7 +297,6 @@ img.cover {
     font-size: 0.8em;
 }
 
-
 /* Styles for large screens (horizontal layout) */
 @media (min-width: 905px) {
     .property-results-container {
@@ -316,6 +315,13 @@ img.cover {
 
 p.book-title {
     font-size: 0.9em;
+}
+
+/* Empty State Message */
+.empty-message {
+    text-align: center;
+    padding: 40px;
+    color: #ccc;
 }
 
 @media (max-width: 500px) {

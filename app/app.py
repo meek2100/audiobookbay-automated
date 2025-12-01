@@ -110,7 +110,7 @@ def search():
 
 
 @app.route("/send", methods=["POST"])
-@limiter.limit("10 per minute")  # Protect against spamming downloads
+@limiter.limit("60 per minute")  # OPTIMIZATION: Increased for bulk downloading (e.g. series)
 def send():
     """API endpoint to initiate a download."""
     data = request.json

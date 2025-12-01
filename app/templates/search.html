@@ -79,6 +79,7 @@
 
 <table>
     <tbody id="results-table-body">
+        {% if books %}
         {% for book in books %}
         <tr class="result-row" data-language="{{ book.language }}" data-bitrate="{{ book.bitrate }}"
             data-format="{{ book.format }}" data-file-size="{{ book.file_size }}" data-post-date="{{ book.post_date }}">
@@ -104,6 +105,16 @@
             </td>
         </tr>
         {% endfor %}
+        {% else %}
+        {% if query %}
+        <tr>
+            <td colspan="3" class="empty-message">
+                No audiobooks found for "<strong>{{ query }}</strong>". <br>
+                <small>Try a different keyword or check spelling.</small>
+            </td>
+        </tr>
+        {% endif %}
+        {% endif %}
     </tbody>
 </table>
 

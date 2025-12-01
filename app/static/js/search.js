@@ -302,6 +302,9 @@ function sendTorrent(link, title) {
   // Retrieve CSRF token from the meta tag
   const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
+  // We rely on the button's own spinner or UI state, but if you want global handling:
+  // showLoadingSpinner();
+
   fetch("/send", {
     method: "POST",
     headers: {
@@ -310,9 +313,28 @@ function sendTorrent(link, title) {
     },
     body: JSON.stringify({ link: link, title: title }),
   })
-    .then((response) => response.json())
+    .then((response) => {
+      // Check if the response was successful (status 200-299)
+      if (!response.ok) {
+        // If 4xx or 5xx, try to parse the error message from JSON
+        return response.json().then(err => {
+            throw new Error(err.message || 'Server Error');
+        }).catch(() => {
+            // If response wasn't JSON (e.g. 500 HTML page), throw generic error
+            throw new Error(`Request failed with status ${response.status}`);
+        });
+      }
+      return response.json();
+    })
     .then((data) => {
       alert(data.message);
+    })
+    .catch((error) => {
+      console.error('Download failed:', error);
+      alert("Failed to send download: " + error.message);
+    })
+    .finally(() => {
+      // Robustness: Always ensure the spinner stops, success or fail.
       hideLoadingSpinner();
     });
 }
