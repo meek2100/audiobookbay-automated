@@ -5,7 +5,7 @@ import os
 import random
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", "3"))
 DEFAULT_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
 
-ABB_FALLBACK_HOSTNAMES = [
+ABB_FALLBACK_HOSTNAMES: list[str] = [
     DEFAULT_HOSTNAME,
     "audiobookbay.is",
     "audiobookbay.se",
@@ -52,14 +52,13 @@ FALLBACK_USER_AGENTS = [
 
 # Initialize UserAgent object with fallback protection
 try:
-    ua_generator: Optional[UserAgent] = UserAgent(fallback=FALLBACK_USER_AGENTS[0])
+    ua_generator: UserAgent | None = UserAgent(fallback=FALLBACK_USER_AGENTS[0])
 except Exception:
     logger.warning("Failed to initialize fake_useragent, using hardcoded list.")
     ua_generator = None
 
 
 # --- OPTIMIZATION: Pre-compile Regex Patterns ---
-# Compiling these once at module level saves CPU cycles compared to compiling inside loops
 RE_LANGUAGE = re.compile(
     r"Language:\s*(.*?)(?:\s*(?:Keywords|Format|Posted|Bitrate):|(?=<)|$)", re.DOTALL | re.IGNORECASE
 )
@@ -82,13 +81,12 @@ def get_random_user_agent() -> str:
     return random.choice(FALLBACK_USER_AGENTS)
 
 
-def load_trackers() -> List[str]:
+def load_trackers() -> list[str]:
     """Loads trackers from env var, local JSON, or defaults."""
     trackers_env = os.getenv("MAGNET_TRACKERS")
     if trackers_env:
         return [t.strip() for t in trackers_env.split(",") if t.strip()]
 
-    # Try loading from external JSON for easy updates without code changes
     json_path = os.path.join(os.path.dirname(__file__), "trackers.json")
     if os.path.exists(json_path):
         try:
@@ -127,7 +125,7 @@ def get_session() -> Session:
     return session
 
 
-def get_headers(user_agent: Optional[str] = None, referer: Optional[str] = None) -> Dict[str, str]:
+def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
     """Generates HTTP headers for scraping requests."""
     if not user_agent:
         user_agent = get_random_user_agent()
@@ -145,7 +143,7 @@ def get_headers(user_agent: Optional[str] = None, referer: Optional[str] = None)
     return headers
 
 
-def check_mirror(hostname: str) -> Optional[str]:
+def check_mirror(hostname: str) -> str | None:
     """
     Checks if a specific mirror hostname is reachable.
 
@@ -153,12 +151,11 @@ def check_mirror(hostname: str) -> Optional[str]:
         hostname: The domain name to check.
 
     Returns:
-        Optional[str]: The hostname if reachable, else None.
+        The hostname if reachable, else None.
     """
     url = f"https://{hostname}/"
     session = get_session()
     try:
-        # ROBUSTNESS: allow_redirects=True is critical for mirrors that redirect to a landing page
         response = session.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
@@ -167,21 +164,20 @@ def check_mirror(hostname: str) -> Optional[str]:
     return None
 
 
-# ROBUSTNESS: Instantiate cache explicitly to allow manual invalidation
-mirror_cache: TTLCache = TTLCache(maxsize=1, ttl=600)  # type: ignore
+# ROBUSTNESS: Explicitly typed TTLCache (requires cachetools 5+)
+mirror_cache: TTLCache = TTLCache(maxsize=1, ttl=600)
 
 # OPTIMIZATION: Cache search results for 5 minutes.
-# This makes hitting the "Back" button in the browser instant instead of re-scraping.
-search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)  # type: ignore
+search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 
 
 @cached(cache=mirror_cache)
-def find_best_mirror() -> Optional[str]:
+def find_best_mirror() -> str | None:
     """
     Finds the first reachable AudiobookBay mirror from the list.
 
     Returns:
-        Optional[str]: The hostname of the working mirror, or None if all fail.
+        The hostname of the working mirror, or None if all fail.
     """
     logger.debug("Checking connectivity for all mirrors...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(ABB_FALLBACK_HOSTNAMES)) as executor:
@@ -197,9 +193,30 @@ def find_best_mirror() -> Optional[str]:
 
 def fetch_and_parse_page(
     session: Session, hostname: str, query: str, page: int, user_agent: str
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Fetches a single search result page and parses it.
+
+    Args:
+        session: Active requests Session.
+        hostname: The mirror hostname.
+        query: The search query.
+        page: Page number.
+        user_agent: UA string to use.
+
+    Returns:
+        A list of dictionaries containing book details.
+        Structure:
+        {
+            "title": str,
+            "link": str,
+            "cover": str,
+            "language": str,
+            "post_date": str,
+            "format": str,
+            "bitrate": str,
+            "file_size": str
+        }
     """
     sleep_time = random.uniform(1.0, 3.0)
     time.sleep(sleep_time)
@@ -304,7 +321,7 @@ def fetch_and_parse_page(
 
 
 @cached(cache=search_cache)
-def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> List[Dict[str, Any]]:
+def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[str, Any]]:
     """
     Searches AudiobookBay for the given query across multiple pages in parallel.
     Results are cached for performance.
@@ -343,9 +360,12 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> List[Dict[st
     return results
 
 
-def extract_magnet_link(details_url: str) -> Tuple[Optional[str], Optional[str]]:
+def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
     Scrapes the details page to find the info hash and generates a magnet link.
+
+    Returns:
+        A tuple of (magnet_link, error_message).
     """
     if not details_url:
         return None, "No URL provided."

@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
@@ -17,27 +17,27 @@ class TorrentManager:
     """
 
     def __init__(self) -> None:
-        self.client_type: Optional[str] = os.getenv("DOWNLOAD_CLIENT")
-        self.host: Optional[str] = os.getenv("DL_HOST")
-        self.port: Optional[str] = os.getenv("DL_PORT")
-        self.username: Optional[str] = os.getenv("DL_USERNAME")
-        self.password: Optional[str] = os.getenv("DL_PASSWORD")
+        self.client_type: str | None = os.getenv("DOWNLOAD_CLIENT")
+        self.host: str | None = os.getenv("DL_HOST")
+        self.port: str | None = os.getenv("DL_PORT")
+        self.username: str | None = os.getenv("DL_USERNAME")
+        self.password: str | None = os.getenv("DL_PASSWORD")
         self.category: str = os.getenv("DL_CATEGORY", "abb-downloader")
         self.scheme: str = os.getenv("DL_SCHEME", "http")
 
         # Normalize connection URL for Deluge
-        self.dl_url: Optional[str] = os.getenv("DL_URL")
+        self.dl_url: str | None = os.getenv("DL_URL")
         if not self.dl_url and self.host and self.port:
             self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
 
-        self._client: Optional[Union[QbClient, TxClient, DelugeWebClient]] = None
+        self._client: QbClient | TxClient | DelugeWebClient | None = None
 
-    def _get_client(self) -> Optional[Union[QbClient, TxClient, DelugeWebClient]]:
+    def _get_client(self) -> QbClient | TxClient | DelugeWebClient | None:
         """
         Returns the existing client instance or creates a new one if it doesn't exist.
 
         Returns:
-            Optional[Union[QbClient, TxClient, DelugeWebClient]]: The active client instance or None if connection fails.
+            The active client instance or None if connection fails.
         """
         if self._client:
             return self._client
@@ -103,7 +103,7 @@ class TorrentManager:
             return False
 
     @staticmethod
-    def _format_size(size_bytes: Optional[Union[int, float, str]]) -> str:
+    def _format_size(size_bytes: int | float | str | None) -> str:
         """
         Formats bytes into human-readable B, KB, MB, GB, TB.
 
@@ -185,7 +185,7 @@ class TorrentManager:
         elif self.client_type == "transmission":
             # Transmission expects IDs as integers usually, but hashes work in some versions.
             # safe conversion if it's digit, else pass as string (hash)
-            tid: Union[int, str]
+            tid: int | str
             try:
                 tid = int(torrent_id)
             except ValueError:
@@ -195,12 +195,12 @@ class TorrentManager:
         elif self.client_type == "delugeweb":
             client.remove_torrent(torrent_id, remove_data=False)  # type: ignore
 
-    def get_status(self) -> List[Dict[str, Any]]:
+    def get_status(self) -> list[dict[str, Any]]:
         """
         Retrieves the status of current downloads in the configured category.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries containing torrent details.
+            list[dict[str, Any]]: A list of dictionaries containing torrent details.
         """
         try:
             return self._get_status_logic()
@@ -209,13 +209,13 @@ class TorrentManager:
             self._client = None
             return self._get_status_logic()
 
-    def _get_status_logic(self) -> List[Dict[str, Any]]:
+    def _get_status_logic(self) -> list[dict[str, Any]]:
         """Internal logic to fetch status."""
         client = self._get_client()
         if not client:
             raise ConnectionError("Torrent client is not connected.")
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         if self.client_type == "transmission":
             torrents = client.get_torrents()  # type: ignore

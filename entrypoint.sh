@@ -1,7 +1,9 @@
 #!/bin/sh
 
 # Intelligent Bind Logic for Gunicorn
-if [ -z "$LISTEN_HOST" ]; then
+# If LISTEN_HOST is NOT set (null), perform auto-detection.
+# If it is set (even to empty string), use it (allows users to disable/override logic).
+if [ -z "${LISTEN_HOST:-}" ]; then
     if python3 -c "import socket; s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM); s.bind(('::', 0)); s.close()" 2>/dev/null; then
         export LISTEN_HOST="[::]"
         echo "Auto-detected IPv6 support. Binding Gunicorn to [::]"

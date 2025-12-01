@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 from datetime import timedelta
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -21,12 +22,11 @@ load_dotenv()
 app = Flask(__name__)
 
 # --- Logging Configuration ---
-# OPTIMIZATION: Unify logging with Gunicorn if available
 if __name__ != "__main__":  # pragma: no cover
     gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
-else:
+else:  # pragma: no cover
     LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
     logging.basicConfig(
@@ -35,10 +35,8 @@ else:
 
 logger = app.logger
 
-# OPTIMIZATION: Aggressive caching for static assets
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = timedelta(days=365)
 
-# Security Configuration
 DEFAULT_SECRET = "change-this-to-a-secure-random-key"
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET)
 
@@ -57,7 +55,6 @@ if SECRET_KEY == DEFAULT_SECRET:
 app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
-# Rate Limiter Setup
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -65,22 +62,18 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# --- Startup Checks ---
 SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
 if not SAVE_PATH_BASE:
     if not IS_TESTING:
         logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
         sys.exit(1)
 
-# --- Audiobookshelf Integration Config ---
 AUDIOBOOKSHELF_URL = os.getenv("AUDIOBOOKSHELF_URL")
 ABS_KEY = os.getenv("ABS_KEY")
 ABS_LIB = os.getenv("ABS_LIB")
 
-# Initialize Manager
 torrent_manager = TorrentManager()
 
-# Verify connection
 try:
     if not IS_TESTING:
         torrent_manager.verify_credentials()
@@ -89,7 +82,7 @@ except Exception as e:
 
 
 @app.context_processor
-def inject_nav_link() -> dict:
+def inject_nav_link() -> dict[str, Any]:
     """Injects navigation links and capability flags into templates."""
     return {
         "nav_link_name": os.getenv("NAV_LINK_NAME"),
@@ -100,22 +93,14 @@ def inject_nav_link() -> dict:
 
 @app.route("/health")
 def health() -> Response:
-    """
-    Dedicated health check endpoint.
-    Returns 200 OK without rendering templates or checking external services.
-    """
+    """Dedicated health check endpoint."""
     return jsonify({"status": "ok"})
 
 
 @app.route("/", methods=["GET", "POST"])
 def search() -> str:
-    """
-    Handles the search interface (GET to view, POST to submit).
-
-    Returns:
-        str: Rendered HTML template.
-    """
-    books = []
+    """Handles the search interface."""
+    books: list[dict[str, Any]] = []
     query = ""
     error_message = None
 
@@ -129,21 +114,14 @@ def search() -> str:
 
     except Exception as e:
         logger.error(f"Failed to search: {e}")
-        # ROBUSTNESS: Display the specific error (e.g. Connection Error) to the user
         error_message = f"Search Failed: {str(e)}"
-        # Pass variable name 'error' to match template expectation more cleanly
         return render_template("search.html", books=books, error=error_message, query=query)
 
 
 @app.route("/send", methods=["POST"])
 @limiter.limit("60 per minute")
 def send() -> Response:
-    """
-    API endpoint to initiate a download.
-
-    Returns:
-        Response: JSON response with success/failure message.
-    """
+    """API endpoint to initiate a download."""
     data = request.json
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
@@ -180,12 +158,7 @@ def send() -> Response:
 
 @app.route("/delete", methods=["POST"])
 def delete_torrent() -> Response:
-    """
-    API endpoint to remove a torrent.
-
-    Returns:
-        Response: JSON response indicating success or failure.
-    """
+    """API endpoint to remove a torrent."""
     data = request.json
     torrent_id = data.get("id") if data else None
 
@@ -202,12 +175,7 @@ def delete_torrent() -> Response:
 
 @app.route("/reload_library", methods=["POST"])
 def reload_library() -> Response:
-    """
-    API endpoint to trigger an Audiobookshelf library scan.
-
-    Returns:
-        Response: JSON response from the ABS API or error message.
-    """
+    """API endpoint to trigger an Audiobookshelf library scan."""
     if not all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB]):
         return jsonify({"message": "Audiobookshelf integration not configured."}), 400
 
@@ -227,12 +195,7 @@ def reload_library() -> Response:
 
 @app.route("/status")
 def status() -> str:
-    """
-    Renders the current status of downloads.
-
-    Returns:
-        str: Rendered HTML status page.
-    """
+    """Renders the current status of downloads."""
     try:
         torrent_list = torrent_manager.get_status()
         return render_template("status.html", torrents=torrent_list)

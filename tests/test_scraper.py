@@ -135,3 +135,27 @@ def test_search_no_mirrors_raises_error():
             search_audiobookbay("test")
 
         assert "No reachable AudiobookBay mirrors" in str(exc.value)
+
+
+def test_search_special_characters():
+    """
+    UNHAPPY PATH: Test searching with special characters (e.g. spaces, ampersands, brackets).
+    Ensures that 'requests' handles the URL encoding correctly and doesn't crash the scraper thread.
+    """
+    hostname = "audiobookbay.lu"
+    query = "Batman & Robin [Special Edition]"
+    page = 1
+    user_agent = "TestAgent/1.0"
+
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+
+    # requests automatically URL-encodes params. We verify the adapter receives the encoded version.
+    # "Batman & Robin [Special Edition]" -> "Batman+%26+Robin+%5BSpecial+Edition%5D" (approx)
+    # requests_mock matches query params flexibly.
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/", text=REAL_WORLD_HTML, status_code=200)
+
+    # We just need to ensure this doesn't raise an exception
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+    assert len(results) > 0

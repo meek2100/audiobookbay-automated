@@ -6,9 +6,8 @@ import requests
 
 from app import scraper
 
+
 # --- Module-Level Logic Tests ---
-
-
 def test_custom_mirrors_env(monkeypatch):
     monkeypatch.setenv("ABB_MIRRORS_LIST", "custom.mirror.com, another.mirror.net")
     importlib.reload(scraper)
@@ -27,8 +26,6 @@ def test_ua_init_exception():
 
 
 # --- Function Tests ---
-
-
 def test_load_trackers_from_env(monkeypatch):
     monkeypatch.setenv("MAGNET_TRACKERS", "udp://env.tracker:1337")
     trackers = scraper.load_trackers()
@@ -90,7 +87,17 @@ def test_find_best_mirror_all_fail():
 
 
 def test_get_random_user_agent_fallback():
+    # Force ua_generator to None
     with patch("app.scraper.ua_generator", None):
+        ua = scraper.get_random_user_agent()
+        assert ua in scraper.FALLBACK_USER_AGENTS
+
+
+def test_get_random_user_agent_exception():
+    # Simulate ua_generator.random raising an exception
+    mock_ua = MagicMock()
+    type(mock_ua).random = MagicMock(side_effect=Exception("UA Error"))
+    with patch("app.scraper.ua_generator", mock_ua):
         ua = scraper.get_random_user_agent()
         assert ua in scraper.FALLBACK_USER_AGENTS
 
@@ -131,6 +138,42 @@ def test_extract_magnet_bad_url():
     res, err = scraper.extract_magnet_link("not-a-url")
     assert res is None
     assert "Invalid URL" in err
+
+
+def test_extract_magnet_malformed_url_exception():
+    # Force urlparse to raise exception (Mocking urlparse directly)
+    with patch("app.scraper.urlparse", side_effect=Exception("Parse Error")):
+        res, err = scraper.extract_magnet_link("http://some.url")
+        assert res is None
+        assert "Malformed URL" in err
+
+
+def test_extract_magnet_http_error_code():
+    with patch("app.scraper.get_session") as mock_session_factory:
+        mock_session = mock_session_factory.return_value
+        mock_response = MagicMock()
+        mock_response.status_code = 500  # Server error
+        mock_session.get.return_value = mock_response
+
+        magnet, error = scraper.extract_magnet_link("http://valid.url")
+        assert magnet is None
+        assert "Status Code: 500" in error
+
+
+def test_extract_magnet_no_sibling_td():
+    # Covers line where info_hash_row exists but no sibling
+    html_content = """<html><body><table><tr><td>Info Hash</td></tr></table></body></html>"""
+    with patch("app.scraper.get_session") as mock_session_factory:
+        mock_session = mock_session_factory.return_value
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html_content
+        mock_session.get.return_value = mock_response
+
+        magnet, error = scraper.extract_magnet_link("http://valid.url")
+        # Fallback regex fails too in this short HTML
+        assert magnet is None
+        assert "Info Hash could not be found" in error
 
 
 def test_extract_magnet_network_error():
@@ -192,38 +235,56 @@ def test_parsing_no_matches():
     session.get.return_value.text = html
     session.get.return_value.status_code = 200
 
-    mock_re = MagicMock()
-    mock_re.search.return_value = None  # Force No Match
-
+    # Ensure none of the regexes find anything
+    # We patch the compiled regex objects directly
     with (
-        patch("app.scraper.RE_LANGUAGE", mock_re),
-        patch("app.scraper.RE_POSTED", mock_re),
-        patch("app.scraper.RE_FORMAT", mock_re),
-        patch("app.scraper.RE_BITRATE", mock_re),
-        patch("app.scraper.RE_FILESIZE", mock_re),
+        patch("app.scraper.RE_LANGUAGE.search", return_value=None),
+        patch("app.scraper.RE_POSTED.search", return_value=None),
+        patch("app.scraper.RE_FORMAT.search", return_value=None),
+        patch("app.scraper.RE_BITRATE.search", return_value=None),
+        patch("app.scraper.RE_FILESIZE.search", return_value=None),
     ):
         results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
 
     assert len(results) == 1
-    assert results[0]["language"] == "N/A"  # Should default to N/A
+    assert results[0]["language"] == "N/A"
+    assert results[0]["format"] == "N/A"
 
 
 def test_parsing_exceptions():
-    """Test where Regex.search raises an Exception."""
+    """
+    Test where Regex.search raises an Exception.
+    We must patch the specific compiled regex objects to raise Exception on .search()
+    """
     html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div><div class="postInfo">I</div><div class="postContent"><p>D</p></div></div>"""
     session = MagicMock()
     session.get.return_value.text = html
     session.get.return_value.status_code = 200
-    mock_re = MagicMock()
-    mock_re.search.side_effect = Exception("Regex Fail")
 
     with (
-        patch("app.scraper.RE_LANGUAGE", mock_re),
-        patch("app.scraper.RE_POSTED", mock_re),
-        patch("app.scraper.RE_FORMAT", mock_re),
-        patch("app.scraper.RE_BITRATE", mock_re),
-        patch("app.scraper.RE_FILESIZE", mock_re),
+        patch("app.scraper.RE_LANGUAGE.search", side_effect=Exception("Regex Fail")),
+        patch("app.scraper.RE_POSTED.search", side_effect=Exception("Regex Fail")),
+        patch("app.scraper.RE_FORMAT.search", side_effect=Exception("Regex Fail")),
+        patch("app.scraper.RE_BITRATE.search", side_effect=Exception("Regex Fail")),
+        patch("app.scraper.RE_FILESIZE.search", side_effect=Exception("Regex Fail")),
     ):
         results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+
     assert len(results) == 1
     assert results[0]["language"] == "N/A"
+
+
+def test_fetch_page_urljoin_exception():
+    """Force an exception during the main loop processing (e.g. urljoin) to hit the outer except block."""
+    html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div></div>"""
+    session = MagicMock()
+    session.get.return_value.text = html
+    session.get.return_value.status_code = 200
+
+    # Patch urljoin to raise exception. It's imported in scraper, so we patch app.scraper.urljoin
+    with patch("app.scraper.urljoin", side_effect=Exception("Join Error")):
+        results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+
+    # The exception is caught, logged, and the loop continues.
+    # Since there is only one post and it failed, results should be empty.
+    assert results == []
