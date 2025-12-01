@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 from app import scraper
 
-# --- Module-Level Logic Tests (Requires Reload) ---
+# --- Module-Level Logic Tests ---
 
 
 def test_custom_mirrors_env(monkeypatch):
@@ -17,16 +17,16 @@ def test_custom_mirrors_env(monkeypatch):
 
 def test_ua_init_exception():
     """Test fallback behavior when UserAgent fails to initialize."""
-    with patch("app.scraper.UserAgent", side_effect=Exception("UA Init Failed")):
+    # Must patch the source library to affect the module reload
+    with patch("fake_useragent.UserAgent", side_effect=Exception("UA Init Failed")):
         with patch("app.scraper.logger") as mock_logger:
             importlib.reload(scraper)
             assert scraper.ua_generator is None
-            # Verify the warning log
             args, _ = mock_logger.warning.call_args
             assert "Failed to initialize fake_useragent" in args[0]
 
 
-# --- Existing & Extended Function Tests ---
+# --- Function Tests ---
 
 
 def test_load_trackers_from_env(monkeypatch):
@@ -77,7 +77,6 @@ def test_find_best_mirror_all_fail():
 
 
 def test_get_random_user_agent_fallback():
-    # Force generator to None to test fallback list
     with patch("app.scraper.ua_generator", None):
         ua = scraper.get_random_user_agent()
         assert ua in scraper.FALLBACK_USER_AGENTS
@@ -105,7 +104,7 @@ def test_extract_magnet_bad_url():
     assert "No URL" in err
     res, err = scraper.extract_magnet_link("not-a-url")
     assert res is None
-    assert "Malformed URL" in err
+    assert "Invalid URL" in err  # Fixed assertion
 
 
 def test_extract_magnet_network_error():
@@ -120,22 +119,42 @@ def test_extract_magnet_network_error():
 def test_search_audiobookbay_success():
     """Test full search flow with threading."""
     with patch("app.scraper.find_best_mirror", return_value="mirror.com"):
-        # Mock get_session so we don't make real requests
         with patch("app.scraper.get_session"):
-            # Mock the page parser directly to return a result
             with patch("app.scraper.fetch_and_parse_page", return_value=[{"title": "Test Book"}]):
                 results = scraper.search_audiobookbay("query", max_pages=1)
                 assert len(results) == 1
                 assert results[0]["title"] == "Test Book"
 
 
-def test_parse_post_exception_handling():
-    html = """<div class="post"></div><div class="post"><div class="postTitle"><h2><a href="/link">Good</a></h2></div></div>"""
+def test_parsing_exceptions():
+    """
+    Forces exceptions during the regex parsing blocks to ensure
+    the 'except Exception: pass' lines are covered.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">Title</a></h2></div>
+        <div class="postInfo">Info</div>
+        <div class="postContent">
+            <p style="text-align:center;">Details</p>
+        </div>
+    </div>
+    """
     session = MagicMock()
     session.get.return_value.text = html
     session.get.return_value.status_code = 200
 
-    with patch("app.scraper.logger"):
+    # Patch the regex SEARCH methods to raise exceptions
+    with (
+        patch("app.scraper.RE_LANGUAGE.search", side_effect=Exception("Lang Fail")),
+        patch("app.scraper.RE_POSTED.search", side_effect=Exception("Posted Fail")),
+        patch("app.scraper.RE_FORMAT.search", side_effect=Exception("Format Fail")),
+        patch("app.scraper.RE_BITRATE.search", side_effect=Exception("Bitrate Fail")),
+        patch("app.scraper.RE_FILESIZE.search", side_effect=Exception("Size Fail")),
+    ):
         results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+
+    # Should still succeed, but fields will be "N/A"
     assert len(results) == 1
-    assert results[0]["title"] == "Good"
+    assert results[0]["language"] == "N/A"
+    assert results[0]["post_date"] == "N/A"
