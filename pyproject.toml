@@ -49,8 +49,8 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "--cov=app --cov-report=term-missing"
-# Automatically set these env vars when running pytest
+# Added --cov-fail-under=100 to enforce 100% coverage
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=100"
 env = [
     "TESTING=1",
     "SAVE_PATH_BASE=/tmp/test_downloads",

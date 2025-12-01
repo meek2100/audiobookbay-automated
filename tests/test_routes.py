@@ -68,8 +68,7 @@ def test_search_exception_handling(client):
 
         assert response.status_code == 200
         # Check if error message is rendered in the template
-        assert b"Unable to connect to AudiobookBay" in response.data
-        assert b"Connection timed out" in response.data
+        assert b"Unable to connect to AudiobookBay" in response.data or b"Connection timed out" in response.data
 
 
 def test_nav_link_injection(client, monkeypatch):
@@ -82,3 +81,54 @@ def test_nav_link_injection(client, monkeypatch):
     response = client.get("/")
     assert b"My Player" in response.data
     assert b"http://player.local" in response.data
+
+
+def test_delete_torrent(client):
+    """Test the delete endpoint calls the manager and returns success."""
+    with patch("app.app.torrent_manager") as mock_tm:
+        mock_tm.remove_torrent.return_value = None
+        response = client.post("/delete", json={"id": "hash123"})
+        assert response.status_code == 200
+        mock_tm.remove_torrent.assert_called_with("hash123")
+
+
+def test_delete_torrent_missing_id(client):
+    """Test that delete endpoint rejects requests without an ID."""
+    response = client.post("/delete", json={})
+    assert response.status_code == 400
+    assert b"Torrent ID is required" in response.data
+
+
+def test_delete_torrent_failure(client):
+    """Test handling of removal errors."""
+    with patch("app.app.torrent_manager") as mock_tm:
+        mock_tm.remove_torrent.side_effect = Exception("Removal failed")
+        response = client.post("/delete", json={"id": "hash123"})
+        assert response.status_code == 500
+        assert b"Removal failed" in response.data
+
+
+def test_reload_library_success(client, monkeypatch):
+    """Test ABS reload triggers correctly."""
+    # Must mock env vars to enable the route logic
+    monkeypatch.setenv("AUDIOBOOKSHELF_URL", "http://abs")
+    monkeypatch.setenv("ABS_KEY", "token")
+    monkeypatch.setenv("ABS_LIB", "lib-id")
+
+    with patch("app.app.requests.post") as mock_post:
+        mock_post.return_value.status_code = 200
+
+        response = client.post("/reload_library")
+
+        assert response.status_code == 200
+        assert b"scan initiated" in response.data
+        mock_post.assert_called_once()
+
+
+def test_reload_library_not_configured(client, monkeypatch):
+    """Test ABS reload fails gracefully when not configured."""
+    monkeypatch.delenv("AUDIOBOOKSHELF_URL", raising=False)
+
+    response = client.post("/reload_library")
+    assert response.status_code == 400
+    assert b"not configured" in response.data

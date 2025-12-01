@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -110,3 +110,83 @@ def test_format_size_logic():
     assert tm._format_size(1073741824) == "1.00 GB"
     assert tm._format_size(None) == "N/A"
     assert tm._format_size("not a number") == "N/A"
+
+
+def test_remove_torrent_qbittorrent(mock_env):
+    """Test removing torrent for qBittorrent."""
+    with patch("app.clients.QbClient") as MockQbClient:
+        mock_instance = MockQbClient.return_value
+        manager = TorrentManager()
+        manager.remove_torrent("hash123")
+
+        mock_instance.torrents_delete.assert_called_with(torrent_hashes="hash123", delete_files=False)
+
+
+def test_remove_torrent_transmission(mock_env, monkeypatch):
+    """Test removing torrent for Transmission."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
+    with patch("app.clients.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+        manager = TorrentManager()
+
+        # Test string ID (hash)
+        manager.remove_torrent("hash123")
+        mock_instance.remove_torrent.assert_called_with(ids=["hash123"], delete_data=False)
+
+
+def test_remove_torrent_deluge(mock_env, monkeypatch):
+    """Test removing torrent for Deluge."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        manager = TorrentManager()
+
+        manager.remove_torrent("hash123")
+        mock_instance.remove_torrent.assert_called_with("hash123", remove_data=False)
+
+
+def test_get_status_qbittorrent(mock_env):
+    """Test fetching status from qBittorrent."""
+    with patch("app.clients.QbClient") as MockQbClient:
+        mock_instance = MockQbClient.return_value
+
+        # Mock the torrent object returned by the library
+        mock_torrent = MagicMock()
+        mock_torrent.hash = "hash1"
+        mock_torrent.name = "Test Book"
+        mock_torrent.progress = 0.5
+        mock_torrent.state = "downloading"
+        mock_torrent.total_size = 1048576  # 1 MB
+
+        mock_instance.torrents_info.return_value = [mock_torrent]
+
+        manager = TorrentManager()
+        results = manager.get_status()
+
+        assert len(results) == 1
+        assert results[0]["name"] == "Test Book"
+        assert results[0]["progress"] == 50.0
+        assert results[0]["size"] == "1.00 MB"
+
+
+def test_get_status_transmission(mock_env, monkeypatch):
+    """Test fetching status from Transmission."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
+    with patch("app.clients.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+
+        mock_torrent = MagicMock()
+        mock_torrent.id = 1
+        mock_torrent.name = "Test Book"
+        mock_torrent.progress = 0.75
+        mock_torrent.status = "downloading"
+        mock_torrent.total_size = 1024
+
+        mock_instance.get_torrents.return_value = [mock_torrent]
+
+        manager = TorrentManager()
+        results = manager.get_status()
+
+        assert len(results) == 1
+        assert results[0]["progress"] == 75.0
+        assert results[0]["size"] == "1.00 KB"

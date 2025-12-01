@@ -5,7 +5,7 @@ from datetime import timedelta
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
@@ -89,7 +89,7 @@ except Exception as e:
 
 
 @app.context_processor
-def inject_nav_link():
+def inject_nav_link() -> dict:
     """Injects navigation links and capability flags into templates."""
     return {
         "nav_link_name": os.getenv("NAV_LINK_NAME"),
@@ -99,8 +99,13 @@ def inject_nav_link():
 
 
 @app.route("/", methods=["GET", "POST"])
-def search():
-    """Handles the search interface."""
+def search() -> str:
+    """
+    Handles the search interface (GET to view, POST to submit).
+
+    Returns:
+        str: Rendered HTML template.
+    """
     books = []
     query = ""
     error_message = None
@@ -117,16 +122,22 @@ def search():
         logger.error(f"Failed to search: {e}")
         # ROBUSTNESS: Display the specific error (e.g. Connection Error) to the user
         error_message = f"Search Failed: {str(e)}"
+        # Pass variable name 'error' to match template expectation more cleanly
         return render_template("search.html", books=books, error=error_message, query=query)
 
 
 @app.route("/send", methods=["POST"])
 @limiter.limit("60 per minute")
-def send():
-    """API endpoint to initiate a download."""
+def send() -> Response:
+    """
+    API endpoint to initiate a download.
+
+    Returns:
+        Response: JSON response with success/failure message.
+    """
     data = request.json
-    details_url = data.get("link")
-    title = data.get("title")
+    details_url = data.get("link") if data else None
+    title = data.get("title") if data else None
 
     if not details_url or not title:
         logger.warning("Invalid send request received: missing link or title")
@@ -159,10 +170,15 @@ def send():
 
 
 @app.route("/delete", methods=["POST"])
-def delete_torrent():
-    """API endpoint to remove a torrent."""
+def delete_torrent() -> Response:
+    """
+    API endpoint to remove a torrent.
+
+    Returns:
+        Response: JSON response indicating success or failure.
+    """
     data = request.json
-    torrent_id = data.get("id")
+    torrent_id = data.get("id") if data else None
 
     if not torrent_id:
         return jsonify({"message": "Torrent ID is required"}), 400
@@ -176,8 +192,13 @@ def delete_torrent():
 
 
 @app.route("/reload_library", methods=["POST"])
-def reload_library():
-    """API endpoint to trigger an Audiobookshelf library scan."""
+def reload_library() -> Response:
+    """
+    API endpoint to trigger an Audiobookshelf library scan.
+
+    Returns:
+        Response: JSON response from the ABS API or error message.
+    """
     if not all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB]):
         return jsonify({"message": "Audiobookshelf integration not configured."}), 400
 
@@ -196,8 +217,13 @@ def reload_library():
 
 
 @app.route("/status")
-def status():
-    """Renders the current status of downloads."""
+def status() -> str:
+    """
+    Renders the current status of downloads.
+
+    Returns:
+        str: Rendered HTML status page.
+    """
     try:
         torrent_list = torrent_manager.get_status()
         return render_template("status.html", torrents=torrent_list)
@@ -208,5 +234,5 @@ def status():
 
 if __name__ == "__main__":
     host = os.getenv("LISTEN_HOST", "0.0.0.0")
-    port = int(os.getenv("LISTEN_PORT", 5078))
+    port = int(os.getenv("LISTEN_PORT", "5078"))
     app.run(host=host, port=port)

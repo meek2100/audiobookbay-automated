@@ -25,13 +25,19 @@ function parseFileSizeToMB(sizeString) {
     if (!sizeString || sizeString.trim().toLowerCase() === 'n/a') return null;
     const parts = sizeString.trim().split(/\s+/);
     if (parts.length < 2) return null;
+
     const size = parseFloat(parts[0]);
     const unit = parts[1].toUpperCase();
+
     if (isNaN(size)) return null;
+
     if (unit.startsWith("TB")) return size * 1024 * 1024;
     if (unit.startsWith("GB")) return size * 1024;
     if (unit.startsWith("KB")) return size / 1024;
-    return size; // Assume MB
+    if (unit.startsWith("B")) return size / (1024 * 1024); // Handle raw Bytes
+
+    // Default assume MB if unit matches nothing above (e.g. "MB", "MBs")
+    return size;
 }
 
 function formatFileSize(mb) {
