@@ -282,6 +282,11 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
 
 
 def extract_magnet_link(details_url):
+    # ROBUSTNESS: Validate URL scheme to prevent non-HTTP requests
+    if not details_url or not details_url.startswith(("http://", "https://")):
+        logger.warning(f"Blocked invalid URL scheme: {details_url}")
+        return None, "Invalid URL provided."
+
     session = get_session()
     headers = get_headers(referer=details_url)
 

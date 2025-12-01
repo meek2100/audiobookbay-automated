@@ -1,8 +1,8 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    # Point to the directory containing requirements.txt
-    directory: "/app"
+    # FIX: Point to root where pyproject.toml lives (was "/app")
+    directory: "/"
 
     # Run weekly (e.g., Monday mornings)
     schedule:

@@ -108,8 +108,8 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
    Ensure you have Python installed, then install the required dependencies:
 
    ```bash
-   pip install -r requirements.txt
-
+   # Install from pyproject.toml
+   pip install .
    ```
 
 2. Create a .env file in the project directory to configure your application. Below is an example of the required variables:

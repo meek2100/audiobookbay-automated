@@ -77,45 +77,48 @@
 </div>
 {% endif %}
 
-<table>
-    <tbody id="results-table-body">
-        {% if books %}
-        {% for book in books %}
-        <tr class="result-row" data-language="{{ book.language }}" data-bitrate="{{ book.bitrate }}"
-            data-format="{{ book.format }}" data-file-size="{{ book.file_size }}" data-post-date="{{ book.post_date }}">
-            <td>
-                <img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"
-                    data-default-cover="{{ url_for('static', filename='images/default_cover.jpg') }}"
-                    onerror="this.onerror=null;this.src=this.dataset.defaultCover;">
-            </td>
-            <td>
-                <p class="book-title">{{ book.title }}</p>
-                <div class="property-results-container">
-                    <span class="book-language">Language: {{ book.language }}</span>
-                    <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
-                    <span class="book-format">Format: {{ book.format }}</span>
-                    <span class="book-file_size">File Size: {{ book.file_size }}</span>
-                    <span class="book-post_date">Posted: {{ book.post_date }}</span>
-                </div>
-            </td>
-            <td>
-                <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
-                <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}')">Download to
-                    Server</button>
-            </td>
-        </tr>
-        {% endfor %}
-        {% else %}
-        {% if query %}
-        <tr>
-            <td colspan="3" class="empty-message">
-                No audiobooks found for "<strong>{{ query }}</strong>". <br>
-                <small>Try a different keyword or check spelling.</small>
-            </td>
-        </tr>
-        {% endif %}
-        {% endif %}
-    </tbody>
-</table>
+<div class="table-wrapper">
+    <table>
+        <tbody id="results-table-body">
+            {% if books %}
+            {% for book in books %}
+            <tr class="result-row" data-language="{{ book.language }}" data-bitrate="{{ book.bitrate }}"
+                data-format="{{ book.format }}" data-file-size="{{ book.file_size }}"
+                data-post-date="{{ book.post_date }}">
+                <td>
+                    <img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"
+                        data-default-cover="{{ url_for('static', filename='images/default_cover.jpg') }}"
+                        onerror="this.onerror=null;this.src=this.dataset.defaultCover;">
+                </td>
+                <td>
+                    <p class="book-title">{{ book.title }}</p>
+                    <div class="property-results-container">
+                        <span class="book-language">Language: {{ book.language }}</span>
+                        <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
+                        <span class="book-format">Format: {{ book.format }}</span>
+                        <span class="book-file_size">File Size: {{ book.file_size }}</span>
+                        <span class="book-post_date">Posted: {{ book.post_date }}</span>
+                    </div>
+                </td>
+                <td>
+                    <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
+                    <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}')">Download to
+                        Server</button>
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            {% if query %}
+            <tr>
+                <td colspan="3" class="empty-message">
+                    No audiobooks found for "<strong>{{ query }}</strong>". <br>
+                    <small>Try a different keyword or check spelling.</small>
+                </td>
+            </tr>
+            {% endif %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
 
 {% endblock %}
