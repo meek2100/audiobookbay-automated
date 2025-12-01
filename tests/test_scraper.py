@@ -1,3 +1,4 @@
+import requests
 import requests_mock
 
 from app.scraper import fetch_and_parse_page
@@ -35,36 +36,50 @@ REAL_WORLD_HTML = """
 def test_fetch_and_parse_page_real_structure():
     hostname = "audiobookbay.lu"
     query = "test"
+    page = 1
+    user_agent = "TestAgent/1.0"
 
-    with requests_mock.Mocker() as m:
-        # Mock the external HTTP request
-        m.get(f"https://{hostname}/page/1/?s={query}", text=REAL_WORLD_HTML, status_code=200)
+    # Create a mock session
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
 
-        results = fetch_and_parse_page(hostname, query, 1)
+    # Mock the external HTTP request inside the session
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=REAL_WORLD_HTML, status_code=200)
 
-        assert len(results) == 1
-        book = results[0]
+    # Call the updated function signature
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
 
-        # Verify robust extraction
-        assert book["title"] == "Moster - Walter Dean Myers"
-        assert book["language"] == "English"
-        assert book["format"] == "MP3"
-        assert book["bitrate"] == "96 Kbps"
-        assert book["file_size"] == "106.91 MBs"
-        assert book["post_date"] == "30 Nov 2025"
+    assert len(results) == 1
+    book = results[0]
 
-        # Verify URL joining works (relative -> absolute)
-        assert book["link"] == "https://audiobookbay.lu/abss/moster-walter-dean-myers/"
-        assert book["cover"] == "https://audiobookbay.lu/images/cover.jpg"
+    # Verify robust extraction
+    assert book["title"] == "Moster - Walter Dean Myers"
+    assert book["language"] == "English"
+    assert book["format"] == "MP3"
+    assert book["bitrate"] == "96 Kbps"
+    assert book["file_size"] == "106.91 MBs"
+    assert book["post_date"] == "30 Nov 2025"
+
+    # Verify URL joining works (relative -> absolute)
+    assert book["link"] == "https://audiobookbay.lu/abss/moster-walter-dean-myers/"
+    assert book["cover"] == "https://audiobookbay.lu/images/cover.jpg"
 
 
 def test_fetch_and_parse_page_malformed():
     """Test resilience against empty/broken HTML"""
     hostname = "audiobookbay.lu"
     query = "bad"
+    page = 1
+    user_agent = "TestAgent/1.0"
 
-    with requests_mock.Mocker() as m:
-        m.get(f"https://{hostname}/page/1/?s={query}", text="<html><body></body></html>", status_code=200)
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
 
-        results = fetch_and_parse_page(hostname, query, 1)
-        assert results == []
+    adapter.register_uri(
+        "GET", f"https://{hostname}/page/{page}/?s={query}", text="<html><body></body></html>", status_code=200
+    )
+
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+    assert results == []

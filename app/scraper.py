@@ -9,6 +9,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from cachetools import TTLCache, cached
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +31,28 @@ ABB_FALLBACK_HOSTNAMES = [
     "audiobookbay.nl",
     "audiobookbay.pl",
 ]
+
+# Allow users to add mirrors via env var
+extra_mirrors = os.getenv("ABB_MIRRORS_LIST", "")
+if extra_mirrors:
+    ABB_FALLBACK_HOSTNAMES.extend([m.strip() for m in extra_mirrors.split(",") if m.strip()])
+
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
 
+# Expanded User Agents list for better rotation
 USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36",
+    # --- Windows ---
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+    # --- macOS ---
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:122.0) Gecko/20100101 Firefox/122.0",
+    # --- Linux ---
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
 ]
 
 trackers_env = os.getenv("MAGNET_TRACKERS")
@@ -51,11 +69,55 @@ else:
     ]
 
 
+def get_session():
+    """
+    Creates a requests Session with automatic retries and backoff.
+    This improves robustness against temporary 503/429 errors.
+    """
+    session = requests.Session()
+
+    # Retry strategy: Wait 1s, 2s, 4s, 8s, 16s... on failure
+    retry_strategy = Retry(
+        total=5,
+        backoff_factor=1,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["HEAD", "GET", "OPTIONS"],
+    )
+
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+def get_headers(user_agent=None, referer=None):
+    """
+    Returns a realistic set of browser headers.
+    """
+    if not user_agent:
+        user_agent = random.choice(USER_AGENTS)
+
+    headers = {
+        "User-Agent": user_agent,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "DNT": "1",  # Do Not Track
+    }
+    if referer:
+        headers["Referer"] = referer
+
+    return headers
+
+
 def check_mirror(hostname):
     url = f"https://{hostname}/"
+    session = get_session()
     try:
-        headers = {"User-Agent": random.choice(USER_AGENTS)}
-        response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
+        # Use a short timeout for checks
+        response = session.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
     except (requests.Timeout, requests.RequestException):
@@ -77,19 +139,26 @@ def find_best_mirror():
     return None
 
 
-def fetch_and_parse_page(hostname, query, page):
+def fetch_and_parse_page(session, hostname, query, page, user_agent):
+    """
+    Fetches a single search page using the shared session.
+    """
+    # Sleep randomized to avoid exact pattern detection
     sleep_time = random.uniform(1.0, 3.0)
-    logger.debug(f"Jitter: Sleeping {sleep_time:.2f}s before fetching page {page}...")
     time.sleep(sleep_time)
 
-    headers = {"User-Agent": random.choice(USER_AGENTS)}
-    page_results = []
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
     params = {"s": query}
 
+    # Set Referer to make navigation look natural
+    referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
+    headers = get_headers(user_agent, referer)
+
+    page_results = []
+
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=15)
+        response = session.get(url, params=params, headers=headers, timeout=15)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -106,10 +175,8 @@ def fetch_and_parse_page(hostname, query, page):
                     continue
 
                 title = title_element.text.strip()
-                # Robust URL handling: Handles both relative (/abss/...) and absolute (https://...) links
                 link = urljoin(base_url, title_element["href"])
 
-                # Refined selector for cover image
                 cover_img = post.select_one(".postContent img")
                 if cover_img and cover_img.has_attr("src"):
                     cover = urljoin(base_url, cover_img["src"])
@@ -129,33 +196,28 @@ def fetch_and_parse_page(hostname, query, page):
                         pass
 
                 details_paragraph = post.select_one(".postContent p[style*='text-align:center']")
-
                 post_date, book_format, bitrate, file_size = "N/A", "N/A", "N/A", "N/A"
 
                 if details_paragraph:
                     details_html = str(details_paragraph)
-
                     try:
                         match = re.search(r"Posted:\s*([^<]+)", details_html)
                         if match:
                             post_date = match.group(1).strip()
                     except Exception:
                         pass
-
                     try:
                         match = re.search(r"Format:\s*<span[^>]*>([^<]+)</span>", details_html)
                         if match:
                             book_format = match.group(1).strip()
                     except Exception:
                         pass
-
                     try:
                         match = re.search(r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html)
                         if match:
                             bitrate = match.group(1).strip()
                     except Exception:
                         pass
-
                     try:
                         match = re.search(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)", details_html)
                         if match:
@@ -194,30 +256,48 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
     results = []
+
+    # Consistency: Pick ONE User-Agent for this entire search session
+    # This prevents the bot from "switching browsers" between Page 1 and Page 2
+    session_user_agent = random.choice(USER_AGENTS)
+
+    # Establish a persistent session (Keep-Alive)
+    session = get_session()
+
     safe_workers = min(max_pages, 2)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=safe_workers) as executor:
-        future_to_page = {
-            executor.submit(fetch_and_parse_page, active_hostname, query, page): page
-            for page in range(1, max_pages + 1)
-        }
-        for future in concurrent.futures.as_completed(future_to_page):
-            try:
-                page_data = future.result()
-                results.extend(page_data)
-            except Exception as exc:
-                logger.error(f"Page generated an exception: {exc}")
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=safe_workers) as executor:
+            # Pass the session and UA to all workers
+            future_to_page = {
+                executor.submit(fetch_and_parse_page, session, active_hostname, query, page, session_user_agent): page
+                for page in range(1, max_pages + 1)
+            }
+            for future in concurrent.futures.as_completed(future_to_page):
+                try:
+                    page_data = future.result()
+                    results.extend(page_data)
+                except Exception as exc:
+                    logger.error(f"Page generated an exception: {exc}")
+    finally:
+        session.close()
 
     return results
 
 
 def extract_magnet_link(details_url):
-    headers = {"User-Agent": random.choice(USER_AGENTS)}
+    """
+    Fetches the details page and extracts the magnet link.
+    """
+    session = get_session()
+    headers = get_headers(referer=details_url)  # Referer is self or search page
+
     try:
-        response = requests.get(details_url, headers=headers)
+        response = session.get(details_url, headers=headers, timeout=15)
         if response.status_code != 200:
-            logger.error(f"Failed to fetch details page. Status Code: {response.status_code}")
-            return None
+            msg = f"Failed to fetch details page. Status Code: {response.status_code}"
+            logger.error(msg)
+            return None, msg
 
         soup = BeautifulSoup(response.text, "html.parser")
         info_hash = None
@@ -235,8 +315,9 @@ def extract_magnet_link(details_url):
                 info_hash = hash_match.group(1)
 
         if not info_hash:
-            logger.error("Info Hash could not be found on the page.")
-            return None
+            msg = "Info Hash could not be found on the page."
+            logger.error(msg)
+            return None, msg
 
         tracker_rows = soup.find_all("td", string=re.compile(r"udp://|http://", re.IGNORECASE))
         trackers = [row.text.strip() for row in tracker_rows]
@@ -248,8 +329,10 @@ def extract_magnet_link(details_url):
         trackers_query = "&".join(f"tr={requests.utils.quote(tracker)}" for tracker in trackers)
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
 
-        return magnet_link
+        return magnet_link, None
 
     except Exception as e:
         logger.error(f"Failed to extract magnet link: {e}")
-        return None
+        return None, str(e)
+    finally:
+        session.close()

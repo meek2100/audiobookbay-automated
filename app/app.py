@@ -1,12 +1,12 @@
 import logging
 import os
+import sys
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from flask_wtf.csrf import CSRFProtect
 
 # Import custom modules
-# [Modernization] Because we installed via pyproject.toml, standard relative imports work
 from .clients import TorrentManager
 from .scraper import extract_magnet_link, search_audiobookbay
 from .utils import sanitize_title
@@ -26,28 +26,43 @@ app = Flask(__name__)
 # Security Configuration
 DEFAULT_SECRET = "change-this-to-a-secure-random-key"
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET)
-APP_ENV = os.getenv("APP_ENV", "development").lower()
+
+# Determine execution mode
+# FLASK_DEBUG is a standard Flask env var. Default to False (Production).
+IS_DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
+# TESTING is set via pyproject.toml during tests
+IS_TESTING = os.getenv("TESTING", "0") == "1"
 
 if SECRET_KEY == DEFAULT_SECRET:
-    if APP_ENV == "production":
+    if IS_DEBUG or IS_TESTING:
+        logger.warning(
+            "WARNING: You are using the default insecure SECRET_KEY. This is acceptable for development/testing but UNSAFE for production."
+        )
+    else:
         logger.critical("CRITICAL SECURITY ERROR: You are running in PRODUCTION with the default insecure SECRET_KEY.")
         raise ValueError("Application refused to start: Change SECRET_KEY in your .env file for production deployment.")
-    else:
-        logger.warning(
-            "WARNING: You are using the default insecure SECRET_KEY. Please set a unique SECRET_KEY in your .env file."
-        )
 
 app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
+# --- Configuration & Startup Checks ---
+SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
+if not SAVE_PATH_BASE:
+    # Allow tests to proceed without this variable (mocks will handle it)
+    if not IS_TESTING:
+        logger.critical("Configuration Error: SAVE_PATH_BASE is missing. This is required for downloads.")
+        sys.exit(1)
+
 # Initialize Managers
 torrent_manager = TorrentManager()
-SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
 
-if not SAVE_PATH_BASE:
-    logger.warning(
-        "STARTUP WARNING: SAVE_PATH_BASE is not set. Downloads may be saved to the torrent client's default location."
-    )
+# Verify connection immediately (Skip during tests to prevent connection errors)
+try:
+    if not IS_TESTING:
+        torrent_manager.verify_credentials()
+except Exception as e:
+    logger.critical(f"STARTUP FAILED: Could not connect to torrent client. Details: {e}")
+    sys.exit(1)
 
 
 @app.context_processor
@@ -75,7 +90,7 @@ def search():
 
     except Exception as e:
         logger.error(f"Failed to search: {e}")
-        error_message = "Unable to connect to AudiobookBay.\n" f"Technical Detail: {str(e)}"
+        error_message = f"Unable to connect to AudiobookBay.\nTechnical Detail: {str(e)}"
         return render_template("search.html", books=books, error=error_message, query=query)
 
 
@@ -90,17 +105,20 @@ def send():
         logger.warning("Invalid send request received: missing link or title")
         return jsonify({"message": "Invalid request"}), 400
 
-    if not SAVE_PATH_BASE:
-        logger.error("Configuration Error: SAVE_PATH_BASE is missing.")
-        return jsonify({"message": "Server configuration error: SAVE_PATH_BASE is not set."}), 500
-
     try:
-        magnet_link = extract_magnet_link(details_url)
+        # Unpack result and error
+        magnet_link, error = extract_magnet_link(details_url)
+
         if not magnet_link:
-            return jsonify({"message": "Failed to extract magnet link"}), 500
+            return jsonify({"message": f"Download failed: {error}"}), 500
 
         safe_title = sanitize_title(title)
-        save_path = f"{SAVE_PATH_BASE}/{safe_title}"
+
+        # Safer path construction
+        if SAVE_PATH_BASE:
+            save_path = os.path.join(SAVE_PATH_BASE, safe_title)
+        else:
+            save_path = safe_title  # Fallback for edge cases (shouldn't happen in prod)
 
         torrent_manager.add_magnet(magnet_link, save_path)
 

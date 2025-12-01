@@ -20,7 +20,9 @@ export LISTEN_PORT="${LISTEN_PORT:-5078}"
 
 # Configure Gunicorn Workers (Default to 4 if not set)
 export WORKERS="${WORKERS:-4}"
+# Threads per worker for handling I/O bound tasks (searching)
+export THREADS="${THREADS:-2}"
 
 # Run Gunicorn
-# usage: gunicorn --bind <ADDRESS>:<PORT> --workers <WORKERS> ...
-exec gunicorn --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers "$WORKERS" app:app
+# usage: gunicorn --bind <ADDRESS>:<PORT> --workers <WORKERS> --threads <THREADS> ...
+exec gunicorn --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers "$WORKERS" --threads "$THREADS" app:app
