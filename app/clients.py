@@ -47,7 +47,14 @@ class TorrentManager:
         try:
             if self.client_type == "qbittorrent":
                 try:
-                    qb = QbClient(host=self.host, port=self.port, username=self.username, password=self.password)
+                    # OPTIMIZATION: Added timeout to prevent hanging on unresponsive clients
+                    qb = QbClient(
+                        host=self.host,
+                        port=self.port,
+                        username=self.username,
+                        password=self.password,
+                        requests_args={"timeout": 30},
+                    )
                     qb.auth_log_in()
                     self._client = qb
                 except LoginFailed as e:
@@ -56,12 +63,14 @@ class TorrentManager:
 
             elif self.client_type == "transmission":
                 try:
+                    # OPTIMIZATION: Added timeout to prevent hanging
                     self._client = TxClient(
                         host=self.host,
                         port=self.port,
                         protocol=self.scheme,
                         username=self.username,
                         password=self.password,
+                        timeout=30,
                     )
                 except Exception as e:
                     logger.error(f"Failed to connect to Transmission: {e}")

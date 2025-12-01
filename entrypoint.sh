@@ -25,12 +25,18 @@ export THREADS="${THREADS:-8}"
 # Configure Gunicorn Timeout (Default 120s to handle slow scrapes/sleeps)
 export TIMEOUT="${TIMEOUT:-120}"
 
-echo "Starting Gunicorn with 1 worker and $THREADS threads."
+# LOGGING
+# Ensure LOG_LEVEL is lowercase for Gunicorn config (e.g. "INFO" -> "info")
+# Gunicorn is picky about lowercase log levels.
+export LOG_LEVEL=$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')
+
+echo "Starting Gunicorn with 1 worker and $THREADS threads at log level $LOG_LEVEL."
 
 # Run Gunicorn
 # OPTIMIZATION: Added --preload. fast-fails on syntax errors and saves RAM.
 # LOGGING: Explicitly route logs to stdout/stderr for Docker capture.
 exec gunicorn --preload \
+    --log-level "$LOG_LEVEL" \
     --access-logfile - \
     --error-logfile - \
     --bind "${LISTEN_HOST}:${LISTEN_PORT}" \

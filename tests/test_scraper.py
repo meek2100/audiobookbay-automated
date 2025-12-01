@@ -82,6 +82,43 @@ def test_fetch_and_parse_page_malformed():
     assert results == []
 
 
+def test_fetch_and_parse_page_mixed_validity():
+    """
+    Test a page containing one valid post and one malformed post (missing title).
+    This ensures the scraper continues to process valid items after encountering a bad one.
+    """
+    hostname = "audiobookbay.lu"
+    query = "mixed"
+    page = 1
+    user_agent = "TestAgent/1.0"
+
+    # HTML with one broken post (no title) and one valid post
+    mixed_html = """
+    <div class="post">
+        <div class="postInfo">Broken Item Info</div>
+    </div>
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/valid-book/" rel="bookmark">Valid Book Title</a></h2>
+        </div>
+        <div class="postContent"></div>
+    </div>
+    """
+
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=mixed_html, status_code=200)
+
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+    # Should have skipped the first, captured the second
+    assert len(results) == 1
+    assert results[0]["title"] == "Valid Book Title"
+    assert results[0]["link"] == "https://audiobookbay.lu/abss/valid-book/"
+
+
 def test_fetch_page_timeout():
     """Test that connection timeouts are raised (to allow cache invalidation)."""
     hostname = "audiobookbay.lu"

@@ -130,7 +130,7 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
    # ABB_HOSTNAME=audiobookbay.lu #Alternative
 
    PAGE_LIMIT=3 #Default
-   FLASK_PORT=5078 #Default
+   LISTEN_PORT=5078 #Default
 
    # Optional Navigation Bar Entry
    NAV_LINK_NAME=Open Audiobook Player
