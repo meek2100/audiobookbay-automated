@@ -46,7 +46,29 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 
 ---
 
-## 3. Deployment & CI/CD
+## 3. Development Standards (Strict)
+
+We enforce high code quality because "appliance" software is often difficult for end-users to debug.
+
+### Type Safety (Python 3.13+)
+
+- **Requirement:** All Python code must be fully type-hinted.
+- **Why:** We support Python 3.13+. Type hints act as self-documentation and catch bugs (like `None` handling) before runtime.
+- **Tooling:** Pylance/MyPy compliant.
+
+### Test Coverage (100%)
+
+- **Requirement:** The test suite must maintain **100% code coverage**. This is enforced via `pytest --cov-fail-under=100`.
+- **Unhappy Paths:** You must test failure modes (e.g., "what if the torrent client is offline?", "what if the website returns 500?"). The happy path is easy; the value is in ensuring resilience.
+
+### Documentation
+
+- **Docstrings:** All public functions and classes must have docstrings defining `Args` and `Returns`.
+- **Comments:** Explain _why_ complex logic exists (e.g., regex fragility), not just _what_ it does.
+
+---
+
+## 4. Deployment & CI/CD
 
 ### Docker Optimization
 
@@ -61,7 +83,7 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 
 ---
 
-## 4. Future Refactoring Checklist
+## 5. Future Refactoring Checklist
 
 If you are asked to improve this repo, ask yourself:
 
@@ -69,7 +91,7 @@ If you are asked to improve this repo, ask yourself:
 2.  **"Does this make the Docker image larger?"** -> If YES, justify the value added.
 3.  **"Does this assume 100 concurrent users?"** -> If YES, you are optimizing for the wrong target. Optimize for **1 user doing 100 things sequentially**, not 100 users doing 1 thing.
 
-## 5. Quick Reference
+## 6. Quick Reference
 
 - **Install:** `pip install .` (Not requirements.txt)
 - **Run Dev:** `python app/app.py`
