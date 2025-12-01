@@ -2,7 +2,7 @@ import re
 
 
 def sanitize_title(title: str | None) -> str:
-    """
+    r"""
     Sanitizes a string to be safe for use as a directory name.
     Removes characters like < > : " / \ | ? *
     Also removes trailing periods and spaces (Windows compatibility).

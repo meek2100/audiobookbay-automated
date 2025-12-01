@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
+import app.app as app_module  # Fix: Import for reliable monkeypatching
+
 
 @pytest.fixture
 def mock_flask_factory():
@@ -43,8 +45,8 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
 
 def test_reload_library_detailed_error(client, monkeypatch):
     """Test /reload_library when requests raises an error WITH a response object."""
-    # HERMENEUTIC FIX: Patch the module attribute directly using the string path
-    monkeypatch.setattr("app.app.LIBRARY_RELOAD_ENABLED", True)
+    # HERMENEUTIC FIX: Patch the module object directly using the imported module
+    monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", True)
 
     with (
         patch("app.app.AUDIOBOOKSHELF_URL", "http://abs"),
@@ -80,8 +82,8 @@ def test_status_route_error(client):
 def test_send_route_no_save_path_base(client, monkeypatch):
     """Test the 'else' branch where SAVE_PATH_BASE is None (logic coverage)."""
     # Note: app.app.SAVE_PATH_BASE is loaded at import.
-    # HERMENEUTIC FIX: Patch the module attribute directly using the string path
-    monkeypatch.setattr("app.app.SAVE_PATH_BASE", None)
+    # HERMENEUTIC FIX: Patch the module object directly using the imported module
+    monkeypatch.setattr(app_module, "SAVE_PATH_BASE", None)
 
     with patch("app.app.extract_magnet_link", return_value=("magnet:...", None)):
         with patch("app.app.torrent_manager") as mock_tm:

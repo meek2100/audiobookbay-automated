@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import app.app as app_module  # Fix: Import the module explicitly to avoid monkeypatch confusion
+
 
 def test_home_page_load(client):
     response = client.get("/")
@@ -80,9 +82,9 @@ def test_search_exception_handling(client):
 
 def test_nav_link_injection(client, monkeypatch):
     """Test that injected variables correctly appear in the template."""
-    # HERMENEUTIC FIX: Patch the module attribute directly using the string path
-    monkeypatch.setattr("app.app.NAV_LINK_NAME", "My Player")
-    monkeypatch.setattr("app.app.NAV_LINK_URL", "http://player.local")
+    # HERMENEUTIC FIX: Patch the module object directly, not the string path
+    monkeypatch.setattr(app_module, "NAV_LINK_NAME", "My Player")
+    monkeypatch.setattr(app_module, "NAV_LINK_URL", "http://player.local")
 
     response = client.get("/")
     assert b"My Player" in response.data
@@ -116,8 +118,8 @@ def test_delete_torrent_failure(client):
 
 def test_reload_library_success(client, monkeypatch):
     """Test ABS reload triggers correctly."""
-    # HERMENEUTIC FIX: Patch the module attribute directly using the string path
-    monkeypatch.setattr("app.app.LIBRARY_RELOAD_ENABLED", True)
+    # HERMENEUTIC FIX: Patch the module object directly
+    monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", True)
 
     with (
         patch("app.app.AUDIOBOOKSHELF_URL", "http://abs"),
@@ -136,8 +138,8 @@ def test_reload_library_success(client, monkeypatch):
 
 def test_reload_library_not_configured(client, monkeypatch):
     """Test ABS reload fails gracefully when not configured."""
-    # HERMENEUTIC FIX: Patch the module attribute directly using the string path
-    monkeypatch.setattr("app.app.LIBRARY_RELOAD_ENABLED", False)
+    # HERMENEUTIC FIX: Patch the module object directly
+    monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", False)
 
     response = client.post("/reload_library")
     assert response.status_code == 400
