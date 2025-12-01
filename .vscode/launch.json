@@ -24,12 +24,23 @@
             "justMyCode": true
         },
         {
-            "name": "Debug Unit Tests",
+            "name": "Debug Pytest (Current File)",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
-            "purpose": [
-                "debug-test"
+            "module": "pytest",
+            // Explicitly set test environment from pyproject.toml for reliability
+            "env": {
+                "TESTING": "1",
+                "SAVE_PATH_BASE": "/tmp/test_downloads",
+                "SECRET_KEY": "test-secret-key",
+                "DOWNLOAD_CLIENT": "qbittorrent",
+                "DL_HOST": "localhost",
+                "DL_PORT": "8080",
+                "DL_USERNAME": "admin",
+                "DL_PASSWORD": "admin"
+            },
+            "args": [
+                "${file}"
             ],
             "console": "integratedTerminal",
             "justMyCode": false

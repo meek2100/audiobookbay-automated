@@ -23,7 +23,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          # FIX: Align Python version with pyproject.toml (>=3.13) and Dockerfile (3.13-slim)
+          python-version: "3.13"
 
       # Cache pre-commit environment to speed up CI
       - name: Cache pre-commit
@@ -44,8 +45,14 @@ jobs:
         # Runs the same checks as your local environment (Ruff, Whitespace, etc.)
         run: pre-commit run --all-files --show-diff-on-failure
 
-      - name: Run Tests
-        run: pytest
+      - name: Run Tests and Generate Coverage Report
+        run: pytest --cov-report=xml
+
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true
 
   build:
     name: Build and Push to GHCR

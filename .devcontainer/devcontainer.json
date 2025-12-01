@@ -7,7 +7,14 @@
     "customizations": {
         "vscode": {
             "settings": {
-                "python.defaultInterpreterPath": "/usr/local/bin/python"
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                // NEW: Explicitly enable and configure pytest
+                "python.testing.pytestEnabled": true,
+                "python.testing.pytestArgs": [
+                    "tests"
+                ],
+                // NEW: Set terminal working directory
+                "terminal.integrated.cwd": "/app"
             },
             "extensions": [
                 "ms-python.python",
@@ -15,6 +22,16 @@
                 "tamasfe.even-better-toml"
             ]
         }
+    },
+    // NEW: Set default environment variables for development
+    "remoteEnv": {
+        "FLASK_APP": "app.app",
+        "FLASK_DEBUG": "1",
+        "SECRET_KEY": "dev-key",
+        "SAVE_PATH_BASE": "/tmp/audiobooks_dev",
+        "LISTEN_PORT": "5078",
+        "DOWNLOAD_CLIENT": "qbittorrent",
+        "DL_HOST": "localhost"
     },
     // Forward the Flask port so you can access localhost:5078
     "forwardPorts": [
