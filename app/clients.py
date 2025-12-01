@@ -17,6 +17,9 @@ class TorrentManager:
     """
 
     def __init__(self) -> None:
+        """
+        Initializes the TorrentManager by loading configuration from environment variables.
+        """
         self.client_type: str | None = os.getenv("DOWNLOAD_CLIENT")
         self.host: str | None = os.getenv("DL_HOST")
         self.port: str | None = os.getenv("DL_PORT")

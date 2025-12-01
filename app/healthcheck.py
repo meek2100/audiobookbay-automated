@@ -4,6 +4,10 @@ import urllib.request
 
 
 def health_check():
+    """
+    Performs a health check against the local Flask application.
+    Exits with 0 on success, 1 on failure.
+    """
     # Retrieve the port from environment variables, defaulting to 5078
     port = os.getenv("LISTEN_PORT", "5078")
     # Health check should always query localhost inside the container

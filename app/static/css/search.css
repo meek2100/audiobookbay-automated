@@ -3,20 +3,8 @@ form {
     display: flex;
     justify-content: center; /* Center the form content */
     align-items: center;
-/*
-    gap: 15px
-*/
 }
-/* This overly broad rule was removed */
-/*
-input[type="text"] {
-    padding: 10px;
-    border: none;
-    border-radius: 5px;
-    width: 300px;
-    font-size: 1rem;
-}
-*/
+
 button {
     padding: 10px 20px;
     width: 100%;
@@ -64,18 +52,7 @@ img.cover {
     max-width: 100px;
     width: 15vw;
 }
-/*
-#search-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin: 0 30px;
-    width: 90%;
-    max-width: 1000px;
-    padding: 0 15px;
-    box-sizing: border-box;
-}
-*/
+
 .search-form {
     display: flex;
     align-items: center;
@@ -88,25 +65,11 @@ img.cover {
     padding: 10px; /* Adjust padding as needed */
     box-sizing: border-box; /* Ensure padding is included in the width */
     margin-bottom: 10px; /* Add some space between the input and button */
-    /* Properties from the old input[type="text"] rule are now here */
     border: none;
     border-radius: 5px;
     width: 300px;
 }
 
-/*
-.search-bar {
-    width: 90%;
-    padding: 10px;
-    box-sizing: border-box;
-    margin-bottom: 10px;
-    border: none;
-    border-radius: 5px;
-    width: 563px;
-    font-size: 1rem;
-    max-width: 70vw;
-}
-*/
 .search-button {
     width: auto; /* Set the button width to auto */
     padding: 10px 20px; /* Add padding to the button */
@@ -338,9 +301,7 @@ p.book-title {
 }
 
 @media (max-width: 500px) {
-
-.search-bar {
-    width: 200px;
-}
-
+    .search-bar {
+        width: 200px;
+    }
 }
