@@ -98,6 +98,15 @@ def inject_nav_link() -> dict:
     }
 
 
+@app.route("/health")
+def health() -> Response:
+    """
+    Dedicated health check endpoint.
+    Returns 200 OK without rendering templates or checking external services.
+    """
+    return jsonify({"status": "ok"})
+
+
 @app.route("/", methods=["GET", "POST"])
 def search() -> str:
     """

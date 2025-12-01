@@ -7,6 +7,13 @@ def test_home_page_load(client):
     assert b"Search AudiobookBay" in response.data
 
 
+def test_health_check_route(client):
+    """Test the dedicated health check endpoint."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json == {"status": "ok"}
+
+
 def test_status_page(client):
     with patch("app.app.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [{"name": "Book 1", "progress": 50, "state": "Downloading", "size": "100 MB"}]

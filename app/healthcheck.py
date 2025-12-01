@@ -8,7 +8,8 @@ def health_check():
     port = os.getenv("LISTEN_PORT", "5078")
     # Health check should always query localhost inside the container
     host = "127.0.0.1"
-    url = f"http://{host}:{port}/"
+    # OPTIMIZATION: Use dedicated health endpoint (lighter than hitting the home page)
+    url = f"http://{host}:{port}/health"
 
     try:
         # TIMEOUT ADDED: Prevents the healthcheck from hanging indefinitely

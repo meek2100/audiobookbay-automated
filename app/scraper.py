@@ -58,6 +58,20 @@ except Exception:
     ua_generator = None
 
 
+# --- OPTIMIZATION: Pre-compile Regex Patterns ---
+# Compiling these once at module level saves CPU cycles compared to compiling inside loops
+RE_LANGUAGE = re.compile(
+    r"Language:\s*(.*?)(?:\s*(?:Keywords|Format|Posted|Bitrate):|(?=<)|$)", re.DOTALL | re.IGNORECASE
+)
+RE_POSTED = re.compile(r"Posted:\s*([^<]+)")
+RE_FORMAT = re.compile(r"Format:\s*<span[^>]*>([^<]+)</span>")
+RE_BITRATE = re.compile(r"Bitrate:\s*<span[^>]*>([^<]+)</span>")
+RE_FILESIZE = re.compile(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)")
+RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
+RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
+RE_TRACKERS = re.compile(r"udp://|http://", re.IGNORECASE)
+
+
 def get_random_user_agent() -> str:
     """Returns a random user agent from fake_useragent or the fallback list."""
     if ua_generator:
@@ -156,6 +170,10 @@ def check_mirror(hostname: str) -> Optional[str]:
 # ROBUSTNESS: Instantiate cache explicitly to allow manual invalidation
 mirror_cache: TTLCache = TTLCache(maxsize=1, ttl=600)  # type: ignore
 
+# OPTIMIZATION: Cache search results for 5 minutes.
+# This makes hitting the "Back" button in the browser instant instead of re-scraping.
+search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)  # type: ignore
+
 
 @cached(cache=mirror_cache)
 def find_best_mirror() -> Optional[str]:
@@ -182,16 +200,6 @@ def fetch_and_parse_page(
 ) -> List[Dict[str, Any]]:
     """
     Fetches a single search result page and parses it.
-
-    Args:
-        session: The requests Session object.
-        hostname: The AudiobookBay mirror hostname.
-        query: The search query string.
-        page: The page number to fetch.
-        user_agent: The user agent string to use.
-
-    Returns:
-        List[Dict[str, Any]]: A list of dictionaries representing the found audiobooks.
     """
     sleep_time = random.uniform(1.0, 3.0)
     time.sleep(sleep_time)
@@ -199,7 +207,6 @@ def fetch_and_parse_page(
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
     params = {"s": query}
-    # ROBUSTNESS: Restore original referer logic
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
 
@@ -237,12 +244,7 @@ def fetch_and_parse_page(
                 language = "N/A"
                 if post_info_text:
                     try:
-                        # NOTE: Regex is fragile. If HTML structure changes (e.g. 'Keywords:' -> 'Tags:'), this will break.
-                        language_match = re.search(
-                            r"Language:\s*(.*?)(?:\s*(?:Keywords|Format|Posted|Bitrate):|(?=<)|$)",
-                            post_info_text,
-                            re.DOTALL | re.IGNORECASE,
-                        )
+                        language_match = RE_LANGUAGE.search(post_info_text)
                         if language_match:
                             language = language_match.group(1).strip()
                     except Exception:
@@ -254,25 +256,25 @@ def fetch_and_parse_page(
                 if details_paragraph:
                     details_html = str(details_paragraph)
                     try:
-                        match = re.search(r"Posted:\s*([^<]+)", details_html)
+                        match = RE_POSTED.search(details_html)
                         if match:
                             post_date = match.group(1).strip()
                     except Exception:
                         pass
                     try:
-                        match = re.search(r"Format:\s*<span[^>]*>([^<]+)</span>", details_html)
+                        match = RE_FORMAT.search(details_html)
                         if match:
                             book_format = match.group(1).strip()
                     except Exception:
                         pass
                     try:
-                        match = re.search(r"Bitrate:\s*<span[^>]*>([^<]+)</span>", details_html)
+                        match = RE_BITRATE.search(details_html)
                         if match:
                             bitrate = match.group(1).strip()
                     except Exception:
                         pass
                     try:
-                        match = re.search(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)", details_html)
+                        match = RE_FILESIZE.search(details_html)
                         if match:
                             file_size = f"{match.group(1).strip()} {match.group(2).strip()}"
                     except Exception:
@@ -296,31 +298,20 @@ def fetch_and_parse_page(
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch page {page}. Reason: {e}")
-        # Re-raise to let the caller handle cache invalidation logic if needed
         raise e
 
     return page_results
 
 
-# ROBUSTNESS: No cache here. Caching search results risks caching empty lists on network fails.
+@cached(cache=search_cache)
 def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> List[Dict[str, Any]]:
     """
     Searches AudiobookBay for the given query across multiple pages in parallel.
-
-    Args:
-        query: The search term.
-        max_pages: Maximum number of pagination pages to scrape.
-
-    Returns:
-        List[Dict[str, Any]]: Aggregated list of search results.
-
-    Raises:
-        ConnectionError: If no mirrors are reachable.
+    Results are cached for performance.
     """
     active_hostname = find_best_mirror()
     if not active_hostname:
         logger.error("Could not connect to any AudiobookBay mirrors.")
-        # ROBUSTNESS: Raise specific error so UI shows "Connection Failed" instead of "No Results"
         raise ConnectionError("No reachable AudiobookBay mirrors found.")
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
@@ -343,8 +334,9 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> List[Dict[st
                     results.extend(page_data)
                 except Exception as exc:
                     logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}")
-                    # CRITICAL: Safely invalidate the mirror cache
                     mirror_cache.clear()
+                    # Also clear search cache if we hit a network error
+                    search_cache.clear()
     finally:
         session.close()
 
@@ -354,16 +346,7 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> List[Dict[st
 def extract_magnet_link(details_url: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Scrapes the details page to find the info hash and generates a magnet link.
-
-    Args:
-        details_url: The absolute URL of the audiobook details page.
-
-    Returns:
-        tuple: (magnet_link, error_message).
-               If success, error_message is None.
-               If failure, magnet_link is None.
     """
-    # ROBUSTNESS: Strict URL validation
     if not details_url:
         return None, "No URL provided."
 
@@ -387,7 +370,7 @@ def extract_magnet_link(details_url: str) -> Tuple[Optional[str], Optional[str]]
         soup = BeautifulSoup(response.text, "html.parser")
         info_hash = None
 
-        info_hash_row = soup.find("td", string=re.compile(r"Info Hash", re.IGNORECASE))
+        info_hash_row = soup.find("td", string=RE_INFO_HASH)
         if info_hash_row:
             sibling = info_hash_row.find_next_sibling("td")
             if sibling:
@@ -395,7 +378,7 @@ def extract_magnet_link(details_url: str) -> Tuple[Optional[str], Optional[str]]
 
         if not info_hash:
             logger.debug("Info Hash table cell not found. Attempting regex fallback...")
-            hash_match = re.search(r"\b([a-fA-F0-9]{40})\b", response.text)
+            hash_match = RE_HASH_STRING.search(response.text)
             if hash_match:
                 info_hash = hash_match.group(1)
 
@@ -404,7 +387,7 @@ def extract_magnet_link(details_url: str) -> Tuple[Optional[str], Optional[str]]
             logger.error(msg)
             return None, msg
 
-        tracker_rows = soup.find_all("td", string=re.compile(r"udp://|http://", re.IGNORECASE))
+        tracker_rows = soup.find_all("td", string=RE_TRACKERS)
         trackers = [row.text.strip() for row in tracker_rows]
 
         if DEFAULT_TRACKERS:
