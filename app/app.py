@@ -105,7 +105,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     print(f"Searching for '{query}' on https://{ABB_HOSTNAME}...")
 
     for page in range(1, max_pages + 1):
-        url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.replace(' ', '+')}"
+        url = f"https://{ABB_HOSTNAME}/page/{page}/?s={query.lower().replace(' ', '+')}"
         try:
             response = requests.get(url, headers=headers, timeout=15)
             # Raise an exception for bad status codes (4xx or 5xx)
