@@ -93,11 +93,14 @@ def test_deluge_label_plugin_error(mock_env, monkeypatch):
 
 
 def test_unsupported_client(mock_env, monkeypatch):
+    """Test that unsupported clients return None and log error instead of crashing."""
     monkeypatch.setenv("DOWNLOAD_CLIENT", "fake_client")
     manager = TorrentManager()
-    with pytest.raises(ValueError) as excinfo:
-        manager._get_client()
-    assert "Unsupported download client" in str(excinfo.value)
+
+    # The manager catches the ValueError internally and returns None
+    # This prevents the app from crashing on boot.
+    client = manager._get_client()
+    assert client is None
 
 
 def test_format_size_logic():

@@ -83,7 +83,7 @@ def test_fetch_and_parse_page_malformed():
 
 
 def test_fetch_page_timeout():
-    """Test that connection timeouts are handled gracefully."""
+    """Test that connection timeouts are raised (to allow cache invalidation)."""
     hostname = "audiobookbay.lu"
     query = "timeout"
     page = 1
@@ -96,9 +96,9 @@ def test_fetch_page_timeout():
     # Simulate a timeout
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", exc=requests.exceptions.Timeout)
 
-    # Should return empty list, not crash
-    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
-    assert results == []
+    # The function should now raise the error, so the caller (search_audiobookbay) can handle it
+    with pytest.raises(requests.exceptions.Timeout):
+        fetch_and_parse_page(session, hostname, query, page, user_agent)
 
 
 def test_extract_magnet_no_hash():

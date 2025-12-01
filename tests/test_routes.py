@@ -115,14 +115,15 @@ def test_delete_torrent_failure(client):
         assert b"Removal failed" in response.data
 
 
-def test_reload_library_success(client, monkeypatch):
+def test_reload_library_success(client):
     """Test ABS reload triggers correctly."""
-    # Must mock env vars to enable the route logic
-    monkeypatch.setenv("AUDIOBOOKSHELF_URL", "http://abs")
-    monkeypatch.setenv("ABS_KEY", "token")
-    monkeypatch.setenv("ABS_LIB", "lib-id")
-
-    with patch("app.app.requests.post") as mock_post:
+    # We must patch the globals in app.app because they are loaded at import time
+    with (
+        patch("app.app.AUDIOBOOKSHELF_URL", "http://abs"),
+        patch("app.app.ABS_KEY", "token"),
+        patch("app.app.ABS_LIB", "lib-id"),
+        patch("app.app.requests.post") as mock_post,
+    ):
         mock_post.return_value.status_code = 200
 
         response = client.post("/reload_library")
@@ -132,10 +133,10 @@ def test_reload_library_success(client, monkeypatch):
         mock_post.assert_called_once()
 
 
-def test_reload_library_not_configured(client, monkeypatch):
+def test_reload_library_not_configured(client):
     """Test ABS reload fails gracefully when not configured."""
-    monkeypatch.delenv("AUDIOBOOKSHELF_URL", raising=False)
-
-    response = client.post("/reload_library")
-    assert response.status_code == 400
-    assert b"not configured" in response.data
+    # Ensure one is missing
+    with patch("app.app.AUDIOBOOKSHELF_URL", None):
+        response = client.post("/reload_library")
+        assert response.status_code == 400
+        assert b"not configured" in response.data
