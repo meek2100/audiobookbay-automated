@@ -423,4 +423,5 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         logger.error(f"Failed to extract magnet link: {e}")
         return None, str(e)
     finally:
+        logger.debug("Closing scraper session")
         session.close()

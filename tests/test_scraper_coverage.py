@@ -1,4 +1,5 @@
 import importlib
+import logging
 import os
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -15,14 +16,27 @@ def test_custom_mirrors_env(monkeypatch):
 
 
 def test_ua_init_exception():
-    with patch("fake_useragent.UserAgent", side_effect=Exception("UA Init Failed")):
-        with patch("logging.getLogger") as mock_get_logger:
-            mock_logger = MagicMock()
-            mock_get_logger.return_value = mock_logger
-            importlib.reload(scraper)
-            assert scraper.ua_generator is None
-            args, _ = mock_logger.warning.call_args
-            assert "Failed to initialize fake_useragent" in args[0]
+    """
+    Tests module-level initialization failure for UserAgent.
+    CRITICAL: Must reload scraper in 'finally' to restore the real logger/module
+    state, otherwise subsequent tests run with a Mock logger (breaking caplog)
+    or an uninstrumented module (breaking coverage).
+    """
+    try:
+        with patch("fake_useragent.UserAgent", side_effect=Exception("UA Init Failed")):
+            with patch("logging.getLogger") as mock_get_logger:
+                mock_logger = MagicMock()
+                mock_get_logger.return_value = mock_logger
+
+                # Reload triggers the exception during module init
+                importlib.reload(scraper)
+
+                assert scraper.ua_generator is None
+                args, _ = mock_logger.warning.call_args
+                assert "Failed to initialize fake_useragent" in args[0]
+    finally:
+        # Restore scraper to a clean, instrumented state with a REAL logger
+        importlib.reload(scraper)
 
 
 # --- Function Tests ---
@@ -190,16 +204,18 @@ def test_extract_magnet_no_sibling_td():
         assert "Info Hash could not be found" in error
 
 
-def test_extract_magnet_network_error():
+def test_extract_magnet_network_error(caplog):
     with patch("app.scraper.get_session") as mock_session_factory:
         mock_session = mock_session_factory.return_value
         mock_session.get.side_effect = Exception("Network Down")
 
-        magnet, error = scraper.extract_magnet_link("http://valid.url")
+        with caplog.at_level(logging.DEBUG):
+            magnet, error = scraper.extract_magnet_link("http://valid.url")
 
         assert magnet is None
         assert "Network Down" in error
-        # Verify finally block (Line 397)
+        # Verify finally block executed via log message
+        assert "Closing scraper session" in caplog.text
         mock_session.close.assert_called_once()
 
 
@@ -294,9 +310,9 @@ def test_parsing_exceptions():
     assert results[0]["language"] == "N/A"
 
 
-def test_fetch_page_post_exception():
+def test_fetch_page_post_exception(caplog):
     """
-    Force an exception during post processing (the outer loop) to ensure 'continue' is hit (Line 247).
+    Force an exception during post processing (the outer loop) to ensure 'continue' is hit.
     """
     session = MagicMock()
     session.get.return_value.text = "<html></html>"
@@ -308,14 +324,12 @@ def test_fetch_page_post_exception():
 
     with patch("app.scraper.BeautifulSoup") as mock_bs:
         mock_bs.return_value.select.return_value = [mock_post]
-        # Spy on the logger to ensure the exception was caught and logged
-        with patch("app.scraper.logger") as mock_logger:
+
+        with caplog.at_level(logging.ERROR):
             results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
 
             assert results == []
-            mock_logger.error.assert_called()
-            # Verify the specific log message for this catch block
-            assert "Could not process a post" in mock_logger.error.call_args[0][0]
+            assert "Could not process a post" in caplog.text
 
 
 def test_fetch_page_urljoin_exception():
