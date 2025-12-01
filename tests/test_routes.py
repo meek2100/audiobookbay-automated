@@ -56,3 +56,29 @@ def test_send_torrent_client_failure(client):
 
         assert response.status_code == 500
         assert b"Connection Refused" in response.data
+
+
+def test_search_exception_handling(client):
+    """Test that backend errors during search are shown to user gracefully."""
+    with patch("app.app.search_audiobookbay") as mock_search:
+        mock_search.side_effect = Exception("Connection timed out")
+
+        # Simulate a search POST request
+        response = client.post("/", data={"query": "my book"})
+
+        assert response.status_code == 200
+        # Check if error message is rendered in the template
+        assert b"Unable to connect to AudiobookBay" in response.data
+        assert b"Connection timed out" in response.data
+
+
+def test_nav_link_injection(client, monkeypatch):
+    """Test that environment variables correctly inject the nav link."""
+    monkeypatch.setenv("NAV_LINK_NAME", "My Player")
+    monkeypatch.setenv("NAV_LINK_URL", "http://player.local")
+
+    # We need to reload the app/client or just check the context processor behavior
+    # simpler to check response content since context processors run per request
+    response = client.get("/")
+    assert b"My Player" in response.data
+    assert b"http://player.local" in response.data

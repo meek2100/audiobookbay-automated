@@ -27,4 +27,12 @@ echo "Starting Gunicorn with 1 worker and $THREADS threads."
 
 # Run Gunicorn
 # OPTIMIZATION: Added --preload. fast-fails on syntax errors and saves RAM.
-exec gunicorn --preload --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers 1 --threads "$THREADS" --timeout "$TIMEOUT" app:app
+# LOGGING: Explicitly route logs to stdout/stderr for Docker capture.
+exec gunicorn --preload \
+    --access-logfile - \
+    --error-logfile - \
+    --bind "${LISTEN_HOST}:${LISTEN_PORT}" \
+    --workers 1 \
+    --threads "$THREADS" \
+    --timeout "$TIMEOUT" \
+    app:app

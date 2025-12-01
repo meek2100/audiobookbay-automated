@@ -5,11 +5,12 @@ import os
 import random
 import re
 import time
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from cachetools import TTLCache, cached
+from fake_useragent import UserAgent
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -40,18 +41,29 @@ if extra_mirrors:
 
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
 
-# Expanded User Agents list for better rotation
-USER_AGENTS = [
+# Fallback User Agents if fake_useragent fails
+FALLBACK_USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:122.0) Gecko/20100101 Firefox/122.0",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
 ]
+
+# Initialize UserAgent object with fallback protection
+try:
+    ua_generator = UserAgent(fallback=FALLBACK_USER_AGENTS[0])
+except Exception:
+    logger.warning("Failed to initialize fake_useragent, using hardcoded list.")
+    ua_generator = None
+
+
+def get_random_user_agent():
+    """Returns a random user agent from fake_useragent or the fallback list."""
+    if ua_generator:
+        try:
+            return ua_generator.random
+        except Exception:
+            pass
+    return random.choice(FALLBACK_USER_AGENTS)
 
 
 def load_trackers():
@@ -100,7 +112,7 @@ def get_session():
 
 def get_headers(user_agent=None, referer=None):
     if not user_agent:
-        user_agent = random.choice(USER_AGENTS)
+        user_agent = get_random_user_agent()
     headers = {
         "User-Agent": user_agent,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -242,6 +254,8 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
 
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch page {page}. Reason: {e}")
+        # Re-raise to let the caller handle cache invalidation logic if needed
+        raise e
 
     return page_results
 
@@ -256,11 +270,9 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
     results = []
 
-    session_user_agent = random.choice(USER_AGENTS)
+    session_user_agent = get_random_user_agent()
     session = get_session()
 
-    # Increased workers to speed up multi-page scraping
-    # Cap at 5 to avoid triggering aggressive WAFs, but better than 2.
     safe_workers = min(max_pages, 5)
 
     try:
@@ -274,7 +286,9 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     page_data = future.result()
                     results.extend(page_data)
                 except Exception as exc:
-                    logger.error(f"Page generated an exception: {exc}")
+                    logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}")
+                    # CRITICAL: Invalidate the mirror cache so we search for a new host on next try
+                    find_best_mirror.cache_clear()
     finally:
         session.close()
 
@@ -282,10 +296,16 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
 
 
 def extract_magnet_link(details_url):
-    # ROBUSTNESS: Validate URL scheme to prevent non-HTTP requests
-    if not details_url or not details_url.startswith(("http://", "https://")):
-        logger.warning(f"Blocked invalid URL scheme: {details_url}")
-        return None, "Invalid URL provided."
+    # ROBUSTNESS: Strict URL validation
+    if not details_url:
+        return None, "No URL provided."
+
+    try:
+        parsed = urlparse(details_url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return None, "Invalid URL scheme."
+    except Exception:
+        return None, "Malformed URL."
 
     session = get_session()
     headers = get_headers(referer=details_url)

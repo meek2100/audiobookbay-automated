@@ -54,12 +54,20 @@ function initializeDateRangePicker() {
             const dateStr = row.dataset.postDate;
             if (!dateStr || dateStr === 'N/A') return null;
             try {
-                // Standardize the date format for reliable parsing
-                const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
-                const date = new Date(formattedStr);
-                return isNaN(date) ? null : date;
+                // Robust parsing: Try to let Date() parse it, or clean it up if needed.
+                // Replaces "30 Nov 2024" -> "Nov 30, 2024" for better browser compatibility
+                let date;
+                // Regex for "DD Mon YYYY"
+                if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(dateStr)) {
+                     const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
+                     date = new Date(formattedStr);
+                } else {
+                    date = new Date(dateStr);
+                }
+
+                return isNaN(date.getTime()) ? null : date;
             } catch (e) {
-                console.error("Date parsing error:", e);
+                console.warn("Date parsing error for:", dateStr, e);
                 return null;
             }
         })
@@ -195,18 +203,26 @@ function applyFilters() {
             try {
                 const startDate = selectedDates[0];
                 const endDate = selectedDates[1];
-                // Standardize the date format from the HTML before parsing
-                const formattedStr = rowDateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
-                const rowDate = new Date(formattedStr);
 
-                // Set time to 0 to compare dates only
-                rowDate.setHours(0, 0, 0, 0);
+                let rowDate;
+                if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(rowDateStr)) {
+                     const formattedStr = rowDateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
+                     rowDate = new Date(formattedStr);
+                } else {
+                    rowDate = new Date(rowDateStr);
+                }
 
-                if (rowDate < startDate || rowDate > endDate) {
+                if (isNaN(rowDate.getTime())) {
                     visible = false;
+                } else {
+                    // Set time to 0 to compare dates only
+                    rowDate.setHours(0, 0, 0, 0);
+                    if (rowDate < startDate || rowDate > endDate) {
+                        visible = false;
+                    }
                 }
             } catch (e) {
-                console.error("Invalid date format", e);
+                console.error("Invalid date format during filtering", e);
                 visible = false;
             }
         }
@@ -300,10 +316,13 @@ function hideScrollingMessages() {
 
 function sendTorrent(link, title) {
   // Retrieve CSRF token from the meta tag
-  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-  // We rely on the button's own spinner or UI state, but if you want global handling:
-  // showLoadingSpinner();
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  if (!csrfMeta) {
+      console.error("CSRF token meta tag not found!");
+      alert("Security Error: CSRF token missing. Please refresh the page.");
+      return;
+  }
+  const csrfToken = csrfMeta.getAttribute('content');
 
   fetch("/send", {
     method: "POST",

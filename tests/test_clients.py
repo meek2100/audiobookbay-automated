@@ -64,6 +64,34 @@ def test_deluge_add_magnet(mock_env, monkeypatch):
         )
 
 
+def test_deluge_label_plugin_error(mock_env, monkeypatch):
+    """Test that Deluge falls back to adding torrent without label if plugin is missing."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+
+        # Simulate exception when adding with label
+        mock_instance.add_torrent_magnet.side_effect = [
+            Exception("Unknown parameter 'label'"),  # First call fails
+            None,  # Second call (without label) succeeds
+        ]
+
+        manager = TorrentManager()
+        manager.add_magnet("magnet:?xt=urn:btih:FAIL", "/downloads/Book")
+
+        # Verify it was called twice
+        assert mock_instance.add_torrent_magnet.call_count == 2
+
+        # Check call arguments
+        # 1. First attempt with label
+        mock_instance.add_torrent_magnet.assert_any_call(
+            "magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book", label="audiobooks"
+        )
+        # 2. Second attempt without label
+        mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book")
+
+
 def test_unsupported_client(mock_env, monkeypatch):
     monkeypatch.setenv("DOWNLOAD_CLIENT", "fake_client")
     manager = TorrentManager()
