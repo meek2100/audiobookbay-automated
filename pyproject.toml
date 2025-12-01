@@ -48,7 +48,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # Automatically set these env vars when running pytest
 env = [
-    "TESTING=true",
+    "TESTING=1",                          # CHANGED: "true" -> "1" to match app.py logic
     "SAVE_PATH_BASE=/tmp/test_downloads",
     "SECRET_KEY=test-secret-key",
     "DOWNLOAD_CLIENT=qbittorrent",

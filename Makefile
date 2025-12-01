@@ -1,5 +1,5 @@
 run:
-	source .venv/bin/activate && python3 app/app.py
+	source .venv/bin/activate && python3 -m app.app
 
 venv:
 	python3 -m venv .venv
