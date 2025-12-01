@@ -22,30 +22,13 @@ RUN apt-get update && \
 
 # 1. Copy project definition first
 COPY pyproject.toml .
-
 # 2. Install dependencies (creates a cached layer)
-RUN pip install --no-cache-dir \
-    "flask==3.1.2" \
-    "requests==2.32.5" \
-    "beautifulsoup4==4.14.3" \
-    "qbittorrent-api==2025.11.1" \
-    "python-dotenv==1.2.1" \
-    "transmission-rpc==7.0.11" \
-    "deluge-web-client==2.0.1" \
-    "cachetools==6.2.2" \
-    "gunicorn==23.0.0" \
-    "Flask-WTF==1.2.2" \
-    "Flask-Limiter==4.0.0" \
-    "fake-useragent==2.2.0"
+RUN pip install --no-cache-dir .
 
 # 3. Copy the source code
 COPY app app/
 COPY entrypoint.sh .
-
-# 4. Install the app package
-RUN pip install --no-cache-dir .
-
-# Set permissions
+# 4. Set permissions
 RUN chmod +x entrypoint.sh
 
 # Create a non-root user and switch to it for security

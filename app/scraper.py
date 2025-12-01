@@ -125,7 +125,16 @@ def get_session() -> Session:
 
 
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
-    """Generates HTTP headers for scraping requests."""
+    """
+    Generates HTTP headers for scraping requests.
+
+    Args:
+        user_agent: The User-Agent string to use (if None, a random one is generated).
+        referer: The HTTP Referer header value.
+
+    Returns:
+        A dictionary of HTTP headers.
+    """
     if not user_agent:
         user_agent = get_random_user_agent()
     headers = {

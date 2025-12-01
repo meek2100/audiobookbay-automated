@@ -343,6 +343,6 @@ function sendTorrent(link, title, buttonElement) {
           buttonElement.disabled = false;
           buttonElement.innerText = originalBtnText;
       }
-      hideLoadingSpinner(); // Just in case
+      // hideLoadingSpinner() call removed here.
     });
 }
