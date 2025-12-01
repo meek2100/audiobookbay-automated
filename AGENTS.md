@@ -60,6 +60,19 @@ We enforce high code quality because "appliance" software is often difficult for
 
 - **Requirement:** The test suite must maintain **100% code coverage**. This is enforced via `pytest --cov-fail-under=100`.
 - **Unhappy Paths:** You must test failure modes (e.g., "what if the torrent client is offline?", "what if the website returns 500?"). The happy path is easy; the value is in ensuring resilience.
+- **Valid Exemptions:** Use `# pragma: no cover` **only** for:
+  - `if __name__ == "__main__":` blocks.
+  - OS-specific logic (e.g., Windows-specific path handling if CI is Linux).
+  - Gunicorn configuration blocks that cannot run in a test harness.
+
+### Testing Style Guide
+
+- **Framework:** Use **Pytest** exclusively. Do NOT use `unittest.TestCase` classes.
+- **Fixtures:** Use `conftest.py` fixtures for setup/teardown (e.g., `client`, `mock_env`).
+- **Mocking:**
+  - Patch objects where they are **imported**, not where they are defined.
+  - For startup logic (top-level code), use `importlib.reload(sys.modules["app.module"])` inside the test to re-run the initialization code.
+  - For global state (like `limiter`), use an `autouse=True` fixture to reset state between tests.
 
 ### Documentation
 
