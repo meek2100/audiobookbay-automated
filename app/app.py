@@ -17,14 +17,24 @@ from .utils import sanitize_title
 # Load environment variables
 load_dotenv()
 
-# Configure Logging
-LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
-LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
-
-logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-logger = logging.getLogger(__name__)
-
 app = Flask(__name__)
+
+# --- Logging Configuration ---
+# OPTIMIZATION: Unify logging with Gunicorn if available (Production)
+if __name__ != "__main__":
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
+else:
+    # Standard local development logging
+    LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
+    LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
+    # RESTORED: datefmt for consistent local logs
+    logging.basicConfig(
+        level=LOG_LEVEL, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
+
+logger = app.logger
 
 # OPTIMIZATION: Aggressive caching for static assets (1 year)
 # Since this is a local single-user app, this improves load times significantly.

@@ -131,6 +131,7 @@ def check_mirror(hostname):
     url = f"https://{hostname}/"
     session = get_session()
     try:
+        # ROBUSTNESS: restore allow_redirects=True for mirrors that redirect to a landing page
         response = session.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
@@ -160,6 +161,7 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
     params = {"s": query}
+    # ROBUSTNESS: Restore original referer logic (some sites check for query string in referer)
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
 
@@ -197,9 +199,11 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
                 language = "N/A"
                 if post_info_text:
                     try:
-                        # Improved Regex: Stops at 'Keywords:' OR a new HTML tag start
+                        # Improved Regex: Stops at 'Keywords:' OR a new HTML tag start OR other common prefixes
                         language_match = re.search(
-                            r"Language:\s*(.*?)(?:\s*Keywords:|(?=<)|$)", post_info_text, re.DOTALL
+                            r"Language:\s*(.*?)(?:\s*(?:Keywords|Format|Posted|Bitrate):|(?=<)|$)",
+                            post_info_text,
+                            re.DOTALL | re.IGNORECASE,
                         )
                         if language_match:
                             language = language_match.group(1).strip()
@@ -249,6 +253,7 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
                     }
                 )
             except Exception as e:
+                # ROBUSTNESS: Restore page context logging
                 logger.error(f"Could not process a post on page {page}. Details: {e}")
                 continue
 

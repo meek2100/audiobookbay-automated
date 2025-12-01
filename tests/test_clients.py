@@ -71,7 +71,7 @@ def test_deluge_label_plugin_error(mock_env, monkeypatch):
     with patch("app.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
 
-        # Simulate exception when adding with label
+        # Simulate exception when adding with label, then success without
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),  # First call fails
             None,  # Second call (without label) succeeds
@@ -98,3 +98,15 @@ def test_unsupported_client(mock_env, monkeypatch):
     with pytest.raises(ValueError) as excinfo:
         manager._get_client()
     assert "Unsupported download client" in str(excinfo.value)
+
+
+def test_format_size_logic():
+    """Verify that bytes are converted to human-readable strings correctly."""
+    # We can access the static method via the class
+    tm = TorrentManager
+    assert tm._format_size(500) == "500.00 B"
+    assert tm._format_size(1024) == "1.00 KB"
+    assert tm._format_size(1048576) == "1.00 MB"
+    assert tm._format_size(1073741824) == "1.00 GB"
+    assert tm._format_size(None) == "N/A"
+    assert tm._format_size("not a number") == "N/A"

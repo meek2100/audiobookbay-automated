@@ -102,7 +102,7 @@
                 </td>
                 <td>
                     <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
-                    <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}')">Download to
+                    <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">Download to
                         Server</button>
                 </td>
             </tr>

@@ -30,7 +30,7 @@ function parseFileSizeToMB(sizeString) {
     if (isNaN(size)) return null;
     if (unit.startsWith("TB")) return size * 1024 * 1024;
     if (unit.startsWith("GB")) return size * 1024;
-    if (unit.startsWith("KB")) return size / 1024; // Support for Kilobytes
+    if (unit.startsWith("KB")) return size / 1024;
     return size; // Assume MB
 }
 
@@ -54,17 +54,13 @@ function initializeDateRangePicker() {
             const dateStr = row.dataset.postDate;
             if (!dateStr || dateStr === 'N/A') return null;
             try {
-                // Robust parsing: Try to let Date() parse it, or clean it up if needed.
-                // Replaces "30 Nov 2024" -> "Nov 30, 2024" for better browser compatibility
                 let date;
-                // Regex for "DD Mon YYYY"
                 if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(dateStr)) {
                      const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
                      date = new Date(formattedStr);
                 } else {
                     date = new Date(dateStr);
                 }
-
                 return isNaN(date.getTime()) ? null : date;
             } catch (e) {
                 console.warn("Date parsing error for:", dateStr, e);
@@ -96,7 +92,6 @@ function initializeFileSizeSlider() {
         .filter(size => size !== null);
 
     if (allSizes.length < 2) {
-        // Not enough data for a range slider, hide it
         const wrapper = document.querySelector('.file-size-filter-wrapper');
         if(wrapper) wrapper.style.display = 'none';
         return;
@@ -105,25 +100,16 @@ function initializeFileSizeSlider() {
     const minSize = Math.min(...allSizes);
     const maxSize = Math.max(...allSizes);
 
-    // formatter for the tooltips
     const formatter = {
-      to: function(value) {
-        return formatFileSize(value);
-      },
-      from: function(value) {
-        // This is needed for the slider to read its own formatted values
-        return Number(parseFileSizeToMB(value));
-      }
+      to: function(value) { return formatFileSize(value); },
+      from: function(value) { return Number(parseFileSizeToMB(value)); }
     };
 
     fileSizeSlider = noUiSlider.create(sliderElement, {
         start: [minSize, maxSize],
         connect: true,
-        tooltips: [formatter, formatter], // Use the formatter for both tooltips
-        range: {
-            'min': minSize,
-            'max': maxSize
-        }
+        tooltips: [formatter, formatter],
+        range: { 'min': minSize, 'max': maxSize }
     });
 }
 
@@ -138,35 +124,21 @@ function populateSelectFilters() {
     formats.add(row.dataset.format);
   });
 
-  const languageFilter = document.getElementById("language-filter");
-  languages.forEach((lang) => {
-    if (lang && lang !== "N/A") {
-      const option = document.createElement("option");
-      option.value = lang;
-      option.textContent = lang;
-      languageFilter.appendChild(option);
-    }
-  });
+  const appendOptions = (id, set) => {
+    const select = document.getElementById(id);
+    set.forEach((val) => {
+        if (val && val !== "N/A") {
+            const option = document.createElement("option");
+            option.value = val;
+            option.textContent = val;
+            select.appendChild(option);
+        }
+    });
+  };
 
-  const bitrateFilter = document.getElementById("bitrate-filter");
-  bitrates.forEach((rate) => {
-    if (rate && rate !== "N/A") {
-      const option = document.createElement("option");
-      option.value = rate;
-      option.textContent = rate;
-      bitrateFilter.appendChild(option);
-    }
-  });
-
-  const formatFilter = document.getElementById("format-filter");
-  formats.forEach((format) => {
-    if (format && format !== "N/A") {
-      const option = document.createElement("option");
-      option.value = format;
-      option.textContent = format;
-      formatFilter.appendChild(option);
-    }
-  });
+  appendOptions("language-filter", languages);
+  appendOptions("bitrate-filter", bitrates);
+  appendOptions("format-filter", formats);
 }
 
 function applyFilters() {
@@ -176,7 +148,6 @@ function applyFilters() {
   const selectedDates = datePicker ? datePicker.selectedDates : [];
   const sizeRange = fileSizeSlider ? fileSizeSlider.get().map(parseFloat) : null;
 
-
   document.querySelectorAll(".result-row").forEach((row) => {
     let visible = true;
 
@@ -184,26 +155,19 @@ function applyFilters() {
     if (bitrate && row.dataset.bitrate !== bitrate) visible = false;
     if (format && row.dataset.format !== format) visible = false;
 
-    // File size range filtering
     if (sizeRange) {
         const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
-        if (rowSizeMB !== null) {
-            if (rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1]) {
-                visible = false;
-            }
+        if (rowSizeMB !== null && (rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1])) {
+            visible = false;
         }
     }
 
-    // Date range filtering
     if (selectedDates.length === 2) {
         const rowDateStr = row.dataset.postDate;
         if (!rowDateStr || rowDateStr === 'N/A') {
-            visible = false; // Hide items with no date if a date filter is active
+            visible = false;
         } else {
             try {
-                const startDate = selectedDates[0];
-                const endDate = selectedDates[1];
-
                 let rowDate;
                 if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(rowDateStr)) {
                      const formattedStr = rowDateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, '$2 $1, $3');
@@ -212,17 +176,15 @@ function applyFilters() {
                     rowDate = new Date(rowDateStr);
                 }
 
-                if (isNaN(rowDate.getTime())) {
-                    visible = false;
-                } else {
-                    // Set time to 0 to compare dates only
+                if (!isNaN(rowDate.getTime())) {
                     rowDate.setHours(0, 0, 0, 0);
-                    if (rowDate < startDate || rowDate > endDate) {
+                    if (rowDate < selectedDates[0] || rowDate > selectedDates[1]) {
                         visible = false;
                     }
+                } else {
+                    visible = false;
                 }
             } catch (e) {
-                console.error("Invalid date format during filtering", e);
                 visible = false;
             }
         }
@@ -244,17 +206,38 @@ function clearFilters() {
   });
 }
 
-// --- Search Interaction Functions ---
+// --- Search & Interaction ---
 
 function showLoadingSpinner() {
+  const button = document.querySelector('.search-button');
+  if (button) {
+      button.disabled = true;
+      // Store original text
+      if (!button.dataset.originalText) {
+          button.dataset.originalText = button.querySelector('.button-text').innerText;
+      }
+      button.querySelector('.button-text').innerText = "Searching...";
+  }
+
   const buttonSpinner = document.getElementById("button-spinner");
   if(buttonSpinner) buttonSpinner.style.display = "inline-block";
-  setTimeout(showScrollingMessages, 5000);
+
+  // Start funny messages after delay
+  setTimeout(showScrollingMessages, 3000);
 }
 
 function hideLoadingSpinner() {
+  const button = document.querySelector('.search-button');
+  if (button) {
+      button.disabled = false;
+      if (button.dataset.originalText) {
+          button.querySelector('.button-text').innerText = button.dataset.originalText;
+      }
+  }
+
   const buttonSpinner = document.getElementById("button-spinner");
   if(buttonSpinner) buttonSpinner.style.display = "none";
+
   hideScrollingMessages();
 }
 
@@ -264,31 +247,18 @@ const messages = [
   "Still searching... Maybe grab a snack?",
   "Patience, young grasshopper...",
   "Wow, this is taking a minute!",
-  "Don’t worry, I got this!",
-  "Maybe go for a walk?",
-  "Still thinking... Almost there!",
   "Finding the best results for you!",
   "Hang tight! Searching magic happening!",
   "One moment... while I consult the ancients.",
   "Beep boop... processing... please wait...",
   "My hamsters are running on a wheel, almost there!",
-  "Just gathering some pixie dust, be right back!",
-  "Is it lunchtime yet? Oh, searching... right.",
-  "Please remain calm, the search is in progress.",
-  "Warning: Search may cause extreme awesomeness.",
-  "Calculating the optimal route to your results...",
   "Almost there... just defragmenting my brain.",
   "Searching... because the internet is a big place!",
-  "Polishing the search results for your viewing pleasure.",
   "The search is strong with this one.",
-  "Please wait while I summon the search demons.",
   "Searching in hyperspace... almost there!",
-  "My coffee is kicking in... search commencing!",
-  "Just a few more gigabytes to process...",
-  "Rome wasn't built in a day.",
-  "Don't blame me, the internet is slow today.",
-  "Almost there... just need to find the right key...",
+  "Just a few more gigabytes to process..."
 ];
+
 let messageIndex = 0;
 let intervalId = null;
 
@@ -296,13 +266,16 @@ function showScrollingMessages() {
   const messageScroller = document.getElementById("message-scroller");
   const scrollingMessage = document.getElementById("scrolling-message");
   if(!scrollingMessage) return;
+
   const shuffledMessages = messages.sort(() => Math.random() - 0.5);
   messageScroller.style.display = "block";
   scrollingMessage.textContent = shuffledMessages[messageIndex];
+
+  if (intervalId) clearInterval(intervalId);
   intervalId = setInterval(() => {
     messageIndex = (messageIndex + 1) % messages.length;
     scrollingMessage.textContent = shuffledMessages[messageIndex];
-  }, 5000);
+  }, 4000);
 }
 
 function hideScrollingMessages() {
@@ -314,15 +287,21 @@ function hideScrollingMessages() {
   if(messageScroller) messageScroller.style.display = "none";
 }
 
-function sendTorrent(link, title) {
-  // Retrieve CSRF token from the meta tag
+function sendTorrent(link, title, buttonElement) {
   const csrfMeta = document.querySelector('meta[name="csrf-token"]');
   if (!csrfMeta) {
-      console.error("CSRF token meta tag not found!");
       alert("Security Error: CSRF token missing. Please refresh the page.");
       return;
   }
   const csrfToken = csrfMeta.getAttribute('content');
+
+  // Disable specific button to prevent double-clicks
+  let originalBtnText = "";
+  if (buttonElement) {
+      buttonElement.disabled = true;
+      originalBtnText = buttonElement.innerText;
+      buttonElement.innerText = "Sending...";
+  }
 
   fetch("/send", {
     method: "POST",
@@ -333,13 +312,10 @@ function sendTorrent(link, title) {
     body: JSON.stringify({ link: link, title: title }),
   })
     .then((response) => {
-      // Check if the response was successful (status 200-299)
       if (!response.ok) {
-        // If 4xx or 5xx, try to parse the error message from JSON
         return response.json().then(err => {
             throw new Error(err.message || 'Server Error');
         }).catch(() => {
-            // If response wasn't JSON (e.g. 500 HTML page), throw generic error
             throw new Error(`Request failed with status ${response.status}`);
         });
       }
@@ -353,7 +329,10 @@ function sendTorrent(link, title) {
       alert("Failed to send download: " + error.message);
     })
     .finally(() => {
-      // Robustness: Always ensure the spinner stops, success or fail.
-      hideLoadingSpinner();
+      if (buttonElement) {
+          buttonElement.disabled = false;
+          buttonElement.innerText = originalBtnText;
+      }
+      hideLoadingSpinner(); // Just in case
     });
 }
