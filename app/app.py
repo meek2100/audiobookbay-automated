@@ -60,6 +60,7 @@ limiter = Limiter(
     app=app,
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://",
+    headers_enabled=True,  # Explicitly enable headers for tests and clients
 )
 
 SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")

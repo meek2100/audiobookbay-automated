@@ -86,6 +86,17 @@ def test_find_best_mirror_all_fail():
         assert result is None
 
 
+def test_find_best_mirror_success():
+    """Test the successful path where a mirror is found and returned."""
+    scraper.mirror_cache.clear()
+    # FIX: Patch the fallback list to a single item to prevent ThreadPool from
+    # exhausting the side_effect with multiple parallel calls.
+    with patch("app.scraper.ABB_FALLBACK_HOSTNAMES", ["mirror1.com"]):
+        with patch("app.scraper.check_mirror", side_effect=["mirror1.com"]):
+            result = scraper.find_best_mirror()
+            assert result == "mirror1.com"
+
+
 def test_get_random_user_agent_fallback():
     # Force ua_generator to None
     with patch("app.scraper.ua_generator", None):
@@ -94,10 +105,13 @@ def test_get_random_user_agent_fallback():
 
 
 def test_get_random_user_agent_exception():
-    # Simulate ua_generator.random raising an exception
-    mock_ua = MagicMock()
-    type(mock_ua).random = MagicMock(side_effect=Exception("UA Error"))
-    with patch("app.scraper.ua_generator", mock_ua):
+    # Helper class to raise exception on property access
+    class BrokenUA:
+        @property
+        def random(self):
+            raise Exception("UA Error")
+
+    with patch("app.scraper.ua_generator", BrokenUA()):
         ua = scraper.get_random_user_agent()
         assert ua in scraper.FALLBACK_USER_AGENTS
 
@@ -180,9 +194,13 @@ def test_extract_magnet_network_error():
     with patch("app.scraper.get_session") as mock_session_factory:
         mock_session = mock_session_factory.return_value
         mock_session.get.side_effect = Exception("Network Down")
+
         magnet, error = scraper.extract_magnet_link("http://valid.url")
+
         assert magnet is None
         assert "Network Down" in error
+        # Verify finally block (Line 397)
+        mock_session.close.assert_called_once()
 
 
 def test_extract_magnet_bs4_error():
@@ -236,13 +254,15 @@ def test_parsing_no_matches():
     session.get.return_value.status_code = 200
 
     # Ensure none of the regexes find anything
-    # We patch the compiled regex objects directly
+    mock_re = MagicMock()
+    mock_re.search.return_value = None
+
     with (
-        patch("app.scraper.RE_LANGUAGE.search", return_value=None),
-        patch("app.scraper.RE_POSTED.search", return_value=None),
-        patch("app.scraper.RE_FORMAT.search", return_value=None),
-        patch("app.scraper.RE_BITRATE.search", return_value=None),
-        patch("app.scraper.RE_FILESIZE.search", return_value=None),
+        patch("app.scraper.RE_LANGUAGE", mock_re),
+        patch("app.scraper.RE_POSTED", mock_re),
+        patch("app.scraper.RE_FORMAT", mock_re),
+        patch("app.scraper.RE_BITRATE", mock_re),
+        patch("app.scraper.RE_FILESIZE", mock_re),
     ):
         results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
 
@@ -252,21 +272,21 @@ def test_parsing_no_matches():
 
 
 def test_parsing_exceptions():
-    """
-    Test where Regex.search raises an Exception.
-    We must patch the specific compiled regex objects to raise Exception on .search()
-    """
-    html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div><div class="postInfo">I</div><div class="postContent"><p>D</p></div></div>"""
+    """Test where Regex.search raises an Exception."""
+    html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div><div class="postInfo">I</div><div class="postContent"><p style="text-align:center">D</p></div></div>"""
     session = MagicMock()
     session.get.return_value.text = html
     session.get.return_value.status_code = 200
 
+    mock_re = MagicMock()
+    mock_re.search.side_effect = Exception("Regex Fail")
+
     with (
-        patch("app.scraper.RE_LANGUAGE.search", side_effect=Exception("Regex Fail")),
-        patch("app.scraper.RE_POSTED.search", side_effect=Exception("Regex Fail")),
-        patch("app.scraper.RE_FORMAT.search", side_effect=Exception("Regex Fail")),
-        patch("app.scraper.RE_BITRATE.search", side_effect=Exception("Regex Fail")),
-        patch("app.scraper.RE_FILESIZE.search", side_effect=Exception("Regex Fail")),
+        patch("app.scraper.RE_LANGUAGE", mock_re),
+        patch("app.scraper.RE_POSTED", mock_re),
+        patch("app.scraper.RE_FORMAT", mock_re),
+        patch("app.scraper.RE_BITRATE", mock_re),
+        patch("app.scraper.RE_FILESIZE", mock_re),
     ):
         results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
 
@@ -274,17 +294,38 @@ def test_parsing_exceptions():
     assert results[0]["language"] == "N/A"
 
 
+def test_fetch_page_post_exception():
+    """
+    Force an exception during post processing (the outer loop) to ensure 'continue' is hit (Line 247).
+    """
+    session = MagicMock()
+    session.get.return_value.text = "<html></html>"
+    session.get.return_value.status_code = 200
+
+    # Create a mock post that raises exception when .select_one is called
+    mock_post = MagicMock()
+    mock_post.select_one.side_effect = Exception("Post Error")
+
+    with patch("app.scraper.BeautifulSoup") as mock_bs:
+        mock_bs.return_value.select.return_value = [mock_post]
+        # Spy on the logger to ensure the exception was caught and logged
+        with patch("app.scraper.logger") as mock_logger:
+            results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+
+            assert results == []
+            mock_logger.error.assert_called()
+            # Verify the specific log message for this catch block
+            assert "Could not process a post" in mock_logger.error.call_args[0][0]
+
+
 def test_fetch_page_urljoin_exception():
-    """Force an exception during the main loop processing (e.g. urljoin) to hit the outer except block."""
+    """Force an exception during URL joining to hit the outer except block."""
     html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div></div>"""
     session = MagicMock()
     session.get.return_value.text = html
     session.get.return_value.status_code = 200
 
-    # Patch urljoin to raise exception. It's imported in scraper, so we patch app.scraper.urljoin
     with patch("app.scraper.urljoin", side_effect=Exception("Join Error")):
         results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
 
-    # The exception is caught, logged, and the loop continues.
-    # Since there is only one post and it failed, results should be empty.
     assert results == []

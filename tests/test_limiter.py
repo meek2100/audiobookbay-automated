@@ -17,7 +17,6 @@ def test_rate_limit_enforced(client):
     # Force enable limiter for this test context
     client.application.config["RATELIMIT_ENABLED"] = True
 
-    # Mock the magnet extraction/adding to avoid side effects
     with patch("app.app.extract_magnet_link") as mock_extract, patch("app.app.torrent_manager") as mock_tm:
         mock_extract.return_value = ("magnet:?xt=urn:btih:123", None)
         mock_tm.add_magnet.return_value = None
