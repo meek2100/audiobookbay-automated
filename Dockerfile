@@ -9,6 +9,11 @@ ENV PYTHONUNBUFFERED=1
 # Set the working directory in the container
 WORKDIR /app
 
+# OPTIMIZATION: Install tzdata for correct timezone logging
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
 # 1. Copy project definition first
 COPY pyproject.toml .
 

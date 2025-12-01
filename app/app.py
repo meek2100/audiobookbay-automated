@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from datetime import timedelta
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
@@ -24,6 +25,10 @@ logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s - %(levelname)s - %(mes
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+# OPTIMIZATION: Aggressive caching for static assets (1 year)
+# Since this is a local single-user app, this improves load times significantly.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = timedelta(days=365)
 
 # Security Configuration
 DEFAULT_SECRET = "change-this-to-a-secure-random-key"

@@ -25,5 +25,6 @@ services:
       - PAGE_LIMIT=${PAGE_LIMIT:-3}
       - THREADS=${THREADS:-8}
       - SECRET_KEY=${SECRET_KEY}
+      - TZ=${TZ:-UTC} # OPTIMIZATION: Set your local timezone (e.g. America/Los_Angeles)
     env_file:
       - .env
