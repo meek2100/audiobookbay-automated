@@ -125,8 +125,8 @@ def test_remove_torrent_qbittorrent(mock_env):
         mock_instance.torrents_delete.assert_called_with(torrent_hashes="hash123", delete_files=False)
 
 
-def test_remove_torrent_transmission(mock_env, monkeypatch):
-    """Test removing torrent for Transmission."""
+def test_remove_torrent_transmission_hash(mock_env, monkeypatch):
+    """Test removing torrent for Transmission using a string hash."""
     monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
     with patch("app.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
@@ -135,6 +135,19 @@ def test_remove_torrent_transmission(mock_env, monkeypatch):
         # Test string ID (hash)
         manager.remove_torrent("hash123")
         mock_instance.remove_torrent.assert_called_with(ids=["hash123"], delete_data=False)
+
+
+def test_remove_torrent_transmission_numeric_id(mock_env, monkeypatch):
+    """Test removing torrent for Transmission with a numeric ID (int conversion path)."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
+    with patch("app.clients.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+        manager = TorrentManager()
+
+        # Test numeric string ID (should be converted to int)
+        manager.remove_torrent("12345")
+        # Assert the call uses the integer ID
+        mock_instance.remove_torrent.assert_called_with(ids=[12345], delete_data=False)
 
 
 def test_remove_torrent_deluge(mock_env, monkeypatch):

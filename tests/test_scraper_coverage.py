@@ -55,6 +55,17 @@ def test_load_trackers_from_json():
                 assert trackers == ["udp://json.tracker:80"]
 
 
+def test_load_trackers_non_list_json():
+    """Test that load_trackers falls through if JSON is loaded but is not a list (line 244)."""
+    with patch.dict(os.environ, {}, clear=True):
+        mock_data = '{"key": "value"}'
+        with patch("builtins.open", mock_open(read_data=mock_data)):
+            with patch("os.path.exists", return_value=True):
+                trackers = scraper.load_trackers()
+                # Should return the default trackers as the loaded dict is rejected
+                assert len(trackers) > 0
+
+
 def test_load_trackers_json_fail():
     with patch.dict(os.environ, {}, clear=True):
         with patch("builtins.open", mock_open(read_data="invalid-json")):
