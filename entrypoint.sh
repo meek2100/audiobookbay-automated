@@ -19,15 +19,14 @@ fi
 export LISTEN_PORT="${LISTEN_PORT:-5078}"
 
 # CONCURRENCY SETTINGS
-# We use 1 Worker to ensure the in-memory rate limiter works correctly.
-# We use multiple Threads (default 8) to handle concurrent scraping/user requests.
-export WORKERS="${WORKERS:-1}"
+# Worker count is hardcoded to 1 to ensure the in-memory rate limiter works correctly.
+# Concurrency is handled entirely by threads (Default: 8).
 export THREADS="${THREADS:-8}"
 
 # Configure Gunicorn Timeout (Default 120s to handle slow scrapes/sleeps)
 export TIMEOUT="${TIMEOUT:-120}"
 
-echo "Starting Gunicorn with $WORKERS worker(s) and $THREADS threads."
+echo "Starting Gunicorn with 1 worker and $THREADS threads."
 
 # Run Gunicorn
-exec gunicorn --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers "$WORKERS" --threads "$THREADS" --timeout "$TIMEOUT" app:app
+exec gunicorn --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers 1 --threads "$THREADS" --timeout "$TIMEOUT" app:app

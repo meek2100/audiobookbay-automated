@@ -53,7 +53,7 @@ SAVE_PATH_BASE=/audiobooks     # Root path for audiobook downloads (relative to 
 ABB_HOSTNAME=audiobookbay.is   # Default mirror
 PAGE_LIMIT=3                   # Defaults to 3 if not set
 LISTEN_PORT=5078               # Port used by docker container
-WORKERS=4                      # Number of Gunicorn workers (default: 4)
+THREADS=8                      # Gunicorn threads (Default: 8. Increase for more concurrency)
 SECRET_KEY=change_me           # Flask Session Secret Key (Important for security!)
 ```
 
@@ -88,7 +88,7 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
        - SAVE_PATH_BASE=/audiobooks
        - ABB_HOSTNAME='audiobookbay.is'
        - PAGE_LIMIT=3
-       - WORKERS=4
+       - THREADS=8
        - SECRET_KEY=super-secure-key-here
        - NAV_LINK_NAME=Open Audiobook Player
        - NAV_LINK_URL=https://audiobooks.yourdomain.com/
