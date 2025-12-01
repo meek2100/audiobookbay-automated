@@ -1,7 +1,7 @@
 import requests
 import requests_mock
 
-from app.scraper import fetch_and_parse_page
+from app.scraper import extract_magnet_link, fetch_and_parse_page
 
 # Real HTML structure taken from GOT_ABB.html provided by user
 REAL_WORLD_HTML = """
@@ -83,3 +83,46 @@ def test_fetch_and_parse_page_malformed():
 
     results = fetch_and_parse_page(session, hostname, query, page, user_agent)
     assert results == []
+
+
+def test_fetch_page_timeout():
+    """Test that connection timeouts are handled gracefully."""
+    hostname = "audiobookbay.lu"
+    query = "timeout"
+    page = 1
+    user_agent = "TestAgent/1.0"
+
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+
+    # Simulate a timeout
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", exc=requests.exceptions.Timeout)
+
+    # Should return empty list, not crash
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+    assert results == []
+
+
+def test_extract_magnet_no_hash():
+    """Test handling of pages where info hash cannot be found."""
+    details_url = "https://audiobookbay.lu/audiobook-details"
+
+    # HTML with missing info hash table and missing regex pattern
+    broken_html = """
+    <html>
+        <body>
+            <table>
+                <tr><td>Some other data</td></tr>
+            </table>
+        </body>
+    </html>
+    """
+
+    with requests_mock.Mocker() as m:
+        m.get(details_url, text=broken_html)
+
+        magnet, error = extract_magnet_link(details_url)
+
+        assert magnet is None
+        assert "Info Hash could not be found" in error

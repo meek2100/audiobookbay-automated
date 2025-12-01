@@ -46,11 +46,14 @@ app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
 # Rate Limiter Setup
+# Default remains "memory://" which requires a single-worker deployment (handled in entrypoint.sh).
+LIMITER_STORAGE = os.getenv("LIMITER_STORAGE", "memory://")
+
 limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://",
+    storage_uri=LIMITER_STORAGE,
 )
 
 # --- Configuration & Startup Checks ---
@@ -68,8 +71,9 @@ try:
     if not IS_TESTING:
         torrent_manager.verify_credentials()
 except Exception as e:
-    logger.critical(f"STARTUP FAILED: Could not connect to torrent client. Details: {e}")
-    sys.exit(1)
+    # If connection fails, we log it but do not crash.
+    # The user might fix the torrent client connectivity later without restarting this container.
+    logger.error(f"STARTUP WARNING: Could not connect to torrent client. Details: {e}")
 
 
 @app.context_processor

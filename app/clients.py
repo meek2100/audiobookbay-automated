@@ -40,34 +40,57 @@ class TorrentManager:
 
         logger.debug(f"Initializing new {self.client_type} client connection...")
 
-        if self.client_type == "qbittorrent":
-            try:
-                qb = QbClient(host=self.host, port=self.port, username=self.username, password=self.password)
-                qb.auth_log_in()
-                self._client = qb
-            except LoginFailed as e:
-                logger.error("qBittorrent login failed.")
-                raise e
+        try:
+            if self.client_type == "qbittorrent":
+                try:
+                    qb = QbClient(host=self.host, port=self.port, username=self.username, password=self.password)
+                    qb.auth_log_in()
+                    self._client = qb
+                except LoginFailed as e:
+                    logger.error("qBittorrent login failed.")
+                    raise e
 
-        elif self.client_type == "transmission":
-            self._client = TxClient(
-                host=self.host, port=self.port, protocol=self.scheme, username=self.username, password=self.password
-            )
+            elif self.client_type == "transmission":
+                try:
+                    self._client = TxClient(
+                        host=self.host,
+                        port=self.port,
+                        protocol=self.scheme,
+                        username=self.username,
+                        password=self.password,
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to connect to Transmission: {e}")
+                    # Allow app to start even if client is down; commands will fail later.
+                    return None
 
-        elif self.client_type == "delugeweb":
-            dw = DelugeWebClient(url=self.dl_url, password=self.password)
-            dw.login()
-            self._client = dw
+            elif self.client_type == "delugeweb":
+                try:
+                    dw = DelugeWebClient(url=self.dl_url, password=self.password)
+                    dw.login()
+                    self._client = dw
+                except Exception as e:
+                    logger.error(f"Failed to connect to Deluge: {e}")
+                    # Allow app to start even if client is down; commands will fail later.
+                    return None
 
-        else:
-            raise ValueError(f"Unsupported download client configured: {self.client_type}")
+            else:
+                raise ValueError(f"Unsupported download client configured: {self.client_type}")
+
+        except Exception as e:
+            logger.error(f"Error initializing torrent client: {e}")
+            self._client = None
 
         return self._client
 
     def verify_credentials(self):
-        self._get_client()
-        logger.info(f"Successfully connected to {self.client_type}")
-        return True
+        client = self._get_client()
+        if client:
+            logger.info(f"Successfully connected to {self.client_type}")
+            return True
+        else:
+            logger.warning(f"Could not connect to {self.client_type} at startup.")
+            return False
 
     @staticmethod
     def _format_size(size_bytes):
@@ -96,6 +119,9 @@ class TorrentManager:
 
     def _add_magnet_logic(self, magnet_link, save_path):
         client = self._get_client()
+        if not client:
+            raise ConnectionError("Torrent client is not connected.")
+
         logger.info(f"Adding torrent to {self.client_type} at {save_path}")
 
         if self.client_type == "qbittorrent":
@@ -124,6 +150,9 @@ class TorrentManager:
 
     def _get_status_logic(self):
         client = self._get_client()
+        if not client:
+            raise ConnectionError("Torrent client is not connected.")
+
         results = []
 
         if self.client_type == "transmission":

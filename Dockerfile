@@ -24,9 +24,9 @@ RUN pip install --no-cache-dir \
     "Flask-Limiter==3.8.0"
 
 # 3. Copy the source code
+# This copies the local 'app' directory to '/app/app' in the container
 COPY app app/
 COPY entrypoint.sh .
-COPY app/healthcheck.py .
 
 # 4. Install the app package (fast, as deps are already present)
 RUN pip install --no-cache-dir .

@@ -18,11 +18,18 @@ fi
 # Use default port 5078 if LISTEN_PORT env var is not set
 export LISTEN_PORT="${LISTEN_PORT:-5078}"
 
-# Configure Gunicorn Workers (Default to 4 if not set)
-export WORKERS="${WORKERS:-4}"
-# Threads per worker for handling I/O bound tasks (searching)
-export THREADS="${THREADS:-2}"
+# CONFIGURATION FOR RATE LIMITER & CONCURRENCY
+# We default to 1 Worker and 8 Threads.
+# This ensures that Flask-Limiter (using in-memory storage) correctly tracks
+# requests across all threads. Multiple workers would split the limit counters.
+export WORKERS="${WORKERS:-1}"
+export THREADS="${THREADS:-8}"
+
+# Configure Gunicorn Timeout (Default 120s to handle slow scrapes/sleeps)
+export TIMEOUT="${TIMEOUT:-120}"
+
+echo "Starting Gunicorn with $WORKERS worker(s) and $THREADS threads."
 
 # Run Gunicorn
-# usage: gunicorn --bind <ADDRESS>:<PORT> --workers <WORKERS> --threads <THREADS> ...
-exec gunicorn --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers "$WORKERS" --threads "$THREADS" app:app
+# usage: gunicorn --bind <ADDRESS>:<PORT> --workers <WORKERS> --threads <THREADS> --timeout <TIMEOUT> ...
+exec gunicorn --bind "${LISTEN_HOST}:${LISTEN_PORT}" --workers "$WORKERS" --threads "$THREADS" --timeout "$TIMEOUT" app:app
