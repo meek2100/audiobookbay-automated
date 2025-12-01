@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import app.app as app_module  # Explicit import to avoid collision with the 'app' variable
+
 
 def test_home_page_load(client):
     response = client.get("/")
@@ -79,12 +81,12 @@ def test_search_exception_handling(client):
 
 
 def test_nav_link_injection(client, monkeypatch):
-    """Test that environment variables correctly inject the nav link."""
-    monkeypatch.setenv("NAV_LINK_NAME", "My Player")
-    monkeypatch.setenv("NAV_LINK_URL", "http://player.local")
+    """Test that injected variables correctly appear in the template."""
+    # HERMENEUTIC FIX: Use the explicit module object to patch,
+    # preventing 'app' variable collision.
+    monkeypatch.setattr(app_module, "NAV_LINK_NAME", "My Player")
+    monkeypatch.setattr(app_module, "NAV_LINK_URL", "http://player.local")
 
-    # We need to reload the app/client or just check the context processor behavior
-    # simpler to check response content since context processors run per request
     response = client.get("/")
     assert b"My Player" in response.data
     assert b"http://player.local" in response.data
@@ -115,9 +117,11 @@ def test_delete_torrent_failure(client):
         assert b"Removal failed" in response.data
 
 
-def test_reload_library_success(client):
+def test_reload_library_success(client, monkeypatch):
     """Test ABS reload triggers correctly."""
-    # We must patch the globals in app.app because they are loaded at import time
+    # HERMENEUTIC FIX: Patch the module attribute directly
+    monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", True)
+
     with (
         patch("app.app.AUDIOBOOKSHELF_URL", "http://abs"),
         patch("app.app.ABS_KEY", "token"),
@@ -133,10 +137,11 @@ def test_reload_library_success(client):
         mock_post.assert_called_once()
 
 
-def test_reload_library_not_configured(client):
+def test_reload_library_not_configured(client, monkeypatch):
     """Test ABS reload fails gracefully when not configured."""
-    # Ensure one is missing
-    with patch("app.app.AUDIOBOOKSHELF_URL", None):
-        response = client.post("/reload_library")
-        assert response.status_code == 400
-        assert b"not configured" in response.data
+    # HERMENEUTIC FIX: Patch the module attribute directly
+    monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", False)
+
+    response = client.post("/reload_library")
+    assert response.status_code == 400
+    assert b"not configured" in response.data

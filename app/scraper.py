@@ -59,9 +59,8 @@ except Exception:
 
 
 # --- OPTIMIZATION: Pre-compile Regex Patterns ---
-RE_LANGUAGE = re.compile(
-    r"Language:\s*(.*?)(?:\s*(?:Keywords|Format|Posted|Bitrate):|(?=<)|$)", re.DOTALL | re.IGNORECASE
-)
+# Improved: Captures text until the next HTML tag start, making it order-independent
+RE_LANGUAGE = re.compile(r"Language:\s*([^<]+)", re.IGNORECASE)
 RE_POSTED = re.compile(r"Posted:\s*([^<]+)")
 RE_FORMAT = re.compile(r"Format:\s*<span[^>]*>([^<]+)</span>")
 RE_BITRATE = re.compile(r"Bitrate:\s*<span[^>]*>([^<]+)</span>")
@@ -206,17 +205,6 @@ def fetch_and_parse_page(
 
     Returns:
         A list of dictionaries containing book details.
-        Structure:
-        {
-            "title": str,
-            "link": str,
-            "cover": str,
-            "language": str,
-            "post_date": str,
-            "format": str,
-            "bitrate": str,
-            "file_size": str
-        }
     """
     sleep_time = random.uniform(1.0, 3.0)
     time.sleep(sleep_time)
@@ -256,12 +244,13 @@ def fetch_and_parse_page(
                     cover = "/static/images/default_cover.jpg"
 
                 post_info = post.select_one(".postInfo")
-                post_info_text = post_info.get_text(separator=" ", strip=True) if post_info else ""
-
                 language = "N/A"
-                if post_info_text:
+                if post_info:
+                    # Robustness: Use the raw HTML string for the regex so 'RE_LANGUAGE'
+                    # can correctly match until the next '<' character (start of a tag).
+                    # This makes it independent of the field order.
                     try:
-                        language_match = RE_LANGUAGE.search(post_info_text)
+                        language_match = RE_LANGUAGE.search(str(post_info))
                         if language_match:
                             language = language_match.group(1).strip()
                     except Exception:
@@ -352,7 +341,7 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
                 except Exception as exc:
                     logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}")
                     mirror_cache.clear()
-                    # Also clear search cache if we hit a network error
+                    # Also clear search cache if we hit a network or logic error
                     search_cache.clear()
     finally:
         session.close()

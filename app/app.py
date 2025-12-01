@@ -73,6 +73,11 @@ AUDIOBOOKSHELF_URL = os.getenv("AUDIOBOOKSHELF_URL")
 ABS_KEY = os.getenv("ABS_KEY")
 ABS_LIB = os.getenv("ABS_LIB")
 
+# Optimization: Load Nav configs once at startup
+NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
+NAV_LINK_URL = os.getenv("NAV_LINK_URL")
+LIBRARY_RELOAD_ENABLED = all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB])
+
 torrent_manager = TorrentManager()
 
 try:
@@ -85,10 +90,11 @@ except Exception as e:
 @app.context_processor
 def inject_nav_link() -> dict[str, Any]:
     """Injects navigation links and capability flags into templates."""
+    # Optimization: Use pre-loaded global variables
     return {
-        "nav_link_name": os.getenv("NAV_LINK_NAME"),
-        "nav_link_url": os.getenv("NAV_LINK_URL"),
-        "library_reload_enabled": all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB]),
+        "nav_link_name": NAV_LINK_NAME,
+        "nav_link_url": NAV_LINK_URL,
+        "library_reload_enabled": LIBRARY_RELOAD_ENABLED,
     }
 
 
@@ -177,7 +183,7 @@ def delete_torrent() -> Response:
 @app.route("/reload_library", methods=["POST"])
 def reload_library() -> Response:
     """API endpoint to trigger an Audiobookshelf library scan."""
-    if not all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB]):
+    if not LIBRARY_RELOAD_ENABLED:
         return jsonify({"message": "Audiobookshelf integration not configured."}), 400
 
     try:

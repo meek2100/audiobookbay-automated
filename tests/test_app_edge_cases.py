@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
+import app.app as app_module  # Explicit import to avoid collision
+
 
 @pytest.fixture
 def mock_flask_factory():
@@ -41,8 +43,12 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
         assert "Auth Bad" in str(args[0])
 
 
-def test_reload_library_detailed_error(client):
+def test_reload_library_detailed_error(client, monkeypatch):
     """Test /reload_library when requests raises an error WITH a response object."""
+    # HERMENEUTIC FIX: Force enabled so we bypass the configuration check.
+    # Use app_module to ensure we patch the module, not the app instance.
+    monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", True)
+
     with (
         patch("app.app.AUDIOBOOKSHELF_URL", "http://abs"),
         patch("app.app.ABS_KEY", "k"),
@@ -76,9 +82,12 @@ def test_status_route_error(client):
 
 def test_send_route_no_save_path_base(client, monkeypatch):
     """Test the 'else' branch where SAVE_PATH_BASE is None (logic coverage)."""
-    with patch("app.app.SAVE_PATH_BASE", None):
-        with patch("app.app.extract_magnet_link", return_value=("magnet:...", None)):
-            with patch("app.app.torrent_manager") as mock_tm:
-                response = client.post("/send", json={"link": "l", "title": "t"})
-                assert response.status_code == 200
-                mock_tm.add_magnet.assert_called_with("magnet:...", "t")
+    # Note: app.app.SAVE_PATH_BASE is loaded at import.
+    # Use app_module to ensure we patch the module, not the app instance.
+    monkeypatch.setattr(app_module, "SAVE_PATH_BASE", None)
+
+    with patch("app.app.extract_magnet_link", return_value=("magnet:...", None)):
+        with patch("app.app.torrent_manager") as mock_tm:
+            response = client.post("/send", json={"link": "l", "title": "t"})
+            assert response.status_code == 200
+            mock_tm.add_magnet.assert_called_with("magnet:...", "t")

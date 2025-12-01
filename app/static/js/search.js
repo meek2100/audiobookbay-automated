@@ -36,7 +36,11 @@ function parseFileSizeToMB(sizeString) {
     if (unit.startsWith("KB")) return size / 1024;
     if (unit.startsWith("B")) return size / (1024 * 1024); // Handle raw Bytes
 
-    // Default assume MB if unit matches nothing above (e.g. "MB", "MBs")
+    // Explicitly handle MB
+    if (unit.startsWith("MB")) return size;
+
+    // Safety: Warn if we encounter a new/unexpected unit
+    console.warn("Unrecognized file size unit:", unit, "in string:", sizeString);
     return size;
 }
 
