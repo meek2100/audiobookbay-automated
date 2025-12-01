@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from qbittorrentapi import LoginFailed
 
 from app.clients import TorrentManager
 
@@ -14,6 +15,9 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("DL_USERNAME", "admin")
     monkeypatch.setenv("DL_PASSWORD", "admin")
     monkeypatch.setenv("DL_CATEGORY", "audiobooks")
+
+
+# --- Initialization & Connection Tests ---
 
 
 def test_qbittorrent_add_magnet(mock_env):
@@ -64,34 +68,6 @@ def test_deluge_add_magnet(mock_env, monkeypatch):
         )
 
 
-def test_deluge_label_plugin_error(mock_env, monkeypatch):
-    """Test that Deluge falls back to adding torrent without label if plugin is missing."""
-    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
-
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
-        mock_instance = MockDeluge.return_value
-
-        # Simulate exception when adding with label, then success without
-        mock_instance.add_torrent_magnet.side_effect = [
-            Exception("Unknown parameter 'label'"),  # First call fails
-            None,  # Second call (without label) succeeds
-        ]
-
-        manager = TorrentManager()
-        manager.add_magnet("magnet:?xt=urn:btih:FAIL", "/downloads/Book")
-
-        # Verify it was called twice
-        assert mock_instance.add_torrent_magnet.call_count == 2
-
-        # Check call arguments
-        # 1. First attempt with label
-        mock_instance.add_torrent_magnet.assert_any_call(
-            "magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book", label="audiobooks"
-        )
-        # 2. Second attempt without label
-        mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book")
-
-
 def test_unsupported_client(mock_env, monkeypatch):
     """Test that unsupported clients return None and log error instead of crashing."""
     monkeypatch.setenv("DOWNLOAD_CLIENT", "fake_client")
@@ -103,16 +79,67 @@ def test_unsupported_client(mock_env, monkeypatch):
     assert client is None
 
 
+def test_init_transmission_failure(monkeypatch):
+    """Test handling of Transmission connection failure."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
+    monkeypatch.setenv("DL_HOST", "localhost")
+    with patch("app.clients.TxClient") as MockTx:
+        MockTx.side_effect = Exception("Connection refused")
+        manager = TorrentManager()
+        assert manager._get_client() is None
+
+
+def test_init_deluge_failure(monkeypatch):
+    """Test handling of Deluge login failure."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+    monkeypatch.setenv("DL_PASSWORD", "pass")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        MockDeluge.return_value.login.side_effect = Exception("Login failed")
+        manager = TorrentManager()
+        assert manager._get_client() is None
+
+
+def test_init_qbittorrent_login_failed(monkeypatch):
+    """Test handling of qBittorrent authentication failure."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "qbittorrent")
+    with patch("app.clients.QbClient") as MockQb:
+        MockQb.return_value.auth_log_in.side_effect = LoginFailed("Bad Auth")
+        manager = TorrentManager()
+        assert manager._get_client() is None
+
+
+def test_verify_credentials_fail(monkeypatch):
+    """Test verify_credentials returns False when client fails to init."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "qbittorrent")
+    with patch("app.clients.TorrentManager._get_client", return_value=None):
+        manager = TorrentManager()
+        assert manager.verify_credentials() is False
+
+
+# --- Utility Tests ---
+
+
 def test_format_size_logic():
     """Verify that bytes are converted to human-readable strings correctly."""
-    # We can access the static method via the class
     tm = TorrentManager
+    # Standard units
     assert tm._format_size(500) == "500.00 B"
     assert tm._format_size(1024) == "1.00 KB"
     assert tm._format_size(1048576) == "1.00 MB"
     assert tm._format_size(1073741824) == "1.00 GB"
+
+    # Petabytes (Edge case)
+    # 5 * 1024^5 bytes
+    huge_number = 1024 * 1024 * 1024 * 1024 * 1024 * 5
+    assert "5.00 PB" in tm._format_size(huge_number)
+
+    # Invalid inputs
     assert tm._format_size(None) == "N/A"
     assert tm._format_size("not a number") == "N/A"
+    assert tm._format_size([1, 2]) == "N/A"
+
+
+# --- Removal Tests ---
 
 
 def test_remove_torrent_qbittorrent(mock_env):
@@ -161,6 +188,18 @@ def test_remove_torrent_deluge(mock_env, monkeypatch):
         mock_instance.remove_torrent.assert_called_with("hash123", remove_data=False)
 
 
+def test_remove_torrent_no_client(monkeypatch):
+    """Test exception when trying to remove a torrent without a valid client."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
+    with patch("app.clients.TxClient", side_effect=Exception("Down")):
+        manager = TorrentManager()
+        with pytest.raises(ConnectionError):
+            manager.remove_torrent("123")
+
+
+# --- Status & Info Tests ---
+
+
 def test_get_status_qbittorrent(mock_env):
     """Test fetching status from qBittorrent."""
     with patch("app.clients.QbClient") as MockQbClient:
@@ -206,3 +245,98 @@ def test_get_status_transmission(mock_env, monkeypatch):
         assert len(results) == 1
         assert results[0]["progress"] == 75.0
         assert results[0]["size"] == "1.00 KB"
+
+
+def test_get_status_deluge(monkeypatch):
+    """Test fetching status from Deluge."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_response = MagicMock()
+        mock_response.result = {"hash123": {"name": "D Book", "state": "Dl", "progress": 45.5, "total_size": 100}}
+        mock_instance.get_torrents_status.return_value = mock_response
+        manager = TorrentManager()
+        results = manager.get_status()
+        assert len(results) == 1
+        assert results[0]["name"] == "D Book"
+
+
+def test_get_status_reconnect(monkeypatch):
+    """Test that get_status attempts to reconnect if the first call fails."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "qbittorrent")
+    with patch("app.clients.QbClient"):
+        manager = TorrentManager()
+        with patch.object(manager, "_get_status_logic") as mock_logic:
+            mock_logic.side_effect = [Exception("Stale Connection"), []]
+            result = manager.get_status()
+            assert mock_logic.call_count == 2
+            assert result == []
+            assert manager._client is None
+
+
+# --- Error Handling & Retries ---
+
+
+def test_deluge_label_plugin_error(mock_env, monkeypatch):
+    """Test that Deluge falls back to adding torrent without label if plugin is missing."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+
+        # Simulate exception when adding with label, then success without
+        mock_instance.add_torrent_magnet.side_effect = [
+            Exception("Unknown parameter 'label'"),  # First call fails
+            None,  # Second call (without label) succeeds
+        ]
+
+        manager = TorrentManager()
+        manager.add_magnet("magnet:?xt=urn:btih:FAIL", "/downloads/Book")
+
+        # Verify it was called twice
+        assert mock_instance.add_torrent_magnet.call_count == 2
+
+        # Check call arguments
+        # 1. First attempt with label
+        mock_instance.add_torrent_magnet.assert_any_call(
+            "magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book", label="audiobooks"
+        )
+        # 2. Second attempt without label
+        mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book")
+
+
+def test_deluge_add_magnet_generic_error(monkeypatch):
+    """Test that a generic error in Deluge addition is raised (not swallowed)."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_instance.add_torrent_magnet.side_effect = Exception("Generic Failure")
+        manager = TorrentManager()
+        with pytest.raises(Exception) as exc:
+            manager._add_magnet_logic("magnet:...", "/path")
+        assert "Generic Failure" in str(exc.value)
+
+
+def test_add_magnet_reconnect_retry(monkeypatch):
+    """Test that add_magnet attempts to reconnect if the first call fails."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "qbittorrent")
+    with patch("app.clients.QbClient"):
+        manager = TorrentManager()
+        # Patch the logic method to throw then succeed
+        with patch.object(manager, "_add_magnet_logic") as mock_logic:
+            mock_logic.side_effect = [Exception("Stale Connection"), None]
+            manager.add_magnet("magnet:...", "/save")
+            assert mock_logic.call_count == 2
+            assert manager._client is None
+
+
+def test_logic_methods_no_client(monkeypatch):
+    """Test that logic methods raise ConnectionError when client is None."""
+    manager = TorrentManager()
+    # Force client to be None despite any init attempts
+    with patch.object(manager, "_get_client", return_value=None):
+        with pytest.raises(ConnectionError):
+            manager._add_magnet_logic("magnet:...", "/path")
+
+        with pytest.raises(ConnectionError):
+            manager._get_status_logic()
