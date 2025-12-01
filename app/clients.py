@@ -140,6 +140,32 @@ class TorrentManager:
                 else:
                     raise e
 
+    def remove_torrent(self, torrent_id):
+        """
+        Removes a torrent by ID.
+        Note: Configured to keep data files (soft delete) to avoid accidental data loss.
+        """
+        client = self._get_client()
+        if not client:
+            raise ConnectionError("Torrent client is not connected.")
+
+        logger.info(f"Removing torrent {torrent_id} from {self.client_type}")
+
+        if self.client_type == "qbittorrent":
+            client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)
+
+        elif self.client_type == "transmission":
+            # Transmission expects IDs as integers usually, but hashes work in some versions.
+            # safe conversion if it's digit, else pass as string (hash)
+            try:
+                tid = int(torrent_id)
+            except ValueError:
+                tid = torrent_id
+            client.remove_torrent(ids=[tid], delete_data=False)
+
+        elif self.client_type == "delugeweb":
+            client.remove_torrent(torrent_id, remove_data=False)
+
     def get_status(self):
         try:
             return self._get_status_logic()
@@ -160,6 +186,7 @@ class TorrentManager:
             for torrent in torrents:
                 results.append(
                     {
+                        "id": torrent.id,
                         "name": torrent.name,
                         "progress": round(torrent.progress * 100, 2),
                         "state": torrent.status,
@@ -172,6 +199,7 @@ class TorrentManager:
             for torrent in torrents:
                 results.append(
                     {
+                        "id": torrent.hash,
                         "name": torrent.name,
                         "progress": round(torrent.progress * 100, 2),
                         "state": torrent.state,
@@ -185,9 +213,10 @@ class TorrentManager:
                 keys=["name", "state", "progress", "total_size"],
             )
             if torrents.result:
-                for _, torrent in torrents.result.items():
+                for key, torrent in torrents.result.items():
                     results.append(
                         {
+                            "id": key,
                             "name": torrent["name"],
                             "progress": round(torrent["progress"], 2),
                             "state": torrent["state"],

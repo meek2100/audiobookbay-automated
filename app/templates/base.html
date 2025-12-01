@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
     {% block extra_js %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/actions.js') }}" defer></script>
 </head>
 
 <body>
@@ -19,6 +20,9 @@
         <a href="{{ url_for('status') }}" class="{% if request.endpoint == 'status' %}active{% endif %}">Status</a>
         {% if nav_link_name and nav_link_url %}
         <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
+        {% endif %}
+        {% if library_reload_enabled %}
+        <a href="#" onclick="reloadLibrary(); return false;">Reload Library</a>
         {% endif %}
     </div>
 

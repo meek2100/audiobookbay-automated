@@ -1,5 +1,11 @@
 # Use an official Python runtime as a parent image
-FROM python:3.10.13-slim
+FROM python:3.13-slim
+
+# Labels for container registry metadata
+LABEL org.opencontainers.image.title="audiobookbay-automated"
+LABEL org.opencontainers.image.description="Automated AudiobookBay downloader and torrent manager"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/jamesry96/audiobookbay-automated"
 
 # OPTIMIZATION: Prevent Python from writing .pyc files (saves space/io)
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -29,7 +35,8 @@ RUN pip install --no-cache-dir \
     "cachetools==6.2.2" \
     "gunicorn==23.0.0" \
     "Flask-WTF==1.2.2" \
-    "Flask-Limiter==3.8.0"
+    "Flask-Limiter==4.0.0" \
+    "fake-useragent==2.2.0"
 
 # 3. Copy the source code
 COPY app app/

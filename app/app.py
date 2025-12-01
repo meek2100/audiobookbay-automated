@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import timedelta
 
+import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
 from flask_limiter import Limiter
@@ -71,6 +72,11 @@ if not SAVE_PATH_BASE:
         logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
         sys.exit(1)
 
+# --- Audiobookshelf Integration Config ---
+AUDIOBOOKSHELF_URL = os.getenv("AUDIOBOOKSHELF_URL")
+ABS_KEY = os.getenv("ABS_KEY")
+ABS_LIB = os.getenv("ABS_LIB")
+
 # Initialize Manager
 torrent_manager = TorrentManager()
 
@@ -84,9 +90,11 @@ except Exception as e:
 
 @app.context_processor
 def inject_nav_link():
+    """Injects navigation links and capability flags into templates."""
     return {
         "nav_link_name": os.getenv("NAV_LINK_NAME"),
         "nav_link_url": os.getenv("NAV_LINK_URL"),
+        "library_reload_enabled": all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB]),
     }
 
 
@@ -148,6 +156,43 @@ def send():
     except Exception as e:
         logger.error(f"Send failed: {e}")
         return jsonify({"message": str(e)}), 500
+
+
+@app.route("/delete", methods=["POST"])
+def delete_torrent():
+    """API endpoint to remove a torrent."""
+    data = request.json
+    torrent_id = data.get("id")
+
+    if not torrent_id:
+        return jsonify({"message": "Torrent ID is required"}), 400
+
+    try:
+        torrent_manager.remove_torrent(torrent_id)
+        return jsonify({"message": "Torrent removed successfully."})
+    except Exception as e:
+        logger.error(f"Failed to remove torrent: {e}")
+        return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
+
+
+@app.route("/reload_library", methods=["POST"])
+def reload_library():
+    """API endpoint to trigger an Audiobookshelf library scan."""
+    if not all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB]):
+        return jsonify({"message": "Audiobookshelf integration not configured."}), 400
+
+    try:
+        url = f"{AUDIOBOOKSHELF_URL}/api/libraries/{ABS_LIB}/scan"
+        headers = {"Authorization": f"Bearer {ABS_KEY}"}
+        response = requests.post(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        return jsonify({"message": "Audiobookshelf library scan initiated."})
+    except requests.exceptions.RequestException as e:
+        error_message = str(e)
+        if e.response is not None:
+            error_message = f"{e.response.status_code} {e.response.reason}: {e.response.text}"
+        logger.error(f"ABS Scan Failed: {error_message}")
+        return jsonify({"message": f"Failed to trigger library scan: {error_message}"}), 500
 
 
 @app.route("/status")
