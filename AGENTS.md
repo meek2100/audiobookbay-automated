@@ -8,7 +8,7 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 
 ---
 
-## 1. Core Architecture: The "Single-User" Constraint
+## 1. Core Architecture: The 'Single-User' Constraint
 
 ### The Concurrency Model (Critical)
 
