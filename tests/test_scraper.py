@@ -1,9 +1,11 @@
+from unittest.mock import patch
+
+import pytest
 import requests
 import requests_mock
 
-from app.scraper import extract_magnet_link, fetch_and_parse_page
+from app.scraper import extract_magnet_link, fetch_and_parse_page, mirror_cache, search_audiobookbay
 
-# Real HTML structure taken from GOT_ABB.html provided by user
 REAL_WORLD_HTML = """
 <div class="post">
     <div class="postTitle">
@@ -39,21 +41,16 @@ def test_fetch_and_parse_page_real_structure():
     page = 1
     user_agent = "TestAgent/1.0"
 
-    # Create a mock session
     session = requests.Session()
     adapter = requests_mock.Adapter()
     session.mount("https://", adapter)
 
-    # Mock the external HTTP request inside the session
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=REAL_WORLD_HTML, status_code=200)
 
-    # Call the updated function signature
     results = fetch_and_parse_page(session, hostname, query, page, user_agent)
 
     assert len(results) == 1
     book = results[0]
-
-    # Verify robust extraction
     assert book["title"] == "Moster - Walter Dean Myers"
     assert book["language"] == "English"
     assert book["format"] == "MP3"
@@ -121,8 +118,20 @@ def test_extract_magnet_no_hash():
 
     with requests_mock.Mocker() as m:
         m.get(details_url, text=broken_html)
-
         magnet, error = extract_magnet_link(details_url)
-
         assert magnet is None
         assert "Info Hash could not be found" in error
+
+
+def test_search_no_mirrors_raises_error():
+    """Test that search raises ConnectionError when no mirrors are found."""
+    # Ensure cache is empty
+    mirror_cache.clear()
+
+    with patch("app.scraper.find_best_mirror") as mock_find:
+        mock_find.return_value = None
+
+        with pytest.raises(ConnectionError) as exc:
+            search_audiobookbay("test")
+
+        assert "No reachable AudiobookBay mirrors" in str(exc.value)

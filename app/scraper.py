@@ -140,7 +140,7 @@ def check_mirror(hostname):
     return None
 
 
-# ROBUSTNESS: Create cache object explicitly so we can clear it on failure
+# ROBUSTNESS: Instantiate cache explicitly to allow manual invalidation
 mirror_cache = TTLCache(maxsize=1, ttl=600)
 
 
@@ -165,7 +165,7 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
     params = {"s": query}
-    # ROBUSTNESS: Restore original referer logic (some sites check for query string in referer)
+    # ROBUSTNESS: Restore original referer logic
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
 
@@ -203,7 +203,7 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
                 language = "N/A"
                 if post_info_text:
                     try:
-                        # Improved Regex: Stops at 'Keywords:' OR a new HTML tag start OR other common prefixes
+                        # Improved Regex: Stops at 'Keywords:' OR a new HTML tag start
                         language_match = re.search(
                             r"Language:\s*(.*?)(?:\s*(?:Keywords|Format|Posted|Bitrate):|(?=<)|$)",
                             post_info_text,
@@ -257,7 +257,6 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
                     }
                 )
             except Exception as e:
-                # ROBUSTNESS: Restore page context logging
                 logger.error(f"Could not process a post on page {page}. Details: {e}")
                 continue
 
@@ -269,14 +268,12 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
     return page_results
 
 
-# ROBUSTNESS: Do NOT cache search results in the appliance.
-# Caching failures (e.g. empty lists on network timeout) causes the app to look broken
-# for the TTL duration. Re-scraping on demand is safer for single-user use.
+# ROBUSTNESS: No cache here. Caching search results risks caching empty lists on network fails.
 def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     active_hostname = find_best_mirror()
     if not active_hostname:
         logger.error("Could not connect to any AudiobookBay mirrors.")
-        # ROBUSTNESS: Raise error so the UI shows "Connection Failed" instead of "No Results"
+        # ROBUSTNESS: Raise specific error so UI shows "Connection Failed" instead of "No Results"
         raise ConnectionError("No reachable AudiobookBay mirrors found.")
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
@@ -299,7 +296,7 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
                     results.extend(page_data)
                 except Exception as exc:
                     logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}")
-                    # CRITICAL: Invalidate the mirror cache so we search for a new host on next try
+                    # CRITICAL: Safely invalidate the mirror cache
                     mirror_cache.clear()
     finally:
         session.close()

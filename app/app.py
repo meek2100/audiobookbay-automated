@@ -20,31 +20,27 @@ load_dotenv()
 app = Flask(__name__)
 
 # --- Logging Configuration ---
-# OPTIMIZATION: Unify logging with Gunicorn if available (Production)
+# OPTIMIZATION: Unify logging with Gunicorn if available
 if __name__ != "__main__":
     gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 else:
-    # Standard local development logging
     LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
-    # RESTORED: datefmt for consistent local logs
     logging.basicConfig(
         level=LOG_LEVEL, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
 
 logger = app.logger
 
-# OPTIMIZATION: Aggressive caching for static assets (1 year)
-# Since this is a local single-user app, this improves load times significantly.
+# OPTIMIZATION: Aggressive caching for static assets
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = timedelta(days=365)
 
 # Security Configuration
 DEFAULT_SECRET = "change-this-to-a-secure-random-key"
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET)
 
-# Determine execution mode
 IS_DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
 IS_TESTING = os.getenv("TESTING", "0") == "1"
 
@@ -61,8 +57,6 @@ app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
 # Rate Limiter Setup
-# We use in-memory storage, which requires the application to run in a single process (1 Worker).
-# Concurrency is handled via threads.
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -70,23 +64,21 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# --- Configuration & Startup Checks ---
+# --- Startup Checks ---
 SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
 if not SAVE_PATH_BASE:
     if not IS_TESTING:
-        logger.critical("Configuration Error: SAVE_PATH_BASE is missing. This is required for downloads.")
+        logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
         sys.exit(1)
 
-# Initialize Managers
+# Initialize Manager
 torrent_manager = TorrentManager()
 
-# Verify connection immediately (Skip during tests)
+# Verify connection
 try:
     if not IS_TESTING:
         torrent_manager.verify_credentials()
 except Exception as e:
-    # If connection fails, we log it but do not crash.
-    # The user might fix the torrent client connectivity later without restarting this container.
     logger.error(f"STARTUP WARNING: Could not connect to torrent client. Details: {e}")
 
 
@@ -115,12 +107,13 @@ def search():
 
     except Exception as e:
         logger.error(f"Failed to search: {e}")
-        error_message = f"Unable to connect to AudiobookBay.\nTechnical Detail: {str(e)}"
+        # ROBUSTNESS: Display the specific error (e.g. Connection Error) to the user
+        error_message = f"Search Failed: {str(e)}"
         return render_template("search.html", books=books, error=error_message, query=query)
 
 
 @app.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")  # OPTIMIZATION: Increased for bulk downloading (e.g. series)
+@limiter.limit("60 per minute")
 def send():
     """API endpoint to initiate a download."""
     data = request.json
@@ -132,7 +125,6 @@ def send():
         return jsonify({"message": "Invalid request"}), 400
 
     try:
-        # Unpack result and error
         magnet_link, error = extract_magnet_link(details_url)
 
         if not magnet_link:
@@ -140,7 +132,6 @@ def send():
 
         safe_title = sanitize_title(title)
 
-        # Safer path construction
         if SAVE_PATH_BASE:
             save_path = os.path.join(SAVE_PATH_BASE, safe_title)
         else:
