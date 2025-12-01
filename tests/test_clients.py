@@ -24,6 +24,7 @@ def test_qbittorrent_add_magnet(mock_env):
     with patch("app.clients.QbClient") as MockQbClient:
         # Setup the mock client instance
         mock_instance = MockQbClient.return_value
+        mock_instance.torrents_add.return_value = "Ok."
 
         manager = TorrentManager()
         # Trigger the lazy loading of the client
@@ -31,12 +32,40 @@ def test_qbittorrent_add_magnet(mock_env):
 
         manager.add_magnet("magnet:?xt=urn:btih:123", "/downloads/Book")
 
+        # TEST: Verify client init call includes timeout args (Robustness check)
+        MockQbClient.assert_called_with(
+            host="localhost",
+            port="8080",
+            username="admin",
+            password="admin",
+            requests_args={"timeout": 30},
+        )
+
         # Verify login was called
         mock_instance.auth_log_in.assert_called_once()
         # Verify add torrent was called with correct args
         mock_instance.torrents_add.assert_called_with(
             urls="magnet:?xt=urn:btih:123", save_path="/downloads/Book", category="audiobooks"
         )
+
+
+def test_qbittorrent_add_magnet_failure_response(mock_env):
+    """Test logging when qBittorrent returns a failure string (Robustness coverage)."""
+    with patch("app.clients.QbClient") as MockQbClient:
+        mock_instance = MockQbClient.return_value
+        # Simulate a failure response string from API
+        mock_instance.torrents_add.return_value = "Fails."
+
+        manager = TorrentManager()
+        manager._get_client()
+
+        with patch("app.clients.logger") as mock_logger:
+            manager.add_magnet("magnet:?xt=urn:btih:123", "/downloads/Book")
+
+            # Verify that the code warned about the non-OK response
+            args, _ = mock_logger.warning.call_args
+            assert "qBittorrent add returned unexpected response" in args[0]
+            assert "Fails." in args[0]
 
 
 def test_transmission_add_magnet(mock_env, monkeypatch):
@@ -303,6 +332,40 @@ def test_deluge_label_plugin_error(mock_env, monkeypatch):
         )
         # 2. Second attempt without label
         mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book")
+
+
+def test_deluge_fallback_failure(mock_env, monkeypatch):
+    """Test that if the Deluge fallback (retrying without label) also fails, it raises an error."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+
+        # We provide 4 side effects because 'add_magnet' has a built-in retry mechanism.
+        # Sequence:
+        # 1. Attempt 1 (With Label) -> Fails "Unknown parameter"
+        # 2. Attempt 1 (Fallback No Label) -> Fails "Critical Network Failure"
+        # -- add_magnet wrapper catches this, logs warning, and Retries --
+        # 3. Attempt 2 (With Label) -> Fails "Unknown parameter"
+        # 4. Attempt 2 (Fallback No Label) -> Fails "Critical Network Failure"
+        # -- Final Exception propagates out --
+        mock_instance.add_torrent_magnet.side_effect = [
+            Exception("Unknown parameter 'label'"),
+            Exception("Critical Network Failure"),
+            Exception("Unknown parameter 'label'"),
+            Exception("Critical Network Failure"),
+        ]
+
+        manager = TorrentManager()
+
+        with patch("app.clients.logger") as mock_logger:
+            with pytest.raises(Exception) as exc:
+                manager.add_magnet("magnet:?xt=urn:btih:FAIL", "/downloads/Book")
+
+            assert "Critical Network Failure" in str(exc.value)
+            # Verify the error log was captured for the nested failure
+            found = any("Deluge fallback failed" in str(call) for call in mock_logger.error.call_args_list)
+            assert found
 
 
 def test_deluge_add_magnet_generic_error(monkeypatch):

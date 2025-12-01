@@ -126,6 +126,46 @@ def test_fetch_and_parse_page_mixed_validity():
     assert results[0]["link"] == "https://audiobookbay.lu/abss/valid-book/"
 
 
+def test_fetch_page_regex_miss():
+    """
+    Test a page where regex patterns for metadata fail to match (e.g. layout change).
+    Ensures fields default to 'N/A' gracefully without crashing.
+    """
+    hostname = "audiobookbay.lu"
+    query = "regex_miss"
+    page = 1
+    user_agent = "TestAgent/1.0"
+
+    # HTML where labels exist but structure differs from regex expectations
+    changed_html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/book">Book Title</a></h2></div>
+        <div class="postInfo">Language-ISO: English</div>
+        <div class="postContent">
+            <p style="text-align:center;">
+                Date: 2025 <br>
+                Encoding: MP3 <br>
+            </p>
+        </div>
+    </div>
+    """
+
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=changed_html, status_code=200)
+
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+    assert len(results) == 1
+    item = results[0]
+    # Should be N/A because regexes for "Language:", "Posted:", etc. won't match "Language-ISO:", "Date:"
+    assert item["language"] == "N/A"
+    assert item["post_date"] == "N/A"
+    assert item["format"] == "N/A"
+
+
 def test_fetch_page_timeout():
     """Test that connection timeouts are raised (to allow cache invalidation)."""
     hostname = "audiobookbay.lu"

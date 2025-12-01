@@ -48,6 +48,13 @@ def test_send_missing_data(client):
     assert b"Invalid request" in response.data
 
 
+def test_send_malformed_json(client):
+    """Test handling of malformed JSON payload (not a dict or invalid syntax)."""
+    response = client.post("/send", data="not json", content_type="application/json")
+    # Flask typically returns 400 Bad Request for malformed JSON
+    assert response.status_code == 400
+
+
 def test_send_extraction_failure(client):
     with patch("app.app.extract_magnet_link") as mock_extract:
         mock_extract.return_value = (None, "Page Not Found")

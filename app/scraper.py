@@ -59,15 +59,19 @@ except Exception:
 
 
 # --- OPTIMIZATION: Pre-compile Regex Patterns ---
-# Improved: Captures text until the next HTML tag start, making it order-independent
-RE_LANGUAGE = re.compile(r"Language:\s*([^<]+)", re.IGNORECASE)
-RE_POSTED = re.compile(r"Posted:\s*([^<]+)")
-RE_FORMAT = re.compile(r"Format:\s*<span[^>]*>([^<]+)</span>")
-RE_BITRATE = re.compile(r"Bitrate:\s*<span[^>]*>([^<]+)</span>")
-RE_FILESIZE = re.compile(r"File Size:\s*<span[^>]*>([^<]+)</span>\s*([^<]+)")
+# All regexes updated to be robust against intervening tags (e.g., "Language: <b>English</b>")
+# The pattern (?:\s*<[^>]+>)* matches zero or more HTML tags/spaces before the target text.
+RE_LANGUAGE = re.compile(r"Language:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
+RE_POSTED = re.compile(r"Posted:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
+RE_FORMAT = re.compile(r"Format:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
+RE_BITRATE = re.compile(r"Bitrate:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
+# Matches "File Size: 100 MB" or "File Size: <span>100</span> MB"
+RE_FILESIZE = re.compile(r"File Size:(?:\s*<[^>]+>)*\s*([0-9.]+)(?:\s*<[^>]+>)*\s*([a-zA-Z]+)", re.IGNORECASE)
+
 RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
-RE_TRACKERS = re.compile(r"udp://|http://", re.IGNORECASE)
+# Matches if the string contains a tracker URL anywhere
+RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 
 
 def get_random_user_agent() -> str:
@@ -255,9 +259,6 @@ def fetch_and_parse_page(
                 post_info = post.select_one(".postInfo")
                 language = "N/A"
                 if post_info:
-                    # Robustness: Use the raw HTML string for the regex so 'RE_LANGUAGE'
-                    # can correctly match until the next '<' character (start of a tag).
-                    # This makes it independent of the field order.
                     try:
                         language_match = RE_LANGUAGE.search(str(post_info))
                         if language_match:
@@ -291,6 +292,7 @@ def fetch_and_parse_page(
                     try:
                         match = RE_FILESIZE.search(details_html)
                         if match:
+                            # Reconstruct "106.91 MB" from groups
                             file_size = f"{match.group(1).strip()} {match.group(2).strip()}"
                     except Exception:
                         pass
@@ -405,6 +407,8 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             logger.error(msg)
             return None, msg
 
+        # ROBUSTNESS: Uses regex matching to find cells containing "udp://" or "http://"
+        # even if surrounding whitespace exists.
         tracker_rows = soup.find_all("td", string=RE_TRACKERS)
         trackers = [row.text.strip() for row in tracker_rows]
 

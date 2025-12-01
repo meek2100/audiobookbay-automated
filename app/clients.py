@@ -162,7 +162,10 @@ class TorrentManager:
 
         if self.client_type == "qbittorrent":
             # Type ignore because qBittorrent client types are dynamic
-            client.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)  # type: ignore
+            # ROBUSTNESS: Capture return value and warn if it indicates failure
+            result = client.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)  # type: ignore
+            if isinstance(result, str) and result.lower() != "ok.":
+                logger.warning(f"qBittorrent add returned unexpected response: {result}")
 
         elif self.client_type == "transmission":
             client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])  # type: ignore
@@ -171,9 +174,14 @@ class TorrentManager:
             try:
                 client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)  # type: ignore
             except Exception as e:
+                # ROBUSTNESS: Handle Deluge missing label plugin or other errors gracefully
                 if "label" in str(e).lower():
                     logger.warning("Deluge Label plugin likely missing. Adding torrent without category.")
-                    client.add_torrent_magnet(magnet_link, save_directory=save_path)  # type: ignore
+                    try:
+                        client.add_torrent_magnet(magnet_link, save_directory=save_path)  # type: ignore
+                    except Exception as e2:
+                        logger.error(f"Deluge fallback failed: {e2}")
+                        raise e2
                 else:
                     raise e
 
