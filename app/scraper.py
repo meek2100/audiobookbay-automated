@@ -1,4 +1,5 @@
 import concurrent.futures
+import json
 import logging
 import os
 import random
@@ -41,25 +42,36 @@ ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
 
 # Expanded User Agents list for better rotation
 USER_AGENTS = [
-    # --- Windows ---
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
-    # --- macOS ---
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:122.0) Gecko/20100101 Firefox/122.0",
-    # --- Linux ---
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
 ]
 
-trackers_env = os.getenv("MAGNET_TRACKERS")
-if trackers_env:
-    DEFAULT_TRACKERS = [t.strip() for t in trackers_env.split(",") if t.strip()]
-else:
-    DEFAULT_TRACKERS = [
+
+def load_trackers():
+    """Loads trackers from env var, local JSON, or defaults."""
+    trackers_env = os.getenv("MAGNET_TRACKERS")
+    if trackers_env:
+        return [t.strip() for t in trackers_env.split(",") if t.strip()]
+
+    # Try loading from external JSON for easy updates without code changes
+    json_path = os.path.join(os.path.dirname(__file__), "trackers.json")
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    return data
+        except Exception as e:
+            logger.warning(f"Failed to load trackers.json: {e}")
+
+    return [
         "udp://tracker.openbittorrent.com:80",
         "udp://opentor.org:2710",
         "udp://tracker.ccc.de:80",
@@ -69,21 +81,17 @@ else:
     ]
 
 
-def get_session():
-    """
-    Creates a requests Session with automatic retries and backoff.
-    This improves robustness against temporary 503/429 errors.
-    """
-    session = requests.Session()
+DEFAULT_TRACKERS = load_trackers()
 
-    # Retry strategy: Wait 1s, 2s, 4s, 8s, 16s... on failure
+
+def get_session():
+    session = requests.Session()
     retry_strategy = Retry(
         total=5,
         backoff_factor=1,
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["HEAD", "GET", "OPTIONS"],
     )
-
     adapter = HTTPAdapter(max_retries=retry_strategy)
     session.mount("https://", adapter)
     session.mount("http://", adapter)
@@ -91,12 +99,8 @@ def get_session():
 
 
 def get_headers(user_agent=None, referer=None):
-    """
-    Returns a realistic set of browser headers.
-    """
     if not user_agent:
         user_agent = random.choice(USER_AGENTS)
-
     headers = {
         "User-Agent": user_agent,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -104,11 +108,10 @@ def get_headers(user_agent=None, referer=None):
         "Accept-Encoding": "gzip, deflate, br",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
-        "DNT": "1",  # Do Not Track
+        "DNT": "1",
     }
     if referer:
         headers["Referer"] = referer
-
     return headers
 
 
@@ -116,7 +119,6 @@ def check_mirror(hostname):
     url = f"https://{hostname}/"
     session = get_session()
     try:
-        # Use a short timeout for checks
         response = session.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
@@ -140,18 +142,12 @@ def find_best_mirror():
 
 
 def fetch_and_parse_page(session, hostname, query, page, user_agent):
-    """
-    Fetches a single search page using the shared session.
-    """
-    # Sleep randomized to avoid exact pattern detection
     sleep_time = random.uniform(1.0, 3.0)
     time.sleep(sleep_time)
 
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
     params = {"s": query}
-
-    # Set Referer to make navigation look natural
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
 
@@ -189,7 +185,10 @@ def fetch_and_parse_page(session, hostname, query, page, user_agent):
                 language = "N/A"
                 if post_info_text:
                     try:
-                        language_match = re.search(r"Language:\s*(.*?)(?:\s*Keywords:|$)", post_info_text, re.DOTALL)
+                        # Improved Regex: Stops at 'Keywords:' OR a new HTML tag start
+                        language_match = re.search(
+                            r"Language:\s*(.*?)(?:\s*Keywords:|(?=<)|$)", post_info_text, re.DOTALL
+                        )
                         if language_match:
                             language = language_match.group(1).strip()
                     except Exception:
@@ -257,18 +256,15 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
     results = []
 
-    # Consistency: Pick ONE User-Agent for this entire search session
-    # This prevents the bot from "switching browsers" between Page 1 and Page 2
     session_user_agent = random.choice(USER_AGENTS)
-
-    # Establish a persistent session (Keep-Alive)
     session = get_session()
 
-    safe_workers = min(max_pages, 2)
+    # Increased workers to speed up multi-page scraping
+    # Cap at 5 to avoid triggering aggressive WAFs, but better than 2.
+    safe_workers = min(max_pages, 5)
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=safe_workers) as executor:
-            # Pass the session and UA to all workers
             future_to_page = {
                 executor.submit(fetch_and_parse_page, session, active_hostname, query, page, session_user_agent): page
                 for page in range(1, max_pages + 1)
@@ -286,11 +282,8 @@ def search_audiobookbay(query, max_pages=PAGE_LIMIT):
 
 
 def extract_magnet_link(details_url):
-    """
-    Fetches the details page and extracts the magnet link.
-    """
     session = get_session()
-    headers = get_headers(referer=details_url)  # Referer is self or search page
+    headers = get_headers(referer=details_url)
 
     try:
         response = session.get(details_url, headers=headers, timeout=15)

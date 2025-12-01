@@ -24,6 +24,7 @@ dependencies = [
     "cachetools==6.2.2",
     "gunicorn==23.0.0",
     "Flask-WTF==1.2.2",
+    "Flask-Limiter==3.8.0",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +49,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 # Automatically set these env vars when running pytest
 env = [
-    "TESTING=1",                          # CHANGED: "true" -> "1" to match app.py logic
+    "TESTING=1",
     "SAVE_PATH_BASE=/tmp/test_downloads",
     "SECRET_KEY=test-secret-key",
     "DOWNLOAD_CLIENT=qbittorrent",

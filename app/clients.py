@@ -50,7 +50,6 @@ class TorrentManager:
                 raise e
 
         elif self.client_type == "transmission":
-            # Transmission client connects immediately upon instantiation
             self._client = TxClient(
                 host=self.host, port=self.port, protocol=self.scheme, username=self.username, password=self.password
             )
@@ -66,34 +65,32 @@ class TorrentManager:
         return self._client
 
     def verify_credentials(self):
-        """
-        Attempts to connect to the client to verify config/credentials on startup.
-        Raises an exception if connection fails.
-        """
-        # Call _get_client purely for the side effect of connecting/logging in
         self._get_client()
         logger.info(f"Successfully connected to {self.client_type}")
         return True
 
     @staticmethod
     def _format_size(size_bytes):
+        """
+        Formats bytes into human-readable B, KB, MB, GB, TB.
+        """
         if size_bytes is None:
             return "N/A"
         try:
-            return f"{float(size_bytes) / (1024 * 1024):.2f} MB"
+            size = float(size_bytes)
+            for unit in ["B", "KB", "MB", "GB", "TB"]:
+                if size < 1024.0:
+                    return f"{size:.2f} {unit}"
+                size /= 1024.0
+            return f"{size:.2f} PB"
         except (ValueError, TypeError):
             return "N/A"
 
     def add_magnet(self, magnet_link, save_path):
-        """
-        Adds a magnet link to the configured torrent client.
-        Retries connection once if the session has expired.
-        """
         try:
             self._add_magnet_logic(magnet_link, save_path)
         except Exception as e:
             logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect and retry...")
-            # Reset client and try again once
             self._client = None
             self._add_magnet_logic(magnet_link, save_path)
 
@@ -118,9 +115,6 @@ class TorrentManager:
                     raise e
 
     def get_status(self):
-        """
-        Retrieves the status of torrents. Reconnects if necessary.
-        """
         try:
             return self._get_status_logic()
         except Exception as e:
@@ -135,7 +129,6 @@ class TorrentManager:
         if self.client_type == "transmission":
             torrents = client.get_torrents()
             for torrent in torrents:
-                # Filter client-side if needed, though labels usually handle this
                 results.append(
                     {
                         "name": torrent.name,

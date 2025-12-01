@@ -4,6 +4,8 @@ import sys
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 
 # Import custom modules
@@ -28,9 +30,7 @@ DEFAULT_SECRET = "change-this-to-a-secure-random-key"
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET)
 
 # Determine execution mode
-# FLASK_DEBUG is a standard Flask env var. Default to False (Production).
 IS_DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
-# TESTING is set via pyproject.toml during tests
 IS_TESTING = os.getenv("TESTING", "0") == "1"
 
 if SECRET_KEY == DEFAULT_SECRET:
@@ -45,10 +45,17 @@ if SECRET_KEY == DEFAULT_SECRET:
 app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
+# Rate Limiter Setup
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
+
 # --- Configuration & Startup Checks ---
 SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
 if not SAVE_PATH_BASE:
-    # Allow tests to proceed without this variable (mocks will handle it)
     if not IS_TESTING:
         logger.critical("Configuration Error: SAVE_PATH_BASE is missing. This is required for downloads.")
         sys.exit(1)
@@ -56,7 +63,7 @@ if not SAVE_PATH_BASE:
 # Initialize Managers
 torrent_manager = TorrentManager()
 
-# Verify connection immediately (Skip during tests to prevent connection errors)
+# Verify connection immediately (Skip during tests)
 try:
     if not IS_TESTING:
         torrent_manager.verify_credentials()
@@ -95,6 +102,7 @@ def search():
 
 
 @app.route("/send", methods=["POST"])
+@limiter.limit("10 per minute")  # Protect against spamming downloads
 def send():
     """API endpoint to initiate a download."""
     data = request.json
@@ -118,7 +126,7 @@ def send():
         if SAVE_PATH_BASE:
             save_path = os.path.join(SAVE_PATH_BASE, safe_title)
         else:
-            save_path = safe_title  # Fallback for edge cases (shouldn't happen in prod)
+            save_path = safe_title
 
         torrent_manager.add_magnet(magnet_link, save_path)
 
