@@ -46,14 +46,13 @@ app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
 # Rate Limiter Setup
-# Default remains "memory://" which requires a single-worker deployment (handled in entrypoint.sh).
-LIMITER_STORAGE = os.getenv("LIMITER_STORAGE", "memory://")
-
+# We use in-memory storage, which requires the application to run in a single process (1 Worker).
+# Concurrency is handled via threads.
 limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri=LIMITER_STORAGE,
+    storage_uri="memory://",
 )
 
 # --- Configuration & Startup Checks ---
