@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.app import app as flask_app
+from app.app import limiter
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +15,15 @@ def mock_torrent_clients(monkeypatch):
     monkeypatch.setattr("app.clients.QbClient", MagicMock())
     monkeypatch.setattr("app.clients.TxClient", MagicMock())
     monkeypatch.setattr("app.clients.DelugeWebClient", MagicMock())
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """
+    Reset the rate limiter before every test to prevent 429 errors
+    from leaking between tests.
+    """
+    limiter.reset()
 
 
 @pytest.fixture
