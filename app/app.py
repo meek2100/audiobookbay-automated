@@ -22,7 +22,7 @@ app = Flask(__name__)
 
 # --- Logging Configuration ---
 # OPTIMIZATION: Unify logging with Gunicorn if available
-if __name__ != "__main__":
+if __name__ != "__main__":  # pragma: no cover
     gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
@@ -241,7 +241,7 @@ def status() -> str:
         return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     host = os.getenv("LISTEN_HOST", "0.0.0.0")
     port = int(os.getenv("LISTEN_PORT", "5078"))
     app.run(host=host, port=port)

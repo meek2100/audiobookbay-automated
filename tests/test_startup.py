@@ -7,11 +7,13 @@ import pytest
 
 @pytest.fixture
 def mock_flask_factory():
-    """Patches Flask class to return a mock app with a traceable logger."""
+    """Patches Flask class to return a mock app with a traceable logger and working config."""
     with patch("flask.Flask") as mock_class:
         mock_app = MagicMock()
         mock_logger = MagicMock()
         mock_app.logger = mock_logger
+        # FIX: config must be a real dict so flask-limiter gets real values (not Mocks)
+        mock_app.config = {}
         mock_class.return_value = mock_app
         yield mock_class, mock_logger
 
@@ -28,7 +30,6 @@ def test_startup_missing_save_path(monkeypatch, mock_flask_factory):
             importlib.reload(sys.modules["app.app"])
 
         mock_exit.assert_called_with(1)
-        # Verify the log call on our captured mock logger
         args, _ = mock_logger.critical.call_args
         assert "Configuration Error: SAVE_PATH_BASE is missing" in args[0]
 
