@@ -290,30 +290,32 @@ def test_load_trackers_json_fail():
                 assert len(trackers) > 0
 
 
+# --- UPDATED: Fix tests for check_mirror using requests.head directly ---
+
+
 def test_check_mirror_success():
-    with patch("app.scraper.get_session") as mock_session_factory:
-        mock_session = mock_session_factory.return_value
-        mock_session.head.return_value.status_code = 200
+    with patch("app.scraper.requests.head") as mock_head:
+        mock_head.return_value.status_code = 200
         result = scraper.check_mirror("good.mirror")
         assert result == "good.mirror"
 
 
 def test_check_mirror_fail():
-    with patch("app.scraper.get_session") as mock_session_factory:
-        mock_session = mock_session_factory.return_value
-        mock_session.head.return_value.status_code = 404
+    with patch("app.scraper.requests.head") as mock_head:
+        mock_head.return_value.status_code = 404
         result = scraper.check_mirror("bad.mirror")
         assert result is None
 
 
 def test_check_mirror_exception():
-    with patch("app.scraper.get_session") as mock_session_factory:
-        mock_session = mock_session_factory.return_value
-        mock_session.head.side_effect = requests.Timeout("Timeout")
+    with patch("app.scraper.requests.head") as mock_head:
+        # 1. Timeout
+        mock_head.side_effect = requests.Timeout("Timeout")
         result = scraper.check_mirror("timeout.mirror")
         assert result is None
 
-        mock_session.head.side_effect = requests.RequestException("Error")
+        # 2. General Exception
+        mock_head.side_effect = requests.RequestException("Error")
         result = scraper.check_mirror("error.mirror")
         assert result is None
 

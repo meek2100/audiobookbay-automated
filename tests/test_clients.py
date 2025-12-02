@@ -32,13 +32,13 @@ def test_qbittorrent_add_magnet(mock_env):
 
         manager.add_magnet("magnet:?xt=urn:btih:123", "/downloads/Book")
 
-        # TEST: Verify client init call includes timeout args (Robustness check)
+        # TEST: Verify client init call
+        # Note: requests_args removed to fix compatibility issues
         MockQbClient.assert_called_with(
             host="localhost",
             port="8080",
             username="admin",
             password="admin",
-            requests_args={"timeout": 30},
         )
 
         # Verify login was called

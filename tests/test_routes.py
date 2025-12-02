@@ -205,3 +205,26 @@ def test_rate_limit_headers(client):
 
         assert "X-RateLimit-Limit" in response.headers
         assert "X-RateLimit-Remaining" in response.headers
+
+
+# --- Coverage Tests ---
+
+
+def test_send_sanitization_warning(client, caplog):
+    """
+    Test that a title that cleans to empty (like '...') triggers
+    the specific warning in app.py logic and saves to Unknown_Title.
+    """
+    with patch("app.app.extract_magnet_link") as mock_extract, patch("app.app.torrent_manager") as mock_tm:
+        mock_extract.return_value = ("magnet:?xt=urn:btih:123", None)
+
+        # Use a title that sanitizes to empty -> "Unknown_Title"
+        client.post("/send", json={"link": "http://example.com", "title": "..."})
+
+        # Check that the specific warning was logged (covered line 161)
+        assert "Title '...' was sanitized to fallback 'Unknown_Title'" in caplog.text
+
+        # Verify it sent to the fallback path
+        args, _ = mock_tm.add_magnet.call_args
+        save_path = args[1]
+        assert "Unknown_Title" in save_path
