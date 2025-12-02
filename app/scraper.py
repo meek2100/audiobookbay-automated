@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from cachetools import TTLCache, cached
 from fake_useragent import UserAgent
 from requests.adapters import HTTPAdapter
@@ -58,19 +58,10 @@ except Exception:
     ua_generator = None
 
 
-# --- OPTIMIZATION: Pre-compile Regex Patterns ---
-# All regexes updated to be robust against intervening tags (e.g., "Language: <b>English</b>")
-# The pattern (?:\s*<[^>]+>)* matches zero or more HTML tags/spaces before the target text.
-RE_LANGUAGE = re.compile(r"Language:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
-RE_POSTED = re.compile(r"Posted:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
-RE_FORMAT = re.compile(r"Format:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
-RE_BITRATE = re.compile(r"Bitrate:(?:\s*<[^>]+>)*\s*([^<]+)", re.IGNORECASE)
-# Matches "File Size: 100 MB" or "File Size: <span>100</span> MB"
-RE_FILESIZE = re.compile(r"File Size:(?:\s*<[^>]+>)*\s*([0-9.]+)(?:\s*<[^>]+>)*\s*([a-zA-Z]+)", re.IGNORECASE)
-
+# --- Regex Patterns ---
+# Only keeping regexes for unstructured text (Magnet links) or fallback
 RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
-# Matches if the string contains a tracker URL anywhere
 RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 
 
@@ -131,13 +122,6 @@ def get_session() -> Session:
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
     """
     Generates HTTP headers for scraping requests.
-
-    Args:
-        user_agent: The User-Agent string to use (if None, a random one is generated).
-        referer: The HTTP Referer header value.
-
-    Returns:
-        A dictionary of HTTP headers.
     """
     if not user_agent:
         user_agent = get_random_user_agent()
@@ -158,12 +142,6 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 def check_mirror(hostname: str) -> str | None:
     """
     Checks if a specific mirror hostname is reachable.
-
-    Args:
-        hostname: The domain name to check.
-
-    Returns:
-        The hostname if reachable, else None.
     """
     url = f"https://{hostname}/"
     session = get_session()
@@ -176,21 +154,13 @@ def check_mirror(hostname: str) -> str | None:
     return None
 
 
-# ROBUSTNESS: Explicitly typed TTLCache (requires cachetools 5+)
 mirror_cache: TTLCache = TTLCache(maxsize=1, ttl=600)
-
-# OPTIMIZATION: Cache search results for 5 minutes.
 search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 
 
 @cached(cache=mirror_cache)
 def find_best_mirror() -> str | None:
-    """
-    Finds the first reachable AudiobookBay mirror from the list.
-
-    Returns:
-        The hostname of the working mirror, or None if all fail.
-    """
+    """Finds the first reachable AudiobookBay mirror from the list."""
     logger.debug("Checking connectivity for all mirrors...")
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(ABB_FALLBACK_HOSTNAMES)) as executor:
         future_to_host = {executor.submit(check_mirror, host): host for host in ABB_FALLBACK_HOSTNAMES}
@@ -203,21 +173,46 @@ def find_best_mirror() -> str | None:
     return None
 
 
+def _get_text_after_label(container: Tag, label_text: str) -> str:
+    """
+    Robustly finds values based on a label within a BS4 container.
+    Logic: Find the text node containing 'label_text', then look at its
+    siblings (text or elements) to find the value.
+    """
+    try:
+        # Find the text string (e.g., "Format:")
+        label_node = container.find(string=re.compile(label_text))
+        if not label_node:
+            return "N/A"
+
+        # Strategy 1: The value is in the next sibling element (e.g., <span>MP3</span>)
+        next_elem = label_node.find_next_sibling()
+        if next_elem and next_elem.name == "span":
+            val = next_elem.get_text(strip=True)
+            # Special handling for File Size which might have unit in next text node
+            if "File Size" in label_text:
+                unit_node = next_elem.next_sibling
+                if unit_node and isinstance(unit_node, str):
+                    val += f" {unit_node.strip()}"
+            return val
+
+        # Strategy 2: The value is in the same text node (e.g., "Posted: 30 Nov 2025")
+        # Split by the label and take the rest
+        if ":" in label_node:
+            parts = label_node.split(":", 1)
+            if len(parts) > 1 and parts[1].strip():
+                return parts[1].strip()
+
+        return "N/A"
+    except Exception:
+        return "N/A"
+
+
 def fetch_and_parse_page(
     session: Session, hostname: str, query: str, page: int, user_agent: str
 ) -> list[dict[str, Any]]:
     """
-    Fetches a single search result page and parses it.
-
-    Args:
-        session: Active requests Session.
-        hostname: The mirror hostname.
-        query: The search query.
-        page: Page number.
-        user_agent: UA string to use.
-
-    Returns:
-        A list of dictionaries containing book details.
+    Fetches a single search result page and parses it using BS4 navigation.
     """
     sleep_time = random.uniform(1.0, 3.0)
     time.sleep(sleep_time)
@@ -256,46 +251,26 @@ def fetch_and_parse_page(
                 else:
                     cover = "/static/images/default_cover.jpg"
 
-                post_info = post.select_one(".postInfo")
+                # --- Robust Parsing Logic ---
                 language = "N/A"
+                post_info = post.select_one(".postInfo")
                 if post_info:
-                    try:
-                        language_match = RE_LANGUAGE.search(str(post_info))
-                        if language_match:
-                            language = language_match.group(1).strip()
-                    except Exception:
-                        pass
+                    # Language is usually a text node like "Language: English"
+                    # We iterate text parts to find it
+                    info_text = post_info.get_text(" ", strip=True)
+                    # Regex on the cleaned text content is safer than HTML regex
+                    lang_match = re.search(r"Language:\s*(\w+)", info_text)
+                    if lang_match:
+                        language = lang_match.group(1)
 
                 details_paragraph = post.select_one(".postContent p[style*='text-align:center']")
                 post_date, book_format, bitrate, file_size = "N/A", "N/A", "N/A", "N/A"
 
                 if details_paragraph:
-                    details_html = str(details_paragraph)
-                    try:
-                        match = RE_POSTED.search(details_html)
-                        if match:
-                            post_date = match.group(1).strip()
-                    except Exception:
-                        pass
-                    try:
-                        match = RE_FORMAT.search(details_html)
-                        if match:
-                            book_format = match.group(1).strip()
-                    except Exception:
-                        pass
-                    try:
-                        match = RE_BITRATE.search(details_html)
-                        if match:
-                            bitrate = match.group(1).strip()
-                    except Exception:
-                        pass
-                    try:
-                        match = RE_FILESIZE.search(details_html)
-                        if match:
-                            # Reconstruct "106.91 MB" from groups
-                            file_size = f"{match.group(1).strip()} {match.group(2).strip()}"
-                    except Exception:
-                        pass
+                    post_date = _get_text_after_label(details_paragraph, "Posted:")
+                    book_format = _get_text_after_label(details_paragraph, "Format:")
+                    bitrate = _get_text_after_label(details_paragraph, "Bitrate:")
+                    file_size = _get_text_after_label(details_paragraph, "File Size:")
 
                 page_results.append(
                     {
@@ -352,7 +327,6 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
                 except Exception as exc:
                     logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}")
                     mirror_cache.clear()
-                    # Also clear search cache if we hit a network or logic error
                     search_cache.clear()
     finally:
         session.close()
@@ -363,9 +337,6 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
     Scrapes the details page to find the info hash and generates a magnet link.
-
-    Returns:
-        A tuple of (magnet_link, error_message).
     """
     if not details_url:
         return None, "No URL provided."
@@ -407,8 +378,6 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             logger.error(msg)
             return None, msg
 
-        # ROBUSTNESS: Uses regex matching to find cells containing "udp://" or "http://"
-        # even if surrounding whitespace exists.
         tracker_rows = soup.find_all("td", string=RE_TRACKERS)
         trackers = [row.text.strip() for row in tracker_rows]
 

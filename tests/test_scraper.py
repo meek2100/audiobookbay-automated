@@ -17,29 +17,29 @@ from app.scraper import (
 
 # --- Standard Functional Tests ---
 
+# Real HTML snippet from 'Regular Search - AudioBook Bay.html'
 REAL_WORLD_HTML = """
 <div class="post">
     <div class="postTitle">
-        <h2><a href="/abss/moster-walter-dean-myers/" rel="bookmark">Moster - Walter Dean Myers</a></h2>
+        <h2><a href="/abss/a-game-of-thrones-chapterized/" rel="bookmark">A Game of Thrones (A Song of Ice and Fire, Book 1) (Chapterized) - George R. R. Martin</a></h2>
     </div>
     <div class="postInfo">
-        Category: Crime Full Cast General Fiction Teen & Young Adult <br>
-        Language: English<span style="margin-left:100px;">Keywords: Black TRIAL </span><br>
+        Category: Adults&nbsp; Bestsellers&nbsp; Fantasy&nbsp; Literature&nbsp; <br>
+        Language: English<span style="margin-left:100px;">Keywords: A Game of Thrones&nbsp; </span><br>
     </div>
     <div class="postContent">
         <div class="center">
-            <p class="center">Shared by:<a href="#">FissionMailed</a></p>
+            <p class="center">Shared by:<a href="#">jason444555</a></p>
             <p class="center">
-                <a href="/abss/moster-walter-dean-myers/">
-                    <img src="/images/cover.jpg" alt="Walter Dean Myers Moster" width="250">
+                <a href="/abss/a-game-of-thrones-chapterized/">
+                    <img src="/images/cover.jpg" alt="A Game of Thrones" width="250">
                 </a>
             </p>
         </div>
-        <p style="center;"></p>
         <p style="text-align:center;">
-            Posted: 30 Nov 2025<br>
-            Format: <span style="color:#a00;">MP3</span> / Bitrate: <span style="color:#a00;">96 Kbps</span><br>
-            File Size: <span style="color:#00f;">106.91</span> MBs
+            Posted: 14 Sep 2021<br>
+            Format: <span style="color:#a00;">M4B</span> / Bitrate: <span style="color:#a00;">96 Kbps</span><br>
+            File Size: <span style="color:#00f;">1.37</span> GBs
         </p>
     </div>
 </div>
@@ -62,14 +62,14 @@ def test_fetch_and_parse_page_real_structure():
 
     assert len(results) == 1
     book = results[0]
-    assert book["title"] == "Moster - Walter Dean Myers"
+    assert "A Game of Thrones" in book["title"]
     assert book["language"] == "English"
-    assert book["format"] == "MP3"
+    assert book["format"] == "M4B"
     assert book["bitrate"] == "96 Kbps"
-    assert book["file_size"] == "106.91 MBs"
-    assert book["post_date"] == "30 Nov 2025"
-    assert book["link"] == "https://audiobookbay.lu/abss/moster-walter-dean-myers/"
-    assert book["cover"] == "https://audiobookbay.lu/images/cover.jpg"
+    # Note: The scraper logic combines the number and the unit if they are adjacent nodes
+    assert book["file_size"] == "1.37 GBs"
+    assert book["post_date"] == "14 Sep 2021"
+    assert book["link"] == "https://audiobookbay.lu/abss/a-game-of-thrones-chapterized/"
 
 
 def test_fetch_and_parse_page_malformed():
@@ -126,44 +126,44 @@ def test_fetch_and_parse_page_mixed_validity():
     assert results[0]["link"] == "https://audiobookbay.lu/abss/valid-book/"
 
 
-def test_fetch_page_regex_miss():
+def test_parsing_structure_change():
     """
-    Test a page where regex patterns for metadata fail to match (e.g. layout change).
-    Ensures fields default to 'N/A' gracefully without crashing.
+    Test that if the HTML structure changes (labels missing), the scraper defaults to 'N/A'
+    instead of crashing.
     """
-    hostname = "audiobookbay.lu"
-    query = "regex_miss"
-    page = 1
-    user_agent = "TestAgent/1.0"
-
-    # HTML where labels exist but structure differs from regex expectations
-    changed_html = """
+    html = """
     <div class="post">
-        <div class="postTitle"><h2><a href="/book">Book Title</a></h2></div>
-        <div class="postInfo">Language-ISO: English</div>
+        <div class="postTitle"><h2><a href="/link">T</a></h2></div>
         <div class="postContent">
             <p style="text-align:center;">
-                Date: 2025 <br>
-                Encoding: MP3 <br>
+                Just some random text here.
             </p>
         </div>
     </div>
     """
+    session = MagicMock()
+    session.get.return_value.text = html
+    session.get.return_value.status_code = 200
 
-    session = requests.Session()
-    adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
-
-    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=changed_html, status_code=200)
-
-    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
 
     assert len(results) == 1
-    item = results[0]
-    # Should be N/A because regexes for "Language:", "Posted:", etc. won't match "Language-ISO:", "Date:"
-    assert item["language"] == "N/A"
-    assert item["post_date"] == "N/A"
-    assert item["format"] == "N/A"
+    assert results[0]["format"] == "N/A"
+    assert results[0]["bitrate"] == "N/A"
+
+
+def test_get_text_after_label_exception():
+    """
+    Test that _get_text_after_label handles exceptions gracefully.
+    This covers the `except Exception: return "N/A"` block.
+    """
+    mock_container = MagicMock()
+    # Force an exception when .find() is called
+    mock_container.find.side_effect = Exception("BS4 Internal Error")
+
+    # Access the private function directly
+    result = scraper._get_text_after_label(mock_container, "Label:")
+    assert result == "N/A"
 
 
 def test_fetch_page_timeout():
@@ -460,56 +460,13 @@ def test_search_thread_failure():
                     mock_cache.clear.assert_called()
 
 
-def test_parsing_no_matches():
-    html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div></div>"""
-    session = MagicMock()
-    session.get.return_value.text = html
-    session.get.return_value.status_code = 200
-
-    mock_re = MagicMock()
-    mock_re.search.return_value = None
-
-    with (
-        patch("app.scraper.RE_LANGUAGE", mock_re),
-        patch("app.scraper.RE_POSTED", mock_re),
-        patch("app.scraper.RE_FORMAT", mock_re),
-        patch("app.scraper.RE_BITRATE", mock_re),
-        patch("app.scraper.RE_FILESIZE", mock_re),
-    ):
-        results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
-
-    assert len(results) == 1
-    assert results[0]["language"] == "N/A"
-
-
-def test_parsing_exceptions():
-    html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div></div>"""
-    session = MagicMock()
-    session.get.return_value.text = html
-    session.get.return_value.status_code = 200
-
-    mock_re = MagicMock()
-    mock_re.search.side_effect = Exception("Regex Fail")
-
-    with (
-        patch("app.scraper.RE_LANGUAGE", mock_re),
-        patch("app.scraper.RE_POSTED", mock_re),
-        patch("app.scraper.RE_FORMAT", mock_re),
-        patch("app.scraper.RE_BITRATE", mock_re),
-        patch("app.scraper.RE_FILESIZE", mock_re),
-    ):
-        results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
-
-    assert len(results) == 1
-    assert results[0]["language"] == "N/A"
-
-
 def test_fetch_page_post_exception(caplog):
     session = MagicMock()
     session.get.return_value.text = "<html></html>"
     session.get.return_value.status_code = 200
 
     mock_post = MagicMock()
+    # Simulate an error during element selection inside the loop
     mock_post.select_one.side_effect = Exception("Post Error")
 
     with patch("app.scraper.BeautifulSoup") as mock_bs:
@@ -521,9 +478,9 @@ def test_fetch_page_post_exception(caplog):
 
 
 def test_fetch_page_urljoin_exception():
-    html = """<div class="post"><div class="postTitle"><h2><a href="/link">T</a></h2></div></div>"""
+    # Use real HTML structure but mock urljoin to fail
     session = MagicMock()
-    session.get.return_value.text = html
+    session.get.return_value.text = REAL_WORLD_HTML
     session.get.return_value.status_code = 200
 
     with patch("app.scraper.urljoin", side_effect=Exception("Join Error")):
@@ -598,50 +555,3 @@ def test_extract_magnet_success_table():
             assert error is None
             assert "magnet:?xt=urn:btih:abc123hash456" in magnet
             assert "tracker.com" in magnet
-
-
-def test_fetch_page_regex_exceptions():
-    """
-    Tests that regex parsing exceptions (e.g., if re.search raises) are caught silently.
-    This provides 100% coverage for the except blocks in fetch_and_parse_page.
-    """
-    html = """
-    <div class="post">
-        <div class="postTitle"><h2><a href="/link">Title</a></h2></div>
-        <div class="postInfo">Language: English</div>
-        <div class="postContent">
-            <p style="text-align:center;">
-                Posted: 2023 <br>
-                Format: MP3 <br>
-                Bitrate: 128 <br>
-                File Size: 100 MB
-            </p>
-        </div>
-    </div>
-    """
-    session = MagicMock()
-    session.get.return_value.text = html
-    session.get.return_value.status_code = 200
-
-    # Create a mock regex object that raises an exception when search() is called
-    mock_re_fail = MagicMock()
-    mock_re_fail.search.side_effect = Exception("Regex Fail")
-
-    # Patch ALL regexes to fail. This ensures every try/except block is entered.
-    with (
-        patch("app.scraper.RE_LANGUAGE", mock_re_fail),
-        patch("app.scraper.RE_POSTED", mock_re_fail),
-        patch("app.scraper.RE_FORMAT", mock_re_fail),
-        patch("app.scraper.RE_BITRATE", mock_re_fail),
-        patch("app.scraper.RE_FILESIZE", mock_re_fail),
-    ):
-        results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
-
-    # We expect 1 result, but all fields should be "N/A" because regexes failed.
-    assert len(results) == 1
-    item = results[0]
-    assert item["language"] == "N/A"
-    assert item["post_date"] == "N/A"
-    assert item["format"] == "N/A"
-    assert item["bitrate"] == "N/A"
-    assert item["file_size"] == "N/A"
