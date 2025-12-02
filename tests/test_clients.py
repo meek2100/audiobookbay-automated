@@ -206,6 +206,23 @@ def test_remove_torrent_transmission_numeric_id(mock_env, monkeypatch):
         mock_instance.remove_torrent.assert_called_with(ids=[12345], delete_data=False)
 
 
+def test_remove_torrent_transmission_int_conversion_failure(mock_env, monkeypatch):
+    """
+    Test removing torrent for Transmission when ID is not an integer.
+    Ensures the ValueError catch block is executed.
+    """
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
+    with patch("app.clients.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+        manager = TorrentManager()
+
+        # "not_an_int" triggers the ValueError in int(), falling back to tid="not_an_int"
+        manager.remove_torrent("not_an_int")
+
+        # Assert the call uses the string ID, proving fallback worked
+        mock_instance.remove_torrent.assert_called_with(ids=["not_an_int"], delete_data=False)
+
+
 def test_remove_torrent_deluge(mock_env, monkeypatch):
     """Test removing torrent for Deluge."""
     monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")

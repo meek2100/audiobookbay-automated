@@ -16,5 +16,13 @@ def test_sanitize_windows_reserved():
 
 
 def test_sanitize_empty():
-    assert sanitize_title("") == ""
-    assert sanitize_title(None) == ""
+    """Test that explicit empty/None inputs fallback to Unknown_Title."""
+    assert sanitize_title("") == "Unknown_Title"
+    assert sanitize_title(None) == "Unknown_Title"
+
+
+def test_sanitize_strips_to_empty():
+    """Test that a title composed only of illegal chars falls back safely."""
+    # A title like "..." cleans to "" then strips to "", so we need a fallback.
+    assert sanitize_title("...") == "Unknown_Title"
+    assert sanitize_title("???") == "Unknown_Title"

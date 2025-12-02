@@ -22,8 +22,8 @@ export LISTEN_PORT="${LISTEN_PORT:-5078}"
 # Worker count is hardcoded to 1 to ensure the in-memory rate limiter works correctly.
 export THREADS="${THREADS:-8}"
 
-# Configure Gunicorn Timeout (Default 120s to handle slow scrapes/sleeps)
-export TIMEOUT="${TIMEOUT:-120}"
+# Configure Gunicorn Timeout (Default 60s to handle slow scrapes/sleeps, reduced from 120s)
+export TIMEOUT="${TIMEOUT:-60}"
 
 # LOGGING
 # Ensure LOG_LEVEL is lowercase for Gunicorn config (e.g. "INFO" -> "info")

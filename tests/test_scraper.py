@@ -579,3 +579,28 @@ def test_extract_magnet_success_table():
             assert error is None
             assert "magnet:?xt=urn:btih:abc123hash456" in magnet
             assert "tracker.com" in magnet
+
+
+def test_custom_mirrors_env_edge_cases(monkeypatch):
+    """Test that an empty or comma-only env var doesn't break the mirror list."""
+    monkeypatch.setenv("ABB_MIRRORS_LIST", ", ,  ,")
+    importlib.reload(scraper)
+    # It should not have added empty strings
+    assert "" not in scraper.ABB_FALLBACK_HOSTNAMES
+    assert " " not in scraper.ABB_FALLBACK_HOSTNAMES
+    # Should still contain defaults
+    assert "audiobookbay.lu" in scraper.ABB_FALLBACK_HOSTNAMES
+
+
+def test_page_limit_invalid(monkeypatch, caplog):
+    """
+    Test that invalid PAGE_LIMIT triggers the ValueError catch block
+    and logs a warning.
+    """
+    monkeypatch.setenv("PAGE_LIMIT", "invalid_int")
+
+    with caplog.at_level(logging.WARNING):
+        importlib.reload(scraper)
+
+    assert scraper.PAGE_LIMIT == 3
+    assert "Invalid PAGE_LIMIT in environment" in caplog.text

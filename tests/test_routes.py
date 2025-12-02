@@ -13,6 +13,8 @@ def test_health_check_route(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json == {"status": "ok"}
+    # Enhanced check: Ensure it's actually JSON
+    assert response.content_type == "application/json"
 
 
 def test_status_page(client):

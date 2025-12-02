@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
@@ -117,7 +117,7 @@ class TorrentManager:
     @staticmethod
     def _format_size(size_bytes: int | float | str | None) -> str:
         """
-        Formats bytes into human-readable B, KB, MB, GB, TB.
+        Formats bytes into human-readable B, KB, MB, GB, TB, PB.
 
         Args:
             size_bytes: The size in bytes.
@@ -133,6 +133,7 @@ class TorrentManager:
                 if size < 1024.0:
                     return f"{size:.2f} {unit}"
                 size /= 1024.0
+            # If we exhausted the loop, we are in PB territory (or higher)
             return f"{size:.2f} PB"
         except (ValueError, TypeError):
             return "N/A"
@@ -161,24 +162,27 @@ class TorrentManager:
         logger.info(f"Adding torrent to {self.client_type} at {save_path}")
 
         if self.client_type == "qbittorrent":
-            # Type ignore because qBittorrent client types are dynamic
+            # Explicit cast for type safety
+            qb_client = cast(QbClient, client)
             # ROBUSTNESS: Capture return value and warn if it indicates failure
-            result = client.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)  # type: ignore
+            result = qb_client.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)
             if isinstance(result, str) and result.lower() != "ok.":
                 logger.warning(f"qBittorrent add returned unexpected response: {result}")
 
         elif self.client_type == "transmission":
-            client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])  # type: ignore
+            tx_client = cast(TxClient, client)
+            tx_client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])
 
         elif self.client_type == "delugeweb":
+            deluge_client = cast(DelugeWebClient, client)
             try:
-                client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)  # type: ignore
+                deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
             except Exception as e:
                 # ROBUSTNESS: Handle Deluge missing label plugin or other errors gracefully
                 if "label" in str(e).lower():
                     logger.warning("Deluge Label plugin likely missing. Adding torrent without category.")
                     try:
-                        client.add_torrent_magnet(magnet_link, save_directory=save_path)  # type: ignore
+                        deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path)
                     except Exception as e2:
                         logger.error(f"Deluge fallback failed: {e2}")
                         raise e2
@@ -200,9 +204,11 @@ class TorrentManager:
         logger.info(f"Removing torrent {torrent_id} from {self.client_type}")
 
         if self.client_type == "qbittorrent":
-            client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)  # type: ignore
+            qb_client = cast(QbClient, client)
+            qb_client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)
 
         elif self.client_type == "transmission":
+            tx_client = cast(TxClient, client)
             # Transmission expects IDs as integers usually, but hashes work in some versions.
             # safe conversion if it's digit, else pass as string (hash)
             tid: int | str
@@ -210,10 +216,11 @@ class TorrentManager:
                 tid = int(torrent_id)
             except ValueError:
                 tid = torrent_id
-            client.remove_torrent(ids=[tid], delete_data=False)  # type: ignore
+            tx_client.remove_torrent(ids=[tid], delete_data=False)
 
         elif self.client_type == "delugeweb":
-            client.remove_torrent(torrent_id, remove_data=False)  # type: ignore
+            deluge_client = cast(DelugeWebClient, client)
+            deluge_client.remove_torrent(torrent_id, remove_data=False)
 
     def get_status(self) -> list[dict[str, Any]]:
         """
@@ -238,7 +245,8 @@ class TorrentManager:
         results: list[dict[str, Any]] = []
 
         if self.client_type == "transmission":
-            torrents = client.get_torrents()  # type: ignore
+            tx_client = cast(TxClient, client)
+            torrents = tx_client.get_torrents()
             for torrent in torrents:
                 results.append(
                     {
@@ -251,7 +259,8 @@ class TorrentManager:
                 )
 
         elif self.client_type == "qbittorrent":
-            torrents = client.torrents_info(category=self.category)  # type: ignore
+            qb_client = cast(QbClient, client)
+            torrents = qb_client.torrents_info(category=self.category)
             for torrent in torrents:
                 results.append(
                     {
@@ -264,7 +273,8 @@ class TorrentManager:
                 )
 
         elif self.client_type == "delugeweb":
-            torrents = client.get_torrents_status(  # type: ignore
+            deluge_client = cast(DelugeWebClient, client)
+            torrents = deluge_client.get_torrents_status(
                 filter_dict={"label": self.category},
                 keys=["name", "state", "progress", "total_size"],
             )
@@ -276,6 +286,7 @@ class TorrentManager:
                             "name": torrent["name"],
                             "progress": round(torrent["progress"], 2),
                             "state": torrent["state"],
+                            # FIX: Use dictionary access, not attribute access
                             "size": self._format_size(torrent["total_size"]),
                         }
                     )

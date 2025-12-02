@@ -19,7 +19,12 @@ from urllib3.util.retry import Retry
 logger = logging.getLogger(__name__)
 
 # Configuration
-PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", "3"))
+try:
+    PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", "3").strip())
+except ValueError:
+    logger.warning("Invalid PAGE_LIMIT in environment. Defaulting to 3.")
+    PAGE_LIMIT = 3
+
 DEFAULT_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
 
 ABB_FALLBACK_HOSTNAMES: list[str] = [
@@ -39,6 +44,7 @@ ABB_FALLBACK_HOSTNAMES: list[str] = [
 # Allow users to add mirrors via env var
 extra_mirrors = os.getenv("ABB_MIRRORS_LIST", "")
 if extra_mirrors:
+    # Robustly handle trailing commas or empty strings in the list
     ABB_FALLBACK_HOSTNAMES.extend([m.strip() for m in extra_mirrors.split(",") if m.strip()])
 
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
@@ -141,7 +147,7 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 
 def check_mirror(hostname: str) -> str | None:
     """
-    Checks if a specific mirror hostname is reachable.
+    Performs a HEAD request to the mirror to validate reachability without downloading content.
     """
     url = f"https://{hostname}/"
     session = get_session()
