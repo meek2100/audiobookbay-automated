@@ -340,6 +340,26 @@ def test_get_status_deluge(monkeypatch):
         assert results[0]["name"] == "D Book"
 
 
+def test_get_status_deluge_empty_result(monkeypatch):
+    """Test handling of Deluge returning a None result payload."""
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        # Simulate successful connection but empty result (e.g. API error handled by library)
+        mock_response = MagicMock()
+        mock_response.result = None
+        mock_instance.get_torrents_status.return_value = mock_response
+
+        manager = TorrentManager()
+        with patch("app.clients.logger") as mock_logger:
+            results = manager.get_status()
+
+        assert results == []
+        # Verify the warning was logged
+        args, _ = mock_logger.warning.call_args
+        assert "Deluge returned empty or invalid" in args[0]
+
+
 def test_get_status_reconnect(monkeypatch):
     """Test that get_status attempts to reconnect if the first call fails."""
     monkeypatch.setenv("DOWNLOAD_CLIENT", "qbittorrent")

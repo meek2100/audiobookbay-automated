@@ -31,6 +31,7 @@ function parseFileSizeToMB(sizeString) {
 
     if (isNaN(size)) return null;
 
+    if (unit.startsWith("PB")) return size * 1024 * 1024 * 1024;
     if (unit.startsWith("TB")) return size * 1024 * 1024;
     if (unit.startsWith("GB")) return size * 1024;
     if (unit.startsWith("KB")) return size / 1024;
