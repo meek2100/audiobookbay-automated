@@ -82,30 +82,7 @@ img.cover {
     transition: background-color 0.3s;
 }
 
-/* Loading spinner styles */
-.loading-spinner {
-    display: none; /* Hidden by default */
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 20px;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid rgba(255, 255, 255, 0.3);
-    border-top: 5px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.loading-spinner p {
-    margin-top: 10px;
-    font-size: 1rem;
-    color: white;
-}
-
+/* Button Spinner (Used inside the Search Button) */
 .button-spinner {
     display: inline-block;
     vertical-align: middle;

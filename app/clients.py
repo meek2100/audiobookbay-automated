@@ -284,6 +284,7 @@ class TorrentManager:
                 filter_dict={"label": self.category},
                 keys=["name", "state", "progress", "total_size"],
             )
+            # ROBUSTNESS: Check if result is not None before iterating
             if torrents.result:
                 # STRICT TYPING: Cast result to dict to avoid type errors
                 results_dict = cast(dict[str, Any], torrents.result)
@@ -297,5 +298,7 @@ class TorrentManager:
                             "size": self._format_size(torrent["total_size"]),
                         }
                     )
+            else:
+                logger.warning("Deluge returned empty or invalid result payload.")
 
         return results

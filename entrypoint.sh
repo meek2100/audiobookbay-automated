@@ -30,6 +30,9 @@ export TIMEOUT="${TIMEOUT:-60}"
 # Gunicorn is picky about lowercase log levels.
 export LOG_LEVEL=$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')
 
+# SAFETY: Explicitly default Flask Debug to 0 for production stability
+export FLASK_DEBUG="${FLASK_DEBUG:-0}"
+
 echo "Starting Gunicorn with 1 worker and $THREADS threads at log level $LOG_LEVEL."
 
 # Run Gunicorn

@@ -516,20 +516,47 @@ def test_search_thread_failure():
 
 
 def test_fetch_page_post_exception(caplog):
+    """
+    Test that an exception in one post doesn't crash the whole page parse.
+    Verifies that the loop continues to the next post.
+    """
     session = MagicMock()
     session.get.return_value.text = "<html></html>"
     session.get.return_value.status_code = 200
 
-    mock_post = MagicMock()
-    # Simulate an error during element selection inside the loop
-    mock_post.select_one.side_effect = Exception("Post Error")
+    # Bad Post: Raises Exception on access
+    mock_post_bad = MagicMock()
+    mock_post_bad.select_one.side_effect = Exception("Post Error")
+
+    # Good Post: Returns Valid Data
+    mock_post_good = MagicMock()
+    mock_title = MagicMock()
+    mock_title.text = "Good Book"
+    mock_title.__getitem__.return_value = "/good-link"
+
+    # Configure select_one to return the title for the first call
+    # and None for subsequent calls (cover, info, etc), triggering N/A defaults
+    def select_one_side_effect(selector):
+        if "postTitle" in selector:
+            return mock_title
+        return None
+
+    mock_post_good.select_one.side_effect = select_one_side_effect
 
     with patch("app.scraper.BeautifulSoup") as mock_bs:
-        mock_bs.return_value.select.return_value = [mock_post]
-        with caplog.at_level(logging.ERROR):
-            results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
-            assert results == []
-            assert "Could not process a post" in caplog.text
+        # Return list containing both bad and good posts
+        mock_bs.return_value.select.return_value = [mock_post_bad, mock_post_good]
+
+        with patch("app.scraper.urljoin", return_value="http://base/good-link"):
+            with caplog.at_level(logging.ERROR):
+                results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+
+                # Assert we got 1 result (the good one)
+                assert len(results) == 1
+                assert results[0]["title"] == "Good Book"
+
+                # Assert the bad one was logged
+                assert "Could not process a post" in caplog.text
 
 
 def test_fetch_page_urljoin_exception():

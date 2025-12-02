@@ -193,7 +193,8 @@ def _get_text_after_label(container: Tag, label_text: str) -> str:
     """
     Robustly finds values based on a label within a BS4 container.
     Logic: Find the text node containing 'label_text', then look at its
-    siblings (text or elements) to find the value.
+    siblings to find the value. Checks next sibling element (span)
+    or parses the current text node for the label.
     """
     try:
         # Find the text string (e.g., "Format:")
