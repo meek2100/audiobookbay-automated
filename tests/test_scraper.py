@@ -166,6 +166,30 @@ def test_get_text_after_label_exception():
     assert result == "N/A"
 
 
+def test_get_text_after_label_fallback():
+    """
+    Test that _get_text_after_label returns 'N/A' if the label exists but no value follows.
+    This covers the return 'N/A' at the end of the try block.
+    """
+
+    # Create a class that acts like a string AND has the BS4 method
+    class FakeNavigableString(str):
+        def find_next_sibling(self):
+            return None
+
+    mock_container = MagicMock()
+
+    # We simulate finding "Format:"
+    # This string has the label, but splitting by ":" gives ["Format", ""],
+    # so the value part is empty, causing the function to fall through to "N/A".
+    mock_label_node = FakeNavigableString("Format:")
+
+    mock_container.find.return_value = mock_label_node
+
+    result = scraper._get_text_after_label(mock_container, "Format:")
+    assert result == "N/A"
+
+
 def test_fetch_page_timeout():
     """Test that connection timeouts are raised (to allow cache invalidation)."""
     hostname = "audiobookbay.lu"
