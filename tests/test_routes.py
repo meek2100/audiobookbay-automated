@@ -228,3 +228,14 @@ def test_send_sanitization_warning(client, caplog):
         args, _ = mock_tm.add_magnet.call_args
         save_path = args[1]
         assert "Unknown_Title" in save_path
+
+
+def test_search_whitespace_query(client):
+    """Test that a whitespace-only query renders the search page without scraping."""
+    with patch("app.app.search_audiobookbay") as mock_search:
+        response = client.post("/", data={"query": "   "})
+        assert response.status_code == 200
+        # Should not call search
+        mock_search.assert_not_called()
+        # Should still render page (check for title)
+        assert b"Search AudiobookBay" in response.data

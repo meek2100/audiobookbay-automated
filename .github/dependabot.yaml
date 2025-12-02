@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    # FIX: Point to root where pyproject.toml lives (was "/app")
+    # FIX: Point to root where pyproject.toml lives
     directory: "/"
 
     # Run weekly (e.g., Monday mornings)

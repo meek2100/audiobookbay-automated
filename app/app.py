@@ -87,16 +87,20 @@ LIBRARY_RELOAD_ENABLED = all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB])
 
 torrent_manager = TorrentManager()
 
-try:
-    if not IS_TESTING:
-        torrent_manager.verify_credentials()
-except Exception as e:
-    logger.error(f"STARTUP WARNING: Could not connect to torrent client. Details: {e}", exc_info=True)
+# STARTUP CHECK: Robustly check client connection without swallowing errors
+if not IS_TESTING:
+    if not torrent_manager.verify_credentials():
+        logger.warning("STARTUP WARNING: Torrent client is unreachable. App will start, but downloads will fail.")
 
 
 @app.context_processor
 def inject_nav_link() -> dict[str, Any]:
-    """Injects navigation links and capability flags into templates."""
+    """
+    Injects global navigation variables into all templates.
+
+    Returns:
+        dict: Contains 'nav_link_name', 'nav_link_url', and 'library_reload_enabled'.
+    """
     # Optimization: Use pre-loaded global variables
     return {
         "nav_link_name": NAV_LINK_NAME,

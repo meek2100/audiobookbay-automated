@@ -80,7 +80,10 @@ def get_random_user_agent() -> str:
 
 
 def load_trackers() -> list[str]:
-    """Loads trackers from env var, local JSON, or defaults."""
+    """
+    Loads trackers from env var, local JSON, or defaults.
+    Note: trackers.json is an OPTIONAL user-provided override file.
+    """
     trackers_env = os.getenv("MAGNET_TRACKERS")
     if trackers_env:
         return [t.strip() for t in trackers_env.split(",") if t.strip()]

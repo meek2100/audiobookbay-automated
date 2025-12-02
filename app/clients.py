@@ -278,15 +278,16 @@ class TorrentManager:
                 filter_dict={"label": self.category},
                 keys=["name", "state", "progress", "total_size"],
             )
-            if torrents.result:  # type: ignore
-                for key, torrent in torrents.result.items():  # type: ignore
+            if torrents.result:
+                # STRICT TYPING: Cast result to dict to avoid type errors
+                results_dict = cast(dict[str, Any], torrents.result)
+                for key, torrent in results_dict.items():
                     results.append(
                         {
                             "id": key,
                             "name": torrent["name"],
                             "progress": round(torrent["progress"], 2),
                             "state": torrent["state"],
-                            # FIX: Use dictionary access, not attribute access
                             "size": self._format_size(torrent["total_size"]),
                         }
                     )
