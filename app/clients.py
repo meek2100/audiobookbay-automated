@@ -76,7 +76,7 @@ class TorrentManager:
                         timeout=30,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to connect to Transmission: {e}")
+                    logger.error(f"Failed to connect to Transmission: {e}", exc_info=True)
                     # Allow app to start even if client is down; commands will fail later.
                     return None
 
@@ -86,7 +86,7 @@ class TorrentManager:
                     dw.login()
                     self._client = dw
                 except Exception as e:
-                    logger.error(f"Failed to connect to Deluge: {e}")
+                    logger.error(f"Failed to connect to Deluge: {e}", exc_info=True)
                     # Allow app to start even if client is down; commands will fail later.
                     return None
 
@@ -94,7 +94,7 @@ class TorrentManager:
                 raise ValueError(f"Unsupported download client configured: {self.client_type}")
 
         except Exception as e:
-            logger.error(f"Error initializing torrent client: {e}")
+            logger.error(f"Error initializing torrent client: {e}", exc_info=True)
             self._client = None
 
         return self._client
@@ -149,7 +149,7 @@ class TorrentManager:
         try:
             self._add_magnet_logic(magnet_link, save_path)
         except Exception as e:
-            logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect and retry...")
+            logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect and retry...", exc_info=True)
             self._client = None
             self._add_magnet_logic(magnet_link, save_path)
 
@@ -184,7 +184,7 @@ class TorrentManager:
                     try:
                         deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path)
                     except Exception as e2:
-                        logger.error(f"Deluge fallback failed: {e2}")
+                        logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                         raise e2
                 else:
                     raise e
@@ -216,6 +216,7 @@ class TorrentManager:
                 tid = int(torrent_id)
             except ValueError:
                 tid = torrent_id
+                logger.debug(f"Transmission: ID {torrent_id} is not an integer, using as string hash.")
             tx_client.remove_torrent(ids=[tid], delete_data=False)
 
         elif self.client_type == "delugeweb":
@@ -232,7 +233,7 @@ class TorrentManager:
         try:
             return self._get_status_logic()
         except Exception as e:
-            logger.warning(f"Failed to get status ({e}). Reconnecting...")
+            logger.warning(f"Failed to get status ({e}). Reconnecting...", exc_info=True)
             self._client = None
             return self._get_status_logic()
 

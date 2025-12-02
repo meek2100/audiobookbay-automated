@@ -84,7 +84,7 @@ try:
     if not IS_TESTING:
         torrent_manager.verify_credentials()
 except Exception as e:
-    logger.error(f"STARTUP WARNING: Could not connect to torrent client. Details: {e}")
+    logger.error(f"STARTUP WARNING: Could not connect to torrent client. Details: {e}", exc_info=True)
 
 
 @app.context_processor
@@ -115,12 +115,13 @@ def search() -> str:
         if request.method == "POST":
             query = request.form.get("query", "").strip()
             if query:
+                logger.info(f"Received search query: '{query}'")
                 books = search_audiobookbay(query)
 
         return render_template("search.html", books=books, query=query)
 
     except Exception as e:
-        logger.error(f"Failed to search: {e}")
+        logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
         return render_template("search.html", books=books, error=error_message, query=query)
 
@@ -137,13 +138,21 @@ def send() -> Response:
         logger.warning("Invalid send request received: missing link or title")
         return jsonify({"message": "Invalid request"}), 400
 
+    logger.info(f"Received download request for '{title}'")
+
     try:
         magnet_link, error = extract_magnet_link(details_url)
 
         if not magnet_link:
+            logger.error(f"Failed to extract magnet link for '{title}': {error}")
             return jsonify({"message": f"Download failed: {error}"}), 500
 
         safe_title = sanitize_title(title)
+
+        if safe_title == "Unknown_Title":
+            logger.warning(
+                f"Title '{title}' was sanitized to fallback 'Unknown_Title'. Files will be saved in a generic folder."
+            )
 
         if SAVE_PATH_BASE:
             save_path = os.path.join(SAVE_PATH_BASE, safe_title)
@@ -159,7 +168,7 @@ def send() -> Response:
             }
         )
     except Exception as e:
-        logger.error(f"Send failed: {e}")
+        logger.error(f"Send failed: {e}", exc_info=True)
         return jsonify({"message": str(e)}), 500
 
 
@@ -176,7 +185,7 @@ def delete_torrent() -> Response:
         torrent_manager.remove_torrent(torrent_id)
         return jsonify({"message": "Torrent removed successfully."})
     except Exception as e:
-        logger.error(f"Failed to remove torrent: {e}")
+        logger.error(f"Failed to remove torrent: {e}", exc_info=True)
         return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
 
 
@@ -191,12 +200,13 @@ def reload_library() -> Response:
         headers = {"Authorization": f"Bearer {ABS_KEY}"}
         response = requests.post(url, headers=headers, timeout=10)
         response.raise_for_status()
+        logger.info("Audiobookshelf library scan initiated successfully.")
         return jsonify({"message": "Audiobookshelf library scan initiated."})
     except requests.exceptions.RequestException as e:
         error_message = str(e)
         if e.response is not None:
             error_message = f"{e.response.status_code} {e.response.reason}: {e.response.text}"
-        logger.error(f"ABS Scan Failed: {error_message}")
+        logger.error(f"ABS Scan Failed: {error_message}", exc_info=True)
         return jsonify({"message": f"Failed to trigger library scan: {error_message}"}), 500
 
 
@@ -205,9 +215,10 @@ def status() -> str:
     """Renders the current status of downloads."""
     try:
         torrent_list = torrent_manager.get_status()
+        logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
         return render_template("status.html", torrents=torrent_list)
     except Exception as e:
-        logger.error(f"Failed to fetch torrent status: {e}")
+        logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
         return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")
 
 

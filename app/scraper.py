@@ -60,7 +60,7 @@ FALLBACK_USER_AGENTS = [
 try:
     ua_generator: UserAgent | None = UserAgent(fallback=FALLBACK_USER_AGENTS[0])
 except Exception:
-    logger.warning("Failed to initialize fake_useragent, using hardcoded list.")
+    logger.warning("Failed to initialize fake_useragent, using hardcoded list.", exc_info=True)
     ua_generator = None
 
 
@@ -95,7 +95,7 @@ def load_trackers() -> list[str]:
                 if isinstance(data, list):
                     return data  # type: ignore
         except Exception as e:
-            logger.warning(f"Failed to load trackers.json: {e}")
+            logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 
     return [
         "udp://tracker.openbittorrent.com:80",
@@ -291,7 +291,9 @@ def fetch_and_parse_page(
                     }
                 )
             except Exception as e:
-                logger.error(f"Could not process a post on page {page}. Details: {e}")
+                # Capture a truncated snippet of the failed HTML element for debugging
+                html_snippet = str(post)[:500].replace("\n", " ")
+                logger.error(f"Could not process a post on page {page}. Error: {e}. HTML Snippet: {html_snippet}")
                 continue
 
     except requests.exceptions.RequestException as e:
@@ -331,12 +333,13 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
                     page_data = future.result()
                     results.extend(page_data)
                 except Exception as exc:
-                    logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}")
+                    logger.error(f"Page scrape failed, invalidating mirror cache. Details: {exc}", exc_info=True)
                     mirror_cache.clear()
                     search_cache.clear()
     finally:
         session.close()
 
+    logger.info(f"Search for '{query}' completed. Found {len(results)} results.")
     return results
 
 
@@ -394,10 +397,11 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         trackers_query = "&".join(f"tr={requests.utils.quote(tracker)}" for tracker in trackers)
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
 
+        logger.debug(f"Extracted magnet link: {magnet_link[:60]}... (truncated)")
         return magnet_link, None
 
     except Exception as e:
-        logger.error(f"Failed to extract magnet link: {e}")
+        logger.error(f"Failed to extract magnet link: {e}", exc_info=True)
         return None, str(e)
     finally:
         logger.debug("Closing scraper session")
