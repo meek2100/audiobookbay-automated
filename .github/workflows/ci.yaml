@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  # 1. Linting & Formatting
+  lint:
+    name: Lint (Pre-commit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+
+  # 2. Automated Tests
+  test:
+    name: Pytest
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install Dependencies
+        # Installs app + dev dependencies (pytest, cov, etc.) from pyproject.toml
+        run: pip install ".[dev]"
+
+      - name: Run Tests
+        env:
+          # Required for tests to run without actual secrets
+          SECRET_KEY: test-key
+          SAVE_PATH_BASE: /tmp/test
+        run: |
+          # Runs pytest with coverage as defined in your pyproject.toml
+          pytest --junitxml=test-results.xml
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: test-results.xml

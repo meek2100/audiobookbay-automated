@@ -1,0 +1,66 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "New Version (e.g. 1.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update Version in pyproject.toml
+        # Uses sed to update the version line.
+        # Assumes format: version = "x.x.x"
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ inputs.version }}"/' pyproject.toml
+
+      - name: Update Changelog
+        # Simple changelog management: Adds new version header
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          HEADER="## [${{ inputs.version }}] - $DATE"
+
+          # Ensure CHANGELOG.md exists
+          touch CHANGELOG.md
+
+          # If [Unreleased] header exists, replace it. Otherwise, prepend.
+          if grep -q "## \[Unreleased\]" CHANGELOG.md; then
+            sed -i "s/## \[Unreleased\]/$HEADER/" CHANGELOG.md
+            sed -i "1i ## [Unreleased]\n" CHANGELOG.md
+          else
+            echo -e "## [Unreleased]\n\n$HEADER\n\n$(cat CHANGELOG.md)" > CHANGELOG.md
+          fi
+
+      - name: Commit and Tag
+        run: |
+          git add pyproject.toml CHANGELOG.md
+          git commit -m "chore: release v${{ inputs.version }}"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin HEAD:main --tags
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Release v${{ inputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
