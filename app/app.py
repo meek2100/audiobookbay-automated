@@ -63,12 +63,16 @@ if SECRET_KEY == DEFAULT_SECRET:
 app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
+# OPTIMIZATION: Removed global default_limits.
+# The previous defaults ("50 per hour") caused the container to go unhealthy
+# because the internal healthcheck runs every 30s (120/hr) and the status page
+# auto-refreshes every 5s (720/hr).
+# We now use an "Opt-In" strategy: only limiting routes that hit external services.
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://",
-    headers_enabled=True,  # Explicitly enable headers for tests and clients
+    headers_enabled=True,
 )
 
 SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
@@ -113,6 +117,7 @@ def health() -> Response:
 
 
 @app.route("/", methods=["GET", "POST"])
+@limiter.limit("30 per minute")  # Generous limit for humans, stops aggressive bot loops
 def search() -> str:
     """Handles the search interface."""
     books: list[dict[str, Any]] = []
@@ -135,7 +140,7 @@ def search() -> str:
 
 
 @app.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")
+@limiter.limit("60 per minute")  # Protects AudiobookBay from rapid magnet fetching
 def send() -> Response:
     """API endpoint to initiate a download."""
     data = request.json
