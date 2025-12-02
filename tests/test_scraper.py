@@ -258,21 +258,6 @@ def test_custom_mirrors_env(monkeypatch):
     assert "custom.mirror.com" in scraper.ABB_FALLBACK_HOSTNAMES
 
 
-def test_ua_init_exception():
-    """Tests module-level initialization failure for UserAgent."""
-    try:
-        with patch("fake_useragent.UserAgent", side_effect=Exception("UA Init Failed")):
-            with patch("logging.getLogger") as mock_get_logger:
-                mock_logger = MagicMock()
-                mock_get_logger.return_value = mock_logger
-                importlib.reload(scraper)
-                assert scraper.ua_generator is None
-                args, _ = mock_logger.warning.call_args
-                assert "Failed to initialize fake_useragent" in args[0]
-    finally:
-        importlib.reload(scraper)
-
-
 def test_load_trackers_from_env(monkeypatch):
     monkeypatch.setenv("MAGNET_TRACKERS", "udp://env.tracker:1337")
     trackers = scraper.load_trackers()
@@ -348,21 +333,12 @@ def test_find_best_mirror_success():
             assert result == "mirror1.com"
 
 
-def test_get_random_user_agent_fallback():
-    with patch("app.scraper.ua_generator", None):
-        ua = scraper.get_random_user_agent()
-        assert ua in scraper.FALLBACK_USER_AGENTS
-
-
-def test_get_random_user_agent_exception():
-    class BrokenUA:
-        @property
-        def random(self):
-            raise Exception("UA Error")
-
-    with patch("app.scraper.ua_generator", BrokenUA()):
-        ua = scraper.get_random_user_agent()
-        assert ua in scraper.FALLBACK_USER_AGENTS
+def test_get_random_user_agent_returns_string():
+    """Test that we always get a valid string UA from our hardcoded list."""
+    ua = scraper.get_random_user_agent()
+    assert isinstance(ua, str)
+    assert len(ua) > 10
+    assert ua in scraper.USER_AGENTS
 
 
 def test_extract_magnet_regex_fallback():

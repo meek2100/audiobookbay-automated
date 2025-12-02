@@ -11,7 +11,6 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup, Tag
 from cachetools import TTLCache, cached
-from fake_useragent import UserAgent
 from requests.adapters import HTTPAdapter
 from requests.sessions import Session
 from urllib3.util.retry import Retry
@@ -49,20 +48,15 @@ if extra_mirrors:
 
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
 
-# Fallback User Agents if fake_useragent fails
-FALLBACK_USER_AGENTS = [
+# Robust User Agent list (No external dependency to prevent hangs)
+USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0",
 ]
-
-# Initialize UserAgent object with fallback protection
-try:
-    ua_generator: UserAgent | None = UserAgent(fallback=FALLBACK_USER_AGENTS[0])
-except Exception:
-    logger.warning("Failed to initialize fake_useragent, using hardcoded list.", exc_info=True)
-    ua_generator = None
-
 
 # --- Regex Patterns ---
 # Only keeping regexes for unstructured text (Magnet links) or fallback
@@ -72,13 +66,8 @@ RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 
 
 def get_random_user_agent() -> str:
-    """Returns a random user agent from fake_useragent or the fallback list."""
-    if ua_generator:
-        try:
-            return str(ua_generator.random)
-        except Exception:
-            pass
-    return random.choice(FALLBACK_USER_AGENTS)
+    """Returns a random user agent from the hardcoded list."""
+    return random.choice(USER_AGENTS)
 
 
 def load_trackers() -> list[str]:

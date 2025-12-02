@@ -23,7 +23,15 @@ app = Flask(__name__)
 
 # --- Logging Configuration ---
 if __name__ != "__main__":  # pragma: no cover
+    # Hook into Gunicorn's logger
     gunicorn_logger = logging.getLogger("gunicorn.error")
+
+    # Configure the Root Logger (captures app.*, urllib3, etc)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(gunicorn_logger.level)
+    root_logger.handlers = gunicorn_logger.handlers
+
+    # Also link Flask's internal logger specifically (redundancy)
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 else:  # pragma: no cover

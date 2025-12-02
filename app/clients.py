@@ -50,13 +50,12 @@ class TorrentManager:
         try:
             if self.client_type == "qbittorrent":
                 try:
-                    # OPTIMIZATION: Added timeout to prevent hanging on unresponsive clients
+                    # FIX: Removed 'requests_args' as it causes TypeError in some versions of qbittorrentapi
                     qb = QbClient(
                         host=self.host,
                         port=self.port,
                         username=self.username,
                         password=self.password,
-                        requests_args={"timeout": 30},
                     )
                     qb.auth_log_in()
                     self._client = qb
