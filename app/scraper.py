@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import re
+import threading
 import time
 from typing import Any
 from urllib.parse import urljoin, urlparse
@@ -57,6 +58,14 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0",
 ]
+
+# GLOBAL CONCURRENCY CONTROL
+# We use a semaphore to limit the TOTAL number of simultaneous requests to ABB.
+# This prevents the app from hammering the server if the user mass-clicks "Download"
+# or if multiple search threads fire at once.
+# 2 Concurrent requests is a safe "Human-like" limit.
+MAX_CONCURRENT_REQUESTS = 2
+GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
 # --- Regex Patterns ---
 # Only keeping regexes for unstructured text (Magnet links) or fallback
@@ -161,7 +170,12 @@ search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 def find_best_mirror() -> str | None:
     """Finds the first reachable AudiobookBay mirror from the list."""
     logger.debug("Checking connectivity for all mirrors...")
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(ABB_FALLBACK_HOSTNAMES)) as executor:
+
+    # Limit concurrent checks to 5 to avoid a massive burst of connection attempts (DDoS protection)
+    # This might slow down startup slightly if many mirrors are dead, but it's safer.
+    safe_mirror_workers = 5
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=safe_mirror_workers) as executor:
         future_to_host = {executor.submit(check_mirror, host): host for host in ABB_FALLBACK_HOSTNAMES}
         for future in concurrent.futures.as_completed(future_to_host):
             result = future.result()
@@ -213,9 +227,6 @@ def fetch_and_parse_page(
     """
     Fetches a single search result page and parses it using BS4 navigation.
     """
-    sleep_time = random.uniform(1.0, 3.0)
-    time.sleep(sleep_time)
-
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
     params = {"s": query}
@@ -225,7 +236,15 @@ def fetch_and_parse_page(
     page_results = []
 
     try:
-        response = session.get(url, params=params, headers=headers, timeout=15)
+        # CONCURRENCY CONTROL: Wait for a slot in the global semaphore
+        with GLOBAL_REQUEST_SEMAPHORE:
+            # JITTER: Sleep for 1-3 seconds to mimic human reading speed/network latency
+            # This is critical for avoiding bot detection.
+            sleep_time = random.uniform(1.0, 3.0)
+            time.sleep(sleep_time)
+
+            response = session.get(url, params=params, headers=headers, timeout=15)
+
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -313,7 +332,8 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
     session_user_agent = get_random_user_agent()
     session = get_session()
 
-    safe_workers = min(max_pages, 5)
+    # Cap worker threads to 3 to align with the Global Semaphore and prevent thread starvation
+    safe_workers = min(max_pages, 3)
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=safe_workers) as executor:
@@ -354,7 +374,14 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     headers = get_headers(referer=details_url)
 
     try:
-        response = session.get(details_url, headers=headers, timeout=15)
+        # CONCURRENCY CONTROL: Wait for a slot in the global semaphore
+        # This protects the server if multiple "Downloads" are queued quickly.
+        with GLOBAL_REQUEST_SEMAPHORE:
+            # JITTER: Sleep for 1-3 seconds to mimic human reading speed.
+            time.sleep(random.uniform(1.0, 3.0))
+
+            response = session.get(details_url, headers=headers, timeout=15)
+
         if response.status_code != 200:
             msg = f"Failed to fetch details page. Status Code: {response.status_code}"
             logger.error(msg)

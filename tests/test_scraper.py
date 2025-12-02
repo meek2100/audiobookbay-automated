@@ -15,6 +15,15 @@ from app.scraper import (
     search_audiobookbay,
 )
 
+
+# --- Patch time.sleep to avoid slow tests ---
+@pytest.fixture(autouse=True)
+def mock_sleep():
+    """Globally mock time.sleep to speed up tests."""
+    with patch("time.sleep") as mock_sleep:
+        yield mock_sleep
+
+
 # --- Standard Functional Tests ---
 
 # Real HTML snippet from 'Regular Search - AudioBook Bay.html'
@@ -46,7 +55,7 @@ REAL_WORLD_HTML = """
 """
 
 
-def test_fetch_and_parse_page_real_structure():
+def test_fetch_and_parse_page_real_structure(mock_sleep):
     hostname = "audiobookbay.lu"
     query = "test"
     page = 1
@@ -59,6 +68,9 @@ def test_fetch_and_parse_page_real_structure():
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=REAL_WORLD_HTML, status_code=200)
 
     results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+    # Verify sleep was called (Jitter test)
+    assert mock_sleep.called
 
     assert len(results) == 1
     book = results[0]
@@ -207,7 +219,7 @@ def test_fetch_page_timeout():
         fetch_and_parse_page(session, hostname, query, page, user_agent)
 
 
-def test_extract_magnet_no_hash():
+def test_extract_magnet_no_hash(mock_sleep):
     """Test handling of pages where info hash cannot be found."""
     details_url = "https://audiobookbay.lu/audiobook-details"
     broken_html = """<html><body><table><tr><td>Some other data</td></tr></table></body></html>"""
@@ -217,6 +229,9 @@ def test_extract_magnet_no_hash():
         magnet, error = extract_magnet_link(details_url)
         assert magnet is None
         assert "Info Hash could not be found" in error
+
+    # Verify sleep was called (Jitter test)
+    assert mock_sleep.called
 
 
 def test_search_no_mirrors_raises_error():
