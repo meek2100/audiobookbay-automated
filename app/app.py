@@ -63,11 +63,6 @@ if SECRET_KEY == DEFAULT_SECRET:
 app.config["SECRET_KEY"] = SECRET_KEY
 csrf = CSRFProtect(app)
 
-# OPTIMIZATION: Removed global default_limits.
-# The previous defaults ("50 per hour") caused the container to go unhealthy
-# because the internal healthcheck runs every 30s (120/hr) and the status page
-# auto-refreshes every 5s (720/hr).
-# We now use an "Opt-In" strategy: only limiting routes that hit external services.
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -128,8 +123,10 @@ def search() -> str:
         if request.method == "POST":
             query = request.form.get("query", "").strip()
             if query:
-                logger.info(f"Received search query: '{query}'")
-                books = search_audiobookbay(query)
+                # OPTIMIZATION: AudiobookBay requires lowercase search terms
+                search_query = query.lower()
+                logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
+                books = search_audiobookbay(search_query)
 
         return render_template("search.html", books=books, query=query)
 
