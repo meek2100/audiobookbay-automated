@@ -92,7 +92,7 @@ def test_startup_insecure_secret_key_debug_warning(monkeypatch, mock_flask_facto
 
 
 def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
-    """Test that app handles verify_credentials failure gracefully at startup."""
+    """Test that app handles verify_credentials returning False gracefully at startup."""
     _, mock_logger = mock_flask_factory
 
     # 1. SETUP: Simulate Production Env to trigger verification
@@ -102,17 +102,16 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
     try:
         # Patch the client where it is imported in app.app
         with patch("app.clients.TorrentManager") as MockTM:
-            MockTM.return_value.verify_credentials.side_effect = Exception("Auth Bad")
+            # FIX: Simulate connection failure by returning False (not raising exception)
+            MockTM.return_value.verify_credentials.return_value = False
 
             # 2. ACTION: Reload to run top-level startup logic
             importlib.reload(sys.modules["app.app"])
 
-            # 3. ASSERT: Check logs
-            args, _ = mock_logger.error.call_args
-            assert "STARTUP WARNING" in args[0]
-            assert "Auth Bad" in str(args[0])
+            # 3. ASSERT: Check logs for the specific warning from app.py
+            args, _ = mock_logger.warning.call_args
+            assert "STARTUP WARNING: Torrent client is unreachable" in args[0]
     finally:
         # 4. TEARDOWN: Restore app to Testing mode explicitly
-        # (Though the fixture teardown now handles this safely too)
         monkeypatch.setenv("TESTING", "1")
         importlib.reload(sys.modules["app.app"])
