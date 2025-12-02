@@ -230,6 +230,7 @@ class TorrentManager:
     def get_status(self) -> list[dict[str, Any]]:
         """
         Retrieves the status of current downloads in the configured category.
+        Includes internal retry logic to attempt reconnecting to the client once on failure.
 
         Returns:
             list[dict[str, Any]]: A list of dictionaries containing torrent details.

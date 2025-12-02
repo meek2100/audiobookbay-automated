@@ -635,3 +635,63 @@ def test_page_limit_invalid(monkeypatch, caplog):
 
     assert scraper.PAGE_LIMIT == 3
     assert "Invalid PAGE_LIMIT in environment" in caplog.text
+
+
+def test_fetch_and_parse_page_missing_cover_image():
+    """Test when the cover image element is missing from the post."""
+    hostname = "audiobookbay.lu"
+    query = "no_cover"
+    html = """
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/test-book/" rel="bookmark">Missing Cover Test</a></h2>
+        </div>
+        <div class="postInfo">Language: English</div>
+        <div class="postContent">
+            <p style="text-align:center;">Posted: 01 Jan 2025</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
+
+    results = scraper.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+
+    assert len(results) == 1
+    # This assertion covers app/scraper.py:204
+    assert results[0]["cover"] == "/static/images/default_cover.jpg"
+    assert results[0]["language"] == "English"
+
+
+def test_fetch_and_parse_page_missing_post_info():
+    """Test when the postInfo element (containing language) is completely missing."""
+    hostname = "audiobookbay.lu"
+    query = "no_info"
+    html = """
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/test-book/" rel="bookmark">Missing Info Test</a></h2>
+        </div>
+        <div class="postContent">
+            <p style="text-align:center;">
+                <a href="/abss/test-book/">
+                    <img src="/images/cover.jpg" alt="Test" width="250">
+                </a>
+            </p>
+            <p style="text-align:center;">Posted: 01 Jan 2025</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
+
+    results = scraper.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+
+    assert len(results) == 1
+    # This assertion covers app/scraper.py:219
+    assert results[0]["language"] == "N/A"
+    assert results[0]["post_date"] == "01 Jan 2025"
