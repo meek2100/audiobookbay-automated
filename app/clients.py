@@ -50,7 +50,7 @@ class TorrentManager:
         try:
             if self.client_type == "qbittorrent":
                 try:
-                    # FIX: Removed 'requests_args' as it causes TypeError in some versions of qbittorrentapi
+                    # Configuration for older versions of the API (requests_args removed).
                     qb = QbClient(
                         host=self.host,
                         port=self.port,
@@ -114,15 +114,16 @@ class TorrentManager:
             return False
 
     @staticmethod
-    def _format_size(size_bytes: int | float | str | None) -> str:
+    def _format_size(size_bytes: int | float | None) -> str:
         """
         Formats bytes into human-readable B, KB, MB, GB, TB, PB.
 
         Args:
-            size_bytes: The size in bytes.
+            size_bytes: The size in bytes. Must be numeric.
 
         Returns:
-            str: Human readable size string (e.g. "1.50 GB") or "N/A".
+            str: Human readable size string (e.g. "1.50 GB"). Returns "N/A" for None
+                 or non-numeric inputs (including pre-formatted strings).
         """
         if size_bytes is None:
             return "N/A"
