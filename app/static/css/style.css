@@ -10,18 +10,7 @@ body {
     align-items: center;
     justify-content: flex-start;
 }
-/* TODO - trying to get content to properly show on all screen sizes.
-.content {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin: 0 auto 30px;
-    width: 90%;
-    max-width: 1000px;
-    padding: 0 15px;
-    box-sizing: border-box;
-}
-*/
+
 h1 {
     margin-top: 20px;
     font-size: 2.5rem;
@@ -58,25 +47,24 @@ h1 {
     border-bottom: 2px solid #ffcc00;
 }
 .title-container {
-    text-align: center; 
+    text-align: center;
     width: 100%;
     padding: 0 15px;
-    margin: 20px 0; 
+    margin: 20px 0;
 }
 
 h1 {
     font-size: 2.5rem;
     text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
-    width: 90%; 
+    width: 90%;
 }
-
 
 @media (max-width: 500px) {
-h1 {
-    font-size: 2rem;
-}
+    h1 {
+        font-size: 2rem;
+    }
 
-.navbar a {
-    font-size: 1rem;
-}
+    .navbar a {
+        font-size: 1rem;
+    }
 }

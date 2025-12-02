@@ -1,0 +1,20 @@
+{
+    "recommendations": [
+        // --- Essentials ---
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        // --- Modern Python Tools ---
+        "charliermarsh.ruff", // You have this: Excellent replacement for flake8
+        "tamasfe.even-better-toml", // INSTALL THIS: Critical for pyproject.toml
+        "njpwerner.autodocstring", // You have this: Great for docs
+        // --- Web / Flask ---
+        "samuelcolvin.jinjahtml", // You have this: Critical for templates
+        "esbenp.prettier-vscode", // You have this: Formatting CSS/JS
+        // --- Infrastructure ---
+        "ms-azuretools.vscode-docker",
+        "ms-vscode-remote.remote-containers",
+        "redhat.vscode-yaml",
+        "timonwong.shellcheck"
+    ]
+}

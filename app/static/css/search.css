@@ -3,20 +3,8 @@ form {
     display: flex;
     justify-content: center; /* Center the form content */
     align-items: center;
-/*
-    gap: 15px
-*/
 }
-/* This overly broad rule was removed */
-/*
-input[type="text"] {
-    padding: 10px;
-    border: none;
-    border-radius: 5px;
-    width: 300px;
-    font-size: 1rem;
-}
-*/
+
 button {
     padding: 10px 20px;
     width: 100%;
@@ -32,15 +20,28 @@ button {
 button:hover {
     background-color: #673ab7;
 }
-table {
+
+/* OPTIMIZATION: Scrollable table wrapper for mobile devices */
+.table-wrapper {
     width: 90%;
     max-width: 1000px;
     margin: 20px auto 0;
-    border-collapse: collapse;
-    background-color: rgba(255, 255, 255, 0.1);
+    overflow-x: auto; /* Allows horizontal scroll if table is too wide */
     border-radius: 10px;
-    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Move shadow to wrapper so it doesn't scroll with table */
+    background-color: rgba(255, 255, 255, 0.1); /* Background on wrapper */
 }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    /* Remove background/radius/margin from table, handled by wrapper now */
+    background-color: transparent;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
 td {
     padding: 15px;
     text-align: left;
@@ -51,18 +52,7 @@ img.cover {
     max-width: 100px;
     width: 15vw;
 }
-/*
-#search-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin: 0 30px;
-    width: 90%;
-    max-width: 1000px;
-    padding: 0 15px;
-    box-sizing: border-box;
-}
-*/
+
 .search-form {
     display: flex;
     align-items: center;
@@ -75,25 +65,11 @@ img.cover {
     padding: 10px; /* Adjust padding as needed */
     box-sizing: border-box; /* Ensure padding is included in the width */
     margin-bottom: 10px; /* Add some space between the input and button */
-    /* Properties from the old input[type="text"] rule are now here */
     border: none;
     border-radius: 5px;
     width: 300px;
 }
 
-/*
-.search-bar {
-    width: 90%;
-    padding: 10px; 
-    box-sizing: border-box; 
-    margin-bottom: 10px; 
-    border: none;
-    border-radius: 5px;
-    width: 563px;
-    font-size: 1rem;
-    max-width: 70vw;
-}
-*/
 .search-button {
     width: auto; /* Set the button width to auto */
     padding: 10px 20px; /* Add padding to the button */
@@ -297,7 +273,6 @@ img.cover {
     font-size: 0.8em;
 }
 
-
 /* Styles for large screens (horizontal layout) */
 @media (min-width: 905px) {
     .property-results-container {
@@ -318,11 +293,15 @@ p.book-title {
     font-size: 0.9em;
 }
 
+/* Empty State Message */
+.empty-message {
+    text-align: center;
+    padding: 40px;
+    color: #ccc;
+}
+
 @media (max-width: 500px) {
-
-.search-bar {
-    width: 200px;
+    .search-bar {
+        width: 200px;
+    }
 }
-
-}
-

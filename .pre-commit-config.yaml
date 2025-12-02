@@ -1,0 +1,24 @@
+repos:
+  # Standard cleanup hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+
+      # Ensures every file ends with a newline character
+      - id: end-of-file-fixer
+
+      - id: check-yaml
+      - id: check-added-large-files
+
+      # Forces all files to use LF (Unix) line endings
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # Ruff (Linter & Formatter)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

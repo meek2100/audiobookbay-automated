@@ -20,15 +20,16 @@
     <h1>Search AudiobookBay</h1>
 </div>
 <div class="search-container" id="search-container">
-<form method="post" class="search-form" onsubmit="showLoadingSpinner()">
-    <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
-    <button type="submit" class="search-button">
-        <span class="button-text">Search</span>
-        <div class="button-spinner" id="button-spinner" style="display: none;">
-            <div class="spinner"></div>
-        </div>
-    </button>
-</form>
+    <form method="post" class="search-form" onsubmit="showLoadingSpinner()">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
+        <button type="submit" class="search-button">
+            <span class="button-text">Search</span>
+            <div class="button-spinner" id="button-spinner" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+        </button>
+    </form>
 </div>
 <div class="message-scroller" id="message-scroller">
     <p id="scrolling-message"></p>
@@ -40,7 +41,7 @@
 </div>
 
 {% if error %}
-  <p class="error-message">{{ error }}</p>
+<p class="error-message">{{ error }}</p>
 {% endif %}
 
 {% if books %}
@@ -70,38 +71,54 @@
             </div>
         </div>
         <div class="filter-buttons">
-             <button id="clear-button">Clear</button>
+            <button id="clear-button">Clear</button>
         </div>
     </div>
 </div>
 {% endif %}
 
-<table>
-    <tbody id="results-table-body">
-        {% for book in books %}
-        <tr class="result-row"
-            data-language="{{ book.language }}"
-            data-bitrate="{{ book.bitrate }}"
-            data-format="{{ book.format }}"
-            data-file-size="{{ book.file_size }}"
-            data-post-date="{{ book.post_date }}">
-            <td><img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"></td>
-            <td><p class="book-title">{{ book.title }}</p>
-                <div class="property-results-container">
-                    <span class="book-language">Language: {{ book.language }}</span>
-                    <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
-                    <span class="book-format">Format: {{ book.format }}</span>
-                    <span class="book-file_size">File Size: {{ book.file_size }}</span>
-                    <span class="book-post_date">Posted: {{ book.post_date }}</span>
-                </div>
-            </td>
-            <td>
-                <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
-                <button onclick="sendToQB('{{ book.link|escape }}', '{{ book.title|escape }}')">Download to Server</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-wrapper">
+    <table>
+        <tbody id="results-table-body">
+            {% if books %}
+            {% for book in books %}
+            <tr class="result-row" data-language="{{ book.language }}" data-bitrate="{{ book.bitrate }}"
+                data-format="{{ book.format }}" data-file-size="{{ book.file_size }}"
+                data-post-date="{{ book.post_date }}">
+                <td>
+                    <img src="{{ book.cover }}" alt="Cover Art" class="cover" width="100"
+                        data-default-cover="{{ url_for('static', filename='images/default_cover.jpg') }}"
+                        onerror="this.onerror=null;this.src=this.dataset.defaultCover;">
+                </td>
+                <td>
+                    <p class="book-title">{{ book.title }}</p>
+                    <div class="property-results-container">
+                        <span class="book-language">Language: {{ book.language }}</span>
+                        <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
+                        <span class="book-format">Format: {{ book.format }}</span>
+                        <span class="book-file_size">File Size: {{ book.file_size }}</span>
+                        <span class="book-post_date">Posted: {{ book.post_date }}</span>
+                    </div>
+                </td>
+                <td>
+                    <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
+                    <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">Download to
+                        Server</button>
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            {% if query %}
+            <tr>
+                <td colspan="3" class="empty-message">
+                    No audiobooks found for "<strong>{{ query }}</strong>". <br>
+                    <small>Try a different keyword or check spelling.</small>
+                </td>
+            </tr>
+            {% endif %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
 
 {% endblock %}
