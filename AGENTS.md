@@ -18,6 +18,12 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
   - _Instruction:_ **DO NOT** increase `WORKERS` above 1 without switching the rate limiter backend to Redis or a filesystem-based solution.
   - _Performance:_ Since the app is I/O bound (waiting on HTTP requests), Python threads are highly efficient. One worker with 8+ threads is sufficient for a single user.
 
+### Global Request Semaphore (New)
+
+- **Constraint:** Even with 1 worker/8 threads, a user could trigger 8 simultaneous scrapes (e.g., opening multiple tabs).
+- **Solution:** `app.scraper.GLOBAL_REQUEST_SEMAPHORE` caps active HTTP requests to AudiobookBay at **2**.
+- **Why:** This mimics a human user with 1-2 active tabs. It prevents the app from "hammering" the server, which triggers anti-bot protection. **Do not remove this semaphore.**
+
 ### The "Appliance" Philosophy
 
 - **Statelessness:** The container should be as stateless as possible. It relies on the downstream Torrent Client (qBittorrent/Transmission) to manage state (downloads, file moves).
@@ -28,14 +34,25 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 
 ## 2. Robustness Over Raw Speed
 
-### Rate Limiting & Scraping
+### Rate Limiting & Scraping Strategy
 
-- **Goal:** Mimic a human user to avoid anti-bot detection.
+- **Goal:** Mimic a human user to avoid anti-bot detection. Speed is secondary to avoiding IP bans.
 - **Implementation:**
-  - Randomized sleeps (`time.sleep(1-3)`) in `scraper.py`.
-  - Relaxed rate limits (`60/min`) on sending downloads (user downloading a series).
-  - Strict timeouts on HTTP requests to prevent "hanging" threads.
-- **Agent Note:** Do not remove the `time.sleep` calls "for performance." They are a feature, not a bug.
+  - **Jitter:** Randomized sleeps (`time.sleep(1-3)`) are applied _before_ every scrape and magnet extraction. Do not remove these "for performance."
+  - **Fail Fast (Mirrors):** Mirror availability checks (`check_mirror`) use `requests.head` directly with **zero retries**. We cycle through many mirrors quickly; waiting 90s for a retry loop on a dead mirror is bad UX.
+  - **Input Normalization:** AudiobookBay search is case-sensitive and prefers lowercase. We normalize all search queries to lowercase in the controller (`app.py`) before scraping.
+
+### Flask-Limiter Strategy (Opt-In)
+
+- **Philosophy:** We use an **"Opt-In"** strategy, not "Opt-Out".
+- **Rule:** Do NOT apply global default limits (e.g., `default_limits=["50 per hour"]`).
+  - _Reason:_ Internal endpoints like `/health` (Docker heartbeat) and `/status` (auto-refresh) will trigger thousands of requests per day. Global limits will cause the container to go unhealthy.
+- **Usage:** Apply `@limiter.limit` **only** to routes that hit external services (e.g., `/` search, `/send`).
+
+### Dependency Philosophy
+
+- **Stability First:** We prefer robust, hardcoded lists over flaky dynamic dependencies.
+  - _Example:_ We removed `fake_useragent` because its dynamic database fetching caused startup hangs. We now use a curated list of modern `USER_AGENTS` in `scraper.py`.
 
 ### Error Handling
 
@@ -49,6 +66,12 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 ## 3. Development Standards (Strict)
 
 We enforce high code quality because "appliance" software is often difficult for end-users to debug.
+
+### Logging (Verbose)
+
+- **Requirement:** Keep logging **VERBOSE** (Debug/Info).
+- **Why:** In a self-hosted environment, we cannot see the user's network. "Noisy" logs (including connection details) are often the only way to debug DNS issues, ISP blocking, or rate limiting.
+- **Configuration:** We explicitly configure the root logger to capture output from libraries like `urllib3` and `requests`. Do not silence them unless they emit gigabytes of useless binary data.
 
 ### Type Safety (Python 3.13+)
 
@@ -71,8 +94,9 @@ We enforce high code quality because "appliance" software is often difficult for
 - **Fixtures:** Use `conftest.py` fixtures for setup/teardown (e.g., `client`, `mock_env`).
 - **Mocking:**
   - Patch objects where they are **imported**, not where they are defined.
-  - For startup logic (top-level code), use `importlib.reload(sys.modules["app.module"])` inside the test to re-run the initialization code.
-  - For global state (like `limiter`), use an `autouse=True` fixture to reset state between tests.
+  - **Mock Network Calls:** Always mock `requests.get` and `requests.head`.
+  - **Mock Sleep:** Always mock `time.sleep` to keep tests fast while verifying Jitter logic.
+  - For startup logic (top-level code), use `importlib.reload(sys.modules["app.module"])` inside the test.
 
 ### Documentation
 
@@ -100,9 +124,10 @@ We enforce high code quality because "appliance" software is often difficult for
 
 If you are asked to improve this repo, ask yourself:
 
-1.  **"Does this require an external service (like Redis)?"** -> If YES, reject it unless absolutely necessary.
-2.  **"Does this make the Docker image larger?"** -> If YES, justify the value added.
-3.  **"Does this assume 100 concurrent users?"** -> If YES, you are optimizing for the wrong target. Optimize for **1 user doing 100 things sequentially**, not 100 users doing 1 thing.
+1.  **"Does this remove a sleep() call?"** -> If YES, reject it. It protects the user from IP bans.
+2.  **"Does this add a global rate limit?"** -> If YES, check if it blocks the healthcheck or status page auto-refresh.
+3.  **"Does this require an external service (like Redis)?"** -> If YES, reject it unless absolutely necessary.
+4.  **"Does this assume 100 concurrent users?"** -> If YES, you are optimizing for the wrong target. Optimize for **1 user doing 100 things sequentially**, not 100 users doing 1 thing.
 
 ## 6. Quick Reference
 
