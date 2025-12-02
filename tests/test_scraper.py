@@ -164,6 +164,44 @@ def test_parsing_structure_change():
     assert results[0]["bitrate"] == "N/A"
 
 
+def test_fetch_and_parse_page_language_fallback():
+    """
+    Test that if the Language label is malformed or missing,
+    it defaults to 'N/A' instead of crashing.
+    """
+    hostname = "audiobookbay.lu"
+    query = "lang_test"
+    page = 1
+    user_agent = "TestAgent/1.0"
+
+    # HTML with "Languages:" instead of "Language:" to break the regex
+    html = """
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/book/">Book Title</a></h2>
+        </div>
+        <div class="postInfo">
+            Category: Fantasy <br>
+            Languages: English <br>
+        </div>
+        <div class="postContent">
+             <p>Posted: 01 Jan 2020</p>
+        </div>
+    </div>
+    """
+
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+    assert len(results) == 1
+    assert results[0]["language"] == "N/A"
+
+
 def test_get_text_after_label_exception():
     """
     Test that _get_text_after_label handles exceptions gracefully.

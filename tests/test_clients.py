@@ -82,6 +82,39 @@ def test_transmission_add_magnet(mock_env, monkeypatch):
         )
 
 
+def test_transmission_add_magnet_fallback(mock_env, monkeypatch):
+    """
+    Test that Transmission falls back to adding torrent without label if first attempt fails.
+    This covers the robustness logic for older Transmission daemons.
+    """
+    monkeypatch.setenv("DOWNLOAD_CLIENT", "transmission")
+
+    with patch("app.clients.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+
+        # Simulate exception on first call (with labels), success on second call (without)
+        mock_instance.add_torrent.side_effect = [TypeError("unexpected keyword argument 'labels'"), None]
+
+        manager = TorrentManager()
+
+        with patch("app.clients.logger") as mock_logger:
+            manager.add_magnet("magnet:?xt=urn:btih:FALLBACK", "/downloads/Book")
+
+            # Verify the warning was logged
+            args, _ = mock_logger.warning.call_args
+            assert "Transmission label assignment failed" in args[0]
+
+        # Verify add_torrent was called twice
+        assert mock_instance.add_torrent.call_count == 2
+
+        # 1. First attempt with labels
+        mock_instance.add_torrent.assert_any_call(
+            "magnet:?xt=urn:btih:FALLBACK", download_dir="/downloads/Book", labels=["audiobooks"]
+        )
+        # 2. Second attempt without labels
+        mock_instance.add_torrent.assert_any_call("magnet:?xt=urn:btih:FALLBACK", download_dir="/downloads/Book")
+
+
 def test_deluge_add_magnet(mock_env, monkeypatch):
     monkeypatch.setenv("DOWNLOAD_CLIENT", "delugeweb")
 

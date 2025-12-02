@@ -170,7 +170,12 @@ class TorrentManager:
 
         elif self.client_type == "transmission":
             tx_client = cast(TxClient, client)
-            tx_client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])
+            try:
+                tx_client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])
+            except Exception as e:
+                # Fallback for older daemons that don't support labels
+                logger.warning(f"Transmission label assignment failed: {e}. Retrying without labels.")
+                tx_client.add_torrent(magnet_link, download_dir=save_path)
 
         elif self.client_type == "delugeweb":
             deluge_client = cast(DelugeWebClient, client)

@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-from datetime import timedelta
 from typing import Any
 
 import requests
@@ -42,8 +41,6 @@ else:  # pragma: no cover
     )
 
 logger = app.logger
-
-app.config["SEND_FILE_MAX_AGE_DEFAULT"] = timedelta(days=365)
 
 DEFAULT_SECRET = "change-this-to-a-secure-random-key"
 SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET)

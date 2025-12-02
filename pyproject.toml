@@ -25,7 +25,6 @@ dependencies = [
     "gunicorn==23.0.0",
     "Flask-WTF==1.2.2",
     "Flask-Limiter==4.0.0",
-    "fake-useragent==2.2.0",
 ]
 
 [project.optional-dependencies]

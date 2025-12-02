@@ -284,7 +284,16 @@ def fetch_and_parse_page(
                     if lang_match:
                         language = lang_match.group(1)
 
-                details_paragraph = post.select_one(".postContent p[style*='text-align:center']")
+                # ROBUSTNESS FIX: iterate through paragraphs to find the metadata block
+                # rather than relying on brittle CSS selectors like "p[style*='text-align:center']"
+                details_paragraph = None
+                content_div = post.select_one(".postContent")
+                if content_div:
+                    for p in content_div.find_all("p"):
+                        if "Posted:" in p.get_text():
+                            details_paragraph = p
+                            break
+
                 post_date, book_format, bitrate, file_size = "N/A", "N/A", "N/A", "N/A"
 
                 if details_paragraph:
