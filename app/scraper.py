@@ -139,12 +139,16 @@ def check_mirror(hostname: str) -> str | None:
     Performs a HEAD request to the mirror to validate reachability without downloading content.
     """
     url = f"https://{hostname}/"
-    session = get_session()
+
+    # OPTIMIZATION: Use a direct request instead of get_session().
+    # get_session() has 5 retries, which causes massive delays (90s+) when checking dead mirrors.
+    # We want to fail FAST here.
     try:
-        response = session.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
+        response = requests.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
     except (requests.Timeout, requests.RequestException):
+        # We expect many failures here, so we pass silently to try the next mirror
         pass
     return None
 
