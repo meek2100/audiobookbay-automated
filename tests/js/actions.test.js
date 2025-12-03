@@ -34,9 +34,10 @@ function getNotificationText() {
 }
 
 // CRITICAL FIX: Helper to drain the microtask queue completely.
-// setImmediate is used over Promise.resolve() for reliable flushing in Node/Jest.
+// Uses a zero-ms timeout which is resolved immediately by jest.runAllTimers()
+// and ensures the preceding microtasks (like fetch resolution) are complete.
 async function flushPromises() {
-    return new Promise(resolve => setImmediate(resolve));
+    return new Promise(resolve => setTimeout(resolve, 0));
 }
 // ---------------------------------------------------------------------
 
@@ -101,6 +102,9 @@ describe('actions.js - API Interactions', () => {
 
         await reloadLibrary();
 
+        // Use jest.runAllTimers to flush the 3000ms timer of the notification
+        jest.runAllTimers();
+
         expect(mockFetch).toHaveBeenCalledWith('/reload_library', expect.objectContaining({
             method: 'POST',
             headers: expect.objectContaining({
@@ -109,7 +113,6 @@ describe('actions.js - API Interactions', () => {
         }));
 
         // Verify success notification disposal
-        jest.advanceTimersByTime(3000);
         const toast = document.querySelector('#notification-container > div');
         if (toast) toast.dispatchEvent(new Event('transitionend'));
 
@@ -137,11 +140,11 @@ describe('actions.js - API Interactions', () => {
         global.location.reload = mockReload;
 
         await deleteTorrent('test-hash-123');
-        await flushPromises(); // FIX: Flush promise resolution to ensure setTimeout is scheduled
+        await flushPromises(); // Flush promise resolution to ensure setTimeout is scheduled
 
-        // Execute all pending timers, including reload.
+        // Execute all pending timers, including the 0ms flush and the 1000ms reload timer.
         jest.runAllTimers();
-        expect(mockReload).toHaveBeenCalled(); // PASSES
+        expect(mockReload).toHaveBeenCalled();
 
         global.location.reload = undefined;
     });
@@ -157,10 +160,11 @@ describe('actions.js - API Interactions', () => {
         expect(mockButton.disabled).toBe(false);
 
         await sendTorrent('http://link', 'Book Title', mockButton);
-        await flushPromises(); // FIX for failure #2: Flush microtask queue to ensure .finally executes
+        await flushPromises();
+        jest.runAllTimers(); // FIX: Must run timers to execute the setTimeout inside flushPromises, which resolves the await and lets .finally run.
 
         // Assert button is re-enabled and text is restored
-        expect(mockButton.disabled).toBe(false); // PASSES
+        expect(mockButton.disabled).toBe(false);
         expect(mockButton.innerText).toBe('Download to Server');
     });
 
@@ -175,7 +179,8 @@ describe('actions.js - API Interactions', () => {
         });
 
         await sendTorrent('http://link', 'Book Title', mockButton);
-        await flushPromises(); // FIX for failure #3: Flush microtask queue to ensure .catch executes and console.error is called
+        await flushPromises();
+        jest.runAllTimers(); // FIX: Must run timers to execute the setTimeout inside flushPromises, which resolves the await and lets .finally run.
 
         // Verify error message is disposed
         jest.advanceTimersByTime(3000);
@@ -184,7 +189,7 @@ describe('actions.js - API Interactions', () => {
         expect(getNotificationText()).toBe('');
 
         // Check console.error was called
-        expect(consoleErrorSpy).toHaveBeenCalled(); // PASSES
+        expect(consoleErrorSpy).toHaveBeenCalled();
         expect(mockButton.disabled).toBe(false);
     });
 
@@ -193,8 +198,10 @@ describe('actions.js - API Interactions', () => {
 
         await sendTorrent('http://link', 'Book Title', null);
 
+        // Run all timers to ensure the cleanup in the promise chain completes
+        jest.runAllTimers();
+
         // Verify error message is disposed
-        jest.advanceTimersByTime(3000);
         const toast = document.querySelector('#notification-container > div');
         if (toast) toast.dispatchEvent(new Event('transitionend'));
         expect(getNotificationText()).toBe('');
