@@ -276,18 +276,24 @@ def fetch_and_parse_page(
 
                 # --- Robust Parsing Logic ---
                 language = "N/A"
+                category = "N/A"
                 post_info = post.select_one(".postInfo")
                 if post_info:
-                    # Language is usually a text node like "Language: English"
-                    # We iterate text parts to find it
                     info_text = post_info.get_text(" ", strip=True)
-                    # Regex on the cleaned text content is safer than HTML regex
+
+                    # Language
                     lang_match = re.search(r"Language:\s*(\w+)", info_text)
                     if lang_match:
                         language = lang_match.group(1)
 
+                    # NEW: Category Extraction
+                    # "Category: Sci-Fi ..."
+                    cat_match = re.search(r"Category:\s*(.+?)\s*Language:", info_text)
+                    if cat_match:
+                        # The text often has "nbsp;" or spaces, we clean it up
+                        category = cat_match.group(1).replace("&nbsp;", "").strip()
+
                 # ROBUSTNESS FIX: iterate through paragraphs to find the metadata block
-                # rather than relying on brittle CSS selectors like "p[style*='text-align:center']"
                 details_paragraph = None
                 content_div = post.select_one(".postContent")
                 if content_div:
@@ -314,6 +320,7 @@ def fetch_and_parse_page(
                         "link": link,
                         "cover": cover,
                         "language": language,
+                        "category": category,
                         "post_date": post_date,
                         "format": book_format,
                         "bitrate": bitrate,
@@ -321,7 +328,6 @@ def fetch_and_parse_page(
                     }
                 )
             except Exception as e:
-                # Capture a truncated snippet of the failed HTML element for debugging
                 html_snippet = str(post)[:500].replace("\n", " ")
                 logger.error(f"Could not process a post on page {page}. Error: {e}. HTML Snippet: {html_snippet}")
                 continue
@@ -383,7 +389,6 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         raise ValueError("No URL provided.")
 
     # --- SECURITY: SSRF Protection ---
-    # Check against our allowed list of hosts.
     try:
         parsed_url = urlparse(details_url)
     except Exception as e:
@@ -416,7 +421,7 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if cover_tag and cover_tag.has_attr("src"):
             cover = urljoin(details_url, str(cover_tag["src"]))
 
-        # --- New: Extract Language from postInfo ---
+        # --- Extract Language ---
         language = "N/A"
         post_info = soup.select_one(".postInfo")
         if post_info:
@@ -425,32 +430,40 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             if lang_match:
                 language = lang_match.group(1)
 
-        # --- New: Extract Format & Bitrate ---
+        # --- Extract Format & Bitrate ---
         book_format = "N/A"
         bitrate = "N/A"
-
-        # Look for the centered paragraph that usually contains metadata
         content_div = soup.select_one(".postContent")
         if content_div:
             for p in content_div.find_all("p"):
                 p_text = p.get_text()
                 if "Format:" in p_text or "Bitrate:" in p_text:
-                    # Use helper function to robustly get values
                     if "Format:" in p_text:
                         book_format = _get_text_after_label(p, "Format:")
                     if "Bitrate:" in p_text:
                         bitrate = _get_text_after_label(p, "Bitrate:")
                     break
 
-        # UX IMPROVEMENT: Normalize "?" to "Unknown"
         if bitrate == "?":
             bitrate = "Unknown"
+
+        # --- NEW: Extract Author & Narrator ---
+        author = "Unknown"
+        narrator = "Unknown"
+
+        # Look for schema.org microdata first (more reliable)
+        author_tag = soup.select_one('span.author[itemprop="author"]')
+        if author_tag:
+            author = author_tag.get_text(strip=True)
+
+        narrator_tag = soup.select_one('span.narrator[itemprop="author"]')
+        if narrator_tag:
+            narrator = narrator_tag.get_text(strip=True)
 
         # Description
         description = "No description available."
         desc_tag = soup.select_one("div.desc")
         if desc_tag:
-            # Clean up links in description to avoid users leaving the safe environment
             for a in desc_tag.find_all("a"):
                 a.replace_with(a.get_text())
             description = desc_tag.decode_contents()
@@ -486,6 +499,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             "language": language,
             "format": book_format,
             "bitrate": bitrate,
+            "author": author,
+            "narrator": narrator,
         }
 
     except Exception as e:
@@ -498,7 +513,6 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
     Scrapes the details page to find the info hash and generates a magnet link.
-    Constructs the magnet link using the info hash and configured trackers.
     """
     if not details_url:
         return None, "No URL provided."
@@ -519,7 +533,6 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         with GLOBAL_REQUEST_SEMAPHORE:
             # JITTER: Sleep for 1-3 seconds to mimic human reading speed.
             time.sleep(random.uniform(1.0, 3.0))
-
             response = session.get(details_url, headers=headers, timeout=15)
 
         if response.status_code != 200:
