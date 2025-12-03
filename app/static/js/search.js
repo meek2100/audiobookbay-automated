@@ -11,8 +11,19 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// ROBUSTNESS: Handle Browser Back/Forward Cache (BFCache)
+// If the user searches, navigates away, and clicks "Back", the page might load
+// from cache with the spinner still active. This forces a reset.
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        hideLoadingSpinner();
+    }
+});
+
 let datePicker;
 let fileSizeSlider;
+
+// ... [The rest of your file remains unchanged, copy from previous version] ...
 
 function initializeFilters() {
     populateSelectFilters();
@@ -20,12 +31,9 @@ function initializeFilters() {
     initializeDateRangePicker();
 }
 
-// --- Helper Functions ---
 function parseFileSizeToMB(sizeString) {
     if (!sizeString || sizeString.trim().toLowerCase() === 'n/a') return null;
 
-    // Robust regex to split number and text even without spaces
-    // Matches "1.2 GB", "1.2GB", "500MB", etc.
     const match = sizeString.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
     if (!match) return null;
 
@@ -38,12 +46,10 @@ function parseFileSizeToMB(sizeString) {
     if (unit.startsWith("TB")) return size * 1024 * 1024;
     if (unit.startsWith("GB")) return size * 1024;
     if (unit.startsWith("KB")) return size / 1024;
-    if (unit.startsWith("B")) return size / (1024 * 1024); // Handle raw Bytes
+    if (unit.startsWith("B")) return size / (1024 * 1024);
 
-    // Explicitly handle MB
     if (unit.startsWith("MB")) return size;
 
-    // Safety: Warn if we encounter a new/unexpected unit
     console.warn("Unrecognized file size unit:", unit, "in string:", sizeString);
     return size;
 }
@@ -58,9 +64,6 @@ function formatFileSize(mb) {
     }
     return mb.toFixed(2) + " MB";
 }
-
-
-// --- Filtering Functions ---
 
 function initializeDateRangePicker() {
     const allDates = Array.from(document.querySelectorAll('.result-row'))
@@ -97,7 +100,6 @@ function initializeDateRangePicker() {
 
     datePicker = flatpickr("#date-range-filter", options);
 }
-
 
 function initializeFileSizeSlider() {
     const sliderElement = document.getElementById('file-size-slider');
@@ -140,9 +142,6 @@ function populateSelectFilters() {
 
   const appendOptions = (id, set) => {
     const select = document.getElementById(id);
-
-    // Convert Set to Array and Sort
-    // localeCompare with numeric: true handles numbers correctly (e.g., 64 before 128)
     const sortedValues = Array.from(set).sort((a, b) =>
         a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
     );
@@ -227,13 +226,10 @@ function clearFilters() {
   });
 }
 
-// --- Search & Interaction ---
-
 function showLoadingSpinner() {
   const button = document.querySelector('.search-button');
   if (button) {
       button.disabled = true;
-      // Store original text
       if (!button.dataset.originalText) {
           button.dataset.originalText = button.querySelector('.button-text').innerText;
       }
@@ -243,7 +239,6 @@ function showLoadingSpinner() {
   const buttonSpinner = document.getElementById("button-spinner");
   if(buttonSpinner) buttonSpinner.style.display = "inline-block";
 
-  // Start funny messages after delay
   setTimeout(showScrollingMessages, 3000);
 }
 

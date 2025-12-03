@@ -26,3 +26,14 @@ def test_sanitize_strips_to_empty():
     # A title like "..." cleans to "" then strips to "", so we need a fallback.
     assert sanitize_title("...") == "Unknown_Title"
     assert sanitize_title("???") == "Unknown_Title"
+
+
+def test_sanitize_reserved_filenames():
+    """Test that Windows reserved filenames are renamed safely."""
+    # Exact match
+    assert sanitize_title("CON") == "CON_Safe"
+    assert sanitize_title("nul") == "nul_Safe"
+    assert sanitize_title("LPT1") == "LPT1_Safe"
+    # Partial match should remain untouched
+    assert sanitize_title("CONFERENCE") == "CONFERENCE"
+    assert sanitize_title("NULLIFY") == "NULLIFY"
