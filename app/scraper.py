@@ -75,7 +75,12 @@ RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 
 
 def get_random_user_agent() -> str:
-    """Returns a random user agent from the hardcoded list."""
+    """
+    Returns a random user agent from the hardcoded list.
+
+    Returns:
+        str: A User-Agent string.
+    """
     return random.choice(USER_AGENTS)
 
 

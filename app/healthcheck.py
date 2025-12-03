@@ -10,6 +10,9 @@ def health_check(timeout: int = 3):
 
     Args:
         timeout: The maximum time in seconds to wait for a response.
+
+    Returns:
+        None: This function exits the process directly.
     """
     # Retrieve the port from environment variables, defaulting to 5078
     port = os.getenv("LISTEN_PORT", "5078")

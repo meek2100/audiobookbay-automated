@@ -115,14 +115,24 @@ def inject_nav_link() -> dict[str, Any]:
 
 @app.route("/health")
 def health() -> Response:
-    """Dedicated health check endpoint."""
+    """
+    Dedicated health check endpoint.
+
+    Returns:
+        Response: JSON response {"status": "ok"}.
+    """
     return jsonify({"status": "ok"})
 
 
 @app.route("/", methods=["GET", "POST"])
 @limiter.limit("30 per minute")  # Generous limit for humans, stops aggressive bot loops
 def search() -> str:
-    """Handles the search interface."""
+    """
+    Handles the search interface.
+
+    Returns:
+        str: Rendered HTML of the search page.
+    """
     books: list[dict[str, Any]] = []
     query = ""
     error_message = None
@@ -154,6 +164,9 @@ def details() -> str | Response:
     """
     Fetches and renders the details page internally via the server.
     This protects the client's IP from leaking by avoiding direct requests to ABB.
+
+    Returns:
+        str | Response: Rendered HTML details page or a Redirect response.
     """
     link = request.args.get("link")
     if not link:
@@ -170,7 +183,12 @@ def details() -> str | Response:
 @app.route("/send", methods=["POST"])
 @limiter.limit("60 per minute")  # Protects AudiobookBay from rapid magnet fetching
 def send() -> Response:
-    """API endpoint to initiate a download."""
+    """
+    API endpoint to initiate a download.
+
+    Returns:
+        Response: JSON response indicating success or failure.
+    """
     data = request.json
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
@@ -215,7 +233,12 @@ def send() -> Response:
 
 @app.route("/delete", methods=["POST"])
 def delete_torrent() -> Response:
-    """API endpoint to remove a torrent."""
+    """
+    API endpoint to remove a torrent.
+
+    Returns:
+        Response: JSON response indicating success.
+    """
     data = request.json
     torrent_id = data.get("id") if data else None
 
@@ -232,7 +255,12 @@ def delete_torrent() -> Response:
 
 @app.route("/reload_library", methods=["POST"])
 def reload_library() -> Response:
-    """API endpoint to trigger an Audiobookshelf library scan."""
+    """
+    API endpoint to trigger an Audiobookshelf library scan.
+
+    Returns:
+        Response: JSON response indicating success or failure.
+    """
     if not LIBRARY_RELOAD_ENABLED:
         return jsonify({"message": "Audiobookshelf integration not configured."}), 400
 
@@ -253,7 +281,12 @@ def reload_library() -> Response:
 
 @app.route("/status")
 def status() -> str:
-    """Renders the current status of downloads."""
+    """
+    Renders the current status of downloads.
+
+    Returns:
+        str: Rendered HTML status page.
+    """
     try:
         torrent_list = torrent_manager.get_status()
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")

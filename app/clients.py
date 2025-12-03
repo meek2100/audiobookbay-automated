@@ -144,6 +144,9 @@ class TorrentManager:
         Args:
             magnet_link: The magnet URI.
             save_path: The filesystem path where data should be saved.
+
+        Returns:
+            None
         """
         try:
             self._add_magnet_logic(magnet_link, save_path)
@@ -200,6 +203,9 @@ class TorrentManager:
 
         Args:
             torrent_id: The hash or ID of the torrent to remove.
+
+        Returns:
+            None
         """
         client = self._get_client()
         if not client:
