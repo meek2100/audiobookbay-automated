@@ -150,6 +150,14 @@ img.cover {
     content: none;
 }
 
+/* Category Highlight */
+.book-category {
+    color: #ffcc00;
+    font-weight: bold;
+    display: block; /* Make it stand out on its own line on mobile */
+    margin-bottom: 2px;
+}
+
 /* New Filter Styles */
 #filter-container {
     display: flex;
@@ -284,6 +292,12 @@ img.cover {
         content: "|";
         padding: 0 10px; /* Adjust spacing around the separator */
         color: #ccc; /* A subtle color for the separator */
+    }
+
+    /* Reset block display for desktop to flow inline */
+    .book-category {
+        display: inline;
+        margin-bottom: 0;
     }
 }
 

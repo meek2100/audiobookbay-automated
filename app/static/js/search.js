@@ -19,14 +19,13 @@ window.addEventListener("pageshow", function (event) {
 let datePicker;
 let fileSizeSlider;
 
-// ... [The rest of your file remains unchanged, copy from previous version] ...
-
 function initializeFilters() {
     populateSelectFilters();
     initializeFileSizeSlider();
     initializeDateRangePicker();
 }
 
+// --- Helper Functions ---
 function parseFileSizeToMB(sizeString) {
     if (!sizeString || sizeString.trim().toLowerCase() === "n/a") return null;
 
@@ -130,11 +129,13 @@ function initializeFileSizeSlider() {
 }
 
 function populateSelectFilters() {
+    const categories = new Set();
     const languages = new Set();
     const bitrates = new Set();
     const formats = new Set();
 
     document.querySelectorAll(".result-row").forEach((row) => {
+        categories.add(row.dataset.category);
         languages.add(row.dataset.language);
         bitrates.add(row.dataset.bitrate);
         formats.add(row.dataset.format);
@@ -147,7 +148,7 @@ function populateSelectFilters() {
         );
 
         sortedValues.forEach((val) => {
-            if (val && val !== "N/A") {
+            if (val && val !== "N/A" && val !== "None") {
                 const option = document.createElement("option");
                 option.value = val;
                 option.textContent = val;
@@ -156,12 +157,14 @@ function populateSelectFilters() {
         });
     };
 
+    appendOptions("category-filter", categories);
     appendOptions("language-filter", languages);
     appendOptions("bitrate-filter", bitrates);
     appendOptions("format-filter", formats);
 }
 
 function applyFilters() {
+    const category = document.getElementById("category-filter").value;
     const language = document.getElementById("language-filter").value;
     const bitrate = document.getElementById("bitrate-filter").value;
     const format = document.getElementById("format-filter").value;
@@ -171,6 +174,7 @@ function applyFilters() {
     document.querySelectorAll(".result-row").forEach((row) => {
         let visible = true;
 
+        if (category && row.dataset.category !== category) visible = false;
         if (language && row.dataset.language !== language) visible = false;
         if (bitrate && row.dataset.bitrate !== bitrate) visible = false;
         if (format && row.dataset.format !== format) visible = false;
@@ -215,6 +219,7 @@ function applyFilters() {
 }
 
 function clearFilters() {
+    document.getElementById("category-filter").value = "";
     document.getElementById("language-filter").value = "";
     document.getElementById("bitrate-filter").value = "";
     document.getElementById("format-filter").value = "";

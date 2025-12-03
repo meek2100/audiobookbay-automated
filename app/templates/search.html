@@ -32,6 +32,9 @@
 <div id="filter-container">
     <div class="filter-row">
         <div class="filter-controls">
+            <select id="category-filter">
+                <option value="">All Categories</option>
+            </select>
             <select id="language-filter">
                 <option value="">All Languages</option>
             </select>
@@ -67,6 +70,7 @@
             {% if books %} {% for book in books %}
             <tr
                 class="result-row"
+                data-category="{{ book.category }}"
                 data-language="{{ book.language }}"
                 data-bitrate="{{ book.bitrate }}"
                 data-format="{{ book.format }}"
@@ -86,7 +90,7 @@
                 <td>
                     <p class="book-title">{{ book.title }}</p>
                     <div class="property-results-container">
-                        <span class="book-category" style="color: #ffcc00; font-weight: bold">{{ book.category }}</span>
+                        <span class="book-category">{{ book.category }}</span>
                         <span class="book-language">Language: {{ book.language }}</span>
                         <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
                         <span class="book-format">Format: {{ book.format }}</span>
@@ -96,7 +100,6 @@
                 </td>
                 <td>
                     <a href="{{ url_for('details', link=book.link) }}" class="details-button">Details</a>
-
                     <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">
                         Download to Server
                     </button>

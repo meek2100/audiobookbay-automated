@@ -338,11 +338,11 @@ def fetch_and_parse_page(
                     if lang_match:
                         language = lang_match.group(1)
 
-                    # NEW: Category Extraction
-                    cat_match = re.search(r"Category:\s*(.+?)\s*Language:", info_text)
+                    # Category
+                    # Matches "Category: Fantasy Language:" or "Category: Sci-Fi"
+                    cat_match = re.search(r"Category:\s*(.+?)(?:\s+Language:|$)", info_text)
                     if cat_match:
-                        # FIX: Replace unicode non-breaking space (\xa0), not the HTML entity
-                        category = cat_match.group(1).replace("\xa0", " ").strip()
+                        category = cat_match.group(1).strip()
 
                 # ROBUSTNESS FIX: iterate through paragraphs to find the metadata block
                 details_paragraph = None
