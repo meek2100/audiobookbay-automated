@@ -7,6 +7,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/details.css') }}">
 {% endblock %}
 
+{# OPTIMIZATION: This page does not need the search filters or vendor JS #}
+{% block extra_js %}{% endblock %}
+
 {% block content %}
 <div class="title-container">
     <h1>Audiobook Details</h1>

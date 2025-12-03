@@ -1,5 +1,5 @@
 /**
- * Global application actions (Reload ABS, Delete Torrent)
+ * Global application actions (Reload ABS, Delete Torrent, Send Torrent)
  */
 
 function showNotification(message, type = 'info') {
@@ -108,5 +108,54 @@ function deleteTorrent(torrentId) {
     .catch(error => {
         console.error("Error:", error);
         showNotification("An error occurred while removing the torrent.", 'error');
+    });
+}
+
+function sendTorrent(link, title, buttonElement) {
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+  if (!csrfMeta) {
+      showNotification("Security Error: CSRF token missing. Please refresh the page.", 'error');
+      return;
+  }
+  const csrfToken = csrfMeta.getAttribute('content');
+
+  // Disable specific button to prevent double-clicks
+  let originalBtnText = "";
+  if (buttonElement) {
+      buttonElement.disabled = true;
+      originalBtnText = buttonElement.innerText;
+      buttonElement.innerText = "Sending...";
+  }
+
+  fetch("/send", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+    },
+    body: JSON.stringify({ link: link, title: title }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        return response.json().then(err => {
+            throw new Error(err.message || 'Server Error');
+        }).catch(() => {
+            throw new Error(`Request failed with status ${response.status}`);
+        });
+      }
+      return response.json();
+    })
+    .then((data) => {
+      showNotification(data.message, 'success');
+    })
+    .catch((error) => {
+      console.error('Download failed:', error);
+      showNotification("Failed to send download: " + error.message, 'error');
+    })
+    .finally(() => {
+      if (buttonElement) {
+          buttonElement.disabled = false;
+          buttonElement.innerText = originalBtnText;
+      }
     });
 }
