@@ -40,7 +40,11 @@ AudiobookBay Downloader provides a simple and user-friendly interface for users 
 
 ### Environment Variables
 
-The app uses environment variables to configure its behavior. Below are the required variables:
+The app uses environment variables to configure its behavior.
+
+#### Core Configuration (Required)
+
+Below are the required variables:
 
 ```env
 DL_SCHEME=http
@@ -49,19 +53,33 @@ DL_PORT=8080                   # torrent WebUI port
 DL_USERNAME=YOUR_USER          # torrent username
 DL_PASSWORD=YOUR_PASSWORD      # torrent password
 DL_CATEGORY=abb-downloader     # torrent category for downloads
+DL_CLIENT=qbittorrent          # Download client (deluge, transmission, qbittorrent)
 SAVE_PATH_BASE=/audiobooks     # Root path for audiobook downloads (relative to torrent)
-ABB_HOSTNAME=audiobookbay.is   # Default mirror
-PAGE_LIMIT=3                   # Defaults to 3 if not set
-LISTEN_PORT=5078               # Port used by docker container
-THREADS=8                      # Gunicorn threads (Default: 8. Increase for more concurrency)
 SECRET_KEY=change_me           # Flask Session Secret Key (Important for security!)
 ```
 
-The following optional variables add an additional entry to the navigation bar. This is useful for linking to your audiobook player or another related service:
+#### Audiobookshelf Integration (Optional)
 
+To enable the "Reload Library" button in the navigation bar:
+
+```env
+ABS_URL=http://192.168.xxx.xxx:13378 # URL to your ABS instance
+ABS_KEY=your_api_token                          # API Token from ABS (Settings -> Users)
+ABS_LIB=your_library_id                         # Library ID from ABS (in the URL when viewing a library)
 ```
-NAV_LINK_NAME=Open Audiobook Player
-NAV_LINK_URL=https://audiobooks.yourdomain.com/
+
+#### Navigation & Customization (Optional)
+
+```env
+ABB_HOSTNAME=audiobookbay.is   # Default mirror (default: audiobookbay.lu)
+ABB_MIRRORS=mirror1.com,mirror2.com # Comma-separated list of additional mirrors to try
+MAGNET_TRACKERS=udp://tracker.opentrackr.org:1337 # Comma-separated list of custom trackers to add to magnet links
+PAGE_LIMIT=3                   # Number of pages to scrape per search (default: 3)
+LISTEN_PORT=5078               # Port used by docker container (default: 5078)
+THREADS=8                      # Gunicorn threads (Default: 8. Increase for more concurrency)
+NAV_LINK_NAME=Open Player      # Label for extra nav link
+NAV_LINK_URL=https://...       # URL for extra nav link
+LOG_LEVEL=INFO                 # Logging level (DEBUG, INFO, WARNING, ERROR)
 ```
 
 ### Using Docker
@@ -78,23 +96,17 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
        - "5078:5078"
      container_name: audiobookbay-automated
      environment:
-       - DOWNLOAD_CLIENT=qbittorrent
-       - DL_SCHEME=http
+       - DL_CLIENT=qbittorrent
        - DL_HOST=192.168.1.123
        - DL_PORT=8080
        - DL_USERNAME=admin
        - DL_PASSWORD=pass
-       - DL_CATEGORY=abb-downloader
        - SAVE_PATH_BASE=/audiobooks
-       - ABB_HOSTNAME='audiobookbay.is'
-       - PAGE_LIMIT=3
-       - THREADS=8
        - SECRET_KEY=super-secure-key-here
-       - NAV_LINK_NAME=Open Audiobook Player
-       - NAV_LINK_URL=https://audiobooks.yourdomain.com/
-       - LOG_LEVEL=INFO # Options: DEBUG, INFO, WARNING, ERROR. Defaults to INFO.
-       - LISTEN_HOST= # Optional. Leave blank to auto-detect IPv6 (::) or IPv4 (0.0.0.0).
-       - LISTEN_PORT= # Optional. Leave blank to use default port of 5078.
+       # Optional ABS Integration
+       - ABS_URL=http://192.168.1.123:13378
+       - ABS_KEY=my_abs_api_key
+       - ABS_LIB=my_library_id
    ```
 
 2. **Start the Application**:
