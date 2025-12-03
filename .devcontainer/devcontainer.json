@@ -8,29 +8,23 @@
         "vscode": {
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
-                // NEW: Explicitly enable and configure pytest
                 "python.testing.pytestEnabled": true,
                 "python.testing.pytestArgs": ["tests"],
-                // NEW: Set terminal working directory
                 "terminal.integrated.cwd": "/app"
             },
             "extensions": ["ms-python.python", "ms-python.vscode-pylance", "tamasfe.even-better-toml"]
         }
     },
-    // NEW: Set default environment variables for development
     "remoteEnv": {
         "FLASK_APP": "app.app",
         "FLASK_DEBUG": "1",
         "SECRET_KEY": "dev-key",
         "SAVE_PATH_BASE": "/tmp/audiobooks_dev",
         "LISTEN_PORT": "5078",
-        "DOWNLOAD_CLIENT": "qbittorrent",
+        "DL_CLIENT": "qbittorrent",
         "DL_HOST": "localhost"
     },
-    // Forward the Flask port so you can access localhost:5078
     "forwardPorts": [5078],
-    // Install dev dependencies automatically after the container builds
     "postCreateCommand": "pip install -e '.[dev]'",
-    // Run as the non-root user defined in your Dockerfile
     "remoteUser": "appuser"
 }
