@@ -51,7 +51,8 @@ const setup = () => {
 
     // Add mock result rows to the DOM
     const tbody = document.getElementById("results-table-body");
-    tbody.appendChild(createResultRow("Fiction", "English", "128 Kbps", "500 MB", "01 Jan 2024", "M4B"));
+    // FIX: Changed category to a compound name to test the new split logic
+    tbody.appendChild(createResultRow("Fiction Science", "English", "128 Kbps", "500 MB", "01 Jan 2024", "M4B"));
     tbody.appendChild(createResultRow("Non-Fiction", "Spanish", "64 Kbps", "1.5 GB", "15 Feb 2024", "MP3"));
     tbody.appendChild(createResultRow("Fiction", "English", "128 Kbps", "100 MB", "20 Dec 2023", "M4B"));
     tbody.appendChild(createResultRow("Fiction", "English", "N/A", "10 GB", "N/A", "MP3")); // Max size row: 10240 MB
@@ -147,13 +148,14 @@ describe("search.js Filter Logic (DOM dependent)", () => {
 
     // --- initializeFilters Tests ---
 
-    test("initializeFilters should populate all select menus correctly", () => {
+    test("initializeFilters should populate all select menus correctly (UX FIX)", () => {
         const categoryFilter = document.getElementById("category-filter");
         const options = Array.from(categoryFilter.querySelectorAll("option"))
             .map((opt) => opt.value)
             .filter((v) => v !== "");
 
-        expect(options).toEqual(["Fiction", "Non-Fiction"]);
+        // FIX: Expect individual category terms, sorted alphabetically
+        expect(options).toEqual(["Fiction", "Non-Fiction", "Science"]);
 
         const formatFilter = document.getElementById("format-filter");
         const formatOptions = Array.from(formatFilter.querySelectorAll("option"))
@@ -175,13 +177,24 @@ describe("search.js Filter Logic (DOM dependent)", () => {
 
     // --- applyFilters Tests ---
 
-    test("applyFilters should filter by Category (Fiction)", () => {
+    test("applyFilters should filter by Category (Fiction) using substring match", () => {
         const { mockApply } = setupData;
         mockFilter("category-filter", "Fiction");
         mockApply();
 
         const visible = Array.from(document.querySelectorAll(".result-row")).filter((r) => r.style.display === "");
+        // Includes: "Fiction Science", "Fiction", "Fiction" rows. Excludes "Non-Fiction" due to regex.
         expect(visible).toHaveLength(3);
+    });
+
+    test("applyFilters should filter by Category (Science) using substring match", () => {
+        const { mockApply } = setupData;
+        mockFilter("category-filter", "Science");
+        mockApply();
+
+        const visible = Array.from(document.querySelectorAll(".result-row")).filter((r) => r.style.display === "");
+        // Includes: Only "Fiction Science" row.
+        expect(visible).toHaveLength(1);
     });
 
     test("applyFilters should filter by File Size Range", () => {

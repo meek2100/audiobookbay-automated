@@ -151,7 +151,15 @@ function populateSelectFilters() {
     const formats = new Set();
 
     document.querySelectorAll(".result-row").forEach((row) => {
-        categories.add(row.dataset.category);
+        // --- START CATEGORY FIX: Split categories for filtering by single keyword ---
+        const categoryString = row.dataset.category;
+        categoryString.split(/\s+/).forEach((term) => {
+            if (term && term !== "N/A" && term !== "None") {
+                categories.add(term);
+            }
+        });
+        // --- END CATEGORY FIX ---
+
         languages.add(row.dataset.language);
         bitrates.add(row.dataset.bitrate);
         formats.add(row.dataset.format);
@@ -194,7 +202,16 @@ function applyFilters() {
     document.querySelectorAll(".result-row").forEach((row) => {
         let visible = true;
 
-        if (category && row.dataset.category !== category) visible = false;
+        // --- START CATEGORY FIX: Whole Word Regex Match ---
+        if (category) {
+            // Check for whole word match: \b ensures boundary (e.g., matches "Fiction" but not "Non-Fiction")
+            const regex = new RegExp(`\\b${category}\\b`);
+            if (!regex.test(row.dataset.category)) {
+                visible = false;
+            }
+        }
+        // --- END CATEGORY FIX ---
+
         if (language && row.dataset.language !== language) visible = false;
         if (bitrate && row.dataset.bitrate !== bitrate) visible = false;
         if (format && row.dataset.format !== format) visible = false;

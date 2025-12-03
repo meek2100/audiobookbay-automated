@@ -15,10 +15,10 @@ global.confirm = mockConfirm;
 global.open = mockOpen;
 
 // Mock requestAnimationFrame used by showNotification
-global.requestAnimationFrame = jest.fn(cb => cb());
+global.requestAnimationFrame = jest.fn((cb) => cb());
 
 // Spy on console.error
-const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
 // Add a required meta tag for CSRF token into the DOM
 document.head.innerHTML = '<meta name="csrf-token" content="test-csrf-token" />';
@@ -29,15 +29,15 @@ eval(global.actionsJsContent);
 // --- MOCK UTILITIES (MOVED TO TOP-LEVEL SCOPE FOR ACCESSIBILITY) ---
 
 function getNotificationText() {
-    const container = document.getElementById('notification-container');
-    return container ? container.textContent : '';
+    const container = document.getElementById("notification-container");
+    return container ? container.textContent : "";
 }
 
 // CRITICAL FIX: Helper to drain the microtask queue completely.
 // Uses a zero-ms timeout which is resolved immediately by jest.runAllTimers()
 // and ensures the preceding microtasks (like fetch resolution) are complete.
 async function flushPromises() {
-    return new Promise(resolve => setTimeout(resolve, 0));
+    return new Promise((resolve) => setTimeout(resolve, 0));
 }
 // ---------------------------------------------------------------------
 
@@ -49,7 +49,7 @@ beforeEach(() => {
     // Default mock response for success
     mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ message: 'Success' }),
+        json: () => Promise.resolve({ message: "Success" }),
         status: 200,
     });
     // Ensure notification container exists and is empty
@@ -62,42 +62,39 @@ afterAll(() => {
     consoleErrorSpy.mockRestore();
 });
 
-
-describe('actions.js - Core Functionality', () => {
-
-    test('showNotification should display and remove a toast', () => {
-        showNotification('Test message', 'success');
-        expect(getNotificationText()).toContain('Test message');
+describe("actions.js - Core Functionality", () => {
+    test("showNotification should display and remove a toast", () => {
+        showNotification("Test message", "success");
+        expect(getNotificationText()).toContain("Test message");
 
         // Step 1: Get the toast element to dispatch the event later
-        const toast = document.querySelector('#notification-container > div');
+        const toast = document.querySelector("#notification-container > div");
 
         // Step 2: Advance the timer (3000ms) to trigger the removal block (setTimeout)
         jest.advanceTimersByTime(3000);
 
         // Step 3 (Simulate Event): Manually dispatch the 'transitionend' event.
-        const transitionEndEvent = new Event('transitionend');
+        const transitionEndEvent = new Event("transitionend");
         if (toast) {
             toast.dispatchEvent(transitionEndEvent);
         }
 
         // Expect element to be removed immediately after the event simulation
-        expect(document.querySelector('#notification-container > div')).toBeNull();
-        expect(getNotificationText()).toBe('');
+        expect(document.querySelector("#notification-container > div")).toBeNull();
+        expect(getNotificationText()).toBe("");
     });
 
-    test('showNotification should handle error type', () => {
-        showNotification('Error message', 'error');
-        const toast = document.querySelector('#notification-container > div');
-        expect(toast.style.backgroundColor).toBe('rgb(211, 47, 47)'); // #d32f2f
+    test("showNotification should handle error type", () => {
+        showNotification("Error message", "error");
+        const toast = document.querySelector("#notification-container > div");
+        expect(toast.style.backgroundColor).toBe("rgb(211, 47, 47)"); // #d32f2f
     });
 });
 
-describe('actions.js - API Interactions', () => {
-
+describe("actions.js - API Interactions", () => {
     // --- reloadLibrary ---
 
-    test('reloadLibrary should send POST request if user confirms', async () => {
+    test("reloadLibrary should send POST request if user confirms", async () => {
         mockConfirm.mockReturnValue(true);
 
         await reloadLibrary();
@@ -105,21 +102,24 @@ describe('actions.js - API Interactions', () => {
         // Use jest.runAllTimers to flush the 3000ms timer of the notification
         jest.runAllTimers();
 
-        expect(mockFetch).toHaveBeenCalledWith('/reload_library', expect.objectContaining({
-            method: 'POST',
-            headers: expect.objectContaining({
-                'X-CSRFToken': 'test-csrf-token',
-            }),
-        }));
+        expect(mockFetch).toHaveBeenCalledWith(
+            "/reload_library",
+            expect.objectContaining({
+                method: "POST",
+                headers: expect.objectContaining({
+                    "X-CSRFToken": "test-csrf-token",
+                }),
+            })
+        );
 
         // Verify success notification disposal
-        const toast = document.querySelector('#notification-container > div');
-        if (toast) toast.dispatchEvent(new Event('transitionend'));
+        const toast = document.querySelector("#notification-container > div");
+        if (toast) toast.dispatchEvent(new Event("transitionend"));
 
-        expect(getNotificationText()).toBe('');
+        expect(getNotificationText()).toBe("");
     });
 
-    test('reloadLibrary should do nothing if user cancels', async () => {
+    test("reloadLibrary should do nothing if user cancels", async () => {
         mockConfirm.mockReturnValue(false);
         await reloadLibrary();
         expect(mockFetch).not.toHaveBeenCalled();
@@ -127,11 +127,11 @@ describe('actions.js - API Interactions', () => {
 
     // --- deleteTorrent ---
 
-    test('deleteTorrent should send DELETE request and reload on success', async () => {
+    test("deleteTorrent should send DELETE request and reload on success", async () => {
         // Fix #1: Ensure the success message includes "successfully" to trigger reload.
         mockFetch.mockResolvedValue({
             ok: true,
-            json: () => Promise.resolve({ message: 'Torrent removed successfully.' }),
+            json: () => Promise.resolve({ message: "Torrent removed successfully." }),
             status: 200,
         });
 
@@ -139,7 +139,7 @@ describe('actions.js - API Interactions', () => {
         const mockReload = jest.fn();
         global.location.reload = mockReload;
 
-        await deleteTorrent('test-hash-123');
+        await deleteTorrent("test-hash-123");
         await flushPromises(); // Flush promise resolution to ensure setTimeout is scheduled
 
         // Execute all pending timers, including the 0ms flush and the 1000ms reload timer.
@@ -149,76 +149,74 @@ describe('actions.js - API Interactions', () => {
         global.location.reload = undefined;
     });
 
-
     // --- sendTorrent ---
 
-    test('sendTorrent should disable and re-enable button on success', async () => {
-        const mockButton = document.createElement('button');
-        mockButton.innerText = 'Download to Server';
+    test("sendTorrent should disable and re-enable button on success", async () => {
+        const mockButton = document.createElement("button");
+        mockButton.innerText = "Download to Server";
 
         // Assert initial state is correct (not disabled)
         expect(mockButton.disabled).toBe(false);
 
-        await sendTorrent('http://link', 'Book Title', mockButton);
+        await sendTorrent("http://link", "Book Title", mockButton);
         await flushPromises();
         jest.runAllTimers(); // FIX: Must run timers to execute the setTimeout inside flushPromises, which resolves the await and lets .finally run.
 
         // Assert button is re-enabled and text is restored
         expect(mockButton.disabled).toBe(false);
-        expect(mockButton.innerText).toBe('Download to Server');
+        expect(mockButton.innerText).toBe("Download to Server");
     });
 
-    test('sendTorrent should show error on non-ok status code', async () => {
-        const mockButton = document.createElement('button');
-        mockButton.innerText = 'Download to Server';
+    test("sendTorrent should show error on non-ok status code", async () => {
+        const mockButton = document.createElement("button");
+        mockButton.innerText = "Download to Server";
 
         mockFetch.mockResolvedValue({
             ok: false,
             status: 500,
-            json: () => Promise.resolve({ message: 'Server Error' }),
+            json: () => Promise.resolve({ message: "Server Error" }),
         });
 
-        await sendTorrent('http://link', 'Book Title', mockButton);
+        await sendTorrent("http://link", "Book Title", mockButton);
         await flushPromises();
         jest.runAllTimers(); // FIX: Must run timers to execute the setTimeout inside flushPromises, which resolves the await and lets .finally run.
 
         // Verify error message is disposed
         jest.advanceTimersByTime(3000);
-        const toast = document.querySelector('#notification-container > div');
-        if (toast) toast.dispatchEvent(new Event('transitionend'));
-        expect(getNotificationText()).toBe('');
+        const toast = document.querySelector("#notification-container > div");
+        if (toast) toast.dispatchEvent(new Event("transitionend"));
+        expect(getNotificationText()).toBe("");
 
         // Check console.error was called
         expect(consoleErrorSpy).toHaveBeenCalled();
         expect(mockButton.disabled).toBe(false);
     });
 
-    test('sendTorrent should show error on fetch rejection', async () => {
-        mockFetch.mockRejectedValue(new Error('Network Failed'));
+    test("sendTorrent should show error on fetch rejection", async () => {
+        mockFetch.mockRejectedValue(new Error("Network Failed"));
 
-        await sendTorrent('http://link', 'Book Title', null);
+        await sendTorrent("http://link", "Book Title", null);
 
         // Run all timers to ensure the cleanup in the promise chain completes
         jest.runAllTimers();
 
         // Verify error message is disposed
-        const toast = document.querySelector('#notification-container > div');
-        if (toast) toast.dispatchEvent(new Event('transitionend'));
-        expect(getNotificationText()).toBe('');
+        const toast = document.querySelector("#notification-container > div");
+        if (toast) toast.dispatchEvent(new Event("transitionend"));
+        expect(getNotificationText()).toBe("");
     });
 });
 
-describe('actions.js - Browser Interactions', () => {
-
-    test('openExternalLink should call window.open if confirmed', () => {
+describe("actions.js - Browser Interactions", () => {
+    test("openExternalLink should call window.open if confirmed", () => {
         mockConfirm.mockReturnValue(true);
-        openExternalLink('http://external.site');
-        expect(mockOpen).toHaveBeenCalledWith('http://external.site', '_blank');
+        openExternalLink("http://external.site");
+        expect(mockOpen).toHaveBeenCalledWith("http://external.site", "_blank");
     });
 
-    test('openExternalLink should do nothing if canceled', () => {
+    test("openExternalLink should do nothing if canceled", () => {
         mockConfirm.mockReturnValue(false);
-        openExternalLink('http://external.site');
+        openExternalLink("http://external.site");
         expect(mockOpen).not.toHaveBeenCalled();
     });
 });
