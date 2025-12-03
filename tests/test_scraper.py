@@ -100,6 +100,13 @@ def test_fetch_and_parse_page_real_structure(mock_sleep):
     # Verify sleep was called (Jitter test)
     assert mock_sleep.called
 
+    # NEW: Verify the Referer header was actually sent (Anti-bot stealth check)
+    last_request = adapter.last_request
+    assert last_request is not None
+    assert "Referer" in last_request.headers
+    # Expecting homepage as referer for page 1
+    assert last_request.headers["Referer"] == f"https://{hostname}"
+
     assert len(results) == 1
     book = results[0]
     assert "A Game of Thrones" in book["title"]
