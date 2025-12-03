@@ -141,14 +141,13 @@ def search() -> str:
         # Support both GET (URL parameters) and POST (Form submission)
         # GET is preferred for bookmarking and back-button functionality
         query = request.args.get("query") or request.form.get("query") or ""
+        query = query.strip()
 
         if query:
-            query = query.strip()
-            if query:
-                # OPTIMIZATION: AudiobookBay requires lowercase search terms
-                search_query = query.lower()
-                logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
-                books = search_audiobookbay(search_query)
+            # OPTIMIZATION: AudiobookBay requires lowercase search terms
+            search_query = query.lower()
+            logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
+            books = search_audiobookbay(search_query)
 
         return render_template("search.html", books=books, query=query)
 
@@ -297,6 +296,16 @@ def status() -> str:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    host = os.getenv("LISTEN_HOST", "0.0.0.0")
-    port = int(os.getenv("LISTEN_PORT", "5078"))
+    # Match entrypoint logic: Allow empty LISTEN_HOST to default to 0.0.0.0 for local dev
+    host = os.getenv("LISTEN_HOST")
+    if not host:
+        host = "0.0.0.0"
+
+    port_str = os.getenv("LISTEN_PORT", "5078")
+    try:
+        port = int(port_str)
+    except ValueError:
+        logger.warning(f"Invalid LISTEN_PORT '{port_str}'. Defaulting to 5078.")
+        port = 5078
+
     app.run(host=host, port=port)

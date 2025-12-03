@@ -20,6 +20,19 @@ def mock_env(monkeypatch):
 # --- Initialization & Connection Tests ---
 
 
+def test_init_with_dl_url(monkeypatch):
+    """Test that DL_URL takes precedence if provided directly."""
+    # This covers the logic branch in __init__ where DL_URL is already set,
+    # skipping the auto-construction from host/port.
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    monkeypatch.setenv("DL_URL", "http://custom-url:1234")
+    monkeypatch.delenv("DL_HOST", raising=False)
+    monkeypatch.delenv("DL_PORT", raising=False)
+
+    manager = TorrentManager()
+    assert manager.dl_url == "http://custom-url:1234"
+
+
 def test_qbittorrent_add_magnet(mock_env):
     with patch("app.clients.QbClient") as MockQbClient:
         # Setup the mock client instance

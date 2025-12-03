@@ -58,6 +58,7 @@ REAL_WORLD_HTML = """
 # FIX: Updated mock HTML to use <span> tags for Format and Bitrate.
 # This matches the structure of the real website and allows the scraper's
 # "Strategy 1" (find next sibling) to extract "M4B" cleanly.
+# CLEANUP: Switched bad.com to example.com/spam for test data hygiene.
 DETAILS_HTML = """
 <div class="post">
     <div class="postTitle"><h1>A Game of Thrones</h1></div>
@@ -71,7 +72,7 @@ DETAILS_HTML = """
         <span class="narrator" itemprop="author">Roy Dotrice</span>
         <div class="desc">
             <p>This is a great book.</p>
-            <a href="http://bad.com">Spam Link</a>
+            <a href="https://example.com/spam">Spam Link</a>
         </div>
     </div>
     <table class="torrent_info">

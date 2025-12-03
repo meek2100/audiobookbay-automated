@@ -258,8 +258,11 @@ def _get_text_after_label(container: Tag, label_text: str) -> str:
 
         # Strategy 2: The value is in the same text node (e.g., "Posted: 30 Nov 2025")
         # Split by the label and take the rest
-        if ":" in label_node:
-            parts = label_node.split(":", 1)
+        # Explicit cast to str for Pylance/Python 3.13 safety, as NavigableString methods
+        # might not be fully inferred by static analysis tools.
+        label_str = str(label_node)
+        if ":" in label_str:
+            parts = label_str.split(":", 1)
             if len(parts) > 1 and parts[1].strip():
                 return parts[1].strip()
 
