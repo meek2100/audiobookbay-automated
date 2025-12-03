@@ -22,12 +22,14 @@ RUN apt-get update && \
 
 # 1. Copy project definition first
 COPY pyproject.toml .
+
 # 2. Install dependencies (creates a cached layer)
 RUN pip install --no-cache-dir .
 
-# 3. Copy the source code
+# 3. Copy the source code (including the committed vendor files)
 COPY app app/
 COPY entrypoint.sh .
+
 # 4. Set permissions
 RUN chmod +x entrypoint.sh
 

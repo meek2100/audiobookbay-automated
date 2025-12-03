@@ -548,7 +548,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             description = desc_tag.decode_contents()
 
         # Trackers & File Info
-        trackers = []
+        trackers: list[str] = []  # Explicit initialization
+
         file_size = "N/A"
         info_hash = "N/A"
 
@@ -647,8 +648,11 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             logger.error(msg)
             return None, msg
 
+        # Explicitly initialize as list for strict typing
+        trackers: list[str] = []
+
         tracker_rows = soup.find_all("td", string=RE_TRACKERS)
-        trackers = [row.text.strip() for row in tracker_rows]
+        trackers.extend([row.text.strip() for row in tracker_rows])
 
         if DEFAULT_TRACKERS:
             trackers.extend(DEFAULT_TRACKERS)

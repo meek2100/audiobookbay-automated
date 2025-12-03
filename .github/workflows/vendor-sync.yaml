@@ -1,0 +1,61 @@
+name: Vendor Sync & Commit
+
+on:
+  # Run manually to initiate an update
+  workflow_dispatch:
+  # Run automatically when a dependency is updated via Dependabot
+  pull_request:
+    types: [closed]
+    branches: [main, master]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: write # Required to commit the updated files
+
+jobs:
+  update-assets:
+    # Only run this if the PR was merged (indicating the dependency version update was approved)
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for proper commit behavior
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies and Copy Assets
+        # The 'update-vendor' script runs 'npm install' and then 'copy-vendor'
+        run: |
+          npm install
+          npm run copy-vendor
+          # Clean up node_modules which are not needed for the Docker image
+          rm -rf node_modules
+
+      - name: Check for Changes
+        id: git_status
+        run: |
+          # Check if the generated vendor files are different from what's in Git
+          if [[ $(git status --porcelain app/static/vendor) ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and Push Updated Assets
+        if: steps.git_status.outputs.changes == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(vendor): Auto-sync flatpickr/nouislider assets to latest package versions"
+          # Only commit the generated vendor files
+          files: "app/static/vendor/"

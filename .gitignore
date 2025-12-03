@@ -50,6 +50,16 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+test-results.xml
+*.xml
+
+# Node/JavaScript/Jest Exclusions
+node_modules/
+package-lock.json
+npm-debug.log
+yarn-error.log
+/tests/js/coverage
+/tests/js/.jest-cache
 
 # Translations
 *.mo

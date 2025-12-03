@@ -12,7 +12,12 @@
                 "python.testing.pytestArgs": ["tests"],
                 "terminal.integrated.cwd": "/app"
             },
-            "extensions": ["ms-python.python", "ms-python.vscode-pylance", "tamasfe.even-better-toml"]
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "tamasfe.even-better-toml",
+                "esbenp.prettier-vscode"
+            ]
         }
     },
     "remoteEnv": {
@@ -25,6 +30,7 @@
         "DL_HOST": "localhost"
     },
     "forwardPorts": [5078],
-    "postCreateCommand": "pip install -e '.[dev]'",
+    // UPDATED: Install Node.js for JS testing, then install Python and JS dependencies
+    "postCreateCommand": "apt-get update && apt-get install -y nodejs npm && pip install -e '.[dev]' && npm install",
     "remoteUser": "appuser"
 }

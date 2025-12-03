@@ -1,3 +1,22 @@
+// app/static/js/search.js
+
+// Define functions in the global scope (or attach to window) so tests and other scripts (actions.js) can use them.
+
+// Expose these core functions to the global scope for testing and external use (e.g., actions.js)
+window.parseFileSizeToMB = parseFileSizeToMB;
+window.formatFileSize = formatFileSize;
+window.initializeFilters = initializeFilters;
+window.applyFilters = applyFilters;
+window.clearFilters = clearFilters;
+window.showLoadingSpinner = showLoadingSpinner;
+window.hideLoadingSpinner = hideLoadingSpinner;
+
+// Global variables defined in the file
+let datePicker;
+let fileSizeSlider;
+let messageIndex = 0;
+let intervalId = null;
+
 document.addEventListener("DOMContentLoaded", function () {
     // Initialize filtering if results are present
     if (document.querySelectorAll(".result-row").length > 0) {
@@ -16,16 +35,13 @@ window.addEventListener("pageshow", function (event) {
     }
 });
 
-let datePicker;
-let fileSizeSlider;
-
+// --- Helper Functions ---
 function initializeFilters() {
     populateSelectFilters();
     initializeFileSizeSlider();
     initializeDateRangePicker();
 }
 
-// --- Helper Functions ---
 function parseFileSizeToMB(sizeString) {
     if (!sizeString || sizeString.trim().toLowerCase() === "n/a") return null;
 
@@ -279,9 +295,6 @@ const messages = [
     "Searching in hyperspace... almost there!",
     "Just a few more gigabytes to process...",
 ];
-
-let messageIndex = 0;
-let intervalId = null;
 
 function showScrollingMessages() {
     const messageScroller = document.getElementById("message-scroller");

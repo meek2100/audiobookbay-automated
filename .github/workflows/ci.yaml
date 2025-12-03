@@ -34,7 +34,7 @@ jobs:
       - name: Run pre-commit hooks
         run: pre-commit run --all-files --show-diff-on-failure
 
-  # 2. Automated Tests
+  # 2. Automated Python Tests
   test:
     name: Pytest
     needs: lint
@@ -67,3 +67,26 @@ jobs:
         with:
           name: pytest-results
           path: test-results.xml
+
+  # 3. Automated JavaScript Tests
+  js-test:
+    name: Jest
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Use a stable, modern version of Node
+          node-version: 20
+          cache: "npm"
+
+      - name: Install JS Dependencies
+        # Installs packages from package.json
+        run: npm install
+
+      - name: Run Jest Tests
+        # Use npx jest to execute the tests configured in jest.config.js
+        run: npx jest

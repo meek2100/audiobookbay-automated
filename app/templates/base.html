@@ -24,7 +24,14 @@
             {% if nav_link_name and nav_link_url %}
             <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
             {% endif %} {% if library_reload_enabled %}
-            <a href="#" onclick="reloadLibrary(); return false;">Reload Library</a>
+            <a
+                href="#"
+                onclick="
+                    reloadLibrary();
+                    return false;
+                "
+                >Reload Library</a
+            >
             {% endif %}
         </div>
 
