@@ -39,6 +39,11 @@
                 onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">
                 Download to Server
             </button>
+
+            <button class="direct-link-btn" onclick="openExternalLink('{{ book.link|escape }}')">
+                Open Original Page (External)
+            </button>
+
             <a href="javascript:history.back()" class="back-link">← Back to Search</a>
         </div>
 

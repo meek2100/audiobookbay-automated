@@ -57,6 +57,17 @@
     width: 100%;
 }
 
+/* Specific style for the external link button */
+.direct-link-btn {
+    max-width: 200px;
+    width: 100%;
+    background-color: #455a64; /* Blue-grey for secondary/cautionary action */
+}
+
+.direct-link-btn:hover {
+    background-color: #607d8b;
+}
+
 .back-link {
     color: #ffcc00;
     text-decoration: none;
@@ -117,7 +128,7 @@
         width: 100%;
     }
 
-    .details-download-btn {
+    .details-download-btn, .direct-link-btn {
         max-width: 100%;
     }
 }

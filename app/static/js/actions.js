@@ -1,5 +1,5 @@
 /**
- * Global application actions (Reload ABS, Delete Torrent, Send Torrent)
+ * Global application actions (Reload ABS, Delete Torrent, Send Torrent, Open External)
  */
 
 function showNotification(message, type = 'info') {
@@ -158,4 +158,16 @@ function sendTorrent(link, title, buttonElement) {
           buttonElement.innerText = originalBtnText;
       }
     });
+}
+
+function openExternalLink(url) {
+    const warningMessage = "SECURITY WARNING:\n\n" +
+        "You are about to open this link directly in your browser.\n" +
+        "This traffic will NOT be routed through the server's VPN connection.\n\n" +
+        "Your real IP address may be exposed to the target website.\n\n" +
+        "Are you sure you want to proceed?";
+
+    if (confirm(warningMessage)) {
+        window.open(url, '_blank');
+    }
 }
