@@ -1,0 +1,59 @@
+import logging
+import os
+
+
+class Config:
+    """
+    Centralized configuration for the Flask application.
+    Loads settings from environment variables with safe defaults.
+    """
+
+    # Core Flask Config
+    SECRET_KEY = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
+    FLASK_DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
+    TESTING = os.getenv("TESTING", "0") == "1"
+
+    # Static Asset Caching (1 Year)
+    SEND_FILE_MAX_AGE_DEFAULT = 31536000
+
+    # File System
+    SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
+
+    # Integrations
+    ABS_URL = os.getenv("ABS_URL")
+    ABS_KEY = os.getenv("ABS_KEY")
+    ABS_LIB = os.getenv("ABS_LIB")
+
+    # UI Customization
+    NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
+    NAV_LINK_URL = os.getenv("NAV_LINK_URL")
+
+    # Logging
+    LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
+    LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
+
+    @classmethod
+    def validate(cls, logger):
+        """
+        Validates critical configuration at startup.
+        """
+        if cls.SECRET_KEY == "change-this-to-a-secure-random-key":
+            if cls.FLASK_DEBUG or cls.TESTING:
+                logger.warning(
+                    "WARNING: You are using the default insecure SECRET_KEY. "
+                    "This is acceptable for development/testing but UNSAFE for production."
+                )
+            else:
+                logger.critical(
+                    "CRITICAL SECURITY ERROR: You are running in PRODUCTION with the default insecure SECRET_KEY."
+                )
+                raise ValueError(
+                    "Application refused to start: Change SECRET_KEY in your .env file for production deployment."
+                )
+
+        if not cls.SAVE_PATH_BASE:
+            if not cls.TESTING:
+                logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
+                import sys
+
+                sys.exit(1)

@@ -1,0 +1,220 @@
+import logging
+from unittest.mock import MagicMock, patch
+
+import requests
+import requests_mock
+from bs4 import BeautifulSoup
+
+from app import scraper
+from app.scraper import _get_text_after_label, fetch_and_parse_page
+
+# --- Unit Tests: Helper Functions ---
+
+
+def test_get_text_after_label_valid():
+    html = "<div><p>Format: <span>MP3</span></p></div>"
+    soup = BeautifulSoup(html, "html.parser")
+    # We pass the parent container to the function, normally it searches inside.
+    # The function expects a Tag, so we pass the <p>
+    p_tag = soup.find("p")
+    res = _get_text_after_label(p_tag, "Format:")
+    assert res == "MP3"
+
+
+def test_get_text_after_label_inline():
+    html = "<div><p>Posted: 10 Jan 2020</p></div>"
+    soup = BeautifulSoup(html, "html.parser")
+    p_tag = soup.find("p")
+    res = _get_text_after_label(p_tag, "Posted:")
+    assert res == "10 Jan 2020"
+
+
+def test_get_text_after_label_exception():
+    """Test that exceptions during parsing are handled gracefully."""
+    mock_container = MagicMock()
+    # Force an exception when .find() is called
+    mock_container.find.side_effect = Exception("BS4 Internal Error")
+    result = _get_text_after_label(mock_container, "Label:")
+    assert result == "N/A"
+
+
+def test_get_text_after_label_fallback():
+    """Test that it returns 'N/A' if label exists but no value follows."""
+
+    # Custom class to simulate a string that has find_next_sibling returning None
+    class FakeNavigableString(str):
+        def find_next_sibling(self):
+            return None
+
+    mock_container = MagicMock()
+    mock_label_node = FakeNavigableString("Format:")
+    mock_container.find.return_value = mock_label_node
+
+    result = _get_text_after_label(mock_container, "Format:")
+    assert result == "N/A"
+
+
+# --- Integration Tests: Fetch and Parse Page ---
+
+
+def test_fetch_and_parse_page_real_structure(real_world_html, mock_sleep):
+    hostname = "audiobookbay.lu"
+    query = "test"
+    page = 1
+    user_agent = "TestAgent/1.0"
+
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=real_world_html, status_code=200)
+
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+    assert mock_sleep.called
+    assert len(results) == 1
+    book = results[0]
+    assert "A Game of Thrones" in book["title"]
+    assert book["language"] == "English"
+    assert book["format"] == "M4B"
+    assert book["file_size"] == "1.37 GBs"
+
+
+def test_fetch_and_parse_page_unknown_bitrate():
+    """Test that a bitrate of '?' is normalized to 'Unknown'."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">Test</a></h2></div>
+        <div class="postContent">
+            <p>Posted: 01 Jan 2024<br>Bitrate: ?</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results[0]["bitrate"] == "Unknown"
+
+
+def test_fetch_and_parse_page_malformed():
+    """Test resilience against empty/broken HTML."""
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text="<html><body></body></html>", status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results == []
+
+
+def test_fetch_and_parse_page_mixed_validity():
+    """Test skipping malformed posts while keeping valid ones."""
+    mixed_html = """
+    <div class="post"><div>Broken Info</div></div>
+    <div class="post">
+        <div class="postTitle"><h2><a href="/valid">Valid Book</a></h2></div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=mixed_html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert len(results) == 1
+    assert results[0]["title"] == "Valid Book"
+
+
+def test_parsing_structure_change():
+    """Test that missing labels default to 'N/A'."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">T</a></h2></div>
+        <div class="postContent"><p>Random text.</p></div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results[0]["format"] == "N/A"
+
+
+def test_fetch_and_parse_page_language_fallback():
+    """Test missing or malformed language tag."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">T</a></h2></div>
+        <div class="postInfo">Languages: English</div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results[0]["language"] == "N/A"
+
+
+def test_fetch_page_post_exception(caplog):
+    """Test exception handling during post processing."""
+    session = MagicMock()
+    session.get.return_value.text = "<html></html>"
+    session.get.return_value.status_code = 200
+
+    mock_post = MagicMock()
+    mock_post.select_one.side_effect = Exception("Post Error")
+
+    with patch("app.scraper.BeautifulSoup") as mock_bs:
+        mock_bs.return_value.select.return_value = [mock_post]
+        with caplog.at_level(logging.ERROR):
+            results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+            assert results == []
+            assert "Could not process a post" in caplog.text
+
+
+def test_fetch_page_urljoin_exception(real_world_html):
+    """Test urljoin failure handling."""
+    session = MagicMock()
+    session.get.return_value.text = real_world_html
+    session.get.return_value.status_code = 200
+
+    with patch("app.scraper.urljoin", side_effect=Exception("Join Error")):
+        results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results == []
+
+
+def test_fetch_and_parse_page_missing_cover_image():
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">No Cover</a></h2></div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results[0]["cover"] == "/static/images/default_cover.jpg"
+
+
+def test_fetch_and_parse_page_missing_post_info():
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">No Info</a></h2></div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results[0]["language"] == "N/A"
