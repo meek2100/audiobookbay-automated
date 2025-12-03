@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 
 // We need to fetch and evaluate the source script to make its global functions available to JSDOM.
-const searchJsPath = path.resolve(__dirname, "../../app/static/js/search.js");
+const searchJsPath = path.resolve(__dirname, "app/static/js/search.js");
 const searchJsContent = fs.readFileSync(searchJsPath, "utf8");
 
 // --- Global Mocks ---

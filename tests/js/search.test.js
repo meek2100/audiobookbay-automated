@@ -2,27 +2,6 @@
  * @jest-environment jsdom
  */
 
-const fs = require("fs");
-const path = require("path");
-
-// We need to fetch and evaluate the source script to make its global functions available to JSDOM.
-const searchJsPath = path.resolve(__dirname, "/app/static/js/search.js");
-const searchJsContent = fs.readFileSync(searchJsPath, "utf8");
-
-// Define external dependencies as global mocks before evaluating the script
-global.flatpickr = jest.fn(() => ({
-    selectedDates: [],
-    clear: jest.fn(),
-}));
-
-global.noUiSlider = {
-    create: jest.fn((element, options) => ({
-        get: jest.fn(() => [100, 200]), // Default mock return for size filter tests
-        reset: jest.fn(),
-        options,
-    })),
-};
-
 // Evaluate the script content once. This attaches all exposed functions (parseFileSizeToMB, etc.) to the global window object.
 // The functions are now explicitly attached to the window object in the source file.
 eval(searchJsContent);
