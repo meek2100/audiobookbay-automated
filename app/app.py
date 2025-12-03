@@ -9,6 +9,7 @@ from flask import Flask, Response, jsonify, redirect, render_template, request, 
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Import custom modules
 from .clients import TorrentManager
@@ -19,6 +20,12 @@ from .utils import sanitize_title
 load_dotenv()
 
 app = Flask(__name__)
+
+# --- ProxyFix Configuration ---
+# Critical for Docker/Reverse Proxy setups.
+# x_for=1 tells Flask to trust the first X-Forwarded-For header (the real client IP).
+# x_proto=1, x_host=1, x_port=1, x_prefix=1 ensures URL generation works correctly behind a proxy.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
 # --- Logging Configuration ---
 if __name__ != "__main__":  # pragma: no cover
@@ -143,7 +150,7 @@ def search() -> str:
 
 @app.route("/details")
 @limiter.limit("30 per minute")
-def details() -> str:
+def details() -> str | Response:
     """
     Fetches and renders the details page internally via the server.
     This protects the client's IP from leaking by avoiding direct requests to ABB.

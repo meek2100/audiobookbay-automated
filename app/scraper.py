@@ -148,20 +148,32 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 
 def check_mirror(hostname: str) -> str | None:
     """
-    Performs a HEAD request to the mirror to validate reachability without downloading content.
+    Checks if a mirror is reachable.
+    Tries HEAD first for speed. If that fails (or is blocked), falls back to GET.
     """
     url = f"https://{hostname}/"
+    headers = get_headers()
 
-    # OPTIMIZATION: Use a direct request instead of get_session().
-    # get_session() has 5 retries, which causes massive delays (90s+) when checking dead mirrors.
-    # We want to fail FAST here.
+    # OPTIMIZATION: Use direct requests instead of get_session() to fail fast.
+
+    # 1. Try HEAD first
     try:
-        response = requests.head(url, headers=get_headers(), timeout=5, allow_redirects=True)
+        response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
     except (requests.Timeout, requests.RequestException):
-        # We expect many failures here, so we pass silently to try the next mirror
         pass
+
+    # 2. Fallback to GET (stream=True downloads headers only initially)
+    # Some anti-DDoS protections block HEAD requests.
+    try:
+        response = requests.get(url, headers=headers, timeout=5, stream=True)
+        response.close()  # Close connection immediately after headers
+        if response.status_code == 200:
+            return hostname
+    except (requests.Timeout, requests.RequestException):
+        pass
+
     return None
 
 

@@ -404,42 +404,49 @@ def test_load_trackers_non_list_json():
                 assert len(trackers) > 0
 
 
-def test_load_trackers_json_fail():
+def test_load_trackers_malformed_json():
+    """Test that load_trackers gracefully handles malformed JSON files."""
     with patch.dict(os.environ, {}, clear=True):
-        with patch("builtins.open", mock_open(read_data="invalid-json")):
+        # Mocks a file open that works, but json.load triggers the exception
+        with patch("builtins.open", mock_open(read_data="{invalid_json")):
             with patch("os.path.exists", return_value=True):
-                trackers = scraper.load_trackers()
-                assert len(trackers) > 0
+                with patch("app.scraper.logger") as mock_logger:
+                    trackers = scraper.load_trackers()
+                    # Ensure fallback trackers are returned
+                    assert len(trackers) > 0
+                    # Ensure the error was logged
+                    args, _ = mock_logger.warning.call_args
+                    assert "Failed to load trackers.json" in args[0]
 
 
-# --- UPDATED: Fix tests for check_mirror using requests.head directly ---
-
-
-def test_check_mirror_success():
+def test_check_mirror_success_head():
+    """Test that check_mirror returns hostname if HEAD succeeds."""
     with patch("app.scraper.requests.head") as mock_head:
         mock_head.return_value.status_code = 200
         result = scraper.check_mirror("good.mirror")
         assert result == "good.mirror"
 
 
-def test_check_mirror_fail():
+def test_check_mirror_success_get_fallback():
+    """Test that check_mirror falls back to GET if HEAD fails (timeout/error/405)."""
     with patch("app.scraper.requests.head") as mock_head:
-        mock_head.return_value.status_code = 404
-        result = scraper.check_mirror("bad.mirror")
-        assert result is None
+        # Simulate HEAD failure
+        mock_head.side_effect = requests.RequestException("Method Not Allowed")
+
+        with patch("app.scraper.requests.get") as mock_get:
+            mock_get.return_value.status_code = 200
+            result = scraper.check_mirror("fallback.mirror")
+            assert result == "fallback.mirror"
 
 
-def test_check_mirror_exception():
+def test_check_mirror_fail_both():
+    """Test that check_mirror returns None if both HEAD and GET fail."""
     with patch("app.scraper.requests.head") as mock_head:
-        # 1. Timeout
-        mock_head.side_effect = requests.Timeout("Timeout")
-        result = scraper.check_mirror("timeout.mirror")
-        assert result is None
-
-        # 2. General Exception
-        mock_head.side_effect = requests.RequestException("Error")
-        result = scraper.check_mirror("error.mirror")
-        assert result is None
+        mock_head.side_effect = requests.RequestException("HEAD fail")
+        with patch("app.scraper.requests.get") as mock_get:
+            mock_get.side_effect = requests.RequestException("GET fail")
+            result = scraper.check_mirror("dead.mirror")
+            assert result is None
 
 
 def test_find_best_mirror_all_fail():
