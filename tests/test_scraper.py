@@ -11,6 +11,7 @@ from app import scraper
 from app.scraper import (
     extract_magnet_link,
     fetch_and_parse_page,
+    get_book_details,
     mirror_cache,
     search_audiobookbay,
 )
@@ -51,6 +52,24 @@ REAL_WORLD_HTML = """
             File Size: <span style="color:#00f;">1.37</span> GBs
         </p>
     </div>
+</div>
+"""
+
+DETAILS_HTML = """
+<div class="post">
+    <div class="postTitle"><h1>A Game of Thrones</h1></div>
+    <div class="postContent">
+        <img itemprop="image" src="/cover.jpg">
+        <div class="desc">
+            <p>This is a great book.</p>
+            <a href="http://bad.com">Spam Link</a>
+        </div>
+    </div>
+    <table class="torrent_info">
+        <tr><td>Tracker:</td><td>udp://tracker.opentrackr.org:1337/announce</td></tr>
+        <tr><td>File Size:</td><td>1.37 GBs</td></tr>
+        <tr><td>Info Hash:</td><td>eb154ac7886539c4d01eae14908586e336cdb550</td></tr>
+    </table>
 </div>
 """
 
@@ -722,3 +741,30 @@ def test_fetch_and_parse_page_missing_post_info():
     # This assertion covers app/scraper.py:219
     assert results[0]["language"] == "N/A"
     assert results[0]["post_date"] == "01 Jan 2025"
+
+
+def test_get_book_details_success():
+    """Test get_book_details parses content correctly based on real structure."""
+    with patch("app.scraper.get_session") as mock_session:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = DETAILS_HTML
+        mock_session.return_value.get.return_value = mock_response
+
+        details = get_book_details("http://fake.url")
+
+        assert details["title"] == "A Game of Thrones"
+        assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
+        assert details["file_size"] == "1.37 GBs"
+        assert "udp://tracker.opentrackr.org" in details["trackers"][0]
+        assert "This is a great book" in details["description"]
+        assert "Spam Link" in details["description"]  # Check text remains
+        assert "href" not in details["description"]  # Check link removed
+
+
+def test_get_book_details_failure():
+    """Test get_book_details raises exception on network fail."""
+    with patch("app.scraper.get_session") as mock_session:
+        mock_session.return_value.get.side_effect = requests.exceptions.RequestException("Net Down")
+        with pytest.raises(requests.exceptions.RequestException):
+            get_book_details("http://fail.url")

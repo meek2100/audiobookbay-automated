@@ -5,14 +5,14 @@ from typing import Any
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 
 # Import custom modules
 from .clients import TorrentManager
-from .scraper import extract_magnet_link, search_audiobookbay
+from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .utils import sanitize_title
 
 # Load environment variables
@@ -136,6 +136,25 @@ def search() -> str:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
         return render_template("search.html", books=books, error=error_message, query=query)
+
+
+@app.route("/details")
+@limiter.limit("30 per minute")
+def details() -> str:
+    """
+    Fetches and renders the details page internally via the server.
+    This protects the client's IP from leaking by avoiding direct requests to ABB.
+    """
+    link = request.args.get("link")
+    if not link:
+        return redirect(url_for("search"))
+
+    try:
+        book_details = get_book_details(link)
+        return render_template("details.html", book=book_details)
+    except Exception as e:
+        logger.error(f"Failed to fetch details: {e}", exc_info=True)
+        return render_template("details.html", error=f"Could not load details: {str(e)}")
 
 
 @app.route("/send", methods=["POST"])

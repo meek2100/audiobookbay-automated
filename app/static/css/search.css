@@ -21,6 +21,25 @@ button:hover {
     background-color: #673ab7;
 }
 
+/* New class for the Details anchor button */
+.details-button {
+    text-decoration: none;
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #512da8;
+    color: white;
+    border-radius: 5px;
+    margin-right: 5px;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+    cursor: pointer;
+    border: none;
+}
+
+.details-button:hover {
+    background-color: #673ab7;
+}
+
 /* OPTIMIZATION: Scrollable table wrapper for mobile devices */
 .table-wrapper {
     width: 90%;

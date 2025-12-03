@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Details - {{ book.title if book else 'Error' }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/details.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="title-container">
+    <h1>Audiobook Details</h1>
+</div>
+
+{% if error %}
+<div class="error-message">
+    <p>{{ error }}</p>
+    <p><a href="{{ url_for('search') }}" class="back-link">← Back to Search</a></p>
+</div>
+{% elif book %}
+<div class="details-container">
+    <div class="details-left">
+        <img src="{{ book.cover }}" alt="Cover" class="details-cover"
+            onerror="this.src='{{ url_for('static', filename='images/default_cover.jpg') }}'">
+    </div>
+    <div class="details-info">
+        <h2>{{ book.title }}</h2>
+
+        <div class="meta-info">
+            <p><strong>File Size:</strong> {{ book.file_size }}</p>
+            <p><strong>Info Hash:</strong> <code>{{ book.info_hash }}</code></p>
+        </div>
+
+        <div class="action-bar">
+            <button class="details-download-btn"
+                onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">
+                Download to Server
+            </button>
+            <a href="{{ url_for('search') }}" class="back-link">← Back to Search</a>
+        </div>
+
+        <div class="details-description">
+            <h3>Description</h3>
+            {# Description is sanitized in scraper.py to remove links #}
+            {{ book.description | safe }}
+        </div>
+
+        {% if book.trackers %}
+        <div class="tracker-list">
+            <strong>Trackers:</strong>
+            <ul>
+                {% for tracker in book.trackers %}
+                <li>{{ tracker }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

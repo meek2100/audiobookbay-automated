@@ -94,6 +94,30 @@ def test_search_exception_handling(client):
         assert b"Search Failed: Connection timed out" in response.data
 
 
+def test_details_route_missing_link(client):
+    """Test accessing /details without a link redirects to search."""
+    response = client.get("/details")
+    assert response.status_code == 302
+    assert "/" in response.location
+
+
+def test_details_route_success(client):
+    """Test extracting details successfully."""
+    fake_details = {"title": "Detailed Book", "description": "<p>Desc</p>"}
+    with patch("app.app.get_book_details", return_value=fake_details):
+        response = client.get("/details?link=http://book.com")
+        assert response.status_code == 200
+        assert b"Detailed Book" in response.data
+
+
+def test_details_route_failure(client):
+    """Test handling failures in get_book_details."""
+    with patch("app.app.get_book_details", side_effect=Exception("Scrape Error")):
+        response = client.get("/details?link=http://book.com")
+        assert response.status_code == 200
+        assert b"Could not load details" in response.data
+
+
 def test_nav_link_injection(client, monkeypatch, app_module):
     """Test that injected variables correctly appear in the template."""
     monkeypatch.setattr(app_module, "NAV_LINK_NAME", "My Player")

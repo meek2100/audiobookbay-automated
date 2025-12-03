@@ -96,7 +96,8 @@
                     </div>
                 </td>
                 <td>
-                    <button onclick="window.open('{{ book.link }}', '_blank')">Details</button>
+                    <a href="{{ url_for('details', link=book.link) }}" class="details-button">Details</a>
+
                     <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">Download to
                         Server</button>
                 </td>

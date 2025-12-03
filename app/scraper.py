@@ -370,6 +370,81 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
     return results
 
 
+def get_book_details(details_url: str) -> dict[str, Any]:
+    """
+    Scrapes the specific book details page to allow viewing content safely via the server.
+    """
+    if not details_url:
+        raise ValueError("No URL provided.")
+
+    session = get_session()
+    headers = get_headers(referer=details_url)
+
+    try:
+        with GLOBAL_REQUEST_SEMAPHORE:
+            time.sleep(random.uniform(1.0, 2.0))  # Jitter
+            response = session.get(details_url, headers=headers, timeout=15)
+
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # --- Extract Metadata ---
+        title = "Unknown Title"
+        title_tag = soup.select_one(".postTitle h1")
+        if title_tag:
+            title = title_tag.get_text(strip=True)
+
+        cover = "/static/images/default_cover.jpg"
+        cover_tag = soup.select_one('.postContent img[itemprop="image"]')
+        if cover_tag and cover_tag.has_attr("src"):
+            cover = urljoin(details_url, str(cover_tag["src"]))
+
+        # Description
+        description = "No description available."
+        desc_tag = soup.select_one("div.desc")
+        if desc_tag:
+            # Clean up links in description to avoid users leaving the safe environment
+            for a in desc_tag.find_all("a"):
+                a.replace_with(a.get_text())
+            description = desc_tag.decode_contents()
+
+        # Trackers & File Info
+        trackers = []
+        file_size = "N/A"
+        info_hash = "N/A"
+
+        info_table = soup.select_one("table.torrent_info")
+        if info_table:
+            for row in info_table.find_all("tr"):
+                cells = row.find_all("td")
+                if len(cells) >= 2:
+                    label = cells[0].get_text(strip=True)
+                    value = cells[1].get_text(strip=True)
+
+                    if "Tracker:" in label or "Announce URL:" in label:
+                        trackers.append(value)
+                    elif "File Size:" in label:
+                        file_size = value
+                    elif "Info Hash:" in label:
+                        info_hash = value
+
+        return {
+            "title": title,
+            "cover": cover,
+            "description": description,
+            "trackers": trackers,
+            "file_size": file_size,
+            "info_hash": info_hash,
+            "link": details_url,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to fetch book details: {e}", exc_info=True)
+        raise e
+    finally:
+        session.close()
+
+
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
     Scrapes the details page to find the info hash and generates a magnet link.
