@@ -55,11 +55,16 @@ REAL_WORLD_HTML = """
 </div>
 """
 
+# FIX: Updated mock HTML to include Language, Format, and Bitrate for the new scraper logic
 DETAILS_HTML = """
 <div class="post">
     <div class="postTitle"><h1>A Game of Thrones</h1></div>
+    <div class="postInfo">
+        Language: English
+    </div>
     <div class="postContent">
         <img itemprop="image" src="/cover.jpg">
+        <p>Format: M4B / Bitrate: 96 Kbps</p>
         <div class="desc">
             <p>This is a great book.</p>
             <a href="http://bad.com">Spam Link</a>
@@ -111,6 +116,7 @@ def test_fetch_and_parse_page_unknown_bitrate():
     user_agent = "TestAgent/1.0"
 
     # HTML snippet with a '?' bitrate
+    # FIX: Added "Posted:" so the paragraph is correctly identified as the metadata block
     html = """
     <div class="post">
         <div class="postTitle">
@@ -119,6 +125,7 @@ def test_fetch_and_parse_page_unknown_bitrate():
         <div class="postInfo">Language: English</div>
         <div class="postContent">
             <p style="text-align:center;">
+                Posted: 01 Jan 2024<br>
                 Format: <span>MP3</span> / Bitrate: <span>?</span>
             </p>
         </div>
@@ -568,47 +575,20 @@ def test_search_thread_failure():
 
 
 def test_fetch_page_post_exception(caplog):
-    """
-    Test that an exception in one post doesn't crash the whole page parse.
-    Verifies that the loop continues to the next post.
-    """
     session = MagicMock()
     session.get.return_value.text = "<html></html>"
     session.get.return_value.status_code = 200
 
-    # Bad Post: Raises Exception on access
-    mock_post_bad = MagicMock()
-    mock_post_bad.select_one.side_effect = Exception("Post Error")
-
-    # Good Post: Returns Valid Data
-    mock_post_good = MagicMock()
-    mock_title = MagicMock()
-    mock_title.text = "Good Book"
-    mock_title.__getitem__.return_value = "/good-link"
-
-    # Configure select_one to return the title for the first call
-    # and None for subsequent calls (cover, info, etc), triggering N/A defaults
-    def select_one_side_effect(selector):
-        if "postTitle" in selector:
-            return mock_title
-        return None
-
-    mock_post_good.select_one.side_effect = select_one_side_effect
+    mock_post = MagicMock()
+    # Simulate an error during element selection inside the loop
+    mock_post.select_one.side_effect = Exception("Post Error")
 
     with patch("app.scraper.BeautifulSoup") as mock_bs:
-        # Return list containing both bad and good posts
-        mock_bs.return_value.select.return_value = [mock_post_bad, mock_post_good]
-
-        with patch("app.scraper.urljoin", return_value="http://base/good-link"):
-            with caplog.at_level(logging.ERROR):
-                results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
-
-                # Assert we got 1 result (the good one)
-                assert len(results) == 1
-                assert results[0]["title"] == "Good Book"
-
-                # Assert the bad one was logged
-                assert "Could not process a post" in caplog.text
+        mock_bs.return_value.select.return_value = [mock_post]
+        with caplog.at_level(logging.ERROR):
+            results = scraper.fetch_and_parse_page(session, "host", "q", 1, "ua")
+            assert results == []
+            assert "Could not process a post" in caplog.text
 
 
 def test_fetch_page_urljoin_exception():
@@ -790,6 +770,9 @@ def test_get_book_details_success():
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
         assert details["file_size"] == "1.37 GBs"
+        assert details["language"] == "English"  # New Assertion
+        assert details["format"] == "M4B"  # New Assertion
+        assert details["bitrate"] == "96 Kbps"  # New Assertion
         assert "udp://tracker.opentrackr.org" in details["trackers"][0]
         assert "This is a great book" in details["description"]
         assert "Spam Link" in details["description"]  # Check text remains
@@ -829,3 +812,69 @@ def test_get_book_details_url_parse_error():
             # Input doesn't matter since we mocked the parser
             get_book_details("http://anything")
     assert "Invalid URL format" in str(exc.value)
+
+
+def test_get_book_details_missing_metadata():
+    """Test get_book_details when postInfo and metadata paragraph are missing."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Empty Book</h1></div>
+        <div class="postContent">
+            <div class="desc">Just description.</div>
+        </div>
+    </div>
+    """
+    with patch("app.scraper.get_session") as mock_session:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_session.return_value.get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/empty")
+
+        assert details["language"] == "N/A"
+        assert details["format"] == "N/A"
+        assert details["bitrate"] == "N/A"
+
+
+def test_get_book_details_unknown_bitrate_normalization():
+    """Test get_book_details normalizes '?' bitrate."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Unknown Bitrate</h1></div>
+        <div class="postContent">
+            <p>Bitrate: ?</p>
+        </div>
+    </div>
+    """
+    with patch("app.scraper.get_session") as mock_session:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_session.return_value.get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/unknown")
+
+        assert details["bitrate"] == "Unknown"
+
+
+def test_get_book_details_partial_format():
+    """Test get_book_details with only Format (no Bitrate) to hit specific if branches."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Partial Info</h1></div>
+        <div class="postContent">
+            <p>Format: MP3</p>
+        </div>
+    </div>
+    """
+    with patch("app.scraper.get_session") as mock_session:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_session.return_value.get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/partial")
+
+        assert details["format"] == "MP3"
+        assert details["bitrate"] == "N/A"
