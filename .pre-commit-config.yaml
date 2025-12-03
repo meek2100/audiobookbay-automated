@@ -63,3 +63,17 @@ repos:
     hooks:
       - id: codespell
         exclude: ^(poetry\.lock|package-lock\.json)$
+
+  # 6. JavaScript Unit Tests (Jest) - NEW HOOK
+  # Uses the 'local' repo type to run a local script installed via npm.
+  - repo: local
+    hooks:
+      - id: jest-test
+        name: Run Jest Unit Tests
+        entry: npx jest
+        language: system
+        pass_filenames: false
+        # Files to monitor that should trigger the JS tests
+        files: '\.js$'
+        exclude: '^app/static/vendor/.*\.js$'
+        types: [file]

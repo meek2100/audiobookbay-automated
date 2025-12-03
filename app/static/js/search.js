@@ -1,3 +1,22 @@
+// app/static/js/search.js
+
+// Define functions in the global scope (or attach to window) so tests and other scripts (actions.js) can use them.
+
+// Expose these core functions to the global scope for testing and external use (e.g., actions.js)
+window.parseFileSizeToMB = parseFileSizeToMB;
+window.formatFileSize = formatFileSize;
+window.initializeFilters = initializeFilters;
+window.applyFilters = applyFilters;
+window.clearFilters = clearFilters;
+window.showLoadingSpinner = showLoadingSpinner;
+window.hideLoadingSpinner = hideLoadingSpinner;
+
+// Global variables defined in the file
+let datePicker;
+let fileSizeSlider;
+let messageIndex = 0;
+let intervalId = null;
+
 document.addEventListener("DOMContentLoaded", function () {
     // Initialize filtering if results are present
     if (document.querySelectorAll(".result-row").length > 0) {
@@ -16,16 +35,13 @@ window.addEventListener("pageshow", function (event) {
     }
 });
 
-let datePicker;
-let fileSizeSlider;
-
+// --- Helper Functions ---
 function initializeFilters() {
     populateSelectFilters();
     initializeFileSizeSlider();
     initializeDateRangePicker();
 }
 
-// --- Helper Functions ---
 function parseFileSizeToMB(sizeString) {
     if (!sizeString || sizeString.trim().toLowerCase() === "n/a") return null;
 
@@ -135,7 +151,15 @@ function populateSelectFilters() {
     const formats = new Set();
 
     document.querySelectorAll(".result-row").forEach((row) => {
-        categories.add(row.dataset.category);
+        // --- START CATEGORY FIX: Split categories for filtering by single keyword ---
+        const categoryString = row.dataset.category;
+        categoryString.split(/\s+/).forEach((term) => {
+            if (term && term !== "N/A" && term !== "None") {
+                categories.add(term);
+            }
+        });
+        // --- END CATEGORY FIX ---
+
         languages.add(row.dataset.language);
         bitrates.add(row.dataset.bitrate);
         formats.add(row.dataset.format);
@@ -143,6 +167,10 @@ function populateSelectFilters() {
 
     const appendOptions = (id, set) => {
         const select = document.getElementById(id);
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+
         const sortedValues = Array.from(set).sort((a, b) =>
             a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
         );
@@ -174,14 +202,23 @@ function applyFilters() {
     document.querySelectorAll(".result-row").forEach((row) => {
         let visible = true;
 
-        if (category && row.dataset.category !== category) visible = false;
+        // --- START CATEGORY FIX: Whole Word Regex Match ---
+        if (category) {
+            // Check for whole word match: \b ensures boundary (e.g., matches "Fiction" but not "Non-Fiction")
+            const regex = new RegExp(`\\b${category}\\b`);
+            if (!regex.test(row.dataset.category)) {
+                visible = false;
+            }
+        }
+        // --- END CATEGORY FIX ---
+
         if (language && row.dataset.language !== language) visible = false;
         if (bitrate && row.dataset.bitrate !== bitrate) visible = false;
         if (format && row.dataset.format !== format) visible = false;
 
         if (sizeRange) {
             const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
-            if (rowSizeMB !== null && (rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1])) {
+            if (rowSizeMB === null || rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1]) {
                 visible = false;
             }
         }
@@ -279,9 +316,6 @@ const messages = [
     "Searching in hyperspace... almost there!",
     "Just a few more gigabytes to process...",
 ];
-
-let messageIndex = 0;
-let intervalId = null;
 
 function showScrollingMessages() {
     const messageScroller = document.getElementById("message-scroller");

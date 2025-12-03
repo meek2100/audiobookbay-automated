@@ -157,7 +157,13 @@ class TorrentManager:
             self._add_magnet_logic(magnet_link, save_path)
 
     def _add_magnet_logic(self, magnet_link: str, save_path: str) -> None:
-        """Internal logic to add magnet link."""
+        """
+        Internal logic to add magnet link.
+
+        Args:
+            magnet_link: The magnet URI.
+            save_path: The filesystem path where data should be saved.
+        """
         client = self._get_client()
         if not client:
             raise ConnectionError("Torrent client is not connected.")

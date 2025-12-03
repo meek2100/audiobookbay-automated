@@ -1,25 +1,32 @@
 version: 2
 updates:
+  # 1. Python Dependencies (Existing)
   - package-ecosystem: "pip"
     # FIX: Point to root where pyproject.toml lives
     directory: "/"
-
-    # Run weekly (e.g., Monday mornings)
     schedule:
       interval: "weekly"
       day: "monday"
       time: "06:00"
       timezone: "America/Los_Angeles"
-
-    # LIMIT NOISE: Group all dependencies into one PR
     groups:
       production-dependencies:
         patterns:
           - "*"
-
-    # Optional: limit the number of open PRs to prevent flooding if something goes wrong
     open-pull-requests-limit: 10
 
-    # Optional: Add reviewers or assignees automatically
-    # reviewers:
-    #   - "your-username"
+  # 2. JavaScript/Node Dependencies (NEW)
+  - package-ecosystem: "npm"
+    # Point to root where package.json lives
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:10"
+      timezone: "America/Los_Angeles"
+    # Group production and development dependencies
+    groups:
+      js-dependencies:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
