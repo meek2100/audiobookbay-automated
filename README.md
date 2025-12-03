@@ -42,44 +42,55 @@ AudiobookBay Downloader provides a simple and user-friendly interface for users 
 
 The app uses environment variables to configure its behavior.
 
-#### Core Configuration (Required)
-
-Below are the required variables:
+#### 1. Torrent Client Connection (Required)
 
 ```env
-DL_SCHEME=http
-DL_HOST=192.168.xxx.xxx        # IP or hostname of your qBittorrent or Transmission instance
-DL_PORT=8080                   # torrent WebUI port
-DL_USERNAME=YOUR_USER          # torrent username
-DL_PASSWORD=YOUR_PASSWORD      # torrent password
-DL_CATEGORY=abb-downloader     # torrent category for downloads
-DL_CLIENT=qbittorrent          # Download client (deluge, transmission, qbittorrent)
-SAVE_PATH_BASE=/audiobooks     # Root path for audiobook downloads (relative to torrent)
-SECRET_KEY=change_me           # Flask Session Secret Key (Important for security!)
+DL_CLIENT=qbittorrent          # Options: qbittorrent, transmission, deluge
+DL_HOST=192.168.1.123          # IP/Hostname of your client
+DL_PORT=8080                   # WebUI Port
+DL_USERNAME=admin              # WebUI Username
+DL_PASSWORD=password           # WebUI Password
+DL_SCHEME=http                 # Protocol (http or https). Default: http.
+DL_CATEGORY=abb-downloader     # Category to assign to torrents. Default: abb-downloader.
 ```
 
-#### Audiobookshelf Integration (Optional)
+#### 2. System Configuration (Required)
+
+```env
+SAVE_PATH_BASE=/audiobooks     # CRITICAL: The root save path *inside* the Torrent Client container.
+SECRET_KEY=change_me           # Flask Session Key. Change this for production security.
+```
+
+#### 3. Audiobookshelf Integration (Optional)
 
 To enable the "Reload Library" button in the navigation bar:
 
 ```env
-ABS_URL=http://192.168.xxx.xxx:13378 # URL to your ABS instance
-ABS_KEY=your_api_token                          # API Token from ABS (Settings -> Users)
-ABS_LIB=your_library_id                         # Library ID from ABS (in the URL when viewing a library)
+ABS_URL=http://192.168.1.123:13378 # URL to your Audiobookshelf instance
+ABS_KEY=your_api_token             # API Token (Settings -> Users)
+ABS_LIB=your_library_id            # Library ID (Found in the URL when viewing the library)
 ```
 
-#### Navigation & Customization (Optional)
+#### 4. Search & Scraping (Optional)
 
 ```env
-ABB_HOSTNAME=audiobookbay.is   # Default mirror (default: audiobookbay.lu)
-ABB_MIRRORS=mirror1.com,mirror2.com # Comma-separated list of additional mirrors to try
-MAGNET_TRACKERS=udp://tracker.opentrackr.org:1337 # Comma-separated list of custom trackers to add to magnet links
-PAGE_LIMIT=3                   # Number of pages to scrape per search (default: 3)
-LISTEN_PORT=5078               # Port used by docker container (default: 5078)
-THREADS=8                      # Gunicorn threads (Default: 8. Increase for more concurrency)
-NAV_LINK_NAME=Open Player      # Label for extra nav link
-NAV_LINK_URL=https://...       # URL for extra nav link
-LOG_LEVEL=INFO                 # Logging level (DEBUG, INFO, WARNING, ERROR)
+ABB_HOSTNAME=audiobookbay.is   # Primary mirror. Default: audiobookbay.lu
+ABB_MIRRORS=mirror1.com        # Comma-separated list of backup mirrors to try.
+MAGNET_TRACKERS=udp://...      # Comma-separated list of extra trackers to add to magnets.
+PAGE_LIMIT=3                   # Max pages to scrape per search. Default: 3.
+```
+
+#### 5. Application Settings (Optional)
+
+```env
+LISTEN_PORT=5078               # Internal port. Default: 5078.
+LISTEN_HOST=0.0.0.0            # Bind address. Default: 0.0.0.0 (or [::] if IPv6 detected).
+THREADS=8                      # Worker threads. Increase for higher concurrency. Default: 8.
+TIMEOUT=60                     # Request timeout in seconds. Default: 60.
+LOG_LEVEL=INFO                 # Logging verbosity: DEBUG, INFO, WARNING, ERROR. Default: INFO.
+TZ=UTC                         # Timezone for logs (e.g. America/Los_Angeles). Default: UTC.
+NAV_LINK_NAME=Open Player      # Label for a custom link in the navbar.
+NAV_LINK_URL=http://...        # URL for the custom link.
 ```
 
 ### Using Docker
