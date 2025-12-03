@@ -771,9 +771,9 @@ def test_get_book_details_success():
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
         assert details["file_size"] == "1.37 GBs"
-        assert details["language"] == "English"
-        assert details["format"] == "M4B"
-        assert details["bitrate"] == "96 Kbps"
+        assert details["language"] == "English"  # New Assertion
+        assert details["format"] == "M4B"  # New Assertion
+        assert details["bitrate"] == "96 Kbps"  # New Assertion
         assert "udp://tracker.opentrackr.org" in details["trackers"][0]
         assert "This is a great book" in details["description"]
         assert "Spam Link" in details["description"]  # Check text remains
@@ -900,4 +900,32 @@ def test_get_book_details_partial_format():
         details = get_book_details("https://audiobookbay.lu/partial")
 
         assert details["format"] == "MP3"
+        assert details["bitrate"] == "N/A"
+
+
+def test_get_book_details_content_without_metadata_labels():
+    """
+    Test get_book_details where content div exists and has paragraphs,
+    but none contain 'Format:' or 'Bitrate:'.
+    This forces the loop to complete naturally without hitting 'break'.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>No Metadata</h1></div>
+        <div class="postContent">
+            <p>Just some text.</p>
+            <p>Another paragraph without labels.</p>
+        </div>
+    </div>
+    """
+    with patch("app.scraper.get_session") as mock_session:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_session.return_value.get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/no_meta")
+
+        # Assert defaults are returned
+        assert details["format"] == "N/A"
         assert details["bitrate"] == "N/A"

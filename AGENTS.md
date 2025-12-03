@@ -30,6 +30,12 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 - **No Database:** We do not use an internal SQL database. We scrape on-demand and rely on the Torrent Client's API for status.
   - _Why:_ Keeps the Docker image small, startup fast, and maintenance zero.
 
+### Privacy Proxying (Reader Mode)
+
+- **Architecture:** The application acts as a privacy shield.
+- **Requirement:** Features like "Book Details" MUST be rendered server-side (scraping via the container's VPN/IP) rather than linking the user directly to the source.
+- **Why:** Prevents the user's residential/client IP from being exposed to the target website during browsing.
+
 ---
 
 ## 2. Robustness Over Raw Speed
@@ -47,7 +53,7 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 - **Philosophy:** We use an **"Opt-In"** strategy, not "Opt-Out".
 - **Rule:** Do NOT apply global default limits (e.g., `default_limits=["50 per hour"]`).
   - _Reason:_ Internal endpoints like `/health` (Docker heartbeat) and `/status` (auto-refresh) will trigger thousands of requests per day. Global limits will cause the container to go unhealthy.
-- **Usage:** Apply `@limiter.limit` **only** to routes that hit external services (e.g., `/` search, `/send`).
+- **Usage:** Apply `@limiter.limit` **only** to routes that hit external services (e.g., `/` search, `/send`, `/details`).
 
 ### Dependency Philosophy
 
@@ -67,6 +73,12 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 ## 3. Development Standards (Strict)
 
 We enforce high code quality because "appliance" software is often difficult for end-users to debug.
+
+### Security & SSRF Protection
+
+- **Requirement:** Any endpoint accepting a URL for scraping (e.g., `/details`) MUST validate the domain.
+- **Implementation:** Check `urlparse(link).netloc` against the `ABB_FALLBACK_HOSTNAMES` allowlist.
+- **Why:** Prevents Server-Side Request Forgery (SSRF) where a malicious user could use the appliance to scan the internal network.
 
 ### Naming Conventions
 
@@ -97,7 +109,7 @@ We enforce high code quality because "appliance" software is often difficult for
 
 - **Requirement:** The test suite must maintain **100% code coverage**. This is enforced via `pytest --cov-fail-under=100`.
 - **Security Testing:** You MUST include tests that explicitly enable CSRF protection (`WTF_CSRF_ENABLED = True`) to verify security headers work, even if standard tests disable it for convenience.
-- **Unhappy Paths:** You must test failure modes (e.g., "what if the torrent client is offline?", "what if the website returns 500?").
+- **Unhappy Paths:** You must test failure modes (e.g., "what if the torrent client is offline?", "what if the website returns 500?", "what if metadata is missing?").
 - **Valid Exemptions:** Use `# pragma: no cover` **only** for:
   - `if __name__ == "__main__":` blocks.
   - OS-specific logic (e.g., Windows-specific path handling if CI is Linux).
@@ -122,8 +134,9 @@ We enforce high code quality because "appliance" software is often difficult for
 
 ## 4. Frontend & UX Philosophy
 
+- **Navigation State (GET vs POST):** Search forms MUST use `GET` requests. This allows the browser's "Back" button to restore the previous search results and scroll position from the cache.
 - **Notifications:** Prefer non-blocking "Toast" notifications (via `showNotification` in `actions.js`) over browser `alert()`.
-  - _Exception:_ Destructive actions (like Deleting a torrent) must use a blocking `confirm()` dialog to prevent accidental clicks.
+- **External Link Warnings:** Any action that opens a link outside the application (e.g., "Open Original Page") MUST display a confirmation dialog warning the user that traffic will not be routed through the server/VPN.
 - **Loading States:** Every button that triggers a backend fetch must disable itself and show a loading state (spinner or text change) immediately to prevent double-submissions.
 
 ---
