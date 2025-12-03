@@ -25,7 +25,8 @@ class TorrentManager:
         self.port: str | None = os.getenv("DL_PORT")
         self.username: str | None = os.getenv("DL_USERNAME")
         self.password: str | None = os.getenv("DL_PASSWORD")
-        self.category: str = os.getenv("DL_CATEGORY", "abb-downloader")
+        # CONSISTENCY FIX: Updated default category to match project name
+        self.category: str = os.getenv("DL_CATEGORY", "abb-automated")
         self.scheme: str = os.getenv("DL_SCHEME", "http")
 
         # Normalize connection URL for Deluge

@@ -26,7 +26,7 @@ AudiobookBay Automated is a lightweight web application designed to simplify aud
 
 ## Why Use This?
 
-AudiobookBay Downloader provides a simple and user-friendly interface for users to download audiobooks without searching on their own and import them into your library.
+AudiobookBay Automated provides a simple and user-friendly interface for users to download audiobooks without searching on their own and import them into your library.
 
 ---
 
@@ -52,7 +52,7 @@ DL_PORT=8080                   # WebUI Port
 DL_USERNAME=admin              # WebUI Username
 DL_PASSWORD=password           # WebUI Password
 DL_SCHEME=http                 # Protocol (http or https). Default: http.
-DL_CATEGORY=abb-downloader     # Category to assign to torrents. Default: abb-downloader.
+DL_CATEGORY=abb-automated      # Category to assign to torrents. Default: abb-automated.
 ```
 
 #### 2. System Configuration (Required)
@@ -138,33 +138,33 @@ NAV_LINK_URL=http://...        # URL for the custom link.
 
 2. Create a .env file in the project directory to configure your application. Below is an example of the required variables:
 
-   ```
-   # Torrent Client Configuration
-   DOWNLOAD_CLIENT=transmission # Change to delugeweb, transmission or qbittorrent
-   DL_SCHEME=http
-   DL_HOST=192.168.1.123
-   DL_PORT=8080
-   DL_USERNAME=admin
-   DL_PASSWORD=pass
-   DL_CATEGORY=abb-downloader
-   SAVE_PATH_BASE=/audiobooks
+```env
+# Torrent Client Configuration
+DL_CLIENT=transmission # Change to delugeweb, transmission or qbittorrent
+DL_SCHEME=http
+DL_HOST=192.168.1.123
+DL_PORT=8080
+DL_USERNAME=admin
+DL_PASSWORD=pass
+DL_CATEGORY=abb-automated
+SAVE_PATH_BASE=/audiobooks
 
-   # AudiobookBay Hostname
-   ABB_HOSTNAME=audiobookbay.is #Default
-   # ABB_HOSTNAME=audiobookbay.lu #Alternative
+# AudiobookBay Hostname
+ABB_HOSTNAME=audiobookbay.is #Default
+# ABB_HOSTNAME=audiobookbay.lu #Alternative
 
-   PAGE_LIMIT=3 #Default
-   LISTEN_PORT=5078 #Default
+PAGE_LIMIT=3 #Default
+LISTEN_PORT=5078 #Default
 
-   # Optional Navigation Bar Entry
-   NAV_LINK_NAME=Open Audiobook Player
-   NAV_LINK_URL=https://audiobooks.yourdomain.com/
-   ```
+# Optional Navigation Bar Entry
+NAV_LINK_NAME=Open Audiobook Player
+NAV_LINK_URL=https://audiobooks.yourdomain.com/
+```
 
-3. Start the app:
-   ```bash
-   python app.py
-   ```
+3.  Start the app:
+    ```bash
+    python app.py
+    ```
 
 ---
 
