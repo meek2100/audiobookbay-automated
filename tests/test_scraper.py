@@ -55,7 +55,9 @@ REAL_WORLD_HTML = """
 </div>
 """
 
-# FIX: Updated mock HTML to include Language, Format, and Bitrate for the new scraper logic
+# FIX: Updated mock HTML to use <span> tags for Format and Bitrate.
+# This matches the structure of the real website and allows the scraper's
+# "Strategy 1" (find next sibling) to extract "M4B" cleanly.
 DETAILS_HTML = """
 <div class="post">
     <div class="postTitle"><h1>A Game of Thrones</h1></div>
@@ -64,7 +66,7 @@ DETAILS_HTML = """
     </div>
     <div class="postContent">
         <img itemprop="image" src="/cover.jpg">
-        <p>Format: M4B / Bitrate: 96 Kbps</p>
+        <p>Format: <span>M4B</span> / Bitrate: <span>96 Kbps</span></p>
         <div class="desc">
             <p>This is a great book.</p>
             <a href="http://bad.com">Spam Link</a>
@@ -116,7 +118,6 @@ def test_fetch_and_parse_page_unknown_bitrate():
     user_agent = "TestAgent/1.0"
 
     # HTML snippet with a '?' bitrate
-    # FIX: Added "Posted:" so the paragraph is correctly identified as the metadata block
     html = """
     <div class="post">
         <div class="postTitle">
@@ -770,9 +771,9 @@ def test_get_book_details_success():
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
         assert details["file_size"] == "1.37 GBs"
-        assert details["language"] == "English"  # New Assertion
-        assert details["format"] == "M4B"  # New Assertion
-        assert details["bitrate"] == "96 Kbps"  # New Assertion
+        assert details["language"] == "English"
+        assert details["format"] == "M4B"
+        assert details["bitrate"] == "96 Kbps"
         assert "udp://tracker.opentrackr.org" in details["trackers"][0]
         assert "This is a great book" in details["description"]
         assert "Spam Link" in details["description"]  # Check text remains
@@ -856,6 +857,28 @@ def test_get_book_details_unknown_bitrate_normalization():
         details = get_book_details("https://audiobookbay.lu/unknown")
 
         assert details["bitrate"] == "Unknown"
+
+
+def test_get_book_details_partial_bitrate():
+    """Test get_book_details with only Bitrate (no Format) to hit specific if branches."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Partial Info</h1></div>
+        <div class="postContent">
+            <p>Bitrate: 128 Kbps</p>
+        </div>
+    </div>
+    """
+    with patch("app.scraper.get_session") as mock_session:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_session.return_value.get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/partial_bitrate")
+
+        assert details["format"] == "N/A"
+        assert details["bitrate"] == "128 Kbps"
 
 
 def test_get_book_details_partial_format():
