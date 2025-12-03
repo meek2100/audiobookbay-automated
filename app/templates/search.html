@@ -20,8 +20,7 @@
     <h1>Search AudiobookBay</h1>
 </div>
 <div class="search-container" id="search-container">
-    <form method="post" class="search-form" onsubmit="showLoadingSpinner()">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <form method="get" class="search-form" onsubmit="showLoadingSpinner()">
         <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required>
         <button type="submit" class="search-button">
             <span class="button-text">Search</span>

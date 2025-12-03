@@ -122,8 +122,12 @@ def search() -> str:
     error_message = None
 
     try:
-        if request.method == "POST":
-            query = request.form.get("query", "").strip()
+        # Support both GET (URL parameters) and POST (Form submission)
+        # GET is preferred for bookmarking and back-button functionality
+        query = request.args.get("query") or request.form.get("query")
+
+        if query:
+            query = query.strip()
             if query:
                 # OPTIMIZATION: AudiobookBay requires lowercase search terms
                 search_query = query.lower()

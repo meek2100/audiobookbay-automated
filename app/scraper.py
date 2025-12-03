@@ -370,6 +370,7 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
     return results
 
 
+@cached(cache=search_cache)
 def get_book_details(details_url: str) -> dict[str, Any]:
     """
     Scrapes the specific book details page to allow viewing content safely via the server.
@@ -379,8 +380,6 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 
     # --- SECURITY: SSRF Protection ---
     # Check against our allowed list of hosts.
-    # We use a try/except block around URL parsing to wrap any library-specific errors
-    # into a ValueError, ensuring cleaner error handling upstream.
     try:
         parsed_url = urlparse(details_url)
     except Exception as e:

@@ -89,7 +89,8 @@ def test_send_route_no_save_path_base(client, monkeypatch, app_module):
 def test_search_exception_handling(client):
     with patch("app.app.search_audiobookbay") as mock_search:
         mock_search.side_effect = Exception("Connection timed out")
-        response = client.post("/", data={"query": "my book"})
+        # Test with GET now
+        response = client.get("/?query=my+book")
         assert response.status_code == 200
         assert b"Search Failed: Connection timed out" in response.data
 
@@ -257,9 +258,19 @@ def test_send_sanitization_warning(client, caplog):
 def test_search_whitespace_query(client):
     """Test that a whitespace-only query renders the search page without scraping."""
     with patch("app.app.search_audiobookbay") as mock_search:
-        response = client.post("/", data={"query": "   "})
+        # UPDATED: Use GET, since search is now GET
+        response = client.get("/?query=%20%20%20")
         assert response.status_code == 200
         # Should not call search
         mock_search.assert_not_called()
         # Should still render page (check for title)
         assert b"Search AudiobookBay" in response.data
+
+
+def test_search_via_get(client):
+    """Test searching using GET parameters."""
+    with patch("app.app.search_audiobookbay", return_value=[{"title": "Book 1"}]) as mock_search:
+        response = client.get("/?query=test")
+        assert response.status_code == 200
+        assert b"Book 1" in response.data
+        mock_search.assert_called_with("test")
