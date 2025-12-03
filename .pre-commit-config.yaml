@@ -32,7 +32,7 @@ repos:
 
   # 3. Frontend & Docs (Prettier)
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: "v3.6.2"
+    rev: "v3.7.4"
     hooks:
       - id: prettier
         types_or: [css, javascript, html, markdown, json, yaml]
