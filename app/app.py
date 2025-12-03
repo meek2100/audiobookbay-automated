@@ -124,7 +124,8 @@ def search() -> str:
     try:
         # Support both GET (URL parameters) and POST (Form submission)
         # GET is preferred for bookmarking and back-button functionality
-        query = request.args.get("query") or request.form.get("query")
+        # FIX: Added 'or ""' to ensure query is never None (which renders as "None" in HTML)
+        query = request.args.get("query") or request.form.get("query") or ""
 
         if query:
             query = query.strip()

@@ -304,6 +304,10 @@ def fetch_and_parse_page(
                     bitrate = _get_text_after_label(details_paragraph, "Bitrate:")
                     file_size = _get_text_after_label(details_paragraph, "File Size:")
 
+                # UX IMPROVEMENT: Normalize "?" to "Unknown"
+                if bitrate == "?":
+                    bitrate = "Unknown"
+
                 page_results.append(
                     {
                         "title": title,
@@ -412,6 +416,36 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if cover_tag and cover_tag.has_attr("src"):
             cover = urljoin(details_url, str(cover_tag["src"]))
 
+        # --- New: Extract Language from postInfo ---
+        language = "N/A"
+        post_info = soup.select_one(".postInfo")
+        if post_info:
+            info_text = post_info.get_text(" ", strip=True)
+            lang_match = re.search(r"Language:\s*(\w+)", info_text)
+            if lang_match:
+                language = lang_match.group(1)
+
+        # --- New: Extract Format & Bitrate ---
+        book_format = "N/A"
+        bitrate = "N/A"
+
+        # Look for the centered paragraph that usually contains metadata
+        content_div = soup.select_one(".postContent")
+        if content_div:
+            for p in content_div.find_all("p"):
+                p_text = p.get_text()
+                if "Format:" in p_text or "Bitrate:" in p_text:
+                    # Use helper function to robustly get values
+                    if "Format:" in p_text:
+                        book_format = _get_text_after_label(p, "Format:")
+                    if "Bitrate:" in p_text:
+                        bitrate = _get_text_after_label(p, "Bitrate:")
+                    break
+
+        # UX IMPROVEMENT: Normalize "?" to "Unknown"
+        if bitrate == "?":
+            bitrate = "Unknown"
+
         # Description
         description = "No description available."
         desc_tag = soup.select_one("div.desc")
@@ -449,6 +483,9 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             "file_size": file_size,
             "info_hash": info_hash,
             "link": details_url,
+            "language": language,
+            "format": book_format,
+            "bitrate": bitrate,
         }
 
     except Exception as e:

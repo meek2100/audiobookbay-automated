@@ -94,6 +94,7 @@
     margin-bottom: 10px;
 }
 
+/* Removed fixed height scrolling - now expands naturally */
 .tracker-list {
     font-size: 0.8em;
     color: #ccc;
@@ -101,8 +102,8 @@
     background: rgba(0, 0, 0, 0.3);
     padding: 10px;
     border-radius: 5px;
-    max-height: 150px;
-    overflow-y: auto;
+    /* max-height: 150px; removed */
+    /* overflow-y: auto; removed */
 }
 
 .tracker-list ul {

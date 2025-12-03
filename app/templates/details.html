@@ -30,6 +30,8 @@
         <h2>{{ book.title }}</h2>
 
         <div class="meta-info">
+            <p><strong>Language:</strong> {{ book.language }}</p>
+            <p><strong>Format:</strong> {{ book.format }} | <strong>Bitrate:</strong> {{ book.bitrate }}</p>
             <p><strong>File Size:</strong> {{ book.file_size }}</p>
             <p><strong>Info Hash:</strong> <code>{{ book.info_hash }}</code></p>
         </div>

@@ -137,7 +137,14 @@ function populateSelectFilters() {
 
   const appendOptions = (id, set) => {
     const select = document.getElementById(id);
-    set.forEach((val) => {
+
+    // Convert Set to Array and Sort
+    // localeCompare with numeric: true handles numbers correctly (e.g., 64 before 128)
+    const sortedValues = Array.from(set).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    sortedValues.forEach((val) => {
         if (val && val !== "N/A") {
             const option = document.createElement("option");
             option.value = val;

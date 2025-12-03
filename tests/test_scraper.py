@@ -103,6 +103,39 @@ def test_fetch_and_parse_page_real_structure(mock_sleep):
     assert book["link"] == "https://audiobookbay.lu/abss/a-game-of-thrones-chapterized/"
 
 
+def test_fetch_and_parse_page_unknown_bitrate():
+    """Test that a bitrate of '?' is normalized to 'Unknown'."""
+    hostname = "audiobookbay.lu"
+    query = "unknown_bit"
+    page = 1
+    user_agent = "TestAgent/1.0"
+
+    # HTML snippet with a '?' bitrate
+    html = """
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/test/" rel="bookmark">Test Book</a></h2>
+        </div>
+        <div class="postInfo">Language: English</div>
+        <div class="postContent">
+            <p style="text-align:center;">
+                Format: <span>MP3</span> / Bitrate: <span>?</span>
+            </p>
+        </div>
+    </div>
+    """
+
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+    assert len(results) == 1
+    assert results[0]["bitrate"] == "Unknown"
+
+
 def test_fetch_and_parse_page_malformed():
     """Test resilience against empty/broken HTML"""
     hostname = "audiobookbay.lu"
