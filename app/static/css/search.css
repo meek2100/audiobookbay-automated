@@ -185,7 +185,8 @@ img.cover {
     flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
-#filter-container select, #filter-container input {
+#filter-container select,
+#filter-container input {
     padding: 8px;
     border-radius: 5px;
     border: 1px solid #ccc;
@@ -256,7 +257,8 @@ img.cover {
     outline: none;
 }
 
-.noUi-handle:after, .noUi-handle:before {
+.noUi-handle:after,
+.noUi-handle:before {
     display: none; /* Hide default pseudo-elements */
 }
 

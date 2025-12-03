@@ -1,16 +1,9 @@
-{% extends "base.html" %}
-
-{% block title %}Details - {{ book.title if book else 'Error' }}{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/details.css') }}">
-{% endblock %}
-
-{# OPTIMIZATION: This page does not need the search filters or vendor JS #}
-{% block extra_js %}{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Details - {{ book.title if book else 'Error' }}{% endblock %} {% block
+extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/details.css') }}" />
+{% endblock %} {# OPTIMIZATION: This page does not need the search filters or vendor JS #} {% block extra_js %}{%
+endblock %} {% block content %}
 <div class="title-container">
     <h1>Audiobook Details</h1>
 </div>
@@ -23,8 +16,12 @@
 {% elif book %}
 <div class="details-container">
     <div class="details-left">
-        <img src="{{ book.cover }}" alt="Cover" class="details-cover"
-            onerror="this.src='{{ url_for('static', filename='images/default_cover.jpg') }}'">
+        <img
+            src="{{ book.cover }}"
+            alt="Cover"
+            class="details-cover"
+            onerror="this.src='{{ url_for('static', filename='images/default_cover.jpg') }}'"
+        />
     </div>
     <div class="details-info">
         <h2>{{ book.title }}</h2>
@@ -39,8 +36,10 @@
         </div>
 
         <div class="action-bar">
-            <button class="details-download-btn"
-                onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">
+            <button
+                class="details-download-btn"
+                onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)"
+            >
                 Download to Server
             </button>
 
@@ -53,8 +52,7 @@
 
         <div class="details-description">
             <h3>Description</h3>
-            {# Description is sanitized in scraper.py to remove links #}
-            {{ book.description | safe }}
+            {# Description is sanitized in scraper.py to remove links #} {{ book.description | safe }}
         </div>
 
         {% if book.trackers %}
@@ -69,5 +67,4 @@
         {% endif %}
     </div>
 </div>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

@@ -124,12 +124,14 @@
         flex-direction: column;
     }
 
-    .details-left, .details-cover {
+    .details-left,
+    .details-cover {
         max-width: 100%;
         width: 100%;
     }
 
-    .details-download-btn, .direct-link-btn {
+    .details-download-btn,
+    .direct-link-btn {
         max-width: 100%;
     }
 }

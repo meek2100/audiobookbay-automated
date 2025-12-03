@@ -28,7 +28,10 @@ export TIMEOUT="${TIMEOUT:-60}"
 # LOGGING
 # Ensure LOG_LEVEL is lowercase for Gunicorn config (e.g. "INFO" -> "info")
 # Gunicorn is picky about lowercase log levels.
-export LOG_LEVEL=$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')
+# SC2155: Declare and assign separately to avoid masking return values.
+# SC2046: Quote to prevent word splitting.
+LOG_LEVEL_VAL="$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')"
+export LOG_LEVEL="$LOG_LEVEL_VAL"
 
 # SAFETY: Explicitly default Flask Debug to 0 for production stability
 export FLASK_DEBUG="${FLASK_DEBUG:-0}"

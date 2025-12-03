@@ -10,17 +10,11 @@
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 // NEW: Explicitly enable and configure pytest
                 "python.testing.pytestEnabled": true,
-                "python.testing.pytestArgs": [
-                    "tests"
-                ],
+                "python.testing.pytestArgs": ["tests"],
                 // NEW: Set terminal working directory
                 "terminal.integrated.cwd": "/app"
             },
-            "extensions": [
-                "ms-python.python",
-                "ms-python.vscode-pylance",
-                "tamasfe.even-better-toml"
-            ]
+            "extensions": ["ms-python.python", "ms-python.vscode-pylance", "tamasfe.even-better-toml"]
         }
     },
     // NEW: Set default environment variables for development
@@ -34,9 +28,7 @@
         "DL_HOST": "localhost"
     },
     // Forward the Flask port so you can access localhost:5078
-    "forwardPorts": [
-        5078
-    ],
+    "forwardPorts": [5078],
     // Install dev dependencies automatically after the container builds
     "postCreateCommand": "pip install -e '.[dev]'",
     // Run as the non-root user defined in your Dockerfile

@@ -5,7 +5,6 @@ AudiobookBay Automated is a lightweight web application designed to simplify aud
 ## How It Works
 
 - **Search Results**: Users search for audiobooks. The app grabs results from AudioBook Bay and displays results with the **title** and **cover image**, along with two action links:
-
   1. **More Details**: Opens the audiobook's page on AudioBook Bay for additional information.
   2. **Download to Server**: Sends the audiobook to your configured torrent client for downloading.
 

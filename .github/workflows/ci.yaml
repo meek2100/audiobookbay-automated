@@ -21,6 +21,13 @@ jobs:
           python-version: "3.13"
           cache: "pip"
 
+      # Optimization: Cache pre-commit environments
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
+
       - name: Install pre-commit
         run: pip install pre-commit
 

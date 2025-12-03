@@ -1,24 +1,65 @@
+# .pre-commit-config.yaml
+# Exclude vendor files and minified assets from all hooks
+exclude: ^(app/static/vendor/|.*\.min\.(css|js))
+
 repos:
-  # Standard cleanup hooks
+  # 1. Standard Cleanup
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-
-      # Ensures every file ends with a newline character
       - id: end-of-file-fixer
-
       - id: check-yaml
+      # FIX: Exclude VS Code/Devcontainer files because they use comments (JSONC)
+      # which causes strict 'check-json' to fail.
+      - id: check-json
+        exclude: ^(\.vscode/|\.devcontainer/)
       - id: check-added-large-files
-
-      # Forces all files to use LF (Unix) line endings
+        args: ["--maxkb=500"]
       - id: mixed-line-ending
         args: ["--fix=lf"]
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, master]
 
-  # Ruff (Linter & Formatter)
+  # 2. Python (Ruff)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.7
+    rev: v0.1.4
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  # 3. Frontend & Docs (Prettier)
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: "v3.6.2"
+    hooks:
+      - id: prettier
+        types_or: [css, javascript, html, markdown, json, yaml]
+        # FIX: Point to the config file so it matches VS Code
+        args: ["--config", ".prettierrc.yaml"]
+
+  # 4. Infrastructure (Docker & Shell)
+  - repo: https://github.com/IamTheFij/docker-pre-commit
+    rev: v3.0.1
+    hooks:
+      - id: docker-compose-check
+
+  - repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.14.0
+    hooks:
+      - id: hadolint
+        args: ["--ignore", "DL3008"]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: ["--format=gcc"]
+
+  # 5. Spelling
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        exclude: ^(poetry\.lock|package-lock\.json)$
