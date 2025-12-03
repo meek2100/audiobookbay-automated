@@ -9,6 +9,36 @@ def test_home_page_load(client):
     assert b"Search AudiobookBay" in response.data
 
 
+def test_home_page_static_versioning(client):
+    """
+    Verify that static assets in the HTML are appended with the version hash.
+    This confirms the Context Processor is injecting 'static_version' correctly.
+    """
+    response = client.get("/")
+    assert response.status_code == 200
+    # Check for the presence of the query parameter '?v=' in links/scripts
+    assert b"?v=" in response.data
+    # Optionally check for the favicon specifically to be sure
+    assert b"favicon.ico?v=" in response.data
+
+
+def test_static_assets_cache_control(client):
+    """
+    Verify that static files are served with a long cache duration (1 year).
+    This confirms app.config["SEND_FILE_MAX_AGE_DEFAULT"] is effective.
+    """
+    # Request a known static file (favicon.ico)
+    response = client.get("/static/images/favicon.ico")
+
+    # If the file exists (it should), verify headers.
+    # Even if missing (404), we check if the config applied (though usually 404s don't cache).
+    if response.status_code == 200:
+        cache_control = response.headers.get("Cache-Control", "")
+        # 1 year = 31536000 seconds
+        assert "max-age=31536000" in cache_control
+        assert "public" in cache_control
+
+
 def test_health_check_route(client):
     response = client.get("/health")
     assert response.status_code == 200

@@ -65,6 +65,13 @@ if SECRET_KEY == DEFAULT_SECRET:
         raise ValueError("Application refused to start: Change SECRET_KEY in your .env file for production deployment.")
 
 app.config["SECRET_KEY"] = SECRET_KEY
+
+# --- Static Asset Caching ---
+# OPTIMIZATION: Cache static assets for 1 year (31536000 seconds).
+# We use version hashing (?v=hash) in templates to force invalidation when the Docker image changes.
+# This tells the browser: "Keep this file forever, until the URL changes."
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 31536000
+
 csrf = CSRFProtect(app)
 
 limiter = Limiter(
@@ -89,7 +96,6 @@ NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
 NAV_LINK_URL = os.getenv("NAV_LINK_URL")
 LIBRARY_RELOAD_ENABLED = all([ABS_URL, ABS_KEY, ABS_LIB])
 
-# --- Static Asset Caching ---
 # Calculate hash of static files to force cache invalidation on rebuilds
 static_folder = os.path.join(app.root_path, "static")
 STATIC_VERSION = calculate_static_hash(static_folder)
