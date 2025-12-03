@@ -128,7 +128,7 @@ def test_delete_torrent_failure(client):
 def test_reload_library_success(client, monkeypatch, app_module):
     monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", True)
     with (
-        patch("app.app.AUDIOBOOKSHELF_URL", "http://abs"),
+        patch("app.app.ABS_URL", "http://abs"),
         patch("app.app.ABS_KEY", "token"),
         patch("app.app.ABS_LIB", "lib-id"),
         patch("app.app.requests.post") as mock_post,
@@ -151,7 +151,7 @@ def test_reload_library_detailed_error(client, monkeypatch, app_module):
     monkeypatch.setattr(app_module, "LIBRARY_RELOAD_ENABLED", True)
 
     with (
-        patch("app.app.AUDIOBOOKSHELF_URL", "http://abs"),
+        patch("app.app.ABS_URL", "http://abs"),
         patch("app.app.ABS_KEY", "k"),
         patch("app.app.ABS_LIB", "l"),
     ):

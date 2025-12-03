@@ -7,7 +7,8 @@ services:
       - "5078:5078"
     container_name: audiobookbay-automated
     environment:
-      - DOWNLOAD_CLIENT=${DOWNLOAD_CLIENT}
+      # RENAME: Changed from DOWNLOAD_CLIENT to DL_CLIENT
+      - DL_CLIENT=${DL_CLIENT}
       - DL_SCHEME=${DL_SCHEME:-http}
       - DL_HOST=${DL_HOST}
       - DL_PORT=${DL_PORT}
@@ -26,5 +27,11 @@ services:
       - THREADS=${THREADS:-8}
       - SECRET_KEY=${SECRET_KEY}
       - TZ=${TZ:-UTC} # OPTIMIZATION: Set your local timezone (e.g. America/Los_Angeles)
+      # Optional ABS Integration
+      - ABS_URL=${ABS_URL}
+      - ABS_KEY=${ABS_KEY}
+      - ABS_LIB=${ABS_LIB}
+      # Optional Mirror Configuration
+      - ABB_MIRRORS=${ABB_MIRRORS}
     env_file:
       - .env

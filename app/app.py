@@ -73,14 +73,15 @@ if not SAVE_PATH_BASE:
         logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
         sys.exit(1)
 
-AUDIOBOOKSHELF_URL = os.getenv("AUDIOBOOKSHELF_URL")
+# RENAME: Changed from AUDIOBOOKSHELF_URL to ABS_URL
+ABS_URL = os.getenv("ABS_URL")
 ABS_KEY = os.getenv("ABS_KEY")
 ABS_LIB = os.getenv("ABS_LIB")
 
 # Optimization: Load Nav configs once at startup
 NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
 NAV_LINK_URL = os.getenv("NAV_LINK_URL")
-LIBRARY_RELOAD_ENABLED = all([AUDIOBOOKSHELF_URL, ABS_KEY, ABS_LIB])
+LIBRARY_RELOAD_ENABLED = all([ABS_URL, ABS_KEY, ABS_LIB])
 
 torrent_manager = TorrentManager()
 
@@ -207,7 +208,7 @@ def reload_library() -> Response:
         return jsonify({"message": "Audiobookshelf integration not configured."}), 400
 
     try:
-        url = f"{AUDIOBOOKSHELF_URL}/api/libraries/{ABS_LIB}/scan"
+        url = f"{ABS_URL}/api/libraries/{ABS_LIB}/scan"
         headers = {"Authorization": f"Bearer {ABS_KEY}"}
         response = requests.post(url, headers=headers, timeout=10)
         response.raise_for_status()

@@ -306,7 +306,7 @@ def test_search_special_characters():
 
 
 def test_custom_mirrors_env(monkeypatch):
-    monkeypatch.setenv("ABB_MIRRORS_LIST", "custom.mirror.com, another.mirror.net")
+    monkeypatch.setenv("ABB_MIRRORS", "custom.mirror.com, another.mirror.net")
     importlib.reload(scraper)
     assert "custom.mirror.com" in scraper.ABB_FALLBACK_HOSTNAMES
 
@@ -641,7 +641,7 @@ def test_extract_magnet_success_table():
 
 def test_custom_mirrors_env_edge_cases(monkeypatch):
     """Test that an empty or comma-only env var doesn't break the mirror list."""
-    monkeypatch.setenv("ABB_MIRRORS_LIST", ", ,  ,")
+    monkeypatch.setenv("ABB_MIRRORS", ", ,  ,")
     importlib.reload(scraper)
     # It should not have added empty strings
     assert "" not in scraper.ABB_FALLBACK_HOSTNAMES

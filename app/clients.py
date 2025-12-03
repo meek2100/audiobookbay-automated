@@ -20,7 +20,7 @@ class TorrentManager:
         """
         Initializes the TorrentManager by loading configuration from environment variables.
         """
-        self.client_type: str | None = os.getenv("DOWNLOAD_CLIENT")
+        self.client_type: str | None = os.getenv("DL_CLIENT")
         self.host: str | None = os.getenv("DL_HOST")
         self.port: str | None = os.getenv("DL_PORT")
         self.username: str | None = os.getenv("DL_USERNAME")
@@ -79,7 +79,8 @@ class TorrentManager:
                     # Allow app to start even if client is down; commands will fail later.
                     return None
 
-            elif self.client_type == "delugeweb":
+            # RENAME: Changed "delugeweb" to "deluge" for simpler user config
+            elif self.client_type == "deluge":
                 try:
                     dw = DelugeWebClient(url=self.dl_url, password=self.password)
                     dw.login()
@@ -114,16 +115,15 @@ class TorrentManager:
             return False
 
     @staticmethod
-    def _format_size(size_bytes: int | float | None) -> str:
+    def _format_size(size_bytes: int | float | str | None) -> str:
         """
         Formats bytes into human-readable B, KB, MB, GB, TB, PB.
 
         Args:
-            size_bytes: The size in bytes. Must be numeric.
+            size_bytes: The size in bytes.
 
         Returns:
-            str: Human readable size string (e.g. "1.50 GB"). Returns "N/A" for None
-                 or non-numeric inputs (including pre-formatted strings).
+            str: Human readable size string (e.g. "1.50 GB") or "N/A".
         """
         if size_bytes is None:
             return "N/A"
@@ -178,7 +178,7 @@ class TorrentManager:
                 logger.warning(f"Transmission label assignment failed: {e}. Retrying without labels.")
                 tx_client.add_torrent(magnet_link, download_dir=save_path)
 
-        elif self.client_type == "delugeweb":
+        elif self.client_type == "deluge":
             deluge_client = cast(DelugeWebClient, client)
             try:
                 deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
@@ -224,7 +224,7 @@ class TorrentManager:
                 logger.debug(f"Transmission: ID {torrent_id} is not an integer, using as string hash.")
             tx_client.remove_torrent(ids=[tid], delete_data=False)
 
-        elif self.client_type == "delugeweb":
+        elif self.client_type == "deluge":
             deluge_client = cast(DelugeWebClient, client)
             deluge_client.remove_torrent(torrent_id, remove_data=False)
 
@@ -279,7 +279,7 @@ class TorrentManager:
                     }
                 )
 
-        elif self.client_type == "delugeweb":
+        elif self.client_type == "deluge":
             deluge_client = cast(DelugeWebClient, client)
             torrents = deluge_client.get_torrents_status(
                 filter_dict={"label": self.category},
