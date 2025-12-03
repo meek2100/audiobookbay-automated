@@ -205,7 +205,7 @@ def send() -> Response:
         logger.info(f"Successfully sent '{title}' to {torrent_manager.client_type}")
         return jsonify(
             {
-                "message": "Download added successfully! This may take some time, the download will show in Audiobookshelf when completed."
+                "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."
             }
         )
     except Exception as e:

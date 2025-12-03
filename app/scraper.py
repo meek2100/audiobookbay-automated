@@ -83,6 +83,9 @@ def load_trackers() -> list[str]:
     """
     Loads trackers from env var, local JSON, or defaults.
     Note: trackers.json is an OPTIONAL user-provided override file.
+
+    Returns:
+        list[str]: A list of tracker URLs.
     """
     trackers_env = os.getenv("MAGNET_TRACKERS")
     if trackers_env:
@@ -112,7 +115,12 @@ DEFAULT_TRACKERS = load_trackers()
 
 
 def get_session() -> Session:
-    """Configures and returns a requests Session with retry logic."""
+    """
+    Configures and returns a requests Session with retry logic.
+
+    Returns:
+        Session: A configured requests Session object.
+    """
     session = requests.Session()
     retry_strategy = Retry(
         total=5,
@@ -129,6 +137,13 @@ def get_session() -> Session:
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
     """
     Generates HTTP headers for scraping requests.
+
+    Args:
+        user_agent (str | None): Optional specific user agent.
+        referer (str | None): Optional referer URL.
+
+    Returns:
+        dict[str, str]: A dictionary of HTTP headers.
     """
     if not user_agent:
         user_agent = get_random_user_agent()
@@ -150,6 +165,12 @@ def check_mirror(hostname: str) -> str | None:
     """
     Checks if a mirror is reachable.
     Tries HEAD first for speed. If that fails (or is blocked), falls back to GET.
+
+    Args:
+        hostname (str): The hostname to check (e.g., 'audiobookbay.lu').
+
+    Returns:
+        str | None: The valid hostname if reachable, otherwise None.
     """
     url = f"https://{hostname}/"
     headers = get_headers()
@@ -183,7 +204,12 @@ search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 
 @cached(cache=mirror_cache)
 def find_best_mirror() -> str | None:
-    """Finds the first reachable AudiobookBay mirror from the list."""
+    """
+    Finds the first reachable AudiobookBay mirror from the list.
+
+    Returns:
+        str | None: The hostname of the best active mirror, or None if all fail.
+    """
     logger.debug("Checking connectivity for all mirrors...")
 
     # Limit concurrent checks to 5 to avoid a massive burst of connection attempts (DDoS protection)
@@ -242,6 +268,16 @@ def fetch_and_parse_page(
 ) -> list[dict[str, Any]]:
     """
     Fetches a single search result page and parses it using BS4 navigation.
+
+    Args:
+        session (Session): The requests session.
+        hostname (str): The active mirror hostname.
+        query (str): The search query.
+        page (int): The page number to scrape.
+        user_agent (str): The user agent string to use.
+
+    Returns:
+        list[dict[str, Any]]: A list of dictionaries representing books on this page.
     """
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
@@ -354,6 +390,13 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
     """
     Searches AudiobookBay for the given query across multiple pages in parallel.
     Results are cached for performance.
+
+    Args:
+        query (str): The search term.
+        max_pages (int): Maximum number of pages to scrape. Defaults to PAGE_LIMIT.
+
+    Returns:
+        list[dict[str, Any]]: A list of dictionaries, where each dictionary represents a book.
     """
     active_hostname = find_best_mirror()
     if not active_hostname:
@@ -541,6 +584,14 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
     Scrapes the details page to find the info hash and generates a magnet link.
+
+    Args:
+        details_url (str): The URL of the book details page.
+
+    Returns:
+        tuple[str | None, str | None]: A tuple containing (magnet_link, error_message).
+            - magnet_link: The generated magnet link string, or None if failed.
+            - error_message: A description of the error, or None if successful.
     """
     if not details_url:
         return None, "No URL provided."
