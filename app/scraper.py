@@ -377,6 +377,23 @@ def get_book_details(details_url: str) -> dict[str, Any]:
     if not details_url:
         raise ValueError("No URL provided.")
 
+    # --- SECURITY: SSRF Protection ---
+    try:
+        parsed_url = urlparse(details_url)
+        # Check against our allowed list of hosts.
+        # Using a separate try/except here avoids the B904 issue because we aren't
+        # catching an exception during the check, we are validating.
+        if parsed_url.netloc not in ABB_FALLBACK_HOSTNAMES:
+            logger.warning(f"Blocked SSRF attempt to: {details_url}")
+            raise ValueError(f"Invalid domain: {parsed_url.netloc}. Only AudiobookBay mirrors are allowed.")
+    except ValueError:
+        # Re-raise ValueErrors (like the one we just raised) as-is
+        raise
+    except Exception as e:
+        # Catch parsing errors (malformed URLs) and chain them
+        raise ValueError(f"Invalid URL format: {str(e)}") from e
+    # ---------------------------------
+
     session = get_session()
     headers = get_headers(referer=details_url)
 

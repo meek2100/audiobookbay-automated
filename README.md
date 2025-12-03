@@ -18,10 +18,11 @@ AudiobookBay Automated is a lightweight web application designed to simplify aud
 ## Features
 
 - **Search Audiobook Bay**: Easily search for audiobooks by title or keywords.
-- **View Details**: Displays book titles and covers with quick links to the full details on AudioBook Bay.
+- **Private Details View**: Browse book descriptions, file sizes, and tracker info internally. The app acts as a proxy, ensuring your IP address is never exposed to AudiobookBay while browsing.
 - **Basic Download Status Page**: Monitor the download status of items in your torrent client that share the specified category assigned.
 - **No AudioBook Bay Account Needed**: The app automatically generates magnet links from the displayed infohashes and pushes them to your torrent client for downloading.
 - **Automatic Folder Organization**: Once the download is complete, the torrent client will automatically move the downloaded audiobook files to your save location. Audiobooks are organized into subfolders named after the AudioBook Bay title, making it easy for [**Audiobookshelf**](https://www.audiobookshelf.org/) to automatically add completed downloads to its library.
+- **Audiobookshelf Integration**: (Optional) Automatically trigger a library scan in Audiobookshelf via a button in the UI.
 
 ## Why Use This?
 

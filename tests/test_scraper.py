@@ -768,3 +768,12 @@ def test_get_book_details_failure():
         mock_session.return_value.get.side_effect = requests.exceptions.RequestException("Net Down")
         with pytest.raises(requests.exceptions.RequestException):
             get_book_details("http://fail.url")
+
+
+def test_get_book_details_ssrf_protection():
+    """Test that get_book_details rejects non-ABB domains."""
+    with pytest.raises(ValueError) as exc:
+        # Attempt to scrape Google (or an internal IP)
+        get_book_details("https://google.com/admin")
+
+    assert "Invalid domain" in str(exc.value)
