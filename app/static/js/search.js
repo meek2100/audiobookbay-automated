@@ -159,6 +159,10 @@ function populateSelectFilters() {
 
     const appendOptions = (id, set) => {
         const select = document.getElementById(id);
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+
         const sortedValues = Array.from(set).sort((a, b) =>
             a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
         );
@@ -197,7 +201,7 @@ function applyFilters() {
 
         if (sizeRange) {
             const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
-            if (rowSizeMB !== null && (rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1])) {
+            if (rowSizeMB === null || rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1]) {
                 visible = false;
             }
         }
