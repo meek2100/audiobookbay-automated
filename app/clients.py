@@ -258,7 +258,6 @@ class TorrentManager:
                     {
                         "id": torrent.id,
                         "name": torrent.name,
-                        # FIX: Robustly handle None for progress (e.g., error state)
                         "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
                         "state": torrent.status,
                         "size": self._format_size(torrent.total_size),
@@ -273,7 +272,6 @@ class TorrentManager:
                     {
                         "id": torrent.hash,
                         "name": torrent.name,
-                        # FIX: Robustly handle None for progress
                         "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
                         "state": torrent.state,
                         "size": self._format_size(torrent.total_size),
@@ -295,7 +293,6 @@ class TorrentManager:
                         {
                             "id": key,
                             "name": torrent["name"],
-                            # FIX: Robustly handle None for progress
                             "progress": round(torrent["progress"], 2) if torrent["progress"] else 0.0,
                             "state": torrent["state"],
                             "size": self._format_size(torrent["total_size"]),

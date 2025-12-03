@@ -23,11 +23,14 @@ function initializeFilters() {
 // --- Helper Functions ---
 function parseFileSizeToMB(sizeString) {
     if (!sizeString || sizeString.trim().toLowerCase() === 'n/a') return null;
-    const parts = sizeString.trim().split(/\s+/);
-    if (parts.length < 2) return null;
 
-    const size = parseFloat(parts[0]);
-    const unit = parts[1].toUpperCase();
+    // Robust regex to split number and text even without spaces
+    // Matches "1.2 GB", "1.2GB", "500MB", etc.
+    const match = sizeString.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+    if (!match) return null;
+
+    const size = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
 
     if (isNaN(size)) return null;
 

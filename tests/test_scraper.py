@@ -67,6 +67,8 @@ DETAILS_HTML = """
     <div class="postContent">
         <img itemprop="image" src="/cover.jpg">
         <p>Format: <span>M4B</span> / Bitrate: <span>96 Kbps</span></p>
+        <span class="author" itemprop="author">George R.R. Martin</span>
+        <span class="narrator" itemprop="author">Roy Dotrice</span>
         <div class="desc">
             <p>This is a great book.</p>
             <a href="http://bad.com">Spam Link</a>
@@ -771,9 +773,11 @@ def test_get_book_details_success():
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
         assert details["file_size"] == "1.37 GBs"
-        assert details["language"] == "English"  # New Assertion
-        assert details["format"] == "M4B"  # New Assertion
-        assert details["bitrate"] == "96 Kbps"  # New Assertion
+        assert details["language"] == "English"
+        assert details["format"] == "M4B"
+        assert details["bitrate"] == "96 Kbps"
+        assert details["author"] == "George R.R. Martin"
+        assert details["narrator"] == "Roy Dotrice"
         assert "udp://tracker.opentrackr.org" in details["trackers"][0]
         assert "This is a great book" in details["description"]
         assert "Spam Link" in details["description"]  # Check text remains

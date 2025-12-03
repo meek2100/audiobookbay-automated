@@ -73,7 +73,6 @@ if not SAVE_PATH_BASE:
         logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
         sys.exit(1)
 
-# RENAME: Changed from AUDIOBOOKSHELF_URL to ABS_URL
 ABS_URL = os.getenv("ABS_URL")
 ABS_KEY = os.getenv("ABS_KEY")
 ABS_LIB = os.getenv("ABS_LIB")
@@ -124,7 +123,6 @@ def search() -> str:
     try:
         # Support both GET (URL parameters) and POST (Form submission)
         # GET is preferred for bookmarking and back-button functionality
-        # FIX: Added 'or ""' to ensure query is never None (which renders as "None" in HTML)
         query = request.args.get("query") or request.form.get("query") or ""
 
         if query:

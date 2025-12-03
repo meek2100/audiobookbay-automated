@@ -6,7 +6,7 @@ import random
 import re
 import threading
 import time
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -42,7 +42,6 @@ ABB_FALLBACK_HOSTNAMES: list[str] = [
 ]
 
 # Allow users to add mirrors via env var
-# RENAME: Changed from ABB_MIRRORS_LIST to ABB_MIRRORS
 extra_mirrors = os.getenv("ABB_MIRRORS", "")
 if extra_mirrors:
     # Robustly handle trailing commas or empty strings in the list
@@ -95,7 +94,7 @@ def load_trackers() -> list[str]:
             with open(json_path, "r") as f:
                 data = json.load(f)
                 if isinstance(data, list):
-                    return data  # type: ignore
+                    return cast(list[str], data)
         except Exception as e:
             logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 
@@ -384,6 +383,24 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
 def get_book_details(details_url: str) -> dict[str, Any]:
     """
     Scrapes the specific book details page to allow viewing content safely via the server.
+
+    Args:
+        details_url (str): The URL of the book details page.
+
+    Returns:
+        dict[str, Any]: A dictionary containing detailed book information:
+            - title (str): Title of the book
+            - cover (str): URL to cover image
+            - description (str): HTML description
+            - trackers (list[str]): List of tracker URLs
+            - file_size (str): Size of the download
+            - info_hash (str): Torrent Info Hash
+            - link (str): Original URL
+            - language (str): Language
+            - format (str): File format (e.g. MP3)
+            - bitrate (str): Bitrate
+            - author (str): Author Name
+            - narrator (str): Narrator Name
     """
     if not details_url:
         raise ValueError("No URL provided.")
