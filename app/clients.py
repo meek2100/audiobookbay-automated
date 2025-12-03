@@ -79,7 +79,6 @@ class TorrentManager:
                     # Allow app to start even if client is down; commands will fail later.
                     return None
 
-            # RENAME: Changed "delugeweb" to "deluge" for simpler user config
             elif self.client_type == "deluge":
                 try:
                     dw = DelugeWebClient(url=self.dl_url, password=self.password)
@@ -259,7 +258,8 @@ class TorrentManager:
                     {
                         "id": torrent.id,
                         "name": torrent.name,
-                        "progress": round(torrent.progress * 100, 2),
+                        # FIX: Robustly handle None for progress (e.g., error state)
+                        "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
                         "state": torrent.status,
                         "size": self._format_size(torrent.total_size),
                     }
@@ -273,7 +273,8 @@ class TorrentManager:
                     {
                         "id": torrent.hash,
                         "name": torrent.name,
-                        "progress": round(torrent.progress * 100, 2),
+                        # FIX: Robustly handle None for progress
+                        "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
                         "state": torrent.state,
                         "size": self._format_size(torrent.total_size),
                     }
@@ -294,7 +295,8 @@ class TorrentManager:
                         {
                             "id": key,
                             "name": torrent["name"],
-                            "progress": round(torrent["progress"], 2),
+                            # FIX: Robustly handle None for progress
+                            "progress": round(torrent["progress"], 2) if torrent["progress"] else 0.0,
                             "state": torrent["state"],
                             "size": self._format_size(torrent["total_size"]),
                         }

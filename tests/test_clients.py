@@ -303,6 +303,28 @@ def test_get_status_qbittorrent(mock_env):
         assert results[0]["size"] == "1.00 MB"
 
 
+def test_get_status_qbittorrent_robustness(mock_env):
+    """Test qBittorrent handling of None progress (e.g. stalled metadata)."""
+    with patch("app.clients.QbClient") as MockQbClient:
+        mock_instance = MockQbClient.return_value
+
+        mock_torrent = MagicMock()
+        mock_torrent.hash = "hash_bad"
+        mock_torrent.name = "Stalled Book"
+        mock_torrent.progress = None  # Force None
+        mock_torrent.state = "metaDL"
+        mock_torrent.total_size = None
+
+        mock_instance.torrents_info.return_value = [mock_torrent]
+
+        manager = TorrentManager()
+        results = manager.get_status()
+
+        assert len(results) == 1
+        assert results[0]["progress"] == 0.0  # Should fallback
+        assert results[0]["size"] == "N/A"
+
+
 def test_get_status_transmission(mock_env, monkeypatch):
     """Test fetching status from Transmission."""
     monkeypatch.setenv("DL_CLIENT", "transmission")
@@ -326,6 +348,30 @@ def test_get_status_transmission(mock_env, monkeypatch):
         assert results[0]["size"] == "1.00 KB"
 
 
+def test_get_status_transmission_robustness(mock_env, monkeypatch):
+    """Test fetching status from Transmission handles None values gracefully."""
+    monkeypatch.setenv("DL_CLIENT", "transmission")
+    with patch("app.clients.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+
+        mock_torrent_bad = MagicMock()
+        mock_torrent_bad.id = 2
+        mock_torrent_bad.name = "Bad Torrent"
+        mock_torrent_bad.progress = None
+        mock_torrent_bad.total_size = None
+        mock_torrent_bad.status = "error"
+
+        mock_instance.get_torrents.return_value = [mock_torrent_bad]
+
+        manager = TorrentManager()
+        results = manager.get_status()
+
+        assert len(results) == 1
+        assert results[0]["name"] == "Bad Torrent"
+        assert results[0]["progress"] == 0.0
+        assert results[0]["size"] == "N/A"
+
+
 def test_get_status_deluge(monkeypatch):
     """Test fetching status from Deluge."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
@@ -345,7 +391,6 @@ def test_get_status_deluge_empty_result(monkeypatch):
     monkeypatch.setenv("DL_CLIENT", "deluge")
     with patch("app.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
-        # Simulate successful connection but empty result (e.g. API error handled by library)
         mock_response = MagicMock()
         mock_response.result = None
         mock_instance.get_torrents_status.return_value = mock_response
@@ -358,6 +403,26 @@ def test_get_status_deluge_empty_result(monkeypatch):
         # Verify the warning was logged
         args, _ = mock_logger.warning.call_args
         assert "Deluge returned empty or invalid" in args[0]
+
+
+def test_get_status_deluge_robustness(monkeypatch):
+    """Test Deluge handling of None in individual torrent fields."""
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_response = MagicMock()
+        mock_response.result = {
+            "hash999": {"name": "Broken Book", "state": "Error", "progress": None, "total_size": None}
+        }
+        mock_instance.get_torrents_status.return_value = mock_response
+
+        manager = TorrentManager()
+        results = manager.get_status()
+
+        assert len(results) == 1
+        assert results[0]["name"] == "Broken Book"
+        assert results[0]["progress"] == 0.0
+        assert results[0]["size"] == "N/A"
 
 
 def test_get_status_reconnect(monkeypatch):

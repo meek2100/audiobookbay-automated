@@ -373,6 +373,7 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
     Scrapes the details page to find the info hash and generates a magnet link.
+    Constructs the magnet link using the info hash and configured trackers.
     """
     if not details_url:
         return None, "No URL provided."

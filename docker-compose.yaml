@@ -7,7 +7,6 @@ services:
       - "5078:5078"
     container_name: audiobookbay-automated
     environment:
-      # RENAME: Changed from DOWNLOAD_CLIENT to DL_CLIENT
       - DL_CLIENT=${DL_CLIENT}
       - DL_SCHEME=${DL_SCHEME:-http}
       - DL_HOST=${DL_HOST}
