@@ -751,7 +751,8 @@ def test_get_book_details_success():
         mock_response.text = DETAILS_HTML
         mock_session.return_value.get.return_value = mock_response
 
-        details = get_book_details("http://fake.url")
+        # Use valid domain to pass SSRF check
+        details = get_book_details("https://audiobookbay.lu/valid-book")
 
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
@@ -767,7 +768,8 @@ def test_get_book_details_failure():
     with patch("app.scraper.get_session") as mock_session:
         mock_session.return_value.get.side_effect = requests.exceptions.RequestException("Net Down")
         with pytest.raises(requests.exceptions.RequestException):
-            get_book_details("http://fail.url")
+            # Use valid domain so it hits the network logic
+            get_book_details("https://audiobookbay.lu/fail-book")
 
 
 def test_get_book_details_ssrf_protection():
@@ -777,3 +779,20 @@ def test_get_book_details_ssrf_protection():
         get_book_details("https://google.com/admin")
 
     assert "Invalid domain" in str(exc.value)
+
+
+def test_get_book_details_empty():
+    """Test that get_book_details raises ValueError when URL is empty."""
+    with pytest.raises(ValueError) as exc:
+        get_book_details("")
+    assert "No URL provided" in str(exc.value)
+
+
+def test_get_book_details_url_parse_error():
+    """Test that get_book_details wraps urlparse exceptions."""
+    # We mock urlparse to simulate a library-level failure
+    with patch("app.scraper.urlparse", side_effect=Exception("Boom")):
+        with pytest.raises(ValueError) as exc:
+            # Input doesn't matter since we mocked the parser
+            get_book_details("http://anything")
+    assert "Invalid URL format" in str(exc.value)
