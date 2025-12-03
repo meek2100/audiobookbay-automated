@@ -54,18 +54,32 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 - **Stability First:** We prefer robust, hardcoded lists over flaky dynamic dependencies.
   - _Example:_ We removed `fake_useragent` because its dynamic database fetching caused startup hangs. We now use a curated list of modern `USER_AGENTS` in `scraper.py`.
 
-### Error Handling
+### Error Handling & Client Resilience
 
 - **The "Eternal Spinner":** The frontend UI (`search.js`) must always assume the backend _might_ fail.
   - _Rule:_ All `fetch()` calls must have `.catch()` and `.finally()` blocks to reset UI states (loading spinners).
 - **Downstream Failures:** The app must start even if the Torrent Client is offline.
   - _Implementation:_ Client instantiation in `clients.py` is wrapped in `try/except` to prevent boot crashes.
+- **Deluge Specifics:** The `deluge-web-client` library can return `None` for result payloads when the daemon is unreachable (even if the WebUI is up). Code must explicitly check `if torrents.result:` before iterating.
 
 ---
 
 ## 3. Development Standards (Strict)
 
 We enforce high code quality because "appliance" software is often difficult for end-users to debug.
+
+### Naming Conventions
+
+- **Environment Variables:** Use standardized prefixes to avoid confusion.
+  - `DL_*`: Downloader configurations (e.g., `DL_CLIENT`, `DL_HOST`, `DL_USERNAME`).
+  - `ABS_*`: Audiobookshelf integrations (e.g., `ABS_URL`, `ABS_KEY`).
+  - `ABB_*`: AudiobookBay configurations (e.g., `ABB_MIRRORS`).
+
+### Python Versioning & Tooling
+
+- **Runtime:** The Docker image runs **Python 3.13**.
+- **Linting:** `pyproject.toml` is configured with `target-version = "py312"`.
+  - _Reason:_ Some dev tools (like older Ruff versions or VS Code extensions) do not yet fully support 3.13 syntax. We stick to 3.12 syntax standards to ensure developer tooling compatibility while running on the latest runtime.
 
 ### Logging (Verbose)
 
@@ -82,7 +96,8 @@ We enforce high code quality because "appliance" software is often difficult for
 ### Test Coverage (100%)
 
 - **Requirement:** The test suite must maintain **100% code coverage**. This is enforced via `pytest --cov-fail-under=100`.
-- **Unhappy Paths:** You must test failure modes (e.g., "what if the torrent client is offline?", "what if the website returns 500?"). The happy path is easy; the value is in ensuring resilience.
+- **Security Testing:** You MUST include tests that explicitly enable CSRF protection (`WTF_CSRF_ENABLED = True`) to verify security headers work, even if standard tests disable it for convenience.
+- **Unhappy Paths:** You must test failure modes (e.g., "what if the torrent client is offline?", "what if the website returns 500?").
 - **Valid Exemptions:** Use `# pragma: no cover` **only** for:
   - `if __name__ == "__main__":` blocks.
   - OS-specific logic (e.g., Windows-specific path handling if CI is Linux).
@@ -105,7 +120,15 @@ We enforce high code quality because "appliance" software is often difficult for
 
 ---
 
-## 4. Deployment & CI/CD
+## 4. Frontend & UX Philosophy
+
+- **Notifications:** Prefer non-blocking "Toast" notifications (via `showNotification` in `actions.js`) over browser `alert()`.
+  - _Exception:_ Destructive actions (like Deleting a torrent) must use a blocking `confirm()` dialog to prevent accidental clicks.
+- **Loading States:** Every button that triggers a backend fetch must disable itself and show a loading state (spinner or text change) immediately to prevent double-submissions.
+
+---
+
+## 5. Deployment & CI/CD
 
 ### Docker Optimization
 
@@ -120,7 +143,7 @@ We enforce high code quality because "appliance" software is often difficult for
 
 ---
 
-## 5. Future Refactoring Checklist
+## 6. Future Refactoring Checklist
 
 If you are asked to improve this repo, ask yourself:
 
@@ -129,7 +152,7 @@ If you are asked to improve this repo, ask yourself:
 3.  **"Does this require an external service (like Redis)?"** -> If YES, reject it unless absolutely necessary.
 4.  **"Does this assume 100 concurrent users?"** -> If YES, you are optimizing for the wrong target. Optimize for **1 user doing 100 things sequentially**, not 100 users doing 1 thing.
 
-## 6. Quick Reference
+## 7. Quick Reference
 
 - **Install:** `pip install .` (Not requirements.txt)
 - **Run Dev:** `python app/app.py`
