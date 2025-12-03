@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block title %}Details - {{ book.title if book else 'Error' }}{% endblock %} {% block
 extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}" />
-<link rel="stylesheet" href="{{ url_for('static', filename='css/details.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css', v=static_version) }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/details.css', v=static_version) }}" />
 {% endblock %} {# OPTIMIZATION: This page does not need the search filters or vendor JS #} {% block extra_js %}{%
 endblock %} {% block content %}
 <div class="title-container">
@@ -20,7 +20,7 @@ endblock %} {% block content %}
             src="{{ book.cover }}"
             alt="Cover"
             class="details-cover"
-            onerror="this.src='{{ url_for('static', filename='images/default_cover.jpg') }}'"
+            onerror="this.src='{{ url_for('static', filename='images/default_cover.jpg', v=static_version) }}'"
         />
     </div>
     <div class="details-info">

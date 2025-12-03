@@ -1,11 +1,11 @@
 {% extends "base.html" %} {% block title %}Search{% endblock %} {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/flatpickr.min.css') }}" />
-<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/nouislider.min.css') }}" />
-<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/flatpickr.min.css', v=static_version) }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/nouislider.min.css', v=static_version) }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css', v=static_version) }}" />
 {% endblock %} {% block extra_js %}
-<script src="{{ url_for('static', filename='vendor/js/flatpickr.min.js') }}"></script>
-<script src="{{ url_for('static', filename='vendor/js/nouislider.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/search.js') }}" defer></script>
+<script src="{{ url_for('static', filename='vendor/js/flatpickr.min.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='vendor/js/nouislider.min.js', v=static_version) }}"></script>
+<script src="{{ url_for('static', filename='js/search.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
 
 <div class="title-container">
@@ -83,7 +83,7 @@
                         alt="Cover Art"
                         class="cover"
                         width="100"
-                        data-default-cover="{{ url_for('static', filename='images/default_cover.jpg') }}"
+                        data-default-cover="{{ url_for('static', filename='images/default_cover.jpg', v=static_version) }}"
                         onerror="this.onerror=null;this.src=this.dataset.defaultCover;"
                     />
                 </td>

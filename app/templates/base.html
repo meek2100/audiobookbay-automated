@@ -6,10 +6,15 @@
         <meta name="theme-color" content="#6a1b9a" />
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <title>{% block title %}AudiobookBay Automated{% endblock %}</title>
-        <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}" />
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+        {# Cache Busting: Appended v=static_version to force refresh on container rebuild #}
+        <link
+            rel="icon"
+            type="image/x-icon"
+            href="{{ url_for('static', filename='images/favicon.ico', v=static_version) }}"
+        />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_version) }}" />
         {% block extra_css %}{% endblock %} {% block extra_js %}{% endblock %}
-        <script src="{{ url_for('static', filename='js/actions.js') }}" defer></script>
+        <script src="{{ url_for('static', filename='js/actions.js', v=static_version) }}" defer></script>
     </head>
 
     <body>

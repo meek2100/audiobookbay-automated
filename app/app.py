@@ -14,7 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # Import custom modules
 from .clients import TorrentManager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
-from .utils import sanitize_title
+from .utils import calculate_static_hash, sanitize_title
 
 # Load environment variables
 load_dotenv()
@@ -89,6 +89,12 @@ NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
 NAV_LINK_URL = os.getenv("NAV_LINK_URL")
 LIBRARY_RELOAD_ENABLED = all([ABS_URL, ABS_KEY, ABS_LIB])
 
+# --- Static Asset Caching ---
+# Calculate hash of static files to force cache invalidation on rebuilds
+static_folder = os.path.join(app.root_path, "static")
+STATIC_VERSION = calculate_static_hash(static_folder)
+logger.info(f"Static assets version hash: {STATIC_VERSION}")
+
 torrent_manager = TorrentManager()
 
 # STARTUP CHECK: Robustly check client connection without swallowing errors
@@ -98,18 +104,19 @@ if not IS_TESTING:
 
 
 @app.context_processor
-def inject_nav_link() -> dict[str, Any]:
+def inject_global_vars() -> dict[str, Any]:
     """
-    Injects global navigation variables into all templates.
+    Injects global variables into all templates.
 
     Returns:
-        dict: Contains 'nav_link_name', 'nav_link_url', and 'library_reload_enabled'.
+        dict: Contains 'nav_link_name', 'nav_link_url', 'library_reload_enabled', and 'static_version'.
     """
     # Optimization: Use pre-loaded global variables
     return {
         "nav_link_name": NAV_LINK_NAME,
         "nav_link_url": NAV_LINK_URL,
         "library_reload_enabled": LIBRARY_RELOAD_ENABLED,
+        "static_version": STATIC_VERSION,
     }
 
 

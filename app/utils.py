@@ -1,3 +1,5 @@
+import hashlib
+import os
 import re
 
 
@@ -61,3 +63,44 @@ def sanitize_title(title: str | None) -> str:
         return f"{sanitized}_Safe"
 
     return sanitized
+
+
+def calculate_static_hash(static_folder: str) -> str:
+    """
+    Calculates a short MD5 hash of the contents of the static folder.
+    This is used for cache-busting: if any static file changes, this hash
+    will change, forcing browsers to download the new version.
+
+    Args:
+        static_folder: Path to the static assets directory.
+
+    Returns:
+        str: An 8-character hex string representing the content hash.
+    """
+    hash_md5 = hashlib.md5()
+
+    if not os.path.exists(static_folder):
+        return "v1"
+
+    # Walk through the static folder to hash all file contents
+    for root, dirs, files in os.walk(static_folder):
+        # Sort to ensure consistent hashing order across systems
+        dirs.sort()
+        files.sort()
+        for filename in files:
+            # Skip hidden files
+            if filename.startswith("."):
+                continue
+
+            filepath = os.path.join(root, filename)
+            try:
+                with open(filepath, "rb") as f:
+                    # Read in chunks to handle large files efficiently
+                    for chunk in iter(lambda: f.read(4096), b""):
+                        hash_md5.update(chunk)
+            except (IOError, OSError):
+                # If we can't read a file (permissions?), ignore it for the hash
+                pass
+
+    # Return first 8 chars (sufficient for uniqueness)
+    return hash_md5.hexdigest()[:8]
