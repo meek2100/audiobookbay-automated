@@ -47,13 +47,3 @@ def create_app(config_class=Config):
         return response
 
     return flask_app
-
-
-# Expose the 'app' instance from app.py to maintain compatibility with
-# Gunicorn commands that expect 'app:app' (module:variable).
-# This import must be at the bottom to avoid circular dependency errors
-# during the initial import of create_app.
-#
-# noqa: E402 -> Ignore "Module level import not at top of file"
-# as app     -> Explicit re-export to satisfy F401 "Imported but unused"
-from .app import app as app  # noqa: E402

@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 
 class Config:
@@ -56,8 +57,6 @@ class Config:
         if not cls.SAVE_PATH_BASE:
             if not cls.TESTING:
                 logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
-                import sys
-
                 sys.exit(1)
         else:
             # Informative log for debugging common Docker path mapping issues

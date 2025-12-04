@@ -41,6 +41,12 @@ window.addEventListener("pageshow", function (event) {
  * Initializes all filter components (Selects, Date Picker, Slider).
  */
 function initializeFilters() {
+    // RESILIENCE: Ensure vendor libraries are loaded before attempting initialization
+    if (typeof flatpickr === "undefined" || typeof noUiSlider === "undefined") {
+        console.error("Vendor libraries (flatpickr/noUiSlider) are missing. Filters disabled.");
+        return;
+    }
+
     populateSelectFilters();
     initializeFileSizeSlider();
     initializeDateRangePicker();

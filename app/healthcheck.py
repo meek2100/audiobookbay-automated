@@ -16,8 +16,19 @@ def health_check(timeout: int = 3):
     """
     # Retrieve the port from environment variables, defaulting to 5078
     port = os.getenv("LISTEN_PORT", "5078")
-    # Health check should always query localhost inside the container
-    host = "127.0.0.1"
+
+    # Retrieve the configured listen host
+    # If using 0.0.0.0 (all interfaces), we must query localhost (127.0.0.1) for the check to work locally.
+    # If using [::] (all IPv6), we query [::1].
+    listen_host = os.getenv("LISTEN_HOST", "127.0.0.1")
+
+    if listen_host == "0.0.0.0":
+        host = "127.0.0.1"
+    elif listen_host == "[::]":
+        host = "[::1]"
+    else:
+        host = listen_host
+
     # OPTIMIZATION: Use dedicated health endpoint (lighter than hitting the home page)
     url = f"http://{host}:{port}/health"
 

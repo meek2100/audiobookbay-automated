@@ -95,30 +95,11 @@ NAV_LINK_URL=http://...        # URL for the custom link.
 
 ### Using Docker
 
-1. Use `docker-compose` for quick deployment. Example `docker-compose.yml`:
+1. Use `docker-compose` for quick deployment. You can find ready-to-use templates in the [`examples/`](examples/) directory.
+   - **Recommended:** [`examples/docker-compose.yaml`](examples/docker-compose.yaml) (Uses a `.env` file for security)
+   - **Alternative:** [`examples/docker-compose.no-env.yaml`](examples/docker-compose.no-env.yaml) (Hardcoded configuration)
 
-   ```yaml
-   version: "3.8"
-
-   services:
-   audiobookbay-automated:
-     image: ghcr.io/jamesry96/audiobookbay-automated:latest
-     ports:
-       - "5078:5078"
-     container_name: audiobookbay-automated
-     environment:
-       - DL_CLIENT=qbittorrent
-       - DL_HOST=192.168.1.123
-       - DL_PORT=8080
-       - DL_USERNAME=admin
-       - DL_PASSWORD=pass
-       - SAVE_PATH_BASE=/audiobooks
-       - SECRET_KEY=super-secure-key-here
-       # Optional ABS Integration
-       - ABS_URL=http://192.168.1.123:13378
-       - ABS_KEY=my_abs_api_key
-       - ABS_LIB=my_library_id
-   ```
+   Download the example file to your server (e.g., using `wget` or `curl`) and rename it to `docker-compose.yml`.
 
 2. **Start the Application**:
    ```bash
@@ -135,35 +116,26 @@ NAV_LINK_URL=http://...        # URL for the custom link.
    pip install .
    ```
 
-2. Create a .env file in the project directory to configure your application. Below is an example of the required variables:
+2. **Configure Environment**:
+   Copy the example environment file to `.env`:
 
-```env
-# Torrent Client Configuration
-DL_CLIENT=transmission # Change to delugeweb, transmission or qbittorrent
-DL_SCHEME=http
-DL_HOST=192.168.1.123
-DL_PORT=8080
-DL_USERNAME=admin
-DL_PASSWORD=pass
-DL_CATEGORY=abb-automated
-SAVE_PATH_BASE=/audiobooks
+   ```bash
+   cp examples/.env.example .env
+   ```
 
-# AudiobookBay Hostname
-ABB_HOSTNAME=audiobookbay.lu #Default
-# ABB_HOSTNAME=audiobookbay.is #Alternative
+### Advanced: Custom Trackers
 
-PAGE_LIMIT=3 #Default
-LISTEN_PORT=5078 #Default
+If you wish to supply a long list of trackers that exceeds environment variable limits, you can mount a JSON file to `/app/trackers.json` inside the container.
 
-# Optional Navigation Bar Entry
-NAV_LINK_NAME=Open Audiobook Player
-NAV_LINK_URL=https://audiobooks.yourdomain.com/
+1. Create a `trackers.json` file. See [`examples/trackers.json`](examples/trackers.json) for the required format.
+2. Update your `docker-compose.yaml` to include the volume mount:
+
+```yaml
+volumes:
+  - ./trackers.json:/app/trackers.json:ro
 ```
 
-3.  Start the app:
-    ```bash
-    python app.py
-    ```
+The application will automatically detect this file and prioritize it over the default tracker list.
 
 ---
 

@@ -191,3 +191,9 @@ cython_debug/
 
 # Local Tracker Overrides
 trackers.json
+
+# Local Docker Compose configurations (prevents committing local testing files)
+docker-compose.yaml
+docker-compose.yml
+docker-compose.override.yaml
+docker-compose.override.yml

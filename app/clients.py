@@ -214,6 +214,20 @@ class TorrentManager:
         Returns:
             None
         """
+        try:
+            self._remove_torrent_logic(torrent_id)
+        except Exception as e:
+            logger.warning(f"Failed to remove torrent ({e}). Attempting to reconnect and retry...", exc_info=True)
+            self._client = None
+            self._remove_torrent_logic(torrent_id)
+
+    def _remove_torrent_logic(self, torrent_id: str) -> None:
+        """
+        Internal logic to remove torrent.
+
+        Args:
+            torrent_id: The hash or ID.
+        """
         client = self._get_client()
         if not client:
             raise ConnectionError("Torrent client is not connected.")

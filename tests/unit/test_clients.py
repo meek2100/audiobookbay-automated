@@ -376,13 +376,18 @@ def test_remove_torrent_deluge(mock_env, monkeypatch):
         mock_instance.remove_torrent.assert_called_with("hash123", remove_data=False)
 
 
-def test_remove_torrent_no_client(monkeypatch):
-    """Test exception when trying to remove a torrent without a valid client."""
-    monkeypatch.setenv("DL_CLIENT", "transmission")
-    with patch("app.clients.TxClient", side_effect=Exception("Down")):
+def test_remove_torrent_retry(mock_env):
+    """Test that remove_torrent attempts to reconnect if the first call fails."""
+    with patch("app.clients.QbClient"):
         manager = TorrentManager()
-        with pytest.raises(ConnectionError):
-            manager.remove_torrent("123")
+        # Patch the logic method to throw then succeed
+        with patch.object(manager, "_remove_torrent_logic") as mock_logic:
+            mock_logic.side_effect = [Exception("Stale Connection"), None]
+            manager.remove_torrent("hash123")
+            # Should be called twice due to retry
+            assert mock_logic.call_count == 2
+            # Should set client to None to trigger reconnection
+            assert manager._client is None
 
 
 # --- Status & Info Tests ---

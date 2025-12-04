@@ -3,6 +3,8 @@ import re
 from bs4 import Tag
 
 # --- Regex Patterns ---
+# Why: AudioBookBay formats the info table unpredictably.
+# These regexes allow us to match table cells even if casing or whitespace changes slightly.
 RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
 RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
@@ -32,7 +34,8 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
 
         # Strategy 1: The value is in the next sibling element (e.g., <span>MP3</span>)
         next_elem = label_node.find_next_sibling()
-        if next_elem and next_elem.name == "span":
+        # COMPLIANCE: Python 3.13 / Pylance strict type check
+        if next_elem and isinstance(next_elem, Tag) and next_elem.name == "span":
             val = next_elem.get_text(strip=True)
             # Special handling for File Size which might have unit in next text node
             if "File Size" in label_text:
