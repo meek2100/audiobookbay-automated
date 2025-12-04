@@ -238,26 +238,38 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if cover_tag and cover_tag.has_attr("src"):
             cover = urljoin(details_url, str(cover_tag["src"]))
 
+        # --- Metadata Parsing (Language & Category) ---
         language = "N/A"
+        category = "N/A"
         post_info = soup.select_one(".postInfo")
         if post_info:
             info_text = post_info.get_text(" ", strip=True)
+            # Language
             lang_match = re.search(r"Language:\s*(\w+)", info_text)
             if lang_match:
                 language = lang_match.group(1)
+            # FIX: Added Category parsing (matches fetch_and_parse_page logic)
+            cat_match = re.search(r"Category:\s*(.+?)(?:\s+Language:|$)", info_text)
+            if cat_match:
+                category = cat_match.group(1).strip()
 
+        # --- Content Parsing (Format, Bitrate, Posted Date) ---
         book_format = "N/A"
         bitrate = "N/A"
+        post_date = "N/A"
+
         content_div = soup.select_one(".postContent")
         if content_div:
+            # We iterate through paragraphs to find metadata labels
             for p in content_div.find_all("p"):
                 p_text = p.get_text()
-                if "Format:" in p_text or "Bitrate:" in p_text:
-                    if "Format:" in p_text:
-                        book_format = get_text_after_label(p, "Format:")
-                    if "Bitrate:" in p_text:
-                        bitrate = get_text_after_label(p, "Bitrate:")
-                    break
+                if "Format:" in p_text:
+                    book_format = get_text_after_label(p, "Format:")
+                if "Bitrate:" in p_text:
+                    bitrate = get_text_after_label(p, "Bitrate:")
+                # FIX: Added Posted Date parsing
+                if "Posted:" in p_text:
+                    post_date = get_text_after_label(p, "Posted:")
 
         if bitrate == "?":
             bitrate = "Unknown"
@@ -305,6 +317,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             "info_hash": info_hash,
             "link": details_url,
             "language": language,
+            "category": category,  # FIX: Added category
+            "post_date": post_date,  # FIX: Added post_date
             "format": book_format,
             "bitrate": bitrate,
             "author": author,
