@@ -23,7 +23,7 @@ def test_search_audiobookbay_success(mock_sleep):
 def test_search_audiobookbay_sync_coverage(mock_sleep):
     """
     Mocks ThreadPoolExecutor to run synchronously.
-    This guarantees that the 'results.extend' line (156) is executed
+    This guarantees that the 'results.extend' line is executed
     in the main thread context, ensuring coverage detection.
     """
     mock_executor = MagicMock()
@@ -138,7 +138,8 @@ def test_fetch_and_parse_page_missing_cover_image():
     results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
-    assert results[0]["cover"] == "/static/images/default_cover.jpg"
+    # FIX: Expect None, not the string path. The UI handles the default fallback.
+    assert results[0]["cover"] is None
     assert results[0]["language"] == "English"
 
 
@@ -171,6 +172,42 @@ def test_fetch_and_parse_page_missing_post_info():
     assert len(results) == 1
     assert results[0]["language"] == "Unknown"
     assert results[0]["post_date"] == "01 Jan 2025"
+
+
+def test_fetch_and_parse_page_consistency_checks():
+    """
+    Test that '?' values in metadata are converted to 'Unknown'.
+    Covers app/scraper/core.py lines 121-129.
+    """
+    hostname = "audiobookbay.lu"
+    query = "question_marks"
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/book">Mystery Book</a></h2></div>
+        <div class="postInfo">Category: ? Language: ?</div>
+        <div class="postContent">
+            <p>Posted: ?</p>
+            <p>Format: ?</p>
+            <p>Bitrate: ?</p>
+            <p>File Size: ?</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
+
+    results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+
+    assert len(results) == 1
+    r = results[0]
+    assert r["language"] == "Unknown"
+    assert r["category"] == "Unknown"
+    assert r["post_date"] == "Unknown"
+    assert r["format"] == "Unknown"
+    assert r["bitrate"] == "Unknown"
+    assert r["file_size"] == "Unknown"
 
 
 # --- Get Book Details Tests ---
@@ -344,6 +381,43 @@ def test_get_book_details_content_without_metadata_labels(mock_sleep):
         mock_get.return_value = mock_response
         details = get_book_details("https://audiobookbay.lu/no_meta")
         assert details["format"] == "Unknown"
+
+
+def test_get_book_details_consistency_checks(mock_sleep):
+    """
+    Test that '?' values in detailed metadata are converted to 'Unknown'.
+    Covers app/scraper/core.py lines 308-318.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Mystery Details</h1></div>
+        <div class="postInfo">Category: ? Language: ?</div>
+        <div class="postContent">
+            <p>Posted: ?</p>
+            <p>Format: ?</p>
+            <span class="author" itemprop="author">?</span>
+            <span class="narrator" itemprop="author">?</span>
+        </div>
+        <table class="torrent_info">
+            <tr><td>File Size:</td><td>?</td></tr>
+        </table>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/mystery")
+
+        assert details["language"] == "Unknown"
+        assert details["category"] == "Unknown"
+        assert details["post_date"] == "Unknown"
+        assert details["format"] == "Unknown"
+        assert details["author"] == "Unknown"
+        assert details["narrator"] == "Unknown"
+        assert details["file_size"] == "Unknown"
 
 
 # --- Extract Magnet Link Tests ---
