@@ -2,7 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from app.scraper.network import mirror_cache, search_cache
+import app.scraper.core as scraper_core
+import app.scraper.network as scraper_network
 
 
 @pytest.fixture(autouse=True)
@@ -18,14 +19,28 @@ def mock_sleep():
 @pytest.fixture(autouse=True)
 def clear_caches():
     """
-    Automatically clear network caches before every test to ensure
-    fresh execution paths (covering parsing logic, error handling, etc).
+    Automatically clear network caches before every test.
+    CRITICAL: We clear caches in BOTH 'core' and 'network' modules.
+    Because 'test_network.py' uses importlib.reload(), the 'search_cache' object
+    in 'network' might become different from the one imported in 'core'.
+    Clearing both ensures state is truly reset and prevents 'zombie' cache entries
+    from breaking integration tests.
     """
-    mirror_cache.clear()
-    search_cache.clear()
+    # Clear cache in core (used by search_audiobookbay)
+    scraper_core.mirror_cache.clear()
+    scraper_core.search_cache.clear()
+
+    # Clear cache in network (used by low-level tests)
+    scraper_network.mirror_cache.clear()
+    scraper_network.search_cache.clear()
+
     yield
-    mirror_cache.clear()
-    search_cache.clear()
+
+    # Cleanup after test
+    scraper_core.mirror_cache.clear()
+    scraper_core.search_cache.clear()
+    scraper_network.mirror_cache.clear()
+    scraper_network.search_cache.clear()
 
 
 @pytest.fixture

@@ -195,8 +195,16 @@ def test_init_deluge_failure(monkeypatch):
     with patch("app.clients.DelugeWebClient") as MockDeluge:
         # Instance created successfully, but login fails
         MockDeluge.return_value.login.side_effect = Exception("Login failed")
-        manager = TorrentManager()
-        assert manager._get_client() is None
+
+        # Spy on the logger to ensure the except block is hit
+        with patch("app.clients.logger") as mock_logger:
+            manager = TorrentManager()
+            assert manager._get_client() is None
+
+            # Assert logger was called with the specific error message
+            mock_logger.error.assert_called()
+            args, _ = mock_logger.error.call_args
+            assert "Failed to connect to Deluge" in args[0]
 
 
 def test_init_deluge_constructor_failure(monkeypatch):
