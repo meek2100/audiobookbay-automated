@@ -43,3 +43,4 @@ def create_app(config_class=Config):
 # Gunicorn commands that expect 'app:app' (module:variable).
 # This import must be at the bottom to avoid circular dependency errors
 # during the initial import of create_app.
+from .app import app
