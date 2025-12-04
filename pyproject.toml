@@ -25,7 +25,6 @@ dependencies = [
     "gunicorn==23.0.0",
     "Flask-WTF==1.2.2",
     "Flask-Limiter==4.0.0",
-    "fake-useragent==2.2.0",
 ]
 
 [project.optional-dependencies]
@@ -55,7 +54,7 @@ env = [
     "TESTING=1",
     "SAVE_PATH_BASE=/tmp/test_downloads",
     "SECRET_KEY=test-secret-key",
-    "DOWNLOAD_CLIENT=qbittorrent",
+    "DL_CLIENT=qbittorrent",
     "DL_HOST=localhost",
     "DL_PORT=8080",
     "DL_USERNAME=admin",

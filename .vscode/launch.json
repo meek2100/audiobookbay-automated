@@ -13,13 +13,7 @@
                 "SAVE_PATH_BASE": "/tmp/audiobooks_dev", // Safe local dev path
                 "SECRET_KEY": "dev-key"
             },
-            "args": [
-                "run",
-                "--port",
-                "5078",
-                "--no-debugger",
-                "--no-reload"
-            ],
+            "args": ["run", "--port", "5078", "--no-debugger", "--no-reload"],
             "jinja": true,
             "justMyCode": true
         },
@@ -39,9 +33,7 @@
                 "DL_USERNAME": "admin",
                 "DL_PASSWORD": "admin"
             },
-            "args": [
-                "${file}"
-            ],
+            "args": ["${file}"],
             "console": "integratedTerminal",
             "justMyCode": false
         }

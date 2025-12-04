@@ -1,0 +1,107 @@
+from unittest.mock import patch
+
+import pytest
+
+import app.scraper.core as scraper_core
+import app.scraper.network as scraper_network
+
+
+@pytest.fixture(autouse=True)
+def mock_sleep():
+    """
+    Globally mock time.sleep for all tests in this package to speed up execution.
+    Automatically applied to all tests in tests/scraper/.
+    """
+    with patch("time.sleep") as mock_sleep:
+        yield mock_sleep
+
+
+@pytest.fixture(autouse=True)
+def clear_caches():
+    """
+    Automatically clear network caches before every test.
+    CRITICAL: We clear caches in BOTH 'core' and 'network' modules.
+    Because 'test_network.py' uses importlib.reload(), the 'search_cache' object
+    in 'network' might become different from the one imported in 'core'.
+    Clearing both ensures state is truly reset and prevents 'zombie' cache entries
+    from breaking integration tests.
+    """
+    # Clear cache in core (used by search_audiobookbay)
+    scraper_core.mirror_cache.clear()
+    scraper_core.search_cache.clear()
+
+    # Clear cache in network (used by low-level tests)
+    scraper_network.mirror_cache.clear()
+    scraper_network.search_cache.clear()
+
+    yield
+
+    # Cleanup after test
+    scraper_core.mirror_cache.clear()
+    scraper_core.search_cache.clear()
+    scraper_network.mirror_cache.clear()
+    scraper_network.search_cache.clear()
+
+
+@pytest.fixture
+def real_world_html():
+    """Returns a real HTML snippet from Audiobook Bay for testing."""
+    return """
+<div class="post">
+    <div class="postTitle">
+        <h2><a href="/abss/a-game-of-thrones-chapterized/" rel="bookmark">A Game of Thrones (A Song of Ice and Fire, Book 1) (Chapterized) - George R. R. Martin</a></h2>
+    </div>
+    <div class="postInfo">
+        Category: Adults&nbsp; Bestsellers&nbsp; Fantasy&nbsp; Literature&nbsp; <br>
+        Language: English<span style="margin-left:100px;">Keywords: A Game of Thrones&nbsp; </span><br>
+    </div>
+    <div class="postContent">
+        <div class="center">
+            <p class="center">Shared by:<a href="#">jason444555</a></p>
+            <p class="center">
+                <a href="/abss/a-game-of-thrones-chapterized/">
+                    <img src="/images/cover.jpg" alt="A Game of Thrones" width="250">
+                </a>
+            </p>
+        </div>
+        <p style="text-align:center;">
+            Posted: 14 Sep 2021<br>
+            Format: <span style="color:#a00;">M4B</span> / Bitrate: <span style="color:#a00;">96 Kbps</span><br>
+            File Size: <span style="color:#00f;">1.37</span> GBs
+        </p>
+    </div>
+</div>
+"""
+
+
+@pytest.fixture
+def details_html():
+    """
+    Returns a mock Details page HTML.
+    Updated to include Category and Posted fields to ensure full coverage of regex parsers.
+    """
+    return """
+<div class="post">
+    <div class="postTitle"><h1>A Game of Thrones</h1></div>
+    <div class="postInfo">
+        Language: English
+        Category: Fantasy
+    </div>
+    <div class="postContent">
+        <img itemprop="image" src="/cover.jpg">
+        <p>Format: <span>M4B</span> / Bitrate: <span>96 Kbps</span></p>
+        <p>Posted: 10 Jan 2024</p>
+        <span class="author" itemprop="author">George R.R. Martin</span>
+        <span class="narrator" itemprop="author">Roy Dotrice</span>
+        <div class="desc">
+            <p>This is a great book.</p>
+            <a href="https://example.com/spam">Spam Link</a>
+        </div>
+    </div>
+    <table class="torrent_info">
+        <tr><td>Tracker:</td><td>udp://tracker.opentrackr.org:1337/announce</td></tr>
+        <tr><td>File Size:</td><td>1.37 GBs</td></tr>
+        <tr><td>Info Hash:</td><td>eb154ac7886539c4d01eae14908586e336cdb550</td></tr>
+    </table>
+</div>
+"""

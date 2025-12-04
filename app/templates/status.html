@@ -1,13 +1,7 @@
-{% extends "base.html" %}
-
-{% block title %}Torrent Status{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/status.css') }}">
-<meta http-equiv="refresh" content="5">
-{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Torrent Status{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/status.css') }}" />
+<meta http-equiv="refresh" content="5" />
+{% endblock %} {% block content %}
 <div class="title-container">
     <h1>Torrent Status</h1>
 </div>
@@ -29,27 +23,21 @@
         </tr>
     </thead>
     <tbody>
-        {% if torrents %}
-        {% for torrent in torrents %}
+        {% if torrents %} {% for torrent in torrents %}
         <tr>
             <td>{{ torrent.name }}</td>
             <td>{{ torrent.progress }}%</td>
             <td>{{ torrent.state }}</td>
             <td>{{ torrent.size }}</td>
             <td>
-                <button class="remove-button" onclick="deleteTorrent('{{ torrent.id }}')">
-                    Remove
-                </button>
+                <button class="remove-button" onclick="deleteTorrent('{{ torrent.id }}')">Remove</button>
             </td>
         </tr>
-        {% endfor %}
-        {% else %}
-        {% if not error %}
+        {% endfor %} {% else %} {% if not error %}
         <tr>
             <td colspan="5" class="empty-message">No active downloads found in category.</td>
         </tr>
-        {% endif %}
-        {% endif %}
+        {% endif %} {% endif %}
     </tbody>
 </table>
 {% endblock %}

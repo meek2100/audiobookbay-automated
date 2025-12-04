@@ -5,7 +5,6 @@ AudiobookBay Automated is a lightweight web application designed to simplify aud
 ## How It Works
 
 - **Search Results**: Users search for audiobooks. The app grabs results from AudioBook Bay and displays results with the **title** and **cover image**, along with two action links:
-
   1. **More Details**: Opens the audiobook's page on AudioBook Bay for additional information.
   2. **Download to Server**: Sends the audiobook to your configured torrent client for downloading.
 
@@ -18,14 +17,15 @@ AudiobookBay Automated is a lightweight web application designed to simplify aud
 ## Features
 
 - **Search Audiobook Bay**: Easily search for audiobooks by title or keywords.
-- **View Details**: Displays book titles and covers with quick links to the full details on AudioBook Bay.
+- **Private Details View**: Browse book descriptions, file sizes, and tracker info internally. The app acts as a proxy, ensuring your IP address is never exposed to AudiobookBay while browsing.
 - **Basic Download Status Page**: Monitor the download status of items in your torrent client that share the specified category assigned.
 - **No AudioBook Bay Account Needed**: The app automatically generates magnet links from the displayed infohashes and pushes them to your torrent client for downloading.
 - **Automatic Folder Organization**: Once the download is complete, the torrent client will automatically move the downloaded audiobook files to your save location. Audiobooks are organized into subfolders named after the AudioBook Bay title, making it easy for [**Audiobookshelf**](https://www.audiobookshelf.org/) to automatically add completed downloads to its library.
+- **Audiobookshelf Integration**: (Optional) Automatically trigger a library scan in Audiobookshelf via a button in the UI.
 
 ## Why Use This?
 
-AudiobookBay Downloader provides a simple and user-friendly interface for users to download audiobooks without searching on their own and import them into your library.
+AudiobookBay Automated provides a simple and user-friendly interface for users to download audiobooks without searching on their own and import them into your library.
 
 ---
 
@@ -40,62 +40,66 @@ AudiobookBay Downloader provides a simple and user-friendly interface for users 
 
 ### Environment Variables
 
-The app uses environment variables to configure its behavior. Below are the required variables:
+The app uses environment variables to configure its behavior.
+
+#### 1. Torrent Client Connection (Required)
 
 ```env
-DL_SCHEME=http
-DL_HOST=192.168.xxx.xxx        # IP or hostname of your qBittorrent or Transmission instance
-DL_PORT=8080                   # torrent WebUI port
-DL_USERNAME=YOUR_USER          # torrent username
-DL_PASSWORD=YOUR_PASSWORD      # torrent password
-DL_CATEGORY=abb-downloader     # torrent category for downloads
-SAVE_PATH_BASE=/audiobooks     # Root path for audiobook downloads (relative to torrent)
-ABB_HOSTNAME=audiobookbay.is   # Default mirror
-PAGE_LIMIT=3                   # Defaults to 3 if not set
-LISTEN_PORT=5078               # Port used by docker container
-THREADS=8                      # Gunicorn threads (Default: 8. Increase for more concurrency)
-SECRET_KEY=change_me           # Flask Session Secret Key (Important for security!)
+DL_CLIENT=qbittorrent          # Options: qbittorrent, transmission, deluge
+DL_HOST=192.168.1.123          # IP/Hostname of your client
+DL_PORT=8080                   # WebUI Port
+DL_USERNAME=admin              # WebUI Username
+DL_PASSWORD=password           # WebUI Password
+DL_SCHEME=http                 # Protocol (http or https). Default: http.
+DL_CATEGORY=abb-automated      # Category to assign to torrents. Default: abb-automated.
 ```
 
-The following optional variables add an additional entry to the navigation bar. This is useful for linking to your audiobook player or another related service:
+#### 2. System Configuration (Required)
 
+```env
+SAVE_PATH_BASE=/audiobooks     # CRITICAL: The root save path *inside* the Torrent Client container.
+SECRET_KEY=change_me           # Flask Session Key. Change this for production security.
 ```
-NAV_LINK_NAME=Open Audiobook Player
-NAV_LINK_URL=https://audiobooks.yourdomain.com/
+
+#### 3. Audiobookshelf Integration (Optional)
+
+To enable the "Reload Library" button in the navigation bar:
+
+```env
+ABS_URL=http://192.168.1.123:13378 # URL to your Audiobookshelf instance
+ABS_KEY=your_api_token             # API Token (Settings -> Users)
+ABS_LIB=your_library_id            # Library ID (Found in the URL when viewing the library)
+```
+
+#### 4. Search & Scraping (Optional)
+
+```env
+ABB_HOSTNAME=audiobookbay.lu   # Primary mirror. Default: audiobookbay.lu
+ABB_MIRRORS=audiobookbay.is,audiobookbay.se       # Comma-separated list of backup mirrors to try.
+MAGNET_TRACKERS=udp://...      # Comma-separated list of extra trackers to add to magnets.
+PAGE_LIMIT=3                   # Max pages to scrape per search. Default: 3.
+```
+
+#### 5. Application Settings (Optional)
+
+```env
+LISTEN_PORT=5078               # Internal port. Default: 5078.
+LISTEN_HOST=0.0.0.0            # Bind address. Default: 0.0.0.0 (or [::] if IPv6 detected).
+THREADS=8                      # Worker threads. Increase for higher concurrency. Default: 8.
+TIMEOUT=60                     # Request timeout in seconds. Default: 60.
+LOG_LEVEL=INFO                 # Logging verbosity: DEBUG, INFO, WARNING, ERROR. Default: INFO.
+TZ=UTC                         # Timezone for logs (e.g. America/Los_Angeles). Default: UTC.
+NAV_LINK_NAME=Open Player      # Label for a custom link in the navbar.
+NAV_LINK_URL=http://...        # URL for the custom link.
 ```
 
 ### Using Docker
 
-1. Use `docker-compose` for quick deployment. Example `docker-compose.yml`:
+1. Use `docker-compose` for quick deployment. You can find ready-to-use templates in the [`examples/`](examples/) directory.
+   - **Recommended:** [`examples/docker-compose.yaml`](examples/docker-compose.yaml) (Uses a `.env` file for security)
+   - **Alternative:** [`examples/docker-compose.no-env.yaml`](examples/docker-compose.no-env.yaml) (Hardcoded configuration)
 
-   ```yaml
-   version: "3.8"
-
-   services:
-   audiobookbay-automated:
-     image: ghcr.io/jamesry96/audiobookbay-automated:latest
-     ports:
-       - "5078:5078"
-     container_name: audiobookbay-automated
-     environment:
-       - DOWNLOAD_CLIENT=qbittorrent
-       - DL_SCHEME=http
-       - DL_HOST=192.168.1.123
-       - DL_PORT=8080
-       - DL_USERNAME=admin
-       - DL_PASSWORD=pass
-       - DL_CATEGORY=abb-downloader
-       - SAVE_PATH_BASE=/audiobooks
-       - ABB_HOSTNAME='audiobookbay.is'
-       - PAGE_LIMIT=3
-       - THREADS=8
-       - SECRET_KEY=super-secure-key-here
-       - NAV_LINK_NAME=Open Audiobook Player
-       - NAV_LINK_URL=https://audiobooks.yourdomain.com/
-       - LOG_LEVEL=INFO # Options: DEBUG, INFO, WARNING, ERROR. Defaults to INFO.
-       - LISTEN_HOST= # Optional. Leave blank to auto-detect IPv6 (::) or IPv4 (0.0.0.0).
-       - LISTEN_PORT= # Optional. Leave blank to use default port of 5078.
-   ```
+   Download the example file to your server (e.g., using `wget` or `curl`) and rename it to `docker-compose.yml`.
 
 2. **Start the Application**:
    ```bash
@@ -112,35 +116,26 @@ NAV_LINK_URL=https://audiobooks.yourdomain.com/
    pip install .
    ```
 
-2. Create a .env file in the project directory to configure your application. Below is an example of the required variables:
+2. **Configure Environment**:
+   Copy the example environment file to `.env`:
 
-   ```
-   # Torrent Client Configuration
-   DOWNLOAD_CLIENT=transmission # Change to delugeweb, transmission or qbittorrent
-   DL_SCHEME=http
-   DL_HOST=192.168.1.123
-   DL_PORT=8080
-   DL_USERNAME=admin
-   DL_PASSWORD=pass
-   DL_CATEGORY=abb-downloader
-   SAVE_PATH_BASE=/audiobooks
-
-   # AudiobookBay Hostname
-   ABB_HOSTNAME=audiobookbay.is #Default
-   # ABB_HOSTNAME=audiobookbay.lu #Alternative
-
-   PAGE_LIMIT=3 #Default
-   LISTEN_PORT=5078 #Default
-
-   # Optional Navigation Bar Entry
-   NAV_LINK_NAME=Open Audiobook Player
-   NAV_LINK_URL=https://audiobooks.yourdomain.com/
-   ```
-
-3. Start the app:
    ```bash
-   python app.py
+   cp examples/.env.example .env
    ```
+
+### Advanced: Custom Trackers
+
+If you wish to supply a long list of trackers that exceeds environment variable limits, you can mount a JSON file to `/app/trackers.json` inside the container.
+
+1. Create a `trackers.json` file. See [`examples/trackers.json`](examples/trackers.json) for the required format.
+2. Update your `docker-compose.yaml` to include the volume mount:
+
+```yaml
+volumes:
+  - ./trackers.json:/app/trackers.json:ro
+```
+
+The application will automatically detect this file and prioritize it over the default tracker list.
 
 ---
 
@@ -160,12 +155,16 @@ This project is a work in progress, and your feedback is welcome! Feel free to o
 
 ## Screenshots
 
-### Search Results
+### Search Page
 
-![screenshot-2025-01-13-19-59-03](https://github.com/user-attachments/assets/8a30fd4e-a289-49d0-83ab-67a3bcfc9745)
+![Search Interface showing results with filtering options](docs/images/search.png)
 
-### Download Status
+### Details Page
 
-![screenshot-2025-01-13-19-59-25](https://github.com/user-attachments/assets/19cc74de-51fc-422f-9cab-fe69e30c74b9)
+![Book details page showing description and trackers](docs/images/details.png)
+
+### Status Page
+
+![Download status page showing active torrents](docs/images/status.png)
 
 ---

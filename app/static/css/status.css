@@ -8,7 +8,8 @@ table {
     overflow: hidden;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
-th, td {
+th,
+td {
     padding: 15px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);

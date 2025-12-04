@@ -21,6 +21,25 @@ button:hover {
     background-color: #673ab7;
 }
 
+/* New class for the Details anchor button */
+.details-button {
+    text-decoration: none;
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #512da8;
+    color: white;
+    border-radius: 5px;
+    margin-right: 5px;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+    cursor: pointer;
+    border: none;
+}
+
+.details-button:hover {
+    background-color: #673ab7;
+}
+
 /* OPTIMIZATION: Scrollable table wrapper for mobile devices */
 .table-wrapper {
     width: 90%;
@@ -82,30 +101,7 @@ img.cover {
     transition: background-color 0.3s;
 }
 
-/* Loading spinner styles */
-.loading-spinner {
-    display: none; /* Hidden by default */
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 20px;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid rgba(255, 255, 255, 0.3);
-    border-top: 5px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.loading-spinner p {
-    margin-top: 10px;
-    font-size: 1rem;
-    color: white;
-}
-
+/* Button Spinner (Used inside the Search Button) */
 .button-spinner {
     display: inline-block;
     vertical-align: middle;
@@ -154,6 +150,14 @@ img.cover {
     content: none;
 }
 
+/* Category Highlight */
+.book-category {
+    color: #ffcc00;
+    font-weight: bold;
+    display: block; /* Make it stand out on its own line on mobile */
+    margin-bottom: 2px;
+}
+
 /* New Filter Styles */
 #filter-container {
     display: flex;
@@ -189,7 +193,8 @@ img.cover {
     flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
-#filter-container select, #filter-container input {
+#filter-container select,
+#filter-container input {
     padding: 8px;
     border-radius: 5px;
     border: 1px solid #ccc;
@@ -260,7 +265,8 @@ img.cover {
     outline: none;
 }
 
-.noUi-handle:after, .noUi-handle:before {
+.noUi-handle:after,
+.noUi-handle:before {
     display: none; /* Hide default pseudo-elements */
 }
 
@@ -286,6 +292,12 @@ img.cover {
         content: "|";
         padding: 0 10px; /* Adjust spacing around the separator */
         color: #ccc; /* A subtle color for the separator */
+    }
+
+    /* Reset block display for desktop to flow inline */
+    .book-category {
+        display: inline;
+        margin-bottom: 0;
     }
 }
 

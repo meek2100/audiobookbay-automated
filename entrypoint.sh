@@ -22,19 +22,26 @@ export LISTEN_PORT="${LISTEN_PORT:-5078}"
 # Worker count is hardcoded to 1 to ensure the in-memory rate limiter works correctly.
 export THREADS="${THREADS:-8}"
 
-# Configure Gunicorn Timeout (Default 120s to handle slow scrapes/sleeps)
-export TIMEOUT="${TIMEOUT:-120}"
+# Configure Gunicorn Timeout (Default 60s to handle slow scrapes/sleeps, reduced from 120s)
+export TIMEOUT="${TIMEOUT:-60}"
 
 # LOGGING
 # Ensure LOG_LEVEL is lowercase for Gunicorn config (e.g. "INFO" -> "info")
 # Gunicorn is picky about lowercase log levels.
-export LOG_LEVEL=$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')
+# SC2155: Declare and assign separately to avoid masking return values.
+# SC2046: Quote to prevent word splitting.
+LOG_LEVEL_VAL="$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')"
+export LOG_LEVEL="$LOG_LEVEL_VAL"
+
+# SAFETY: Explicitly default Flask Debug to 0 for production stability
+export FLASK_DEBUG="${FLASK_DEBUG:-0}"
 
 echo "Starting Gunicorn with 1 worker and $THREADS threads at log level $LOG_LEVEL."
 
 # Run Gunicorn
 # OPTIMIZATION: Added --preload. fast-fails on syntax errors and saves RAM.
 # LOGGING: Explicitly route logs to stdout/stderr for Docker capture.
+# MODULE CHANGE: Updated to app.app:app to reflect removal of package-level export
 exec gunicorn --preload \
     --log-level "$LOG_LEVEL" \
     --access-logfile - \
@@ -43,4 +50,4 @@ exec gunicorn --preload \
     --workers 1 \
     --threads "$THREADS" \
     --timeout "$TIMEOUT" \
-    app:app
+    app.app:app

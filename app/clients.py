@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
@@ -20,12 +20,13 @@ class TorrentManager:
         """
         Initializes the TorrentManager by loading configuration from environment variables.
         """
-        self.client_type: str | None = os.getenv("DOWNLOAD_CLIENT")
+        self.client_type: str | None = os.getenv("DL_CLIENT")
         self.host: str | None = os.getenv("DL_HOST")
         self.port: str | None = os.getenv("DL_PORT")
         self.username: str | None = os.getenv("DL_USERNAME")
         self.password: str | None = os.getenv("DL_PASSWORD")
-        self.category: str = os.getenv("DL_CATEGORY", "abb-downloader")
+        # CONSISTENCY FIX: Updated default category to match project name
+        self.category: str = os.getenv("DL_CATEGORY", "abb-automated")
         self.scheme: str = os.getenv("DL_SCHEME", "http")
 
         # Normalize connection URL for Deluge
@@ -50,13 +51,12 @@ class TorrentManager:
         try:
             if self.client_type == "qbittorrent":
                 try:
-                    # OPTIMIZATION: Added timeout to prevent hanging on unresponsive clients
+                    # Configuration for older versions of the API (requests_args removed).
                     qb = QbClient(
                         host=self.host,
                         port=self.port,
                         username=self.username,
                         password=self.password,
-                        requests_args={"timeout": 30},
                     )
                     qb.auth_log_in()
                     self._client = qb
@@ -76,17 +76,17 @@ class TorrentManager:
                         timeout=30,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to connect to Transmission: {e}")
+                    logger.error(f"Failed to connect to Transmission: {e}", exc_info=True)
                     # Allow app to start even if client is down; commands will fail later.
                     return None
 
-            elif self.client_type == "delugeweb":
+            elif self.client_type == "deluge":
                 try:
                     dw = DelugeWebClient(url=self.dl_url, password=self.password)
                     dw.login()
                     self._client = dw
                 except Exception as e:
-                    logger.error(f"Failed to connect to Deluge: {e}")
+                    logger.error(f"Failed to connect to Deluge: {e}", exc_info=True)
                     # Allow app to start even if client is down; commands will fail later.
                     return None
 
@@ -94,7 +94,7 @@ class TorrentManager:
                 raise ValueError(f"Unsupported download client configured: {self.client_type}")
 
         except Exception as e:
-            logger.error(f"Error initializing torrent client: {e}")
+            logger.error(f"Error initializing torrent client: {e}", exc_info=True)
             self._client = None
 
         return self._client
@@ -117,25 +117,26 @@ class TorrentManager:
     @staticmethod
     def _format_size(size_bytes: int | float | str | None) -> str:
         """
-        Formats bytes into human-readable B, KB, MB, GB, TB.
+        Formats bytes into human-readable B, KB, MB, GB, TB, PB.
 
         Args:
             size_bytes: The size in bytes.
 
         Returns:
-            str: Human readable size string (e.g. "1.50 GB") or "N/A".
+            str: Human readable size string (e.g. "1.50 GB") or "Unknown".
         """
         if size_bytes is None:
-            return "N/A"
+            return "Unknown"
         try:
             size = float(size_bytes)
             for unit in ["B", "KB", "MB", "GB", "TB"]:
                 if size < 1024.0:
                     return f"{size:.2f} {unit}"
                 size /= 1024.0
+            # If we exhausted the loop, we are in PB territory (or higher)
             return f"{size:.2f} PB"
         except (ValueError, TypeError):
-            return "N/A"
+            return "Unknown"
 
     def add_magnet(self, magnet_link: str, save_path: str) -> None:
         """
@@ -144,16 +145,25 @@ class TorrentManager:
         Args:
             magnet_link: The magnet URI.
             save_path: The filesystem path where data should be saved.
+
+        Returns:
+            None
         """
         try:
             self._add_magnet_logic(magnet_link, save_path)
         except Exception as e:
-            logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect and retry...")
+            logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect and retry...", exc_info=True)
             self._client = None
             self._add_magnet_logic(magnet_link, save_path)
 
     def _add_magnet_logic(self, magnet_link: str, save_path: str) -> None:
-        """Internal logic to add magnet link."""
+        """
+        Internal logic to add magnet link.
+
+        Args:
+            magnet_link: The magnet URI.
+            save_path: The filesystem path where data should be saved.
+        """
         client = self._get_client()
         if not client:
             raise ConnectionError("Torrent client is not connected.")
@@ -161,26 +171,34 @@ class TorrentManager:
         logger.info(f"Adding torrent to {self.client_type} at {save_path}")
 
         if self.client_type == "qbittorrent":
-            # Type ignore because qBittorrent client types are dynamic
+            # Explicit cast for type safety
+            qb_client = cast(QbClient, client)
             # ROBUSTNESS: Capture return value and warn if it indicates failure
-            result = client.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)  # type: ignore
+            result = qb_client.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)
             if isinstance(result, str) and result.lower() != "ok.":
                 logger.warning(f"qBittorrent add returned unexpected response: {result}")
 
         elif self.client_type == "transmission":
-            client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])  # type: ignore
-
-        elif self.client_type == "delugeweb":
+            tx_client = cast(TxClient, client)
             try:
-                client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)  # type: ignore
+                tx_client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])
+            except Exception as e:
+                # Fallback for older daemons that don't support labels
+                logger.warning(f"Transmission label assignment failed: {e}. Retrying without labels.")
+                tx_client.add_torrent(magnet_link, download_dir=save_path)
+
+        elif self.client_type == "deluge":
+            deluge_client = cast(DelugeWebClient, client)
+            try:
+                deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
             except Exception as e:
                 # ROBUSTNESS: Handle Deluge missing label plugin or other errors gracefully
                 if "label" in str(e).lower():
                     logger.warning("Deluge Label plugin likely missing. Adding torrent without category.")
                     try:
-                        client.add_torrent_magnet(magnet_link, save_directory=save_path)  # type: ignore
+                        deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path)
                     except Exception as e2:
-                        logger.error(f"Deluge fallback failed: {e2}")
+                        logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                         raise e2
                 else:
                     raise e
@@ -192,6 +210,23 @@ class TorrentManager:
 
         Args:
             torrent_id: The hash or ID of the torrent to remove.
+
+        Returns:
+            None
+        """
+        try:
+            self._remove_torrent_logic(torrent_id)
+        except Exception as e:
+            logger.warning(f"Failed to remove torrent ({e}). Attempting to reconnect and retry...", exc_info=True)
+            self._client = None
+            self._remove_torrent_logic(torrent_id)
+
+    def _remove_torrent_logic(self, torrent_id: str) -> None:
+        """
+        Internal logic to remove torrent.
+
+        Args:
+            torrent_id: The hash or ID.
         """
         client = self._get_client()
         if not client:
@@ -200,9 +235,11 @@ class TorrentManager:
         logger.info(f"Removing torrent {torrent_id} from {self.client_type}")
 
         if self.client_type == "qbittorrent":
-            client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)  # type: ignore
+            qb_client = cast(QbClient, client)
+            qb_client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)
 
         elif self.client_type == "transmission":
+            tx_client = cast(TxClient, client)
             # Transmission expects IDs as integers usually, but hashes work in some versions.
             # safe conversion if it's digit, else pass as string (hash)
             tid: int | str
@@ -210,14 +247,17 @@ class TorrentManager:
                 tid = int(torrent_id)
             except ValueError:
                 tid = torrent_id
-            client.remove_torrent(ids=[tid], delete_data=False)  # type: ignore
+                logger.debug(f"Transmission: ID {torrent_id} is not an integer, using as string hash.")
+            tx_client.remove_torrent(ids=[tid], delete_data=False)
 
-        elif self.client_type == "delugeweb":
-            client.remove_torrent(torrent_id, remove_data=False)  # type: ignore
+        elif self.client_type == "deluge":
+            deluge_client = cast(DelugeWebClient, client)
+            deluge_client.remove_torrent(torrent_id, remove_data=False)
 
     def get_status(self) -> list[dict[str, Any]]:
         """
         Retrieves the status of current downloads in the configured category.
+        Includes internal retry logic to attempt reconnecting to the client once on failure.
 
         Returns:
             list[dict[str, Any]]: A list of dictionaries containing torrent details.
@@ -225,7 +265,7 @@ class TorrentManager:
         try:
             return self._get_status_logic()
         except Exception as e:
-            logger.warning(f"Failed to get status ({e}). Reconnecting...")
+            logger.warning(f"Failed to get status ({e}). Reconnecting...", exc_info=True)
             self._client = None
             return self._get_status_logic()
 
@@ -238,46 +278,54 @@ class TorrentManager:
         results: list[dict[str, Any]] = []
 
         if self.client_type == "transmission":
-            torrents = client.get_torrents()  # type: ignore
+            tx_client = cast(TxClient, client)
+            torrents = tx_client.get_torrents()
             for torrent in torrents:
                 results.append(
                     {
                         "id": torrent.id,
                         "name": torrent.name,
-                        "progress": round(torrent.progress * 100, 2),
+                        "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
                         "state": torrent.status,
                         "size": self._format_size(torrent.total_size),
                     }
                 )
 
         elif self.client_type == "qbittorrent":
-            torrents = client.torrents_info(category=self.category)  # type: ignore
+            qb_client = cast(QbClient, client)
+            torrents = qb_client.torrents_info(category=self.category)
             for torrent in torrents:
                 results.append(
                     {
                         "id": torrent.hash,
                         "name": torrent.name,
-                        "progress": round(torrent.progress * 100, 2),
+                        "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
                         "state": torrent.state,
                         "size": self._format_size(torrent.total_size),
                     }
                 )
 
-        elif self.client_type == "delugeweb":
-            torrents = client.get_torrents_status(  # type: ignore
+        elif self.client_type == "deluge":
+            deluge_client = cast(DelugeWebClient, client)
+            torrents = deluge_client.get_torrents_status(
                 filter_dict={"label": self.category},
                 keys=["name", "state", "progress", "total_size"],
             )
-            if torrents.result:  # type: ignore
-                for key, torrent in torrents.result.items():  # type: ignore
+            # ROBUSTNESS: Check if result is not None before iterating
+            if torrents.result:
+                # STRICT TYPING: Cast result to dict to avoid type errors
+                results_dict = cast(dict[str, Any], torrents.result)
+                for key, torrent in results_dict.items():
                     results.append(
                         {
                             "id": key,
                             "name": torrent["name"],
-                            "progress": round(torrent["progress"], 2),
+                            "progress": round(torrent["progress"], 2) if torrent["progress"] else 0.0,
                             "state": torrent["state"],
                             "size": self._format_size(torrent["total_size"]),
                         }
                     )
+            else:
+                logger.warning("Deluge returned empty or invalid result payload.")
 
         return results
