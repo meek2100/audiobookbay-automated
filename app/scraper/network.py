@@ -84,6 +84,8 @@ def load_trackers() -> list[str]:
                 data = json.load(f)
                 if isinstance(data, list):
                     return cast(list[str], data)
+                else:
+                    logger.warning("trackers.json contains invalid data (expected a list). Using defaults.")
         except Exception as e:
             logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 

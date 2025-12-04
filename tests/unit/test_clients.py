@@ -33,6 +33,29 @@ def test_init_with_dl_url(monkeypatch):
     assert manager.dl_url == "http://custom-url:1234"
 
 
+def test_init_deluge_success(mock_env, monkeypatch):
+    """
+    Test successful Deluge initialization to explicitly cover the client assignment.
+    Covers app/clients.py lines 111-112.
+    """
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    monkeypatch.setenv("DL_URL", "http://deluge:8112")
+    monkeypatch.setenv("DL_PASSWORD", "pass")
+
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        manager = TorrentManager()
+
+        # Explicitly call _get_client to trigger the initialization logic
+        client = manager._get_client()
+
+        # Assertions to ensure the code path was hit
+        assert client is not None
+        assert manager._client == mock_instance
+        # Verify login was called (Line 111)
+        mock_instance.login.assert_called_once()
+
+
 def test_qbittorrent_add_magnet(mock_env):
     with patch("app.clients.QbClient") as MockQbClient:
         # Setup the mock client instance
@@ -128,6 +151,32 @@ def test_transmission_add_magnet_fallback(mock_env, monkeypatch):
         mock_instance.add_torrent.assert_any_call("magnet:?xt=urn:btih:FALLBACK", download_dir="/downloads/Book")
 
 
+def test_transmission_add_magnet_generic_exception_fallback(mock_env, monkeypatch):
+    """
+    Test that Transmission falls back even on generic exceptions (not just TypeError).
+    This ensures robustness against network or protocol errors during label assignment.
+    """
+    monkeypatch.setenv("DL_CLIENT", "transmission")
+
+    with patch("app.clients.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+
+        # Simulate generic exception on first call, success on second
+        mock_instance.add_torrent.side_effect = [Exception("Generic Protocol Error"), None]
+
+        manager = TorrentManager()
+
+        with patch("app.clients.logger") as mock_logger:
+            manager.add_magnet("magnet:?xt=urn:btih:GENERIC", "/downloads/Book")
+
+            # Verify the warning was logged
+            args, _ = mock_logger.warning.call_args
+            assert "Transmission label assignment failed" in args[0]
+
+        # Verify add_torrent was called twice
+        assert mock_instance.add_torrent.call_count == 2
+
+
 def test_deluge_add_magnet(mock_env, monkeypatch):
     monkeypatch.setenv("DL_CLIENT", "deluge")
 
@@ -143,7 +192,7 @@ def test_deluge_add_magnet(mock_env, monkeypatch):
         )
 
 
-def test_init_deluge_success(mock_env, monkeypatch):
+def test_init_deluge_success_check(mock_env, monkeypatch):
     """Test successful Deluge initialization to cover the client assignment."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
     with patch("app.clients.DelugeWebClient") as MockDeluge:

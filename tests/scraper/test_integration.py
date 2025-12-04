@@ -11,12 +11,20 @@ from app.scraper import extract_magnet_link, get_book_details, search_audiobookb
 
 
 def test_search_audiobookbay_success(mock_sleep):
+    """
+    Ensures that successful page fetches result in data being extended to the results list.
+    Covers core.py line 156: results.extend(page_data)
+    """
+    # We return a list to ensure the loop runs and extend is called
+    mock_results = [{"title": "Test Book 1"}, {"title": "Test Book 2"}]
+
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
-            with patch("app.scraper.core.fetch_and_parse_page", return_value=[{"title": "Test Book"}]):
+            # Patch fetch_and_parse_page where it is defined
+            with patch("app.scraper.core.fetch_and_parse_page", return_value=mock_results):
                 results = search_audiobookbay("query", max_pages=1)
-                assert len(results) == 1
-                assert results[0]["title"] == "Test Book"
+                assert len(results) == 2
+                assert results[0]["title"] == "Test Book 1"
 
 
 def test_search_no_mirrors_raises_error(mock_sleep):
@@ -146,6 +154,49 @@ def test_fetch_and_parse_page_missing_post_info():
 
 
 # --- Get Book Details Tests ---
+
+
+def test_get_book_details_sanitization(mock_sleep):
+    """
+    Test strict HTML sanitization in get_book_details.
+    Covers core.py lines around sanitization logic (looping through tags, unwrapping, etc).
+    """
+    # Create HTML with mix of allowed and disallowed tags
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Sanitized Book</h1></div>
+        <div class="desc">
+            <p style="color: red;">Allowed P tag.</p>
+            <script>alert('XSS');</script>
+            <b>Bold Text</b>
+            <a href="http://bad.com">Malicious Link</a>
+        </div>
+    </div>
+    """
+
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/book")
+
+        description = details["description"]
+
+        # Verify allowed tags are kept but stripped of attributes
+        assert "<p>Allowed P tag.</p>" in description
+        assert "style" not in description  # Attribute stripped
+
+        # Verify allowed formatting tags are kept
+        assert "<b>Bold Text</b>" in description
+
+        # Verify disallowed tags are unwrapped (content remains, tag gone)
+        assert "Malicious Link" in description
+        assert "<a href" not in description
+
+        # Verify scripts are sanitized (BeautifulSoup unwrap removes the tag)
+        assert "<script>" not in description
 
 
 def test_get_book_details_success(details_html, mock_sleep):

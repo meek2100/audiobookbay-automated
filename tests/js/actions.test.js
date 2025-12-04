@@ -161,7 +161,7 @@ describe("actions.js - API Interactions", () => {
 
     // --- sendTorrent ---
 
-    test("sendTorrent should disable and re-enable button on success", async () => {
+    test("sendTorrent should change button text to Sent! then revert", async () => {
         const mockButton = document.createElement("button");
         mockButton.innerText = "Download to Server";
 
@@ -170,11 +170,19 @@ describe("actions.js - API Interactions", () => {
 
         sendTorrent("http://link", "Book Title", mockButton);
 
+        // Verify "Sending..." state
+        expect(mockButton.innerText).toBe("Sending...");
+        expect(mockButton.disabled).toBe(true);
+
         // Allow microtasks (fetch resolution) to process
         await flushPromises();
 
-        // Run timers to process any setTimeout callbacks inside .finally if any
-        jest.runAllTimers();
+        // Assert "Sent!" state (before timeout)
+        expect(mockButton.innerText).toBe("Sent!");
+        expect(mockButton.disabled).toBe(true);
+
+        // Advance timer by 2000ms (the duration of "Sent!" message)
+        jest.advanceTimersByTime(2000);
 
         // Assert button is re-enabled and text is restored
         expect(mockButton.disabled).toBe(false);
@@ -205,7 +213,9 @@ describe("actions.js - API Interactions", () => {
 
         // Check console.error was called
         expect(consoleErrorSpy).toHaveBeenCalled();
+        // Check that button was reset immediately on error
         expect(mockButton.disabled).toBe(false);
+        expect(mockButton.innerText).toBe("Download to Server");
     });
 
     test("sendTorrent should show error on fetch rejection", async () => {

@@ -188,3 +188,6 @@ cython_debug/
 *.vsix
 .vscode/settings.json
 .python-version
+
+# Local Tracker Overrides
+trackers.json

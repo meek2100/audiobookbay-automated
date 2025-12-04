@@ -175,12 +175,19 @@ function sendTorrent(link, title, buttonElement) {
         })
         .then((data) => {
             showNotification(data.message, "success");
+            // Improve UX: Show "Sent!" state temporarily
+            if (buttonElement) {
+                buttonElement.innerText = "Sent!";
+                setTimeout(() => {
+                    buttonElement.disabled = false;
+                    buttonElement.innerText = originalBtnText;
+                }, 2000);
+            }
         })
         .catch((error) => {
             console.error("Download failed:", error);
             showNotification("Failed to send download: " + error.message, "error");
-        })
-        .finally(() => {
+            // Reset button immediately on error
             if (buttonElement) {
                 buttonElement.disabled = false;
                 buttonElement.innerText = originalBtnText;

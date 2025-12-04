@@ -286,8 +286,18 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         description = "No description available."
         desc_tag = soup.select_one("div.desc")
         if desc_tag:
-            for a in desc_tag.find_all("a"):
-                a.replace_with(a.get_text())
+            # SECURITY FIX: Strict HTML Sanitization to prevent XSS in "Privacy Proxy" mode.
+            # We only allow basic formatting tags. Scripts, iframes, styles, and events are stripped.
+            allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
+
+            for tag in desc_tag.find_all(True):
+                if tag.name not in allowed_tags:
+                    # Remove the tag wrapper but keep its text content
+                    tag.unwrap()
+                else:
+                    # Clear all attributes (e.g., onclick, style, class) from allowed tags
+                    tag.attrs = {}
+
             description = desc_tag.decode_contents()
 
         trackers = []
