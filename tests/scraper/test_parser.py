@@ -5,7 +5,6 @@ import requests
 import requests_mock
 from bs4 import BeautifulSoup
 
-# CHANGE: Import public name
 from app.scraper import fetch_and_parse_page, get_text_after_label
 
 # --- Unit Tests: Helper Functions ---
@@ -14,8 +13,9 @@ from app.scraper import fetch_and_parse_page, get_text_after_label
 def test_get_text_after_label_valid():
     html = "<div><p>Format: <span>MP3</span></p></div>"
     soup = BeautifulSoup(html, "html.parser")
+    # We pass the parent container to the function, normally it searches inside.
+    # The function expects a Tag, so we pass the <p>
     p_tag = soup.find("p")
-    # CHANGE: Use public name
     res = get_text_after_label(p_tag, "Format:")
     assert res == "MP3"
 
@@ -24,7 +24,6 @@ def test_get_text_after_label_inline():
     html = "<div><p>Posted: 10 Jan 2020</p></div>"
     soup = BeautifulSoup(html, "html.parser")
     p_tag = soup.find("p")
-    # CHANGE: Use public name
     res = get_text_after_label(p_tag, "Posted:")
     assert res == "10 Jan 2020"
 
@@ -32,8 +31,8 @@ def test_get_text_after_label_inline():
 def test_get_text_after_label_exception():
     """Test that exceptions during parsing are handled gracefully."""
     mock_container = MagicMock()
+    # Force an exception when .find() is called
     mock_container.find.side_effect = Exception("BS4 Internal Error")
-    # CHANGE: Use public name
     result = get_text_after_label(mock_container, "Label:")
     assert result == "N/A"
 
@@ -41,6 +40,7 @@ def test_get_text_after_label_exception():
 def test_get_text_after_label_fallback():
     """Test that it returns 'N/A' if label exists but no value follows."""
 
+    # Custom class to simulate a string that has find_next_sibling returning None
     class FakeNavigableString(str):
         def find_next_sibling(self):
             return None
@@ -49,13 +49,13 @@ def test_get_text_after_label_fallback():
     mock_label_node = FakeNavigableString("Format:")
     mock_container.find.return_value = mock_label_node
 
-    # CHANGE: Use public name
     result = get_text_after_label(mock_container, "Format:")
     assert result == "N/A"
 
 
 # --- Integration Tests: Fetch and Parse Page ---
-# (The rest of the file remains the same)
+
+
 def test_fetch_and_parse_page_real_structure(real_world_html, mock_sleep):
     hostname = "audiobookbay.lu"
     query = "test"
