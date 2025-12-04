@@ -6,7 +6,7 @@
     "type": "commonjs",
     "scripts": {
         "test:js": "jest",
-        "copy-vendor": "mkdir -p app/static/vendor/js && mkdir -p app/static/vendor/css && cp node_modules/flatpickr/dist/flatpickr.min.js app/static/vendor/js/flatpickr.min.js && cp node_modules/flatpickr/dist/flatpickr.min.css app/static/vendor/css/flatpickr.min.css && cp node_modules/nouislider/distribute/nouislider.min.js app/static/vendor/js/nouislider.min.js && cp node_modules/nouislider/distribute/nouislider.min.css app/static/vendor/css/nouislider.min.css",
+        "copy-vendor": "mkdir -p app/static/vendor/js && mkdir -p app/static/vendor/css && cp node_modules/flatpickr/dist/flatpickr.min.js app/static/vendor/js/flatpickr.min.js && cp node_modules/flatpickr/dist/flatpickr.min.css app/static/vendor/css/flatpickr.min.css && cp node_modules/nouislider/dist/nouislider.min.js app/static/vendor/js/nouislider.min.js && cp node_modules/nouislider/dist/nouislider.min.css app/static/vendor/css/nouislider.min.css",
         "update-vendor": "npm install && npm run copy-vendor"
     },
     "keywords": [
