@@ -12,7 +12,7 @@ from .network import (
     mirror_cache,
     search_cache,
 )
-from .parser import _get_text_after_label as _get_text_after_label  # Alias for backward compat
+from .parser import get_text_after_label
 
 # Expose public API
 __all__ = [
@@ -31,5 +31,5 @@ __all__ = [
     "load_trackers",
     "mirror_cache",
     "search_cache",
-    "_get_text_after_label",
+    "get_text_after_label",
 ]
