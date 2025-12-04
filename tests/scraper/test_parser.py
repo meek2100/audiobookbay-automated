@@ -153,6 +153,79 @@ def test_fetch_and_parse_page_language_fallback():
     assert results[0]["language"] == "N/A"
 
 
+def test_fetch_and_parse_page_missing_regex_matches():
+    """
+    Tests the scenario where postInfo exists but regexes fail to find Category or Language.
+    This ensures branches for 'if lang_match:' and 'if cat_match:' are fully covered.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">T</a></h2></div>
+        <div class="postInfo">No recognizable labels here</div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results[0]["language"] == "N/A"
+    assert results[0]["category"] == "N/A"
+
+
+def test_fetch_and_parse_page_no_posted_date():
+    """
+    Test when the 'Posted:' label is missing from the content paragraphs.
+    This ensures the loop looking for 'details_paragraph' completes without breaking,
+    and the subsequent 'if details_paragraph:' block is skipped.
+    """
+    hostname = "audiobookbay.lu"
+    query = "no_posted"
+    html = """
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/test/">Title</a></h2>
+        </div>
+        <div class="postContent">
+            <p>Some description text without the date.</p>
+            <p>Format: MP3</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, hostname, query, 1, "UA")
+
+    assert len(results) == 1
+    assert results[0]["post_date"] == "N/A"
+    assert results[0]["format"] == "N/A"
+
+
+def test_fetch_and_parse_page_missing_title():
+    """
+    Test a post that is missing the title element.
+    This should trigger the 'continue' statement early in the loop.
+    """
+    hostname = "audiobookbay.lu"
+    query = "no_title"
+    html = """
+    <div class="post">
+        <div class="postContent"><p>Content but no title</p></div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, hostname, query, 1, "UA")
+    assert results == []
+
+
 def test_fetch_page_post_exception(caplog):
     session = MagicMock()
     session.get.return_value.text = "<html></html>"

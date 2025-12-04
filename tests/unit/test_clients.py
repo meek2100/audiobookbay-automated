@@ -183,9 +183,25 @@ def test_init_transmission_failure(monkeypatch):
 def test_init_deluge_failure(monkeypatch):
     """Test handling of Deluge login failure."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
+    monkeypatch.setenv("DL_URL", "http://deluge:8112")
     monkeypatch.setenv("DL_PASSWORD", "pass")
+
     with patch("app.clients.DelugeWebClient") as MockDeluge:
+        # Instance created successfully, but login fails
         MockDeluge.return_value.login.side_effect = Exception("Login failed")
+        manager = TorrentManager()
+        assert manager._get_client() is None
+
+
+def test_init_deluge_constructor_failure(monkeypatch):
+    """
+    Test handling of DelugeWebClient constructor failure.
+    This ensures the 'try' block catches errors during instantiation.
+    """
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    monkeypatch.setenv("DL_URL", "http://deluge:8112")
+
+    with patch("app.clients.DelugeWebClient", side_effect=Exception("Init Error")):
         manager = TorrentManager()
         assert manager._get_client() is None
 
