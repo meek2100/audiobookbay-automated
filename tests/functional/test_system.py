@@ -9,9 +9,6 @@ def test_health_check_route(client):
 
 
 def test_home_page_static_versioning(client):
-    """
-    Verify that static assets in the HTML are appended with the version hash.
-    """
     response = client.get("/")
     assert response.status_code == 200
     assert b"?v=" in response.data
@@ -19,9 +16,6 @@ def test_home_page_static_versioning(client):
 
 
 def test_static_assets_cache_control(client):
-    """
-    Verify that static files are served with a long cache duration (1 year).
-    """
     response = client.get("/static/images/favicon.ico")
     if response.status_code == 200:
         cache_control = response.headers.get("Cache-Control", "")
@@ -29,17 +23,20 @@ def test_static_assets_cache_control(client):
         assert "public" in cache_control
 
 
-def test_nav_link_injection(client, monkeypatch, app_module):
+def test_nav_link_injection(client):
     """Test that injected variables correctly appear in the template."""
-    monkeypatch.setattr(app_module, "NAV_LINK_NAME", "My Player")
-    monkeypatch.setattr(app_module, "NAV_LINK_URL", "http://player.local")
+    # FIX: Update config directly on the app instance, not via module monkeypatch
+    client.application.config["NAV_LINK_NAME"] = "My Player"
+    client.application.config["NAV_LINK_URL"] = "http://player.local"
+
     response = client.get("/")
     assert b"My Player" in response.data
     assert b"http://player.local" in response.data
 
 
 def test_status_page(client):
-    with patch("app.app.torrent_manager") as mock_tm:
+    # FIX: Patch where it is imported in routes.py
+    with patch("app.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [{"name": "Book 1", "progress": 50, "state": "Downloading", "size": "100 MB"}]
         response = client.get("/status")
         assert response.status_code == 200
@@ -47,8 +44,7 @@ def test_status_page(client):
 
 
 def test_status_route_error(client):
-    """Test /status route when client raises generic exception."""
-    with patch("app.app.torrent_manager") as mock_tm:
+    with patch("app.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.side_effect = Exception("Database Locked")
 
         response = client.get("/status")
