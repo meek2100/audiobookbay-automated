@@ -5,8 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+# CRITICAL: Import the package and modules explicitly so they can be reloaded
+import app
 import app.app
-import app.config  # CRITICAL: Import config so we can reload it
+import app.config
 
 
 class MockConfig(dict):
@@ -50,6 +52,7 @@ def mock_flask_factory():
     # Reload modules to restore original state
     with patch.dict(os.environ, safe_env):
         importlib.reload(app.config)
+        importlib.reload(app)  # Reload __init__ to pick up config changes
         importlib.reload(app.app)
 
 
@@ -62,7 +65,9 @@ def test_startup_missing_save_path(monkeypatch, mock_flask_factory):
         # RELOAD ORDER IS CRITICAL:
         # 1. Reload config to read the new environment (missing SAVE_PATH_BASE)
         importlib.reload(app.config)
-        # 2. Reload app to run create_app with the new Config
+        # 2. Reload app package to update 'from .config import Config' reference
+        importlib.reload(app)
+        # 3. Reload app module to run create_app with the new Config
         importlib.reload(app.app)
 
         mock_exit.assert_called_with(1)
@@ -80,6 +85,7 @@ def test_startup_insecure_secret_key_production(monkeypatch, mock_flask_factory)
 
         with pytest.raises(ValueError) as excinfo:
             importlib.reload(app.config)
+            importlib.reload(app)
             importlib.reload(app.app)
 
         assert "Application refused to start" in str(excinfo.value)
@@ -95,6 +101,7 @@ def test_startup_insecure_secret_key_debug_warning(monkeypatch, mock_flask_facto
     monkeypatch.delenv("TESTING", raising=False)
 
     importlib.reload(app.config)
+    importlib.reload(app)
     importlib.reload(app.app)
 
     args, _ = mock_logger.warning.call_args
@@ -109,10 +116,12 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
         # Patch the singleton instance in extensions
         with patch("app.extensions.torrent_manager.verify_credentials", return_value=False):
             importlib.reload(app.config)
+            importlib.reload(app)
             importlib.reload(app.app)
             args, _ = mock_logger.warning.call_args
             assert "STARTUP WARNING: Torrent client is unreachable" in args[0]
     finally:
         monkeypatch.setenv("TESTING", "1")
         importlib.reload(app.config)
+        importlib.reload(app)
         importlib.reload(app.app)
