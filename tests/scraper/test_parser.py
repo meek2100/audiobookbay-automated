@@ -282,3 +282,27 @@ def test_fetch_and_parse_page_missing_post_info():
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
     assert results[0]["language"] == "Unknown"
+
+
+def test_fetch_and_parse_page_remote_default_cover_optimization():
+    """
+    Test that if a remote cover image is detected as the 'default' placeholder,
+    it is replaced with the local static default image to save bandwidth.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">Remote Default</a></h2></div>
+        <div class="postContent">
+            <img src="/images/default_cover.jpg" alt="Cover">
+            <p>Posted: 01 Jan 2024</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    # Assert it was converted to the local path
+    assert results[0]["cover"] == "/static/images/default_cover.jpg"
