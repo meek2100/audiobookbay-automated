@@ -33,10 +33,11 @@ def test_init_with_dl_url(monkeypatch):
     assert manager.dl_url == "http://custom-url:1234"
 
 
-def test_init_deluge_success(mock_env, monkeypatch):
+def test_init_deluge_success(monkeypatch):
     """
     Test successful Deluge initialization to explicitly cover the client assignment.
     Covers app/clients.py lines 111-112.
+    NOTE: Removed 'mock_env' fixture to ensure clean environment setup.
     """
     monkeypatch.setenv("DL_CLIENT", "deluge")
     monkeypatch.setenv("DL_URL", "http://deluge:8112")

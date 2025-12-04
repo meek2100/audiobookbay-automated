@@ -35,9 +35,9 @@ def test_search_audiobookbay_sync_coverage(mock_sleep):
     mock_executor.__enter__.return_value = mock_executor
     mock_executor.submit.return_value = mock_future
 
-    # as_completed should yield our future
-    with patch("concurrent.futures.ThreadPoolExecutor", return_value=mock_executor):
-        with patch("concurrent.futures.as_completed", return_value=[mock_future]):
+    # Patch the ThreadPoolExecutor inside app.scraper.core specifically
+    with patch("app.scraper.core.concurrent.futures.ThreadPoolExecutor", return_value=mock_executor):
+        with patch("app.scraper.core.concurrent.futures.as_completed", return_value=[mock_future]):
             with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
                 with patch("app.scraper.core.get_session"):
                     results = search_audiobookbay("query", max_pages=1)
@@ -67,13 +67,14 @@ def test_search_thread_failure(mock_sleep):
 def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
-            with patch("concurrent.futures.ThreadPoolExecutor") as MockExecutor:
+            # Patch the Executor in core
+            with patch("app.scraper.core.concurrent.futures.ThreadPoolExecutor") as MockExecutor:
                 mock_future = MagicMock()
                 mock_future.result.side_effect = ArithmeticError("Unexpected calculation error")
                 mock_executor_instance = MockExecutor.return_value.__enter__.return_value
                 mock_executor_instance.submit.return_value = mock_future
 
-                with patch("concurrent.futures.as_completed", return_value=[mock_future]):
+                with patch("app.scraper.core.concurrent.futures.as_completed", return_value=[mock_future]):
                     with patch("app.scraper.core.mirror_cache") as mock_mirror_clear:
                         # Patch logger to verify the exception is caught
                         with patch("app.scraper.core.logger") as mock_logger:
@@ -234,7 +235,9 @@ def test_get_book_details_success(details_html, mock_sleep):
         # Verify line 272 (description link cleaning) worked:
         assert "Spam Link" in details["description"]
         assert "<a href" not in details["description"]
-        # Verify new fields are parsed (Line 206, 254 coverage)
+
+        # EXPLICITLY CHECK METADATA to ensure regex lines (206, 254) are hit
+        assert details["language"] == "English"
         assert details["category"] == "Fantasy"
         assert details["post_date"] == "10 Jan 2024"
 
