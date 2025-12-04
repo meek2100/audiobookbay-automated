@@ -120,10 +120,10 @@ We enforce high code quality because "appliance" software is often difficult for
 - **Framework:** Use **Pytest** exclusively. Do NOT use `unittest.TestCase` classes.
 - **Fixtures:** Use `conftest.py` fixtures for setup/teardown (e.g., `client`, `mock_env`).
 - **Mocking:**
-  - Patch objects where they are **imported**, not where they are defined.
+  - Patch objects where they are **imported**, not where they are defined (e.g. `patch("app.routes.extract_magnet_link")`).
   - **Mock Network Calls:** Always mock `requests.get` and `requests.head`.
   - **Mock Sleep:** Always mock `time.sleep` to keep tests fast while verifying Jitter logic.
-  - For startup logic (top-level code), use `importlib.reload(sys.modules["app.module"])` inside the test.
+  - **Configuration Reloads:** For tests that modify startup variables (e.g., `test_startup.py`), you MUST reload the entire chain to update references: `importlib.reload(app.config)`, `importlib.reload(app)`, then `importlib.reload(app.app)`.
 
 ### Documentation
 
@@ -132,12 +132,22 @@ We enforce high code quality because "appliance" software is often difficult for
 
 ---
 
-## 4. Frontend & UX Philosophy
+## 4. Frontend Architecture & Testing
 
-- **Navigation State (GET vs POST):** Search forms MUST use `GET` requests. This allows the browser's "Back" button to restore the previous search results and scroll position from the cache.
-- **Notifications:** Prefer non-blocking "Toast" notifications (via `showNotification` in `actions.js`) over browser `alert()`.
-- **External Link Warnings:** Any action that opens a link outside the application (e.g., "Open Original Page") MUST display a confirmation dialog warning the user that traffic will not be routed through the server/VPN.
-- **Loading States:** Every button that triggers a backend fetch must disable itself and show a loading state (spinner or text change) immediately to prevent double-submissions.
+### Architecture: No Bundler
+
+- **Approach:** We use raw, standards-compliant ES6+ JavaScript. We do **NOT** use Webpack, Vite, or TypeScript transpilation.
+- **Vendor Assets:** Libraries (flatpickr, nouislider) are managed via `npm` but committed to git in `app/static/vendor`.
+- **Why:** Keeps the project simple. Users can read/edit the JS directly without needing a Node.js build chain just to change a button color.
+
+### Testing Strategy (Jest/JSDOM)
+
+- **Problem:** Because we don't use ES Modules (no `export`/`import` in browser scripts), Jest cannot natively import our JS files.
+- **Solution:** We use `fs.readFileSync` and `eval()` in `jest.setup.js` to load the script content into the JSDOM global scope.
+- **Testing Async/Timers:**
+  - We use `jest.useFakeTimers()` to control UI delays (spinners, notifications).
+  - **Critical:** When testing `fetch` within fake timers, you must use a custom `flushPromises` helper that utilizes `jest.requireActual("timers")` to prevent deadlocks.
+- **Coverage:** Maintain high coverage for UI logic (filtering, sorting, API interactions).
 
 ---
 
@@ -151,7 +161,8 @@ We enforce high code quality because "appliance" software is often difficult for
 
 ### CI Pipeline
 
-- **Dependabot:** Configured to look in `/` (root) for `pyproject.toml`.
+- **Vendor Sync:** A dedicated workflow (`vendor-sync.yaml`) automatically runs `npm install` and copies assets to `app/static/vendor` when `package.json` changes. This ensures the repo always has the latest built assets without manual copying.
+- **Dependabot:** Configured to look in `/` (root) for `pyproject.toml` and `package.json`.
 - **Tests:** We focus on "unhappy path" integration tests (timeouts, malformed HTML) because the happy path is easy. The real value is ensuring the app doesn't crash when the internet is flaky.
 
 ---
@@ -170,4 +181,5 @@ If you are asked to improve this repo, ask yourself:
 - **Install:** `pip install .` (Not requirements.txt)
 - **Run Dev:** `python app/app.py`
 - **Run Prod:** `entrypoint.sh` (Gunicorn)
-- **Test:** `pytest`
+- **Test (Python):** `pytest`
+- **Test (JS):** `npx jest`
