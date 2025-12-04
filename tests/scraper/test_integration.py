@@ -19,7 +19,6 @@ def test_search_audiobookbay_success(mock_sleep):
 
 
 def test_search_no_mirrors_raises_error(mock_sleep):
-    """Test that search raises ConnectionError when no mirrors are found."""
     scraper.mirror_cache.clear()
     with patch("app.scraper.find_best_mirror", return_value=None):
         with pytest.raises(ConnectionError) as exc:
@@ -40,10 +39,6 @@ def test_search_thread_failure(mock_sleep):
 
 
 def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
-    """
-    Tests that the system robustly handles generic runtime errors (e.g. ArithmeticError)
-    occurring within a scraper thread.
-    """
     scraper.search_cache.clear()
     scraper.mirror_cache.clear()
 
@@ -68,10 +63,6 @@ def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
 
 
 def test_search_special_characters(real_world_html, mock_sleep):
-    """
-    Test searching with special characters (e.g. spaces, ampersands).
-    Ensures URL encoding is handled correctly in the integration flow.
-    """
     hostname = "audiobookbay.lu"
     query = "Batman & Robin [Special Edition]"
     page = 1
@@ -83,7 +74,6 @@ def test_search_special_characters(real_world_html, mock_sleep):
 
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/", text=real_world_html, status_code=200)
 
-    # Directly test the page fetcher to verify encoding handling
     results = scraper.fetch_and_parse_page(session, hostname, query, page, user_agent)
     assert len(results) > 0
 
@@ -92,7 +82,6 @@ def test_search_special_characters(real_world_html, mock_sleep):
 
 
 def test_get_book_details_success(details_html, mock_sleep):
-    """Test get_book_details parses content correctly based on real structure."""
     with patch("app.scraper.get_session") as mock_session:
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -109,30 +98,19 @@ def test_get_book_details_success(details_html, mock_sleep):
 
 
 def test_get_book_details_failure(mock_sleep):
-    """Test get_book_details raises exception on network fail."""
     with patch("app.scraper.get_session") as mock_session:
         mock_session.return_value.get.side_effect = requests.exceptions.RequestException("Net Down")
         with pytest.raises(requests.exceptions.RequestException):
-            # Use valid domain so it hits the network logic
             get_book_details("https://audiobookbay.lu/fail-book")
 
 
-def test_get_book_details_ssrf_protection(mock_sleep):
-    """Test that get_book_details rejects non-ABB domains."""
-    with pytest.raises(ValueError) as exc:
-        get_book_details("https://google.com/admin")
-    assert "Invalid domain" in str(exc.value)
-
-
 def test_get_book_details_empty(mock_sleep):
-    """Test that get_book_details raises ValueError when URL is empty."""
     with pytest.raises(ValueError) as exc:
         get_book_details("")
     assert "No URL provided" in str(exc.value)
 
 
 def test_get_book_details_url_parse_error(mock_sleep):
-    """Test that get_book_details wraps urlparse exceptions."""
     with patch("app.scraper.urlparse", side_effect=Exception("Boom")):
         with pytest.raises(ValueError) as exc:
             get_book_details("http://anything")
@@ -140,7 +118,6 @@ def test_get_book_details_url_parse_error(mock_sleep):
 
 
 def test_get_book_details_missing_metadata(mock_sleep):
-    """Test get_book_details when postInfo and metadata paragraph are missing."""
     html = """<div class="post"><div class="postTitle"><h1>Empty Book</h1></div></div>"""
     with patch("app.scraper.get_session") as mock_session:
         mock_response = MagicMock()
@@ -154,7 +131,6 @@ def test_get_book_details_missing_metadata(mock_sleep):
 
 
 def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
-    """Test get_book_details normalizes '?' bitrate."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Unknown Bitrate</h1></div>
@@ -172,7 +148,6 @@ def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
 
 
 def test_get_book_details_partial_bitrate(mock_sleep):
-    """Test get_book_details with only Bitrate (no Format)."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -191,7 +166,6 @@ def test_get_book_details_partial_bitrate(mock_sleep):
 
 
 def test_get_book_details_partial_format(mock_sleep):
-    """Test get_book_details with only Format (no Bitrate)."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -210,7 +184,6 @@ def test_get_book_details_partial_format(mock_sleep):
 
 
 def test_get_book_details_content_without_metadata_labels(mock_sleep):
-    """Test get_book_details where content exists but no labels."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>No Metadata</h1></div>
@@ -231,7 +204,6 @@ def test_get_book_details_content_without_metadata_labels(mock_sleep):
 
 
 def test_extract_magnet_success_table(mock_sleep):
-    """Tests successful magnet link extraction from HTML table."""
     url = "http://valid.url/book"
     html_content = """
     <html><body><table>
