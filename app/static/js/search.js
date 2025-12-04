@@ -174,15 +174,14 @@ function populateSelectFilters() {
     const formats = new Set();
 
     document.querySelectorAll(".result-row").forEach((row) => {
-        // --- START CATEGORY FIX: Split categories for filtering by single keyword ---
+        // Split categories for filtering by single keyword
         const categoryString = row.dataset.category;
         categoryString.split(/\s+/).forEach((term) => {
-            // FIX: Filter out meaningless tokens like "&", empty strings, or "N/A"
+            // Filter out meaningless tokens like "&", empty strings, or "N/A"
             if (term && term.length > 1 && term !== "N/A" && term !== "None" && /[a-zA-Z0-9]/.test(term)) {
                 categories.add(term);
             }
         });
-        // --- END CATEGORY FIX ---
 
         languages.add(row.dataset.language);
         bitrates.add(row.dataset.bitrate);
@@ -229,14 +228,13 @@ function applyFilters() {
     document.querySelectorAll(".result-row").forEach((row) => {
         let visible = true;
 
-        // --- CATEGORY FIX: Exact Token Match ---
+        // Exact Token Match for Category
         if (category) {
             const rowCategories = row.dataset.category.split(/\s+/);
             if (!rowCategories.includes(category)) {
                 visible = false;
             }
         }
-        // --- END CATEGORY FIX ---
 
         if (language && row.dataset.language !== language) visible = false;
         if (bitrate && row.dataset.bitrate !== bitrate) visible = false;

@@ -51,7 +51,7 @@ const setup = () => {
 
     // Add mock result rows to the DOM
     const tbody = document.getElementById("results-table-body");
-    // FIX: Changed category to a compound name to test the new split logic
+    // Changed category to a compound name to test the new split logic
     tbody.appendChild(createResultRow("Fiction Science", "English", "128 Kbps", "500 MB", "01 Jan 2024", "M4B"));
     tbody.appendChild(createResultRow("Non-Fiction", "Spanish", "64 Kbps", "1.5 GB", "15 Feb 2024", "MP3"));
     tbody.appendChild(createResultRow("Fiction", "English", "128 Kbps", "100 MB", "20 Dec 2023", "M4B"));
@@ -93,7 +93,7 @@ const mockFilter = (id, value) => {
 // --- START TESTS ---
 
 describe("search.js Unit Tests - File Size Utilities", () => {
-    // CRITICAL FIX: Run the evaluation once here to make file size functions available for all tests in this suite.
+    // CRITICAL: Run the evaluation once here to make file size functions available for all tests in this suite.
     beforeAll(() => {
         eval(global.searchJsContent);
     });
@@ -118,6 +118,19 @@ describe("search.js Unit Tests - File Size Utilities", () => {
     test("should return null for N/A or empty string", () => {
         const { parseFileSizeToMB } = getGlobalFunctions();
         expect(parseFileSizeToMB("N/A")).toBeNull();
+    });
+
+    test("should warn and return raw number for unrecognized units", () => {
+        const consoleSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+        const { parseFileSizeToMB } = getGlobalFunctions();
+        expect(parseFileSizeToMB("100 Zettabytes")).toBe(100);
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining("Unrecognized"),
+            "ZETTABYTES",
+            expect.any(String),
+            "100 Zettabytes"
+        );
+        consoleSpy.mockRestore();
     });
 
     // --- formatFileSize Tests ---
@@ -148,13 +161,13 @@ describe("search.js Filter Logic (DOM dependent)", () => {
 
     // --- initializeFilters Tests ---
 
-    test("initializeFilters should populate all select menus correctly (UX FIX)", () => {
+    test("initializeFilters should populate all select menus correctly", () => {
         const categoryFilter = document.getElementById("category-filter");
         const options = Array.from(categoryFilter.querySelectorAll("option"))
             .map((opt) => opt.value)
             .filter((v) => v !== "");
 
-        // FIX: Expect individual category terms, sorted alphabetically
+        // Expect individual category terms, sorted alphabetically
         expect(options).toEqual(["Fiction", "Non-Fiction", "Science"]);
 
         const formatFilter = document.getElementById("format-filter");

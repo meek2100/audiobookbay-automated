@@ -22,8 +22,7 @@ def inject_global_vars() -> dict[str, Any]:
     Injects global variables into all templates.
     Uses current_app.config to access settings loaded in config.py.
     """
-    # OPTIMIZATION: Retrieve the pre-calculated hash from config
-    # to avoid disk I/O on every request.
+    # Retrieve the pre-calculated hash from config to avoid disk I/O on every request.
     static_version = current_app.config.get("STATIC_VERSION", "v1")
 
     # Determine if library reload is enabled based on config
@@ -59,7 +58,7 @@ def search() -> str:
         query = query.strip()
 
         if query:
-            # OPTIMIZATION: AudiobookBay requires lowercase search terms
+            # AudiobookBay requires lowercase search terms
             search_query = query.lower()
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
@@ -100,16 +99,16 @@ def send() -> Response:
         logger.warning("Invalid send request received: missing link or title")
         return jsonify({"message": "Invalid request"}), 400
 
-    logger.info(f"Received download request for '{title}'")
+    # Sanitize title immediately for safe logging
+    safe_title = sanitize_title(title)
+    logger.info(f"Received download request for '{safe_title}'")
 
     try:
         magnet_link, error = extract_magnet_link(details_url)
 
         if not magnet_link:
-            logger.error(f"Failed to extract magnet link for '{title}': {error}")
+            logger.error(f"Failed to extract magnet link for '{safe_title}': {error}")
             return jsonify({"message": f"Download failed: {error}"}), 500
-
-        safe_title = sanitize_title(title)
 
         if safe_title == "Unknown_Title":
             logger.warning(
@@ -124,7 +123,7 @@ def send() -> Response:
 
         torrent_manager.add_magnet(magnet_link, save_path)
 
-        logger.info(f"Successfully sent '{title}' to {torrent_manager.client_type}")
+        logger.info(f"Successfully sent '{safe_title}' to {torrent_manager.client_type}")
         return jsonify(
             {
                 "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."

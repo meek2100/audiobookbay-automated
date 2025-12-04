@@ -10,8 +10,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-      # FIX: Exclude VS Code/Devcontainer files because they use comments (JSONC)
-      # which causes strict 'check-json' to fail.
+      # Exclude VS Code/Devcontainer files (JSONC)
       - id: check-json
         exclude: ^(\.vscode/|\.devcontainer/)
       - id: check-added-large-files
@@ -24,7 +23,7 @@ repos:
 
   # 2. Python (Ruff)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.4
+    rev: v0.14.7
     hooks:
       - id: ruff
         args: [--fix]
@@ -36,7 +35,6 @@ repos:
     hooks:
       - id: prettier
         types_or: [css, javascript, html, markdown, json, yaml]
-        # FIX: Point to the config file so it matches VS Code
         args: ["--config", ".prettierrc.yaml"]
 
   # 4. Infrastructure (Docker & Shell)
@@ -63,11 +61,9 @@ repos:
     hooks:
       - id: codespell
         exclude: ^(poetry\.lock|package-lock\.json)$
-        # Fix: Ignore the Jest function 'afterAll'
         args: ["--ignore-words-list", "afterAll"]
 
-  # 6. JavaScript Unit Tests (Jest) - NEW HOOK
-  # Uses the 'local' repo type to run a local script installed via npm.
+  # 6. JavaScript Unit Tests (Jest)
   - repo: local
     hooks:
       - id: jest-test
@@ -75,7 +71,6 @@ repos:
         entry: npx jest
         language: system
         pass_filenames: false
-        # Files to monitor that should trigger the JS tests
         files: '\.js$'
         exclude: '^app/static/vendor/.*\.js$'
         types: [file]
