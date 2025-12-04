@@ -123,10 +123,10 @@ class TorrentManager:
             size_bytes: The size in bytes.
 
         Returns:
-            str: Human readable size string (e.g. "1.50 GB") or "N/A".
+            str: Human readable size string (e.g. "1.50 GB") or "Unknown".
         """
         if size_bytes is None:
-            return "N/A"
+            return "Unknown"
         try:
             size = float(size_bytes)
             for unit in ["B", "KB", "MB", "GB", "TB"]:
@@ -136,7 +136,7 @@ class TorrentManager:
             # If we exhausted the loop, we are in PB territory (or higher)
             return f"{size:.2f} PB"
         except (ValueError, TypeError):
-            return "N/A"
+            return "Unknown"
 
     def add_magnet(self, magnet_link: str, save_path: str) -> None:
         """

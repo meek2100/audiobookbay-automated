@@ -22,13 +22,13 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
         label_text: The label string to search for (e.g. "Format:").
 
     Returns:
-        str: The extracted value, or "N/A" if not found.
+        str: The extracted value, or "Unknown" if not found.
     """
     try:
         # Find the text string (e.g., "Format:")
         label_node = container.find(string=re.compile(label_text))
         if not label_node:
-            return "N/A"
+            return "Unknown"
 
         # Strategy 1: The value is in the next sibling element (e.g., <span>MP3</span>)
         next_elem = label_node.find_next_sibling()
@@ -50,6 +50,6 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
             if len(parts) > 1 and parts[1].strip():
                 return parts[1].strip()
 
-        return "N/A"
+        return "Unknown"
     except Exception:
-        return "N/A"
+        return "Unknown"

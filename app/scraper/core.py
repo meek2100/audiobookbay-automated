@@ -81,8 +81,9 @@ def fetch_and_parse_page(
                 else:
                     cover = "/static/images/default_cover.jpg"
 
-                language = "N/A"
-                category = "N/A"
+                # Default to Unknown
+                language = "Unknown"
+                category = "Unknown"
                 post_info = post.select_one(".postInfo")
                 if post_info:
                     info_text = post_info.get_text(" ", strip=True)
@@ -101,7 +102,7 @@ def fetch_and_parse_page(
                             details_paragraph = p
                             break
 
-                post_date, book_format, bitrate, file_size = "N/A", "N/A", "N/A", "N/A"
+                post_date, book_format, bitrate, file_size = "Unknown", "Unknown", "Unknown", "Unknown"
 
                 if details_paragraph:
                     post_date = get_text_after_label(details_paragraph, "Posted:")
@@ -109,8 +110,19 @@ def fetch_and_parse_page(
                     bitrate = get_text_after_label(details_paragraph, "Bitrate:")
                     file_size = get_text_after_label(details_paragraph, "File Size:")
 
+                # Consistency check: convert "?" to "Unknown"
                 if bitrate == "?":
                     bitrate = "Unknown"
+                if language == "?":
+                    language = "Unknown"
+                if category == "?":
+                    category = "Unknown"
+                if post_date == "?":
+                    post_date = "Unknown"
+                if book_format == "?":
+                    book_format = "Unknown"
+                if file_size == "?":
+                    file_size = "Unknown"
 
                 page_results.append(
                     {
@@ -239,8 +251,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             cover = urljoin(details_url, str(cover_tag["src"]))
 
         # --- Metadata Parsing (Language & Category) ---
-        language = "N/A"
-        category = "N/A"
+        language = "Unknown"
+        category = "Unknown"
         post_info = soup.select_one(".postInfo")
         if post_info:
             info_text = post_info.get_text(" ", strip=True)
@@ -254,9 +266,9 @@ def get_book_details(details_url: str) -> dict[str, Any]:
                 category = cat_match.group(1).strip()
 
         # --- Content Parsing (Format, Bitrate, Posted Date) ---
-        book_format = "N/A"
-        bitrate = "N/A"
-        post_date = "N/A"
+        book_format = "Unknown"
+        bitrate = "Unknown"
+        post_date = "Unknown"
 
         content_div = soup.select_one(".postContent")
         if content_div:
@@ -283,6 +295,20 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if narrator_tag:
             narrator = narrator_tag.get_text(strip=True)
 
+        # Consistency Checks
+        if language == "?":
+            language = "Unknown"
+        if category == "?":
+            category = "Unknown"
+        if post_date == "?":
+            post_date = "Unknown"
+        if book_format == "?":
+            book_format = "Unknown"
+        if author == "?":
+            author = "Unknown"
+        if narrator == "?":
+            narrator = "Unknown"
+
         description = "No description available."
         desc_tag = soup.select_one("div.desc")
         if desc_tag:
@@ -301,8 +327,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             description = desc_tag.decode_contents()
 
         trackers = []
-        file_size = "N/A"
-        info_hash = "N/A"
+        file_size = "Unknown"
+        info_hash = "Unknown"
 
         info_table = soup.select_one("table.torrent_info")
         if info_table:
@@ -318,6 +344,9 @@ def get_book_details(details_url: str) -> dict[str, Any]:
                     elif "Info Hash:" in label:
                         info_hash = value
 
+        if file_size == "?":
+            file_size = "Unknown"
+
         result = {
             "title": title,
             "cover": cover,
@@ -327,8 +356,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             "info_hash": info_hash,
             "link": details_url,
             "language": language,
-            "category": category,  # FIX: Added category
-            "post_date": post_date,  # FIX: Added post_date
+            "category": category,
+            "post_date": post_date,
             "format": book_format,
             "bitrate": bitrate,
             "author": author,

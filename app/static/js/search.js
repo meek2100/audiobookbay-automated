@@ -52,7 +52,7 @@ function initializeFilters() {
  * @returns {number|null} - Size in MB or null if invalid.
  */
 function parseFileSizeToMB(sizeString) {
-    if (!sizeString || sizeString.trim().toLowerCase() === "n/a") return null;
+    if (!sizeString || sizeString.trim().toLowerCase() === "unknown") return null;
 
     const match = sizeString.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
     if (!match) return null;
@@ -80,7 +80,7 @@ function parseFileSizeToMB(sizeString) {
  * @returns {string} - Formatted string.
  */
 function formatFileSize(mb) {
-    if (mb === null || isNaN(mb)) return "N/A";
+    if (mb === null || isNaN(mb)) return "Unknown";
     if (mb >= 1024 * 1024) {
         return (mb / (1024 * 1024)).toFixed(2) + " TB";
     }
@@ -97,7 +97,7 @@ function initializeDateRangePicker() {
     const allDates = Array.from(document.querySelectorAll(".result-row"))
         .map((row) => {
             const dateStr = row.dataset.postDate;
-            if (!dateStr || dateStr === "N/A") return null;
+            if (!dateStr || dateStr === "Unknown") return null;
             try {
                 let date;
                 if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(dateStr)) {
@@ -177,8 +177,8 @@ function populateSelectFilters() {
         // Split categories for filtering by single keyword
         const categoryString = row.dataset.category;
         categoryString.split(/\s+/).forEach((term) => {
-            // Filter out meaningless tokens like "&", empty strings, or "N/A"
-            if (term && term.length > 1 && term !== "N/A" && term !== "None" && /[a-zA-Z0-9]/.test(term)) {
+            // Filter out meaningless tokens like "&", empty strings, or "Unknown"
+            if (term && term.length > 1 && term !== "Unknown" && term !== "None" && /[a-zA-Z0-9]/.test(term)) {
                 categories.add(term);
             }
         });
@@ -199,7 +199,7 @@ function populateSelectFilters() {
         );
 
         sortedValues.forEach((val) => {
-            if (val && val !== "N/A" && val !== "None") {
+            if (val && val !== "Unknown" && val !== "None") {
                 const option = document.createElement("option");
                 option.value = val;
                 option.textContent = val;
@@ -249,7 +249,7 @@ function applyFilters() {
 
         if (selectedDates.length === 2) {
             const rowDateStr = row.dataset.postDate;
-            if (!rowDateStr || rowDateStr === "N/A") {
+            if (!rowDateStr || rowDateStr === "Unknown") {
                 visible = false;
             } else {
                 try {

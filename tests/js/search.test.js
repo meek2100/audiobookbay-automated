@@ -55,8 +55,8 @@ const setup = () => {
     tbody.appendChild(createResultRow("Fiction Science", "English", "128 Kbps", "500 MB", "01 Jan 2024", "M4B"));
     tbody.appendChild(createResultRow("Non-Fiction", "Spanish", "64 Kbps", "1.5 GB", "15 Feb 2024", "MP3"));
     tbody.appendChild(createResultRow("Fiction", "English", "128 Kbps", "100 MB", "20 Dec 2023", "M4B"));
-    tbody.appendChild(createResultRow("Fiction", "English", "N/A", "10 GB", "N/A", "MP3")); // Max size row: 10240 MB
-    tbody.appendChild(createResultRow("N/A", "N/A", "N/A", "N/A", "N/A", "N/A")); // Fully N/A row
+    tbody.appendChild(createResultRow("Fiction", "English", "Unknown", "10 GB", "Unknown", "MP3")); // Max size row: 10240 MB
+    tbody.appendChild(createResultRow("Unknown", "Unknown", "Unknown", "Unknown", "Unknown", "Unknown")); // Fully Unknown row
 
     // Reset and re-run initialization mocks
     global.flatpickr.mockClear();
@@ -115,9 +115,9 @@ describe("search.js Unit Tests - File Size Utilities", () => {
         expect(parseFileSizeToMB("500 KB")).toBeCloseTo(0.48828125); // 500 / 1024
     });
 
-    test("should return null for N/A or empty string", () => {
+    test("should return null for Unknown or empty string", () => {
         const { parseFileSizeToMB } = getGlobalFunctions();
-        expect(parseFileSizeToMB("N/A")).toBeNull();
+        expect(parseFileSizeToMB("Unknown")).toBeNull();
     });
 
     test("should warn and return raw number for unrecognized units", () => {
@@ -145,9 +145,9 @@ describe("search.js Unit Tests - File Size Utilities", () => {
         expect(formatFileSize(2048)).toBe("2.00 GB"); // 2 GB
     });
 
-    test("should return N/A for invalid input", () => {
+    test("should return Unknown for invalid input", () => {
         const { formatFileSize } = getGlobalFunctions();
-        expect(formatFileSize(null)).toBe("N/A");
+        expect(formatFileSize(null)).toBe("Unknown");
     });
 });
 

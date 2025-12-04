@@ -305,9 +305,9 @@ def test_format_size_logic():
     assert "5.00 PB" in tm._format_size(huge_number)
 
     # Invalid inputs
-    assert tm._format_size(None) == "N/A"
-    assert tm._format_size("not a number") == "N/A"
-    assert tm._format_size([1, 2]) == "N/A"
+    assert tm._format_size(None) == "Unknown"
+    assert tm._format_size("not a number") == "Unknown"
+    assert tm._format_size([1, 2]) == "Unknown"
 
 
 # --- Removal Tests ---
@@ -431,7 +431,7 @@ def test_get_status_qbittorrent_robustness(mock_env):
 
         assert len(results) == 1
         assert results[0]["progress"] == 0.0  # Should fallback
-        assert results[0]["size"] == "N/A"
+        assert results[0]["size"] == "Unknown"
 
 
 def test_get_status_transmission(mock_env, monkeypatch):
@@ -478,7 +478,7 @@ def test_get_status_transmission_robustness(mock_env, monkeypatch):
         assert len(results) == 1
         assert results[0]["name"] == "Bad Torrent"
         assert results[0]["progress"] == 0.0
-        assert results[0]["size"] == "N/A"
+        assert results[0]["size"] == "Unknown"
 
 
 def test_get_status_deluge(monkeypatch):
@@ -531,7 +531,7 @@ def test_get_status_deluge_robustness(monkeypatch):
         assert len(results) == 1
         assert results[0]["name"] == "Broken Book"
         assert results[0]["progress"] == 0.0
-        assert results[0]["size"] == "N/A"
+        assert results[0]["size"] == "Unknown"
 
 
 def test_get_status_reconnect(monkeypatch):

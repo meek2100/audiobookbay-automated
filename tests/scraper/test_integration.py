@@ -169,7 +169,7 @@ def test_fetch_and_parse_page_missing_post_info():
     results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
-    assert results[0]["language"] == "N/A"
+    assert results[0]["language"] == "Unknown"
     assert results[0]["post_date"] == "01 Jan 2025"
 
 
@@ -276,8 +276,8 @@ def test_get_book_details_missing_metadata(mock_sleep):
         mock_response.text = html
         mock_get.return_value = mock_response
         details = get_book_details("https://audiobookbay.lu/empty")
-        assert details["language"] == "N/A"
-        assert details["format"] == "N/A"
+        assert details["language"] == "Unknown"
+        assert details["format"] == "Unknown"
 
 
 def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
@@ -309,7 +309,7 @@ def test_get_book_details_partial_bitrate(mock_sleep):
         mock_response.text = html
         mock_get.return_value = mock_response
         details = get_book_details("https://audiobookbay.lu/partial_bitrate")
-        assert details["format"] == "N/A"
+        assert details["format"] == "Unknown"
         assert details["bitrate"] == "128 Kbps"
 
 
@@ -327,7 +327,7 @@ def test_get_book_details_partial_format(mock_sleep):
         mock_get.return_value = mock_response
         details = get_book_details("https://audiobookbay.lu/partial")
         assert details["format"] == "MP3"
-        assert details["bitrate"] == "N/A"
+        assert details["bitrate"] == "Unknown"
 
 
 def test_get_book_details_content_without_metadata_labels(mock_sleep):
@@ -343,7 +343,7 @@ def test_get_book_details_content_without_metadata_labels(mock_sleep):
         mock_response.text = html
         mock_get.return_value = mock_response
         details = get_book_details("https://audiobookbay.lu/no_meta")
-        assert details["format"] == "N/A"
+        assert details["format"] == "Unknown"
 
 
 # --- Extract Magnet Link Tests ---

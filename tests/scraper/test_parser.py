@@ -32,11 +32,11 @@ def test_get_text_after_label_exception():
     # Force an exception when .find() is called
     mock_container.find.side_effect = Exception("BS4 Internal Error")
     result = get_text_after_label(mock_container, "Label:")
-    assert result == "N/A"
+    assert result == "Unknown"
 
 
 def test_get_text_after_label_fallback():
-    """Test that it returns 'N/A' if label exists but no value follows."""
+    """Test that it returns 'Unknown' if label exists but no value follows."""
 
     class FakeNavigableString(str):
         def find_next_sibling(self):
@@ -47,7 +47,7 @@ def test_get_text_after_label_fallback():
     mock_container.find.return_value = mock_label_node
 
     result = get_text_after_label(mock_container, "Format:")
-    assert result == "N/A"
+    assert result == "Unknown"
 
 
 # --- Integration Tests: Fetch and Parse Page ---
@@ -134,7 +134,7 @@ def test_parsing_structure_change():
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
-    assert results[0]["format"] == "N/A"
+    assert results[0]["format"] == "Unknown"
 
 
 def test_fetch_and_parse_page_language_fallback():
@@ -150,7 +150,7 @@ def test_fetch_and_parse_page_language_fallback():
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
-    assert results[0]["language"] == "N/A"
+    assert results[0]["language"] == "Unknown"
 
 
 def test_fetch_and_parse_page_missing_regex_matches():
@@ -170,8 +170,8 @@ def test_fetch_and_parse_page_missing_regex_matches():
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
-    assert results[0]["language"] == "N/A"
-    assert results[0]["category"] == "N/A"
+    assert results[0]["language"] == "Unknown"
+    assert results[0]["category"] == "Unknown"
 
 
 def test_fetch_and_parse_page_no_posted_date():
@@ -201,8 +201,8 @@ def test_fetch_and_parse_page_no_posted_date():
     results = fetch_and_parse_page(session, hostname, query, 1, "UA")
 
     assert len(results) == 1
-    assert results[0]["post_date"] == "N/A"
-    assert results[0]["format"] == "N/A"
+    assert results[0]["post_date"] == "Unknown"
+    assert results[0]["format"] == "Unknown"
 
 
 def test_fetch_and_parse_page_missing_title():
@@ -281,4 +281,4 @@ def test_fetch_and_parse_page_missing_post_info():
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
-    assert results[0]["language"] == "N/A"
+    assert results[0]["language"] == "Unknown"
