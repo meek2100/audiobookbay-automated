@@ -48,6 +48,11 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
   - **Fail Fast (Mirrors):** Mirror availability checks (`check_mirror`) use `requests.head` directly with **zero retries**. We cycle through many mirrors quickly; waiting 90s for a retry loop on a dead mirror is bad UX.
   - **Input Normalization:** AudiobookBay search is case-sensitive and prefers lowercase. We normalize all search queries to lowercase in the controller (`app.py`) before scraping.
 
+### Filesystem Safety & Cross-Platform Compatibility
+
+- **Windows/SMB Reserved Names:** The application is often mounted to NAS drives via SMB. We MUST sanitize titles not just for illegal characters (`/ \ :`), but also for Windows reserved filenames (`CON`, `PRN`, `AUX`, `NUL`, `LPT1`).
+- **Implementation:** `app.utils.sanitize_title` handles this. **Do not remove** this logic even if the container is Linux-based; the _storage_ might not be.
+
 ### Flask-Limiter Strategy (Opt-In)
 
 - **Philosophy:** We use an **"Opt-In"** strategy, not "Opt-Out".
@@ -144,9 +149,15 @@ We enforce high code quality because "appliance" software is often difficult for
 
 - **Problem:** Because we don't use ES Modules (no `export`/`import` in browser scripts), Jest cannot natively import our JS files.
 - **Solution:** We use `fs.readFileSync` and `eval()` in `jest.setup.js` to load the script content into the JSDOM global scope.
-- **Testing Async/Timers:**
+- **Testing Async/Timers (Critical Pattern):**
   - We use `jest.useFakeTimers()` to control UI delays (spinners, notifications).
-  - **Critical:** When testing `fetch` within fake timers, you must use a custom `flushPromises` helper that utilizes `jest.requireActual("timers")` to prevent deadlocks.
+  - **The "Flush Promises" Trick:** When testing `fetch` (Promises) alongside `setTimeout` (Timers), standard `await` often deadlocks. You **MUST** use this helper to drain the microtask queue:
+    ```javascript
+    async function flushPromises() {
+      return new Promise((resolve) => jest.requireActual("timers").setTimeout(resolve, 0));
+    }
+    ```
+  - _Usage:_ Call `await flushPromises()` immediately after triggering a fetch, _before_ running timers or assertions.
 - **Coverage:** Maintain high coverage for UI logic (filtering, sorting, API interactions).
 
 ---
@@ -159,11 +170,24 @@ We enforce high code quality because "appliance" software is often difficult for
 - **Preloading:** Gunicorn uses `--preload` to fail fast on syntax errors and save RAM (Copy-on-Write).
 - **Timezones:** We install `tzdata` and pass `TZ` env var so logs match the user's wall clock (vital for personal self-hosting).
 
+### Hybrid Dependency Management (Frontend)
+
+- **Philosophy:** We use `npm` to manage versions, but we **commit the built assets** to git (`app/static/vendor`).
+- **Why:** The Dockerfile does NOT need Node.js installed to build the production image. It simply copies the pre-committed `app/static/vendor` files. This keeps the final image size small (Python-slim only).
+- **Automation:** The `vendor-sync.yaml` workflow automatically runs `npm install` and commits changes to `app/static/vendor` whenever `package.json` is updated via Pull Request.
+
 ### CI Pipeline
 
 - **Vendor Sync:** A dedicated workflow (`vendor-sync.yaml`) automatically runs `npm install` and copies assets to `app/static/vendor` when `package.json` changes. This ensures the repo always has the latest built assets without manual copying.
 - **Dependabot:** Configured to look in `/` (root) for `pyproject.toml` and `package.json`.
 - **Tests:** We focus on "unhappy path" integration tests (timeouts, malformed HTML) because the happy path is easy. The real value is ensuring the app doesn't crash when the internet is flaky.
+
+### Release Process
+
+- **Workflow:** `release.yaml`
+- **Trigger:** Manual `workflow_dispatch`.
+- **Action:** It updates `pyproject.toml` version, modifies `CHANGELOG.md`, tags the commit, and drafts a GitHub Release.
+- **Docker:** The `docker-publish.yaml` workflow listens for the new tag (e.g., `v1.0.0`) to build and push the container.
 
 ---
 
@@ -181,5 +205,6 @@ If you are asked to improve this repo, ask yourself:
 - **Install:** `pip install .` (Not requirements.txt)
 - **Run Dev:** `python app/app.py`
 - **Run Prod:** `entrypoint.sh` (Gunicorn)
+- **Lint/Test (All):** `pre-commit run --all-files` (Runs Ruff, Prettier, and Jest)
 - **Test (Python):** `pytest`
 - **Test (JS):** `npx jest`
