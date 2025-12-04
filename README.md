@@ -183,12 +183,16 @@ This project is a work in progress, and your feedback is welcome! Feel free to o
 
 ## Screenshots
 
-### Search Results
+### Search Page
 
-![screenshot-2025-01-13-19-59-03](https://github.com/user-attachments/assets/8a30fd4e-a289-49d0-83ab-67a3bcfc9745)
+![Search Interface showing results with filtering options](docs/images/search.png)
 
-### Download Status
+### Details Page
 
-![screenshot-2025-01-13-19-59-25](https://github.com/user-attachments/assets/19cc74de-51fc-422f-9cab-fe69e30c74b9)
+![Book details page showing description and trackers](docs/images/details.png)
+
+### Status Page
+
+![Download status page showing active torrents](docs/images/status.png)
 
 ---
