@@ -1,8 +1,11 @@
+import os
+
 from flask import Flask
 
 from .config import Config
 from .extensions import csrf, limiter, torrent_manager
 from .routes import main_bp
+from .utils import calculate_static_hash
 
 
 def create_app(config_class=Config):
@@ -14,6 +17,11 @@ def create_app(config_class=Config):
 
     # Validate critical configuration
     config_class.validate(app.logger)
+
+    # OPTIMIZATION: Calculate static asset hash once at startup.
+    # This prevents hitting the disk (os.walk) on every single request.
+    static_folder = os.path.join(app.root_path, "static")
+    app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
 
     # Initialize Extensions
     limiter.init_app(app)

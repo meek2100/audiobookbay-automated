@@ -2,6 +2,13 @@
  * Global application actions (Reload ABS, Delete Torrent, Send Torrent, Open External)
  */
 
+// Explicitly expose functions to the global scope (window) for testability and consistency.
+window.showNotification = showNotification;
+window.reloadLibrary = reloadLibrary;
+window.deleteTorrent = deleteTorrent;
+window.sendTorrent = sendTorrent;
+window.openExternalLink = openExternalLink;
+
 function showNotification(message, type = "info") {
     // Create a notification container if it doesn't exist
     let container = document.getElementById("notification-container");

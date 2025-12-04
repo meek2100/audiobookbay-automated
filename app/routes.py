@@ -8,7 +8,7 @@ from flask import Blueprint, Response, current_app, jsonify, redirect, render_te
 # Import extensions and logic
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
-from .utils import calculate_static_hash, sanitize_title
+from .utils import sanitize_title
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +22,9 @@ def inject_global_vars() -> dict[str, Any]:
     Injects global variables into all templates.
     Uses current_app.config to access settings loaded in config.py.
     """
-    # Calculate static hash on demand (or cached) could be optimized,
-    # but for now we calculate once at module level or startup.
-    # Note: Accessing app.root_path requires context, so we do it here or pass it in.
-    static_folder = os.path.join(current_app.root_path, "static")
-    static_version = calculate_static_hash(static_folder)
+    # OPTIMIZATION: Retrieve the pre-calculated hash from config
+    # to avoid disk I/O on every request.
+    static_version = current_app.config.get("STATIC_VERSION", "v1")
 
     # Determine if library reload is enabled based on config
     abs_url = current_app.config.get("ABS_URL")
