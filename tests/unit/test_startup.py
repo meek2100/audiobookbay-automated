@@ -1,7 +1,6 @@
 # tests/unit/test_startup.py
 import importlib
 import os
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest

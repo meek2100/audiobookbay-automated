@@ -11,9 +11,7 @@ from app.scraper import extract_magnet_link, get_book_details, search_audiobookb
 
 
 def test_search_audiobookbay_success(mock_sleep):
-    # PATCH LOCATION IS KEY: Patch where the functions are imported/used in core.py
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
-        # We patch app.scraper.core.get_session because core.py imports it from .network
         with patch("app.scraper.core.get_session"):
             with patch("app.scraper.core.fetch_and_parse_page", return_value=[{"title": "Test Book"}]):
                 results = search_audiobookbay("query", max_pages=1)
@@ -54,7 +52,6 @@ def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
 
                 with patch("concurrent.futures.as_completed", return_value=[mock_future]):
                     with patch("app.scraper.core.mirror_cache") as mock_mirror_clear:
-                        # FIX: Removed 'as mock_search_clear' to satisfy ruff F841
                         with patch("app.scraper.core.search_cache"):
                             with patch("app.scraper.core.logger") as mock_logger:
                                 results = search_audiobookbay("query", max_pages=1)
@@ -74,16 +71,87 @@ def test_search_special_characters(real_world_html, mock_sleep):
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/", text=real_world_html, status_code=200)
 
-    # We call the function directly here, so we don't need to patch logic
     results = scraper.fetch_and_parse_page(session, hostname, query, page, user_agent)
     assert len(results) > 0
+
+
+def test_fetch_page_timeout(mock_sleep):
+    """Test that connection timeouts are raised (to allow cache invalidation)."""
+    hostname = "audiobookbay.lu"
+    query = "timeout"
+    page = 1
+    user_agent = "TestAgent/1.0"
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", exc=requests.exceptions.Timeout)
+
+    with pytest.raises(requests.exceptions.Timeout):
+        scraper.fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+
+def test_fetch_and_parse_page_missing_cover_image():
+    """Test when the cover image element is missing from the post."""
+    hostname = "audiobookbay.lu"
+    query = "no_cover"
+    html = """
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/test-book/" rel="bookmark">Missing Cover Test</a></h2>
+        </div>
+        <div class="postInfo">Language: English</div>
+        <div class="postContent">
+            <p style="text-align:center;">Posted: 01 Jan 2025</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
+
+    results = scraper.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+
+    assert len(results) == 1
+    assert results[0]["cover"] == "/static/images/default_cover.jpg"
+    assert results[0]["language"] == "English"
+
+
+def test_fetch_and_parse_page_missing_post_info():
+    """Test when the postInfo element (containing language) is completely missing."""
+    hostname = "audiobookbay.lu"
+    query = "no_info"
+    html = """
+    <div class="post">
+        <div class="postTitle">
+            <h2><a href="/abss/test-book/" rel="bookmark">Missing Info Test</a></h2>
+        </div>
+        <div class="postContent">
+            <p style="text-align:center;">
+                <a href="/abss/test-book/">
+                    <img src="/images/cover.jpg" alt="Test" width="250">
+                </a>
+            </p>
+            <p style="text-align:center;">Posted: 01 Jan 2025</p>
+        </div>
+    </div>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
+
+    results = scraper.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+
+    assert len(results) == 1
+    assert results[0]["language"] == "N/A"
+    assert results[0]["post_date"] == "01 Jan 2025"
 
 
 # --- Get Book Details Tests ---
 
 
 def test_get_book_details_success(details_html, mock_sleep):
-    # Patch requests.Session.get since get_session returns a real session object
     with patch("requests.Session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -102,6 +170,13 @@ def test_get_book_details_failure(mock_sleep):
     with patch("requests.Session.get", side_effect=requests.exceptions.RequestException("Net Down")):
         with pytest.raises(requests.exceptions.RequestException):
             get_book_details("https://audiobookbay.lu/fail-book")
+
+
+def test_get_book_details_ssrf_protection():
+    """Test that get_book_details rejects non-ABB domains."""
+    with pytest.raises(ValueError) as exc:
+        get_book_details("https://google.com/admin")
+    assert "Invalid domain" in str(exc.value)
 
 
 def test_get_book_details_empty(mock_sleep):
@@ -243,6 +318,27 @@ def test_extract_magnet_missing_info_hash(mock_sleep):
         assert "Info Hash could not be found" in error
 
 
+def test_extract_magnet_no_hash(mock_sleep):
+    """Test handling of pages where info hash cannot be found."""
+    details_url = "https://audiobookbay.lu/audiobook-details"
+    broken_html = """<html><body><table><tr><td>Some other data</td></tr></table></body></html>"""
+    with requests_mock.Mocker() as m:
+        m.get(details_url, text=broken_html)
+        magnet, error = extract_magnet_link(details_url)
+        assert magnet is None
+        assert "Info Hash could not be found" in error
+
+
+def test_extract_magnet_bad_url():
+    """Test validation of bad URLs."""
+    res, err = extract_magnet_link("")
+    assert res is None
+    assert "No URL" in err
+    res, err = extract_magnet_link("not-a-url")
+    assert res is None
+    assert "Invalid URL" in err
+
+
 def test_extract_magnet_malformed_url_exception(mock_sleep):
     # Patch urlparse in core.py specifically
     with patch("app.scraper.core.urlparse", side_effect=Exception("Parse Error")):
@@ -259,6 +355,19 @@ def test_extract_magnet_http_error_code(mock_sleep):
         magnet, error = extract_magnet_link("http://valid.url")
         assert magnet is None
         assert "Status Code: 500" in error
+
+
+def test_extract_magnet_no_sibling_td(mock_sleep):
+    """Test when the Info Hash label exists but has no sibling cell."""
+    html_content = """<html><body><table><tr><td>Info Hash</td></tr></table></body></html>"""
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html_content
+        mock_get.return_value = mock_response
+        magnet, error = extract_magnet_link("http://valid.url")
+        assert magnet is None
+        assert "Info Hash could not be found" in error
 
 
 def test_extract_magnet_network_error(mock_sleep, caplog):

@@ -119,6 +119,22 @@ def test_get_random_user_agent_returns_string():
     assert ua in network.USER_AGENTS
 
 
+def test_get_headers_with_user_agent_and_referer():
+    """Test that get_headers correctly uses provided user_agent and sets a referer."""
+    test_ua = "Custom-Agent/1.0"
+    test_ref = "https://example.com/previous"
+
+    # Use the real function
+    headers = network.get_headers(user_agent=test_ua, referer=test_ref)
+
+    # Assert provided UA is used
+    assert headers["User-Agent"] == test_ua
+    # Assert Referer is set
+    assert headers["Referer"] == test_ref
+    # Assert other default headers are present
+    assert "Accept" in headers
+
+
 def test_page_limit_invalid(monkeypatch, caplog):
     monkeypatch.setenv("PAGE_LIMIT", "invalid_int")
 
