@@ -20,16 +20,18 @@ function showNotification(message, type = "info") {
     if (!container) {
         container = document.createElement("div");
         container.id = "notification-container";
-        container.style.position = "fixed";
-        container.style.top = "20px";
-        container.style.left = "50%";
-        container.style.transform = "translateX(-50%)";
-        container.style.zIndex = "10000";
-        container.style.display = "flex";
-        container.style.flexDirection = "column";
-        container.style.gap = "10px";
         document.body.appendChild(container);
     }
+
+    // Apply styles to ensure it floats correctly (fixes issue if element exists in HTML but isn't styled)
+    container.style.position = "fixed";
+    container.style.top = "20px";
+    container.style.left = "50%";
+    container.style.transform = "translateX(-50%)";
+    container.style.zIndex = "10000";
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.gap = "10px";
 
     const toast = document.createElement("div");
     toast.style.padding = "12px 24px";
@@ -203,8 +205,8 @@ function openExternalLink(url) {
     const warningMessage =
         "SECURITY WARNING:\n\n" +
         "You are about to open this link directly in your browser.\n" +
-        "This traffic will NOT be routed through the server's VPN connection.\n\n" +
-        "Your real IP address may be exposed to the target website.\n\n" +
+        "This traffic will NOT be routed through the server's connection.\n\n" +
+        "Your IP address and traffic may be exposed.\n\n" +
         "Are you sure you want to proceed?";
 
     if (confirm(warningMessage)) {

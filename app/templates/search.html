@@ -67,7 +67,8 @@
 <div class="table-wrapper">
     <table>
         <tbody id="results-table-body">
-            {% if books %} {% for book in books %}
+            {% if books %} {% for book in books %} {# Generate versioned default URL once #} {% set default_cover_url =
+            url_for('static', filename='images/default_cover.jpg', v=static_version) %}
             <tr
                 class="result-row"
                 data-category="{{ book.category }}"
@@ -79,7 +80,7 @@
             >
                 <td>
                     <img
-                        src="{{ book.cover }}"
+                        src="{{ book.cover if book.cover else default_cover_url }}"
                         alt="Cover Art"
                         class="cover"
                         width="100"

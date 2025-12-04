@@ -266,7 +266,8 @@ def test_fetch_and_parse_page_missing_cover_image():
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
-    assert results[0]["cover"] == "/static/images/default_cover.jpg"
+    # Expect None so UI handles versioning
+    assert results[0]["cover"] is None
 
 
 def test_fetch_and_parse_page_missing_post_info():
@@ -287,7 +288,7 @@ def test_fetch_and_parse_page_missing_post_info():
 def test_fetch_and_parse_page_remote_default_cover_optimization():
     """
     Test that if a remote cover image is detected as the 'default' placeholder,
-    it is replaced with the local static default image to save bandwidth.
+    it is replaced with None to allow the UI to serve the local versioned default.
     """
     html = """
     <div class="post">
@@ -304,5 +305,5 @@ def test_fetch_and_parse_page_remote_default_cover_optimization():
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
-    # Assert it was converted to the local path
-    assert results[0]["cover"] == "/static/images/default_cover.jpg"
+    # Assert it was converted to None (logic updated from previous local path assumption)
+    assert results[0]["cover"] is None

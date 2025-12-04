@@ -16,11 +16,13 @@ endblock %} {% block content %}
 {% elif book %}
 <div class="details-container">
     <div class="details-left">
+        {# Generate versioned default URL once #} {% set default_cover_url = url_for('static',
+        filename='images/default_cover.jpg', v=static_version) %}
         <img
-            src="{{ book.cover }}"
+            src="{{ book.cover if book.cover else default_cover_url }}"
             alt="Cover"
             class="details-cover"
-            onerror="this.src='{{ url_for('static', filename='images/default_cover.jpg', v=static_version) }}'"
+            onerror="this.src='{{ default_cover_url }}'"
         />
     </div>
     <div class="details-info">

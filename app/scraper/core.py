@@ -76,14 +76,12 @@ def fetch_and_parse_page(
                 link = urljoin(base_url, str(title_element["href"]))
 
                 cover_img = post.select_one(".postContent img")
+                cover = None  # Default to None so UI handles versioned default
                 if cover_img and cover_img.has_attr("src"):
-                    cover = urljoin(base_url, str(cover_img["src"]))
-                    # OPTIMIZATION: If the remote image is the default placeholder, use local file
-                    # This saves an external request and prevents potential IP banning for image scraping
-                    if "default_cover.jpg" in cover:
-                        cover = "/static/images/default_cover.jpg"
-                else:
-                    cover = "/static/images/default_cover.jpg"
+                    extracted_cover = urljoin(base_url, str(cover_img["src"]))
+                    # OPTIMIZATION: If remote is default, keep as None to use local versioned default.
+                    if "default_cover.jpg" not in extracted_cover:
+                        cover = extracted_cover
 
                 # Default to Unknown
                 language = "Unknown"
@@ -249,7 +247,7 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if title_tag:
             title = title_tag.get_text(strip=True)
 
-        cover = "/static/images/default_cover.jpg"
+        cover = None  # Default to None so UI handles versioned default
         cover_tag = soup.select_one('.postContent img[itemprop="image"]')
         if cover_tag and cover_tag.has_attr("src"):
             extracted_cover = urljoin(details_url, str(cover_tag["src"]))
