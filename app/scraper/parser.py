@@ -11,9 +11,18 @@ RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 def get_text_after_label(container: Tag, label_text: str) -> str:
     """
     Robustly finds values based on a label within a BS4 container.
-    Logic: Find the text node containing 'label_text', then look at its
-    siblings to find the value. Checks next sibling element (span)
-    or parses the current text node for the label.
+
+    Strategy:
+    1. Finds the text node containing 'label_text'.
+    2. Checks the next sibling element (e.g., <span>Value</span>).
+    3. If no sibling, attempts to parse the value from the text node itself.
+
+    Args:
+        container: The BeautifulSoup Tag to search within.
+        label_text: The label string to search for (e.g. "Format:").
+
+    Returns:
+        str: The extracted value, or "N/A" if not found.
     """
     try:
         # Find the text string (e.g., "Format:")

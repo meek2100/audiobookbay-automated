@@ -62,11 +62,17 @@ search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 
 
 def get_random_user_agent() -> str:
+    """Returns a random User-Agent string from the internal list."""
     return random.choice(USER_AGENTS)
 
 
 def load_trackers() -> list[str]:
-    """Loads trackers from env var, local JSON, or defaults."""
+    """
+    Loads trackers from environment variable, local JSON, or internal defaults.
+
+    Returns:
+        list[str]: A list of tracker URLs.
+    """
     trackers_env = os.getenv("MAGNET_TRACKERS")
     if trackers_env:
         return [t.strip() for t in trackers_env.split(",") if t.strip()]
@@ -95,7 +101,12 @@ DEFAULT_TRACKERS = load_trackers()
 
 
 def get_session() -> Session:
-    """Configures and returns a requests Session with retry logic."""
+    """
+    Configures and returns a requests Session with retry logic.
+
+    Returns:
+        Session: A configured requests Session object.
+    """
     session = requests.Session()
     retry_strategy = Retry(
         total=5,
@@ -110,6 +121,16 @@ def get_session() -> Session:
 
 
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
+    """
+    Generates standard HTTP headers for scraping requests.
+
+    Args:
+        user_agent: Optional custom User-Agent string.
+        referer: Optional Referer header string.
+
+    Returns:
+        dict[str, str]: A dictionary of HTTP headers.
+    """
     if not user_agent:
         user_agent = get_random_user_agent()
     headers = {
@@ -127,7 +148,15 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 
 
 def check_mirror(hostname: str) -> str | None:
-    """Checks if a mirror is reachable via HEAD or GET."""
+    """
+    Checks if a mirror is reachable via HEAD or GET request.
+
+    Args:
+        hostname: The domain name to check (e.g., "audiobookbay.lu").
+
+    Returns:
+        str | None: The hostname if reachable, otherwise None.
+    """
     url = f"https://{hostname}/"
     headers = get_headers()
 
@@ -151,7 +180,13 @@ def check_mirror(hostname: str) -> str | None:
 
 @cached(cache=mirror_cache)
 def find_best_mirror() -> str | None:
-    """Finds the first reachable AudiobookBay mirror from the list."""
+    """
+    Finds the first reachable AudiobookBay mirror from the configured list.
+    Uses threaded checks for speed and caches the result.
+
+    Returns:
+        str | None: The hostname of the active mirror, or None if all fail.
+    """
     logger.debug("Checking connectivity for all mirrors...")
     safe_mirror_workers = 5
 

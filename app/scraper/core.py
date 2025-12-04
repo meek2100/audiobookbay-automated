@@ -30,7 +30,20 @@ logger = logging.getLogger(__name__)
 def fetch_and_parse_page(
     session: Session, hostname: str, query: str, page: int, user_agent: str
 ) -> list[dict[str, Any]]:
-    """Fetches a single search result page and parses it."""
+    """
+    Fetches a single search result page and parses it into a list of books.
+    Enforces a global semaphore to limit concurrent scraping requests.
+
+    Args:
+        session: The active requests Session.
+        hostname: The AudiobookBay mirror to scrape.
+        query: The search term.
+        page: The page number to fetch.
+        user_agent: The User-Agent string to use for the request.
+
+    Returns:
+        list[dict[str, Any]]: A list of dictionaries, each representing a book found on the page.
+    """
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
     params = {"s": query}
@@ -125,7 +138,20 @@ def fetch_and_parse_page(
 
 
 def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[str, Any]]:
-    """Searches AudiobookBay for the given query using cached search."""
+    """
+    Searches AudiobookBay for the given query using cached search results if available.
+    Manages thread pool for parallel page fetching.
+
+    Args:
+        query: The search string.
+        max_pages: Maximum number of pages to scrape (default: configured limit).
+
+    Returns:
+        list[dict[str, Any]]: A list of book dictionaries found across all pages.
+
+    Raises:
+        ConnectionError: If no mirrors are reachable.
+    """
     if query in search_cache:
         return search_cache[query]
 
@@ -163,7 +189,19 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
 
 
 def get_book_details(details_url: str) -> dict[str, Any]:
-    """Scrapes the specific book details page."""
+    """
+    Scrapes the specific book details page to retrieve metadata, description, and hash.
+    Validates the URL to prevent SSRF.
+
+    Args:
+        details_url: The full URL of the book page on AudiobookBay.
+
+    Returns:
+        dict[str, Any]: A dictionary containing detailed book metadata.
+
+    Raises:
+        ValueError: If the URL is invalid or not from an allowed domain.
+    """
     if details_url in search_cache:
         return search_cache[details_url]
 
@@ -283,7 +321,16 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 
 
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
-    """Scrapes the details page to find the info hash and generates a magnet link."""
+    """
+    Scrapes the details page to find the info hash and generates a magnet link.
+
+    Args:
+        details_url: The URL of the book page.
+
+    Returns:
+        tuple[str | None, str | None]: A tuple containing (magnet_link, error_message).
+                                       If successful, error_message is None.
+    """
     if not details_url:
         return None, "No URL provided."
 

@@ -36,12 +36,21 @@ window.addEventListener("pageshow", function (event) {
 });
 
 // --- Helper Functions ---
+
+/**
+ * Initializes all filter components (Selects, Date Picker, Slider).
+ */
 function initializeFilters() {
     populateSelectFilters();
     initializeFileSizeSlider();
     initializeDateRangePicker();
 }
 
+/**
+ * Parses a file size string (e.g., "1.5 GB") into Megabytes.
+ * @param {string} sizeString - The file size string.
+ * @returns {number|null} - Size in MB or null if invalid.
+ */
 function parseFileSizeToMB(sizeString) {
     if (!sizeString || sizeString.trim().toLowerCase() === "n/a") return null;
 
@@ -65,6 +74,11 @@ function parseFileSizeToMB(sizeString) {
     return size;
 }
 
+/**
+ * Formats a size in MB to a human-readable string (MB/GB/TB).
+ * @param {number} mb - Size in Megabytes.
+ * @returns {string} - Formatted string.
+ */
 function formatFileSize(mb) {
     if (mb === null || isNaN(mb)) return "N/A";
     if (mb >= 1024 * 1024) {
@@ -76,6 +90,9 @@ function formatFileSize(mb) {
     return mb.toFixed(2) + " MB";
 }
 
+/**
+ * Initializes the Flatpickr date range input.
+ */
 function initializeDateRangePicker() {
     const allDates = Array.from(document.querySelectorAll(".result-row"))
         .map((row) => {
@@ -112,6 +129,9 @@ function initializeDateRangePicker() {
     datePicker = flatpickr("#date-range-filter", options);
 }
 
+/**
+ * Initializes the noUiSlider for file size filtering.
+ */
 function initializeFileSizeSlider() {
     const sliderElement = document.getElementById("file-size-slider");
     const allSizes = Array.from(document.querySelectorAll(".result-row"))
@@ -144,6 +164,9 @@ function initializeFileSizeSlider() {
     });
 }
 
+/**
+ * Populates filter dropdowns (Category, Language, etc.) from unique values in the results.
+ */
 function populateSelectFilters() {
     const categories = new Set();
     const languages = new Set();
@@ -155,8 +178,6 @@ function populateSelectFilters() {
         const categoryString = row.dataset.category;
         categoryString.split(/\s+/).forEach((term) => {
             // FIX: Filter out meaningless tokens like "&", empty strings, or "N/A"
-            // Allows alphanumeric terms longer than 1 char, or specific single chars if needed.
-            // Using a regex to ensure it contains at least one alphanumeric character.
             if (term && term.length > 1 && term !== "N/A" && term !== "None" && /[a-zA-Z0-9]/.test(term)) {
                 categories.add(term);
             }
@@ -194,6 +215,9 @@ function populateSelectFilters() {
     appendOptions("format-filter", formats);
 }
 
+/**
+ * Applies all active filters to the result table.
+ */
 function applyFilters() {
     const category = document.getElementById("category-filter").value;
     const language = document.getElementById("language-filter").value;
@@ -207,8 +231,6 @@ function applyFilters() {
 
         // --- CATEGORY FIX: Exact Token Match ---
         if (category) {
-            // Split category string by whitespace to get individual tags
-            // Then check if the selected category is present in the list of tags
             const rowCategories = row.dataset.category.split(/\s+/);
             if (!rowCategories.includes(category)) {
                 visible = false;
@@ -259,6 +281,9 @@ function applyFilters() {
     });
 }
 
+/**
+ * Resets all filters to their default state.
+ */
 function clearFilters() {
     document.getElementById("category-filter").value = "";
     document.getElementById("language-filter").value = "";
@@ -272,6 +297,9 @@ function clearFilters() {
     });
 }
 
+/**
+ * Shows the loading spinner and initializes the funny message scroller.
+ */
 function showLoadingSpinner() {
     const button = document.querySelector(".search-button");
     if (button) {
@@ -288,6 +316,9 @@ function showLoadingSpinner() {
     setTimeout(showScrollingMessages, 3000);
 }
 
+/**
+ * Hides the loading spinner and stops the message scroller.
+ */
 function hideLoadingSpinner() {
     const button = document.querySelector(".search-button");
     if (button) {

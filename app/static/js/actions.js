@@ -9,6 +9,11 @@ window.deleteTorrent = deleteTorrent;
 window.sendTorrent = sendTorrent;
 window.openExternalLink = openExternalLink;
 
+/**
+ * Displays a toast notification.
+ * @param {string} message - The message to display.
+ * @param {string} type - 'info' (green) or 'error' (red).
+ */
 function showNotification(message, type = "info") {
     // Create a notification container if it doesn't exist
     let container = document.getElementById("notification-container");
@@ -59,6 +64,9 @@ function showNotification(message, type = "info") {
     }, 3000);
 }
 
+/**
+ * Triggers an Audiobookshelf library scan.
+ */
 function reloadLibrary() {
     if (!confirm("Are you sure you want to initiate a library scan?")) {
         return;
@@ -88,6 +96,10 @@ function reloadLibrary() {
         });
 }
 
+/**
+ * Deletes a torrent from the client (soft delete).
+ * @param {string} torrentId - The ID or Hash of the torrent.
+ */
 function deleteTorrent(torrentId) {
     if (!confirm("Are you sure you want to remove this torrent? The downloaded files will NOT be deleted.")) {
         return;
@@ -118,6 +130,12 @@ function deleteTorrent(torrentId) {
         });
 }
 
+/**
+ * Sends a magnet link to the configured torrent client.
+ * @param {string} link - The URL/Magnet link.
+ * @param {string} title - The book title.
+ * @param {HTMLElement} buttonElement - The button clicked (for state management).
+ */
 function sendTorrent(link, title, buttonElement) {
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     if (!csrfMeta) {
@@ -170,6 +188,10 @@ function sendTorrent(link, title, buttonElement) {
         });
 }
 
+/**
+ * Opens a link in a new tab with a security confirmation.
+ * @param {string} url - The URL to open.
+ */
 function openExternalLink(url) {
     const warningMessage =
         "SECURITY WARNING:\n\n" +
