@@ -21,6 +21,18 @@ jobs:
           python-version: "3.13"
           cache: "pip"
 
+      # FIX: Set up Node.js for frontend hooks (Jest/Prettier)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # This cache requires package-lock.json to be present
+          cache: "npm"
+
+      # FIX: Install Node dependencies so 'npx jest' finds the local packages
+      - name: Install Node Dependencies
+        run: npm ci
+
       # Optimization: Cache pre-commit environments
       - name: Cache pre-commit
         uses: actions/cache@v4
@@ -85,7 +97,7 @@ jobs:
 
       - name: Install JS Dependencies
         # Installs packages from package.json
-        run: npm install
+        run: npm ci
 
       - name: Run Jest Tests
         # Use npx jest to execute the tests configured in jest.config.js
