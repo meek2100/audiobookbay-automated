@@ -154,7 +154,10 @@ function populateSelectFilters() {
         // --- START CATEGORY FIX: Split categories for filtering by single keyword ---
         const categoryString = row.dataset.category;
         categoryString.split(/\s+/).forEach((term) => {
-            if (term && term !== "N/A" && term !== "None") {
+            // FIX: Filter out meaningless tokens like "&", empty strings, or "N/A"
+            // Allows alphanumeric terms longer than 1 char, or specific single chars if needed.
+            // Using a regex to ensure it contains at least one alphanumeric character.
+            if (term && term.length > 1 && term !== "N/A" && term !== "None" && /[a-zA-Z0-9]/.test(term)) {
                 categories.add(term);
             }
         });

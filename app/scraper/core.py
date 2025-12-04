@@ -4,7 +4,7 @@ import random
 import re
 import time
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -332,7 +332,7 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         trackers.extend(DEFAULT_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
 
-        trackers_query = "&".join(f"tr={requests.utils.quote(tracker)}" for tracker in trackers)
+        trackers_query = "&".join(f"tr={quote(tracker)}" for tracker in trackers)
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
 
         return magnet_link, None

@@ -29,7 +29,9 @@ class Config:
     NAV_LINK_URL = os.getenv("NAV_LINK_URL")
 
     # Logging
+    # Robustly handle case-sensitivity from Env vars (e.g. "info", "INFO", "Info")
     LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
+    # Fallback to INFO if the string is not a valid logging level attribute
     LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
 
     @classmethod
@@ -57,3 +59,10 @@ class Config:
                 import sys
 
                 sys.exit(1)
+        else:
+            # Informative log for debugging common Docker path mapping issues
+            logger.info(f"SAVE_PATH_BASE configured as: {cls.SAVE_PATH_BASE}")
+            logger.info(
+                "Reminder: This path must exist inside the TORRENT CLIENT container, "
+                "not necessarily this application's container."
+            )

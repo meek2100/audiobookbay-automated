@@ -74,8 +74,8 @@ ABS_LIB=your_library_id            # Library ID (Found in the URL when viewing t
 #### 4. Search & Scraping (Optional)
 
 ```env
-ABB_HOSTNAME=audiobookbay.is   # Primary mirror. Default: audiobookbay.lu
-ABB_MIRRORS=mirror1.com        # Comma-separated list of backup mirrors to try.
+ABB_HOSTNAME=audiobookbay.lu   # Primary mirror. Default: audiobookbay.lu
+ABB_MIRRORS=audiobookbay.is,audiobookbay.se       # Comma-separated list of backup mirrors to try.
 MAGNET_TRACKERS=udp://...      # Comma-separated list of extra trackers to add to magnets.
 PAGE_LIMIT=3                   # Max pages to scrape per search. Default: 3.
 ```
@@ -149,8 +149,8 @@ DL_CATEGORY=abb-automated
 SAVE_PATH_BASE=/audiobooks
 
 # AudiobookBay Hostname
-ABB_HOSTNAME=audiobookbay.is #Default
-# ABB_HOSTNAME=audiobookbay.lu #Alternative
+ABB_HOSTNAME=audiobookbay.lu #Default
+# ABB_HOSTNAME=audiobookbay.is #Alternative
 
 PAGE_LIMIT=3 #Default
 LISTEN_PORT=5078 #Default
