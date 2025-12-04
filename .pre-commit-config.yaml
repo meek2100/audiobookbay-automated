@@ -63,6 +63,8 @@ repos:
     hooks:
       - id: codespell
         exclude: ^(poetry\.lock|package-lock\.json)$
+        # Fix: Ignore the Jest function 'afterAll'
+        args: ["--ignore-words-list", "afterAll"]
 
   # 6. JavaScript Unit Tests (Jest) - NEW HOOK
   # Uses the 'local' repo type to run a local script installed via npm.

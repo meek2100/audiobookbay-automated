@@ -202,11 +202,12 @@ function applyFilters() {
     document.querySelectorAll(".result-row").forEach((row) => {
         let visible = true;
 
-        // --- START CATEGORY FIX: Whole Word Regex Match ---
+        // --- CATEGORY FIX: Exact Token Match ---
         if (category) {
-            // Check for whole word match: \b ensures boundary (e.g., matches "Fiction" but not "Non-Fiction")
-            const regex = new RegExp(`\\b${category}\\b`);
-            if (!regex.test(row.dataset.category)) {
+            // Split category string by whitespace to get individual tags
+            // Then check if the selected category is present in the list of tags
+            const rowCategories = row.dataset.category.split(/\s+/);
+            if (!rowCategories.includes(category)) {
                 visible = false;
             }
         }

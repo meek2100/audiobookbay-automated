@@ -13,8 +13,6 @@ from app.scraper import fetch_and_parse_page, get_text_after_label
 def test_get_text_after_label_valid():
     html = "<div><p>Format: <span>MP3</span></p></div>"
     soup = BeautifulSoup(html, "html.parser")
-    # We pass the parent container to the function, normally it searches inside.
-    # The function expects a Tag, so we pass the <p>
     p_tag = soup.find("p")
     res = get_text_after_label(p_tag, "Format:")
     assert res == "MP3"
@@ -40,7 +38,6 @@ def test_get_text_after_label_exception():
 def test_get_text_after_label_fallback():
     """Test that it returns 'N/A' if label exists but no value follows."""
 
-    # Custom class to simulate a string that has find_next_sibling returning None
     class FakeNavigableString(str):
         def find_next_sibling(self):
             return None
@@ -80,7 +77,6 @@ def test_fetch_and_parse_page_real_structure(real_world_html, mock_sleep):
 
 
 def test_fetch_and_parse_page_unknown_bitrate():
-    """Test that a bitrate of '?' is normalized to 'Unknown'."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">Test</a></h2></div>
@@ -99,7 +95,6 @@ def test_fetch_and_parse_page_unknown_bitrate():
 
 
 def test_fetch_and_parse_page_malformed():
-    """Test resilience against empty/broken HTML."""
     session = requests.Session()
     adapter = requests_mock.Adapter()
     session.mount("https://", adapter)
@@ -110,7 +105,6 @@ def test_fetch_and_parse_page_malformed():
 
 
 def test_fetch_and_parse_page_mixed_validity():
-    """Test skipping malformed posts while keeping valid ones."""
     mixed_html = """
     <div class="post"><div>Broken Info</div></div>
     <div class="post">
@@ -128,7 +122,6 @@ def test_fetch_and_parse_page_mixed_validity():
 
 
 def test_parsing_structure_change():
-    """Test that missing labels default to 'N/A'."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
@@ -145,7 +138,6 @@ def test_parsing_structure_change():
 
 
 def test_fetch_and_parse_page_language_fallback():
-    """Test missing or malformed language tag."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
@@ -162,7 +154,6 @@ def test_fetch_and_parse_page_language_fallback():
 
 
 def test_fetch_page_post_exception(caplog):
-    """Test exception handling during post processing."""
     session = MagicMock()
     session.get.return_value.text = "<html></html>"
     session.get.return_value.status_code = 200
@@ -170,21 +161,22 @@ def test_fetch_page_post_exception(caplog):
     mock_post = MagicMock()
     mock_post.select_one.side_effect = Exception("Post Error")
 
-    with patch("app.scraper.BeautifulSoup") as mock_bs:
+    # Correct patching of BeautifulSoup in app.scraper.core where it is imported
+    with patch("app.scraper.core.BeautifulSoup") as mock_bs:
         mock_bs.return_value.select.return_value = [mock_post]
         with caplog.at_level(logging.ERROR):
             results = fetch_and_parse_page(session, "host", "q", 1, "ua")
             assert results == []
-            assert "Could not process a post" in caplog.text
+            assert "Could not process post" in caplog.text
 
 
 def test_fetch_page_urljoin_exception(real_world_html):
-    """Test urljoin failure handling."""
     session = MagicMock()
     session.get.return_value.text = real_world_html
     session.get.return_value.status_code = 200
 
-    with patch("app.scraper.urljoin", side_effect=Exception("Join Error")):
+    # Correct patching of urljoin in app.scraper.core where it is imported
+    with patch("app.scraper.core.urljoin", side_effect=Exception("Join Error")):
         results = fetch_and_parse_page(session, "host", "q", 1, "ua")
     assert results == []
 

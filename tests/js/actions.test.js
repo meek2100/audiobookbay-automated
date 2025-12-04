@@ -17,7 +17,7 @@ global.open = mockOpen;
 // Mock requestAnimationFrame used by showNotification
 global.requestAnimationFrame = jest.fn((cb) => cb());
 
-// Spy on console.error
+// Spy on console.error to detect swallowed errors
 const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
 // Add a required meta tag for CSRF token into the DOM
@@ -34,10 +34,10 @@ function getNotificationText() {
 }
 
 // CRITICAL FIX: Helper to drain the microtask queue completely.
-// Uses a zero-ms timeout which is resolved immediately by jest.runAllTimers()
-// and ensures the preceding microtasks (like fetch resolution) are complete.
+// Uses jest.requireActual("timers").setTimeout to bypass fake timers.
+// This prevents deadlocks where await waits for a mocked timer that hasn't run yet.
 async function flushPromises() {
-    return new Promise((resolve) => setTimeout(resolve, 0));
+    return new Promise((resolve) => jest.requireActual("timers").setTimeout(resolve, 0));
 }
 // ---------------------------------------------------------------------
 
@@ -136,17 +136,27 @@ describe("actions.js - API Interactions", () => {
         });
 
         mockConfirm.mockReturnValue(true);
-        const mockReload = jest.fn();
-        global.location.reload = mockReload;
 
-        await deleteTorrent("test-hash-123");
-        await flushPromises(); // Flush promise resolution to ensure setTimeout is scheduled
+        // FIX: Force-mock window.location for JSDOM
+        // Simple assignment (global.location.reload = ...) often fails in JSDOM because location is read-only.
+        const originalLocation = window.location;
+        delete window.location;
+        window.location = { reload: jest.fn() };
 
-        // Execute all pending timers, including the 0ms flush and the 1000ms reload timer.
+        // Trigger the async function
+        deleteTorrent("test-hash-123");
+
+        // Wait for the fetch promise to resolve
+        await flushPromises();
+
+        // Execute pending timers (the 1000ms reload timer)
         jest.runAllTimers();
-        expect(mockReload).toHaveBeenCalled();
 
-        global.location.reload = undefined;
+        // Verify reload was called
+        expect(window.location.reload).toHaveBeenCalled();
+
+        // Restore original location
+        window.location = originalLocation;
     });
 
     // --- sendTorrent ---
@@ -158,9 +168,13 @@ describe("actions.js - API Interactions", () => {
         // Assert initial state is correct (not disabled)
         expect(mockButton.disabled).toBe(false);
 
-        await sendTorrent("http://link", "Book Title", mockButton);
+        sendTorrent("http://link", "Book Title", mockButton);
+
+        // Allow microtasks (fetch resolution) to process
         await flushPromises();
-        jest.runAllTimers(); // FIX: Must run timers to execute the setTimeout inside flushPromises, which resolves the await and lets .finally run.
+
+        // Run timers to process any setTimeout callbacks inside .finally if any
+        jest.runAllTimers();
 
         // Assert button is re-enabled and text is restored
         expect(mockButton.disabled).toBe(false);
@@ -177,12 +191,14 @@ describe("actions.js - API Interactions", () => {
             json: () => Promise.resolve({ message: "Server Error" }),
         });
 
-        await sendTorrent("http://link", "Book Title", mockButton);
-        await flushPromises();
-        jest.runAllTimers(); // FIX: Must run timers to execute the setTimeout inside flushPromises, which resolves the await and lets .finally run.
+        sendTorrent("http://link", "Book Title", mockButton);
 
-        // Verify error message is disposed
+        // Allow microtasks (fetch resolution and JSON parsing) to process
+        await flushPromises();
+
+        // Run timers to process notification timeout
         jest.advanceTimersByTime(3000);
+
         const toast = document.querySelector("#notification-container > div");
         if (toast) toast.dispatchEvent(new Event("transitionend"));
         expect(getNotificationText()).toBe("");
@@ -195,9 +211,10 @@ describe("actions.js - API Interactions", () => {
     test("sendTorrent should show error on fetch rejection", async () => {
         mockFetch.mockRejectedValue(new Error("Network Failed"));
 
-        await sendTorrent("http://link", "Book Title", null);
+        sendTorrent("http://link", "Book Title", null);
 
         // Run all timers to ensure the cleanup in the promise chain completes
+        await flushPromises();
         jest.runAllTimers();
 
         // Verify error message is disposed
