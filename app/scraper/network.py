@@ -53,7 +53,10 @@ USER_AGENTS = [
 ]
 
 # --- Concurrency Control ---
-MAX_CONCURRENT_REQUESTS = 2
+# OPTIMIZATION: Increased from 2 to 3.
+# Since the default PAGE_LIMIT is 3, a limit of 2 forces the 3rd page to wait
+# for one of the first two to finish (serialization), doubling the search time.
+MAX_CONCURRENT_REQUESTS = 3
 GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
 # --- Caches ---

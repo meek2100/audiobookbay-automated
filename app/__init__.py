@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask
+from flask import Flask, request
 
 from .config import Config
 from .extensions import csrf, limiter, torrent_manager
@@ -36,6 +36,15 @@ def create_app(config_class=Config):
 
     # Register Blueprints
     flask_app.register_blueprint(main_bp)
+
+    # OPTIMIZATION: Aggressive caching for static assets
+    # Since we use versioning (?v=hash) in templates, we can safely tell
+    # the browser to cache static files for a year (31536000 seconds).
+    @flask_app.after_request
+    def add_header(response):
+        if request.path.startswith("/static"):
+            response.headers["Cache-Control"] = "public, max-age=31536000"
+        return response
 
     return flask_app
 
