@@ -11,6 +11,8 @@ from app.scraper import extract_magnet_link, get_book_details, search_audiobookb
 
 
 def test_search_audiobookbay_success(mock_sleep):
+    # Ensure fresh state
+    scraper.search_cache.clear()
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
             with patch("app.scraper.core.fetch_and_parse_page", return_value=[{"title": "Test Book"}]):
@@ -21,6 +23,10 @@ def test_search_audiobookbay_success(mock_sleep):
 
 def test_search_no_mirrors_raises_error(mock_sleep):
     scraper.mirror_cache.clear()
+    # CRITICAL: Clear search cache to ensure we don't return a cached result
+    # and skip the mirror check logic (Line 156 coverage)
+    scraper.search_cache.clear()
+
     with patch("app.scraper.core.find_best_mirror", return_value=None):
         with pytest.raises(ConnectionError) as exc:
             search_audiobookbay("test")
@@ -62,6 +68,7 @@ def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
 
 
 def test_search_special_characters(real_world_html, mock_sleep):
+    scraper.search_cache.clear()
     hostname = "audiobookbay.lu"
     query = "Batman & Robin [Special Edition]"
     page = 1
@@ -152,6 +159,9 @@ def test_fetch_and_parse_page_missing_post_info():
 
 
 def test_get_book_details_success(details_html, mock_sleep):
+    # CRITICAL: Clear cache to force parsing logic (Line 272 coverage)
+    scraper.search_cache.clear()
+
     with patch("requests.Session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -163,10 +173,13 @@ def test_get_book_details_success(details_html, mock_sleep):
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
         assert details["file_size"] == "1.37 GBs"
+        # Verify line 272 (description link cleaning) worked:
         assert "Spam Link" in details["description"]
+        assert "<a href" not in details["description"]
 
 
 def test_get_book_details_failure(mock_sleep):
+    scraper.search_cache.clear()
     with patch("requests.Session.get", side_effect=requests.exceptions.RequestException("Net Down")):
         with pytest.raises(requests.exceptions.RequestException):
             get_book_details("https://audiobookbay.lu/fail-book")
@@ -174,6 +187,9 @@ def test_get_book_details_failure(mock_sleep):
 
 def test_get_book_details_ssrf_protection():
     """Test that get_book_details rejects non-ABB domains."""
+    # CRITICAL: Clear cache so we don't return a previous mock result (Line 206 coverage)
+    scraper.search_cache.clear()
+
     with pytest.raises(ValueError) as exc:
         get_book_details("https://google.com/admin")
     assert "Invalid domain" in str(exc.value)
@@ -193,6 +209,7 @@ def test_get_book_details_url_parse_error(mock_sleep):
 
 
 def test_get_book_details_missing_metadata(mock_sleep):
+    scraper.search_cache.clear()
     html = """<div class="post"><div class="postTitle"><h1>Empty Book</h1></div></div>"""
     with patch("requests.Session.get") as mock_get:
         mock_response = MagicMock()
@@ -205,6 +222,9 @@ def test_get_book_details_missing_metadata(mock_sleep):
 
 
 def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
+    # CRITICAL: Clear cache to force parsing logic (Line 254 coverage)
+    scraper.search_cache.clear()
+
     html = """
     <div class="post">
         <div class="postTitle"><h1>Unknown Bitrate</h1></div>
@@ -221,6 +241,7 @@ def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
 
 
 def test_get_book_details_partial_bitrate(mock_sleep):
+    scraper.search_cache.clear()
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -238,6 +259,7 @@ def test_get_book_details_partial_bitrate(mock_sleep):
 
 
 def test_get_book_details_partial_format(mock_sleep):
+    scraper.search_cache.clear()
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -255,6 +277,7 @@ def test_get_book_details_partial_format(mock_sleep):
 
 
 def test_get_book_details_content_without_metadata_labels(mock_sleep):
+    scraper.search_cache.clear()
     html = """
     <div class="post">
         <div class="postTitle"><h1>No Metadata</h1></div>
