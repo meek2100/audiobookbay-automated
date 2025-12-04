@@ -6,13 +6,11 @@ import pytest
 import requests
 import requests_mock
 
-from app import scraper
+from app.scraper import core as scraper_core  # Used for patching imported modules
 from app.scraper import extract_magnet_link, get_book_details, search_audiobookbay
 
 
 def test_search_audiobookbay_success(mock_sleep):
-    # Ensure fresh state
-    scraper.search_cache.clear()
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
             with patch("app.scraper.core.fetch_and_parse_page", return_value=[{"title": "Test Book"}]):
@@ -22,11 +20,7 @@ def test_search_audiobookbay_success(mock_sleep):
 
 
 def test_search_no_mirrors_raises_error(mock_sleep):
-    scraper.mirror_cache.clear()
-    # CRITICAL: Clear search cache to ensure we don't return a cached result
-    # and skip the mirror check logic (Line 156 coverage)
-    scraper.search_cache.clear()
-
+    # Cache cleared automatically by fixture
     with patch("app.scraper.core.find_best_mirror", return_value=None):
         with pytest.raises(ConnectionError) as exc:
             search_audiobookbay("test")
@@ -34,8 +28,6 @@ def test_search_no_mirrors_raises_error(mock_sleep):
 
 
 def test_search_thread_failure(mock_sleep):
-    scraper.search_cache.clear()
-    scraper.mirror_cache.clear()
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
             with patch("app.scraper.core.fetch_and_parse_page", side_effect=Exception("Scrape Fail")):
@@ -46,8 +38,6 @@ def test_search_thread_failure(mock_sleep):
 
 
 def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
-    scraper.search_cache.clear()
-    scraper.mirror_cache.clear()
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
             with patch("concurrent.futures.ThreadPoolExecutor") as MockExecutor:
@@ -58,17 +48,16 @@ def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
 
                 with patch("concurrent.futures.as_completed", return_value=[mock_future]):
                     with patch("app.scraper.core.mirror_cache") as mock_mirror_clear:
-                        with patch("app.scraper.core.search_cache"):
-                            with patch("app.scraper.core.logger") as mock_logger:
-                                results = search_audiobookbay("query", max_pages=1)
-                                assert results == []
-                                args, _ = mock_logger.error.call_args
-                                assert "Page scrape failed" in args[0]
-                                mock_mirror_clear.clear.assert_called()
+                        # Patch logger to verify the exception is caught
+                        with patch("app.scraper.core.logger") as mock_logger:
+                            results = search_audiobookbay("query", max_pages=1)
+                            assert results == []
+                            args, _ = mock_logger.error.call_args
+                            assert "Page scrape failed" in args[0]
+                            mock_mirror_clear.clear.assert_called()
 
 
 def test_search_special_characters(real_world_html, mock_sleep):
-    scraper.search_cache.clear()
     hostname = "audiobookbay.lu"
     query = "Batman & Robin [Special Edition]"
     page = 1
@@ -78,7 +67,8 @@ def test_search_special_characters(real_world_html, mock_sleep):
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/", text=real_world_html, status_code=200)
 
-    results = scraper.fetch_and_parse_page(session, hostname, query, page, user_agent)
+    # Use scraper_core instead of 'scraper' directly
+    results = scraper_core.fetch_and_parse_page(session, hostname, query, page, user_agent)
     assert len(results) > 0
 
 
@@ -94,7 +84,7 @@ def test_fetch_page_timeout(mock_sleep):
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", exc=requests.exceptions.Timeout)
 
     with pytest.raises(requests.exceptions.Timeout):
-        scraper.fetch_and_parse_page(session, hostname, query, page, user_agent)
+        scraper_core.fetch_and_parse_page(session, hostname, query, page, user_agent)
 
 
 def test_fetch_and_parse_page_missing_cover_image():
@@ -117,7 +107,7 @@ def test_fetch_and_parse_page_missing_cover_image():
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    results = scraper.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+    results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
     assert results[0]["cover"] == "/static/images/default_cover.jpg"
@@ -148,7 +138,7 @@ def test_fetch_and_parse_page_missing_post_info():
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    results = scraper.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+    results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
     assert results[0]["language"] == "N/A"
@@ -159,9 +149,7 @@ def test_fetch_and_parse_page_missing_post_info():
 
 
 def test_get_book_details_success(details_html, mock_sleep):
-    # CRITICAL: Clear cache to force parsing logic (Line 272 coverage)
-    scraper.search_cache.clear()
-
+    # Cache cleared automatically by fixture
     with patch("requests.Session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -179,7 +167,6 @@ def test_get_book_details_success(details_html, mock_sleep):
 
 
 def test_get_book_details_failure(mock_sleep):
-    scraper.search_cache.clear()
     with patch("requests.Session.get", side_effect=requests.exceptions.RequestException("Net Down")):
         with pytest.raises(requests.exceptions.RequestException):
             get_book_details("https://audiobookbay.lu/fail-book")
@@ -187,9 +174,6 @@ def test_get_book_details_failure(mock_sleep):
 
 def test_get_book_details_ssrf_protection():
     """Test that get_book_details rejects non-ABB domains."""
-    # CRITICAL: Clear cache so we don't return a previous mock result (Line 206 coverage)
-    scraper.search_cache.clear()
-
     with pytest.raises(ValueError) as exc:
         get_book_details("https://google.com/admin")
     assert "Invalid domain" in str(exc.value)
@@ -209,7 +193,6 @@ def test_get_book_details_url_parse_error(mock_sleep):
 
 
 def test_get_book_details_missing_metadata(mock_sleep):
-    scraper.search_cache.clear()
     html = """<div class="post"><div class="postTitle"><h1>Empty Book</h1></div></div>"""
     with patch("requests.Session.get") as mock_get:
         mock_response = MagicMock()
@@ -222,9 +205,6 @@ def test_get_book_details_missing_metadata(mock_sleep):
 
 
 def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
-    # CRITICAL: Clear cache to force parsing logic (Line 254 coverage)
-    scraper.search_cache.clear()
-
     html = """
     <div class="post">
         <div class="postTitle"><h1>Unknown Bitrate</h1></div>
@@ -241,7 +221,6 @@ def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
 
 
 def test_get_book_details_partial_bitrate(mock_sleep):
-    scraper.search_cache.clear()
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -259,7 +238,6 @@ def test_get_book_details_partial_bitrate(mock_sleep):
 
 
 def test_get_book_details_partial_format(mock_sleep):
-    scraper.search_cache.clear()
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -277,7 +255,6 @@ def test_get_book_details_partial_format(mock_sleep):
 
 
 def test_get_book_details_content_without_metadata_labels(mock_sleep):
-    scraper.search_cache.clear()
     html = """
     <div class="post">
         <div class="postTitle"><h1>No Metadata</h1></div>

@@ -164,10 +164,16 @@ def test_unsupported_client(mock_env, monkeypatch):
     monkeypatch.setenv("DL_CLIENT", "fake_client")
     manager = TorrentManager()
 
-    # The manager catches the ValueError internally and returns None
-    # This prevents the app from crashing on boot.
-    client = manager._get_client()
-    assert client is None
+    # Verify that the ValueError is raised inside and caught
+    with patch("app.clients.logger") as mock_logger:
+        client = manager._get_client()
+        assert client is None
+
+        # PROOF OF COVERAGE: Verify that logger.error was called with the exception
+        # that was raised by line 111 ("Unsupported download client")
+        assert mock_logger.error.called
+        args, _ = mock_logger.error.call_args
+        assert "Error initializing torrent client" in args[0]
 
 
 def test_init_transmission_failure(monkeypatch):

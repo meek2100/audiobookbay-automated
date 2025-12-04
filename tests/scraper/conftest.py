@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
+from app.scraper.network import mirror_cache, search_cache
+
 
 @pytest.fixture(autouse=True)
 def mock_sleep():
@@ -11,6 +13,19 @@ def mock_sleep():
     """
     with patch("time.sleep") as mock_sleep:
         yield mock_sleep
+
+
+@pytest.fixture(autouse=True)
+def clear_caches():
+    """
+    Automatically clear network caches before every test to ensure
+    fresh execution paths (covering parsing logic, error handling, etc).
+    """
+    mirror_cache.clear()
+    search_cache.clear()
+    yield
+    mirror_cache.clear()
+    search_cache.clear()
 
 
 @pytest.fixture
