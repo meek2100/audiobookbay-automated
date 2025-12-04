@@ -1,6 +1,7 @@
 # tests/unit/test_startup.py
 import importlib
 import os
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -52,7 +53,8 @@ def mock_flask_factory():
     with patch.dict(os.environ, safe_env):
         importlib.reload(app.config)
         importlib.reload(app)
-        importlib.reload(app.app)
+        # FIX: Reload module from sys.modules to avoid 'app' variable shadowing
+        importlib.reload(sys.modules["app.app"])
 
 
 def test_startup_missing_save_path(monkeypatch, mock_flask_factory):
@@ -67,7 +69,7 @@ def test_startup_missing_save_path(monkeypatch, mock_flask_factory):
         # 2. Reload app package to update 'from .config import Config' reference
         importlib.reload(app)
         # 3. Reload app module to run create_app with the new Config
-        importlib.reload(app.app)
+        importlib.reload(sys.modules["app.app"])
 
         mock_exit.assert_called_with(1)
         args, _ = mock_logger.critical.call_args
@@ -85,7 +87,7 @@ def test_startup_insecure_secret_key_production(monkeypatch, mock_flask_factory)
         with pytest.raises(ValueError) as excinfo:
             importlib.reload(app.config)
             importlib.reload(app)
-            importlib.reload(app.app)
+            importlib.reload(sys.modules["app.app"])
 
         assert "Application refused to start" in str(excinfo.value)
         args, _ = mock_logger.critical.call_args
@@ -101,7 +103,7 @@ def test_startup_insecure_secret_key_debug_warning(monkeypatch, mock_flask_facto
 
     importlib.reload(app.config)
     importlib.reload(app)
-    importlib.reload(app.app)
+    importlib.reload(sys.modules["app.app"])
 
     args, _ = mock_logger.warning.call_args
     assert "WARNING: You are using the default insecure SECRET_KEY" in args[0]
@@ -119,7 +121,7 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
         with patch("app.extensions.torrent_manager.verify_credentials", return_value=False) as mock_verify:
             importlib.reload(app.config)
             importlib.reload(app)
-            importlib.reload(app.app)
+            importlib.reload(sys.modules["app.app"])
 
             # Assert that verification was attempted
             mock_verify.assert_called_once()
@@ -127,4 +129,4 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
         monkeypatch.setenv("TESTING", "1")
         importlib.reload(app.config)
         importlib.reload(app)
-        importlib.reload(app.app)
+        importlib.reload(sys.modules["app.app"])
