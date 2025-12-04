@@ -76,16 +76,21 @@ def real_world_html():
 
 @pytest.fixture
 def details_html():
-    """Returns a mock Details page HTML."""
+    """
+    Returns a mock Details page HTML.
+    Updated to include Category and Posted fields to ensure full coverage of regex parsers.
+    """
     return """
 <div class="post">
     <div class="postTitle"><h1>A Game of Thrones</h1></div>
     <div class="postInfo">
         Language: English
+        Category: Fantasy
     </div>
     <div class="postContent">
         <img itemprop="image" src="/cover.jpg">
         <p>Format: <span>M4B</span> / Bitrate: <span>96 Kbps</span></p>
+        <p>Posted: 10 Jan 2024</p>
         <span class="author" itemprop="author">George R.R. Martin</span>
         <span class="narrator" itemprop="author">Roy Dotrice</span>
         <div class="desc">

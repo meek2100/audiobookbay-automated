@@ -11,20 +11,39 @@ from app.scraper import extract_magnet_link, get_book_details, search_audiobookb
 
 
 def test_search_audiobookbay_success(mock_sleep):
-    """
-    Ensures that successful page fetches result in data being extended to the results list.
-    Covers core.py line 156: results.extend(page_data)
-    """
-    # We return a list to ensure the loop runs and extend is called
-    mock_results = [{"title": "Test Book 1"}, {"title": "Test Book 2"}]
-
+    """Standard success test."""
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
-            # Patch fetch_and_parse_page where it is defined
-            with patch("app.scraper.core.fetch_and_parse_page", return_value=mock_results):
+            with patch("app.scraper.core.fetch_and_parse_page", return_value=[{"title": "Test Book"}]):
                 results = search_audiobookbay("query", max_pages=1)
-                assert len(results) == 2
-                assert results[0]["title"] == "Test Book 1"
+                assert len(results) == 1
+                assert results[0]["title"] == "Test Book"
+
+
+def test_search_audiobookbay_sync_coverage(mock_sleep):
+    """
+    Mocks ThreadPoolExecutor to run synchronously.
+    This guarantees that the 'results.extend' line (156) is executed
+    in the main thread context, ensuring coverage detection.
+    """
+    mock_executor = MagicMock()
+    # When submit is called, it returns a Future-like object immediately
+    mock_future = MagicMock()
+    mock_future.result.return_value = [{"title": "Sync Book"}]
+
+    # Setup the executor context manager to return our mock
+    mock_executor.__enter__.return_value = mock_executor
+    mock_executor.submit.return_value = mock_future
+
+    # as_completed should yield our future
+    with patch("concurrent.futures.ThreadPoolExecutor", return_value=mock_executor):
+        with patch("concurrent.futures.as_completed", return_value=[mock_future]):
+            with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
+                with patch("app.scraper.core.get_session"):
+                    results = search_audiobookbay("query", max_pages=1)
+
+                    assert len(results) == 1
+                    assert results[0]["title"] == "Sync Book"
 
 
 def test_search_no_mirrors_raises_error(mock_sleep):
@@ -215,6 +234,9 @@ def test_get_book_details_success(details_html, mock_sleep):
         # Verify line 272 (description link cleaning) worked:
         assert "Spam Link" in details["description"]
         assert "<a href" not in details["description"]
+        # Verify new fields are parsed (Line 206, 254 coverage)
+        assert details["category"] == "Fantasy"
+        assert details["post_date"] == "10 Jan 2024"
 
 
 def test_get_book_details_failure(mock_sleep):
