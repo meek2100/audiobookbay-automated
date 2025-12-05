@@ -279,6 +279,29 @@ def test_get_book_details_success(details_html, mock_sleep):
         assert details["post_date"] == "10 Jan 2024"
 
 
+def test_get_book_details_default_cover_skip(mock_sleep):
+    """
+    Test that if details page has the default cover, it is skipped (None).
+    This covers the condition `if "default_cover.jpg" not in extracted_cover:` evaluating to False.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Book Default Cover</h1></div>
+        <div class="postContent">
+            <img itemprop="image" src="/images/default_cover.jpg">
+        </div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/def-cover")
+        assert details["cover"] is None
+
+
 def test_get_book_details_failure(mock_sleep):
     with patch("requests.Session.get", side_effect=requests.exceptions.RequestException("Net Down")):
         with pytest.raises(requests.exceptions.RequestException):
@@ -441,6 +464,8 @@ def test_extract_magnet_success_table(mock_sleep):
             magnet, error = extract_magnet_link(url)
             assert error is None
             assert "magnet:?xt=urn:btih:abc123hash456" in magnet
+            # Verify the fix: ensure the actual URL is in there, not the label "Tracker:"
+            assert "tracker.com" in magnet
 
 
 def test_extract_magnet_regex_fallback(mock_sleep):

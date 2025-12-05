@@ -1,7 +1,6 @@
 import concurrent.futures
 import logging
 import random
-import re
 import time
 from typing import Any
 from urllib.parse import quote, urljoin, urlparse
@@ -22,7 +21,14 @@ from .network import (
     mirror_cache,
     search_cache,
 )
-from .parser import RE_HASH_STRING, RE_INFO_HASH, RE_TRACKERS, get_text_after_label
+from .parser import (
+    RE_CATEGORY,
+    RE_HASH_STRING,
+    RE_INFO_HASH,
+    RE_LANGUAGE,
+    RE_TRACKERS,
+    get_text_after_label,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +98,12 @@ def fetch_and_parse_page(
                 post_info = post.select_one(".postInfo")
                 if post_info:
                     info_text = post_info.get_text(" ", strip=True)
-                    lang_match = re.search(r"Language:\s*(\S+)", info_text)
+                    # OPTIMIZATION: Use compiled regex from parser.py
+                    lang_match = RE_LANGUAGE.search(info_text)
                     if lang_match:
                         language = lang_match.group(1)
-                    cat_match = re.search(r"Category:\s*(.+?)(?:\s+Language:|$)", info_text)
+
+                    cat_match = RE_CATEGORY.search(info_text)
                     if cat_match:
                         category = cat_match.group(1).strip()
 
@@ -266,12 +274,12 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         post_info = soup.select_one(".postInfo")
         if post_info:
             info_text = post_info.get_text(" ", strip=True)
-            # Language
-            lang_match = re.search(r"Language:\s*(\S+)", info_text)
+            # OPTIMIZATION: Use compiled regex from parser.py
+            lang_match = RE_LANGUAGE.search(info_text)
             if lang_match:
                 language = lang_match.group(1)
-            # FIX: Added Category parsing (matches fetch_and_parse_page logic)
-            cat_match = re.search(r"Category:\s*(.+?)(?:\s+Language:|$)", info_text)
+
+            cat_match = RE_CATEGORY.search(info_text)
             if cat_match:
                 category = cat_match.group(1).strip()
 
@@ -439,8 +447,15 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             logger.error(msg)
             return None, msg
 
+        # FIX: Critical logic bug. RE_TRACKERS finds the *label* (e.g. "Tracker:"),
+        # so row.text returns "Tracker:". We must get the *sibling* cell for the value.
         tracker_rows = soup.find_all("td", string=RE_TRACKERS)
-        trackers = [row.text.strip() for row in tracker_rows]
+        trackers = []
+        for row in tracker_rows:
+            sibling = row.find_next_sibling("td")
+            if sibling:
+                trackers.append(sibling.text.strip())
+
         trackers.extend(DEFAULT_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
 

@@ -48,7 +48,15 @@ def health() -> Response:
 @main_bp.route("/", methods=["GET", "POST"])
 @limiter.limit("30 per minute")
 def search() -> str:
-    """Handles the search interface."""
+    """
+    Handles the search interface.
+
+    Args:
+        None (Uses flask.request context).
+
+    Returns:
+        str: The rendered HTML of the search page.
+    """
     books: list[dict[str, Any]] = []
     query = ""
     error_message = None
@@ -74,7 +82,15 @@ def search() -> str:
 @main_bp.route("/details")
 @limiter.limit("30 per minute")
 def details() -> str | Response:
-    """Fetches and renders the details page internally via the server."""
+    """
+    Fetches and renders the details page internally via the server.
+
+    Args:
+        None (Uses flask.request context).
+
+    Returns:
+        str | Response: The rendered HTML of the details page or a redirect.
+    """
     link = request.args.get("link")
     if not link:
         return redirect(url_for("main.search"))
@@ -90,8 +106,22 @@ def details() -> str | Response:
 @main_bp.route("/send", methods=["POST"])
 @limiter.limit("60 per minute")
 def send() -> Response:
-    """API endpoint to initiate a download."""
+    """
+    API endpoint to initiate a download.
+
+    Args:
+        None (Uses flask.request context).
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
     data = request.json
+
+    # ROBUSTNESS: Ensure data is actually a dict before accessing .get()
+    if not isinstance(data, dict):
+        logger.warning("Invalid send request: JSON body is not a dictionary.")
+        return jsonify({"message": "Invalid JSON format"}), 400
+
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
 
@@ -136,8 +166,21 @@ def send() -> Response:
 
 @main_bp.route("/delete", methods=["POST"])
 def delete_torrent() -> Response:
-    """API endpoint to remove a torrent."""
+    """
+    API endpoint to remove a torrent.
+
+    Args:
+        None (Uses flask.request context).
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
     data = request.json
+
+    # ROBUSTNESS check
+    if not isinstance(data, dict):
+        return jsonify({"message": "Invalid JSON format"}), 400
+
     torrent_id = data.get("id") if data else None
 
     if not torrent_id:
@@ -153,7 +196,15 @@ def delete_torrent() -> Response:
 
 @main_bp.route("/reload_library", methods=["POST"])
 def reload_library() -> Response:
-    """API endpoint to trigger an Audiobookshelf library scan."""
+    """
+    API endpoint to trigger an Audiobookshelf library scan.
+
+    Args:
+        None.
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
     abs_url = current_app.config.get("ABS_URL")
     abs_key = current_app.config.get("ABS_KEY")
     abs_lib = current_app.config.get("ABS_LIB")
@@ -178,7 +229,15 @@ def reload_library() -> Response:
 
 @main_bp.route("/status")
 def status() -> str:
-    """Renders the current status of downloads."""
+    """
+    Renders the current status of downloads.
+
+    Args:
+        None.
+
+    Returns:
+        str: The rendered HTML of the status page.
+    """
     try:
         torrent_list = torrent_manager.get_status()
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
