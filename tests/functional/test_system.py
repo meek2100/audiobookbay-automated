@@ -51,3 +51,15 @@ def test_status_route_error(client):
         assert response.status_code == 200
         assert b"Error connecting to client" in response.data
         assert b"Database Locked" in response.data
+
+
+def test_status_page_empty(client):
+    """
+    Test status page rendering when there are no active torrents.
+    Ensures the empty state message matches the UI expectations.
+    """
+    with patch("app.routes.torrent_manager") as mock_tm:
+        mock_tm.get_status.return_value = []
+        response = client.get("/status")
+        assert response.status_code == 200
+        assert b"No active downloads found" in response.data

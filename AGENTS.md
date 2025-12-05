@@ -21,7 +21,7 @@ Optimizations that add complexity (e.g., Redis, Celery, complex databases) to su
 ### Global Request Semaphore (New)
 
 - **Constraint:** Even with 1 worker/8 threads, a user could trigger 8 simultaneous scrapes (e.g., opening multiple tabs).
-- **Solution:** `app.scraper.GLOBAL_REQUEST_SEMAPHORE` caps active HTTP requests to AudiobookBay at **2**.
+- **Solution:** `app.scraper.GLOBAL_REQUEST_SEMAPHORE` caps active HTTP requests to AudiobookBay at **3**.
 - **Why:** This mimics a human user with 1-2 active tabs. It prevents the app from "hammering" the server, which triggers anti-bot protection. **Do not remove this semaphore.**
 
 ### The "Appliance" Philosophy

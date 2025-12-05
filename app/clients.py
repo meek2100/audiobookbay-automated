@@ -313,24 +313,26 @@ class TorrentManager:
             )
             # ROBUSTNESS: Check if result is not None before iterating
             if torrents.result:
-                # STRICT TYPING: Cast result to dict to avoid type errors
-                results_dict = cast(dict[str, Any], torrents.result)
-                for key, torrent in results_dict.items():
-                    # SAFETY: Use .get() and explicit casting to prevent KeyErrors or TypeErrors
-                    # if the API returns malformed data or None values for specific fields.
-                    # FIX: Safely handle None values for progress/size
-                    progress_val = torrent.get("progress")
-                    progress = round(float(progress_val) if progress_val is not None else 0.0, 2)
+                # STRICT TYPING: Runtime type check instead of unsafe cast to dict
+                if isinstance(torrents.result, dict):
+                    results_dict = torrents.result
+                    for key, torrent in results_dict.items():
+                        # SAFETY: Use .get() and explicit casting to prevent KeyErrors or TypeErrors
+                        # if the API returns malformed data or None values for specific fields.
+                        progress_val = torrent.get("progress")
+                        progress = round(float(progress_val) if progress_val is not None else 0.0, 2)
 
-                    results.append(
-                        {
-                            "id": key,
-                            "name": torrent.get("name", "Unknown"),
-                            "progress": progress,
-                            "state": torrent.get("state", "Unknown"),
-                            "size": self._format_size(torrent.get("total_size")),
-                        }
-                    )
+                        results.append(
+                            {
+                                "id": key,
+                                "name": torrent.get("name", "Unknown"),
+                                "progress": progress,
+                                "state": torrent.get("state", "Unknown"),
+                                "size": self._format_size(torrent.get("total_size")),
+                            }
+                        )
+                else:
+                    logger.warning(f"Deluge returned unexpected data type: {type(torrents.result)}")
             else:
                 logger.warning("Deluge returned empty or invalid result payload.")
 

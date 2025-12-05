@@ -90,7 +90,8 @@ def fetch_and_parse_page(
                 if cover_img and cover_img.has_attr("src"):
                     extracted_cover = urljoin(base_url, str(cover_img["src"]))
                     # OPTIMIZATION: If remote is default, keep as None to use local versioned default.
-                    if "default_cover.jpg" not in extracted_cover:
+                    # We check specifically for the filename to avoid false positives.
+                    if not extracted_cover.endswith("default_cover.jpg"):
                         cover = extracted_cover
 
                 # Default to Unknown

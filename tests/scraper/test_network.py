@@ -72,6 +72,25 @@ def test_custom_mirrors_env_edge_cases(monkeypatch):
     importlib.reload(network)
 
 
+def test_custom_mirrors_deduplication(monkeypatch):
+    """
+    Test that duplicate mirrors are removed while preserving order.
+    This verifies the 'dict.fromkeys' optimization in network.py.
+    """
+    # audiobookbay.lu is default; adding it again should result in only one entry
+    monkeypatch.setenv("ABB_MIRRORS", "audiobookbay.lu, unique.mirror.com, audiobookbay.lu")
+    importlib.reload(network)
+
+    # Should only appear once
+    assert network.ABB_FALLBACK_HOSTNAMES.count("audiobookbay.lu") == 1
+    # Verify unique mirror is present
+    assert "unique.mirror.com" in network.ABB_FALLBACK_HOSTNAMES
+
+    # Reset
+    monkeypatch.delenv("ABB_MIRRORS", raising=False)
+    importlib.reload(network)
+
+
 def test_check_mirror_success_head():
     with patch("app.scraper.network.requests.head") as mock_head:
         mock_head.return_value.status_code = 200
