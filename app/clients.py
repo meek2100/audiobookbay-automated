@@ -318,11 +318,15 @@ class TorrentManager:
                 for key, torrent in results_dict.items():
                     # SAFETY: Use .get() and explicit casting to prevent KeyErrors or TypeErrors
                     # if the API returns malformed data or None values for specific fields.
+                    # FIX: Safely handle None values for progress/size
+                    progress_val = torrent.get("progress")
+                    progress = round(float(progress_val) if progress_val is not None else 0.0, 2)
+
                     results.append(
                         {
                             "id": key,
                             "name": torrent.get("name", "Unknown"),
-                            "progress": round(float(torrent.get("progress", 0)), 2),
+                            "progress": progress,
                             "state": torrent.get("state", "Unknown"),
                             "size": self._format_size(torrent.get("total_size")),
                         }

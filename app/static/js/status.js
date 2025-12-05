@@ -3,13 +3,18 @@
  * Fetches JSON status updates and refreshes the table DOM to avoid full page reloads.
  */
 
+// Explicitly expose functions and state to the global scope for testing
+window.updateTable = updateTable;
+window.escapeHtml = escapeHtml;
+window.statusInterval = null; // Exposed for testing cleanup
+
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("status-table-body");
     // Only run if we are on the status page
     if (!tableBody) return;
 
     // Poll every 5 seconds
-    setInterval(async () => {
+    window.statusInterval = setInterval(async () => {
         try {
             const response = await fetch("/status?json=1");
             if (!response.ok) {
