@@ -36,7 +36,7 @@ AudiobookBay Automated provides a simple and user-friendly interface for users t
 - **Deluge, qBittorrent or Transmission** (with the WebUI enabled)
 - **Docker** (optional, for containerized deployments)
 
-> **Important for Deluge Users**: You must ensure the **Label** plugin is enabled in your Deluge client (WebUI or GTK). This app relies on the Label plugin to categorize downloads. If the plugin is disabled, downloads may still be added, but they will not be categorized, and the "Status" page will not track them correctly.
+> **Important for Deluge Users**: It is **strongly recommended** to enable the **Label** plugin in your Deluge client (WebUI or GTK). This app uses the plugin to categorize downloads. If the plugin is missing or disabled, the app will still function and add downloads, but they will **not be categorized**, and the "Status" page may not be able to track them effectively.
 
 ### Environment Variables
 

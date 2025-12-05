@@ -1,7 +1,6 @@
 import concurrent.futures
 import logging
 import random
-import re
 import time
 from typing import Any
 from urllib.parse import quote, urljoin, urlparse
@@ -27,7 +26,6 @@ from .parser import (
     RE_HASH_STRING,
     RE_INFO_HASH,
     RE_LANGUAGE,
-    RE_TRACKERS,
     get_text_after_label,
 )
 
@@ -433,6 +431,7 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         soup = BeautifulSoup(response.text, "html.parser")
         info_hash = None
 
+        # --- Extraction Strategy: Info Hash ---
         info_hash_row = soup.find("td", string=RE_INFO_HASH)
         if info_hash_row:
             sibling = info_hash_row.find_next_sibling("td")
@@ -450,15 +449,18 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             logger.error(msg)
             return None, msg
 
-        # FIX: The regex matches the URL value, so we extract the text.
-        # However, to be robust against "Tracker: http://..." within the same cell, we clean it.
-        tracker_rows = soup.find_all("td", string=RE_TRACKERS)
+        # --- Extraction Strategy: Trackers (Robust Table Iteration) ---
         trackers = []
-        for row in tracker_rows:
-            text = row.get_text(strip=True)
-            # Remove "Tracker:" or "Announce URL:" prefixes if they were caught in the cell
-            text = re.sub(r"^(Tracker:|Announce URL:)\s*", "", text, flags=re.IGNORECASE)
-            trackers.append(text)
+        # UNIFIED STRATEGY: Iterate rows like get_book_details to handle variable formatting
+        info_table = soup.select_one("table.torrent_info")
+        if info_table:
+            for row in info_table.find_all("tr"):
+                cells = row.find_all("td")
+                if len(cells) >= 2:
+                    label = cells[0].get_text(strip=True)
+                    value = cells[1].get_text(strip=True)
+                    if "Tracker:" in label or "Announce URL:" in label:
+                        trackers.append(value)
 
         trackers.extend(DEFAULT_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
