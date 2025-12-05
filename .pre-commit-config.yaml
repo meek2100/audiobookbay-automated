@@ -26,7 +26,7 @@ repos:
     rev: v0.14.7
     hooks:
       - id: ruff
-        args: [--fix]
+        args: ["--fix"]
       - id: ruff-format
 
   # 3. Frontend & Docs (Prettier)
@@ -55,7 +55,16 @@ repos:
       - id: shellcheck
         args: ["--format=gcc"]
 
-  # 5. Spelling
+  # 5. Type Checking (MyPy) - MANDATORY CHECK FOR TYPE SAFETY
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.11.1"
+    hooks:
+      - id: mypy
+        # This tells MyPy to use the overrides defined in your pyproject.toml
+        args: ["--no-incremental", "--config=pyproject.toml"]
+        files: '\.py$'
+
+  # 6. Spelling
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:
