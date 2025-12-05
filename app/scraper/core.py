@@ -91,7 +91,7 @@ def fetch_and_parse_page(
                 post_info = post.select_one(".postInfo")
                 if post_info:
                     info_text = post_info.get_text(" ", strip=True)
-                    lang_match = re.search(r"Language:\s*(\w+)", info_text)
+                    lang_match = re.search(r"Language:\s*(\S+)", info_text)
                     if lang_match:
                         language = lang_match.group(1)
                     cat_match = re.search(r"Category:\s*(.+?)(?:\s+Language:|$)", info_text)
@@ -265,7 +265,7 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if post_info:
             info_text = post_info.get_text(" ", strip=True)
             # Language
-            lang_match = re.search(r"Language:\s*(\w+)", info_text)
+            lang_match = re.search(r"Language:\s*(\S+)", info_text)
             if lang_match:
                 language = lang_match.group(1)
             # FIX: Added Category parsing (matches fetch_and_parse_page logic)
