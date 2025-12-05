@@ -115,6 +115,19 @@ describe("search.js Unit Tests - File Size Utilities", () => {
         expect(parseFileSizeToMB("500 KB")).toBeCloseTo(0.48828125); // 500 / 1024
     });
 
+    test("should handle Bytes, Megabytes, and Petabytes", () => {
+        const { parseFileSizeToMB } = getGlobalFunctions();
+
+        // Bytes (B)
+        expect(parseFileSizeToMB("500 B")).toBeCloseTo(500 / (1024 * 1024));
+
+        // Megabytes (MB) - The input usually comes as "MB" or "MBs"
+        expect(parseFileSizeToMB("500 MB")).toBe(500);
+
+        // Petabytes (PB)
+        expect(parseFileSizeToMB("1 PB")).toBe(1024 * 1024 * 1024);
+    });
+
     test("should return null for Unknown or empty string", () => {
         const { parseFileSizeToMB } = getGlobalFunctions();
         expect(parseFileSizeToMB("Unknown")).toBeNull();
