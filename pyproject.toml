@@ -92,3 +92,10 @@ strict = true
 "deluge_web_client" = { ignore_missing_imports = true }
 "transmission_rpc" = { ignore_missing_imports = true }
 "qbittorrentapi" = { ignore_missing_imports = true }
+
+# BANDIT CONFIGURATION (Tuning for security scans)
+[tool.bandit]
+# Skip low-confidence checks in tests to reduce noise
+skips = ["B101"] # B101: assert statements (common in tests)
+# Use the excludes defined in pre-commit
+exclude = ["tests/", "app/clients.py"]

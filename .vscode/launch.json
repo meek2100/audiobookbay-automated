@@ -11,7 +11,8 @@
                 "FLASK_DEBUG": "1",
                 "APP_ENV": "development",
                 "SAVE_PATH_BASE": "/tmp/audiobooks_dev", // Safe local dev path
-                "SECRET_KEY": "dev-key"
+                "SECRET_KEY": "dev-key",
+                "PYTHONPATH": "${workspaceFolder}"
             },
             "args": ["run", "--port", "5078", "--no-debugger", "--no-reload"],
             "jinja": true,
@@ -27,11 +28,12 @@
                 "TESTING": "1",
                 "SAVE_PATH_BASE": "/tmp/test_downloads",
                 "SECRET_KEY": "test-secret-key",
-                "DOWNLOAD_CLIENT": "qbittorrent",
+                "DL_CLIENT": "qbittorrent",
                 "DL_HOST": "localhost",
                 "DL_PORT": "8080",
                 "DL_USERNAME": "admin",
-                "DL_PASSWORD": "admin"
+                "DL_PASSWORD": "admin",
+                "PYTHONPATH": "${workspaceFolder}"
             },
             "args": ["${file}"],
             "console": "integratedTerminal",
