@@ -47,6 +47,7 @@ def mock_flask_factory():
         "SAVE_PATH_BASE": "/tmp/startup_test_safe_restore",
         "SECRET_KEY": "startup_test_safe_key",
         "FLASK_DEBUG": "0",
+        "LOG_LEVEL": "INFO",  # Reset log level
     }
 
     # Reload modules to restore original state
@@ -151,3 +152,30 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
             importlib.reload(sys.modules["app.app"])
         else:
             importlib.import_module("app.app")
+
+
+def test_startup_invalid_log_level(monkeypatch, mock_flask_factory):
+    """
+    Test that an invalid LOG_LEVEL environment variable triggers a warning
+    and defaults to INFO.
+    """
+    _, mock_logger = mock_flask_factory
+    monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL_NAME")
+    # Must ensure other critical vars are set so we don't crash before the log check
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp/logs_test")
+    monkeypatch.setenv("TESTING", "1")  # Keep testing mode to avoid exit(1)
+
+    # Reload config to process the env var
+    importlib.reload(app.config)
+    # The validate() method is called inside create_app, which is called in app.app
+    # But for unit testing the Config logic specifically, we can call validate directly
+    # to avoid the overhead/complexity of the full app factory for this specific logic check.
+    app.config.Config.validate(mock_logger)
+
+    # Verify warning was logged
+    found = False
+    for call in mock_logger.warning.call_args_list:
+        if "Invalid LOG_LEVEL" in call[0][0]:
+            found = True
+            break
+    assert found, "Expected warning about invalid LOG_LEVEL not found"

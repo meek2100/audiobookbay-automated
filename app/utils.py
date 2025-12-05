@@ -2,32 +2,7 @@ import hashlib
 import os
 import re
 
-# OPTIMIZATION: Module-level constant for Windows reserved filenames.
-# Prevents re-creation of this set on every call to sanitize_title.
-WINDOWS_RESERVED_NAMES = {
-    "CON",
-    "PRN",
-    "AUX",
-    "NUL",
-    "COM1",
-    "COM2",
-    "COM3",
-    "COM4",
-    "COM5",
-    "COM6",
-    "COM7",
-    "COM8",
-    "COM9",
-    "LPT1",
-    "LPT2",
-    "LPT3",
-    "LPT4",
-    "LPT5",
-    "LPT6",
-    "LPT7",
-    "LPT8",
-    "LPT9",
-}
+from app.constants import WINDOWS_RESERVED_NAMES
 
 
 def sanitize_title(title: str | None) -> str:

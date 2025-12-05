@@ -1,4 +1,14 @@
+"""
+Parser module for BeautifulSoup HTML processing.
+
+This module contains regex patterns and helper functions to extract
+structured data from the raw HTML of AudiobookBay pages.
+It encapsulates parsing strategies to keep core.py focused on networking and flow control.
+"""
+
 import re
+from dataclasses import dataclass, fields
+from typing import Optional
 
 from bs4 import Tag
 
@@ -12,6 +22,20 @@ RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
 RE_LANGUAGE = re.compile(r"Language:\s*(\S+)")
 RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|$)")
+
+
+@dataclass
+class BookMetadata:
+    """
+    Data class representing standard audiobook metadata extracted from the page.
+    """
+
+    language: str = "Unknown"
+    category: str = "Unknown"
+    post_date: str = "Unknown"
+    format: str = "Unknown"
+    bitrate: str = "Unknown"
+    file_size: str = "Unknown"
 
 
 def get_text_after_label(container: Tag, label_text: str) -> str:
@@ -60,3 +84,51 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
         return "Unknown"
     except Exception:
         return "Unknown"
+
+
+def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> BookMetadata:
+    """
+    Parses the post content and info sections to extract normalized metadata.
+    Handles '?' to 'Unknown' conversion centrally.
+
+    Args:
+        content_div: The div containing the main post content (p tags).
+        post_info: The div containing the header info (Category, Language).
+
+    Returns:
+        BookMetadata: A dataclass containing the extracted and normalized fields.
+    """
+    meta = BookMetadata()
+
+    # Parse Info Header (Language, Category)
+    if post_info:
+        info_text = post_info.get_text(" ", strip=True)
+        lang_match = RE_LANGUAGE.search(info_text)
+        if lang_match:
+            meta.language = lang_match.group(1)
+
+        cat_match = RE_CATEGORY.search(info_text)
+        if cat_match:
+            meta.category = cat_match.group(1).strip()
+
+    # Parse Body Paragraphs
+    if content_div:
+        for p in content_div.find_all("p"):
+            p_text = p.get_text()
+            if "Posted:" in p_text:
+                meta.post_date = get_text_after_label(p, "Posted:")
+            if "Format:" in p_text:
+                meta.format = get_text_after_label(p, "Format:")
+            if "Bitrate:" in p_text:
+                meta.bitrate = get_text_after_label(p, "Bitrate:")
+            if "File Size:" in p_text:
+                meta.file_size = get_text_after_label(p, "File Size:")
+
+    # Normalization Rule: Convert "?" or empty strings to "Unknown"
+    # We iterate over the dataclass fields to ensure consistent normalization
+    for field in fields(meta):
+        value = getattr(meta, field.name)
+        if value == "?" or not value or not value.strip():
+            setattr(meta, field.name, "Unknown")
+
+    return meta

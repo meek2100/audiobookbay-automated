@@ -6,7 +6,8 @@ import requests
 import requests_mock
 from bs4 import BeautifulSoup
 
-from app.scraper import fetch_and_parse_page, get_book_details, get_text_after_label
+from app.scraper import extract_magnet_link, fetch_and_parse_page, get_book_details
+from app.scraper.parser import get_text_after_label, parse_post_content
 
 # --- Unit Tests: Helper Functions ---
 
@@ -51,7 +52,85 @@ def test_get_text_after_label_fallback():
     assert result == "Unknown"
 
 
-# --- Integration Tests: Fetch and Parse Page ---
+def test_get_text_after_label_not_found():
+    """
+    Test that it returns 'Unknown' if the label text is not found in the container.
+    This covers the `if not label_node: return "Unknown"` branch.
+    """
+    html = "<div><p>Some other content</p></div>"
+    soup = BeautifulSoup(html, "html.parser")
+    # 'Format:' does not exist in the HTML
+    result = get_text_after_label(soup, "Format:")
+    assert result == "Unknown"
+
+
+# --- Unit Tests: parse_post_content (New Centralized Logic) ---
+
+
+def test_parse_post_content_full_validity():
+    """Test parsing a fully populated post content and info section."""
+    html_info = """
+    <div class="postInfo">
+        Category: Fantasy Language: English
+    </div>
+    """
+    html_content = """
+    <div class="postContent">
+        <p>Format: MP3</p>
+        <p>Bitrate: 128 Kbps</p>
+        <p>Posted: 01 Jan 2024</p>
+        <p>File Size: 500 MBs</p>
+    </div>
+    """
+    soup_info = BeautifulSoup(html_info, "html.parser").find("div")
+    soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+
+    meta = parse_post_content(soup_content, soup_info)
+
+    assert meta.category == "Fantasy"
+    assert meta.language == "English"
+    assert meta.format == "MP3"
+    assert meta.bitrate == "128 Kbps"
+    assert meta.post_date == "01 Jan 2024"
+    assert meta.file_size == "500 MBs"
+
+
+def test_parse_post_content_missing_elements():
+    """Test robustness when input divs are None."""
+    # Both None
+    meta = parse_post_content(None, None)
+    assert meta.language == "Unknown"
+    assert meta.file_size == "Unknown"
+
+    # One None
+    html_content = """<div class="postContent"><p>Format: M4B</p></div>"""
+    soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+    meta = parse_post_content(soup_content, None)
+
+    assert meta.format == "M4B"
+    assert meta.category == "Unknown"
+
+
+def test_parse_post_content_normalization():
+    """Test that '?' and empty strings are normalized to 'Unknown'."""
+    html_info = """<div class="postInfo">Category: ? Language:   </div>"""
+    html_content = """
+    <div class="postContent">
+        <p>Format: ?</p>
+        <p>Bitrate: </p> </div>
+    """
+    soup_info = BeautifulSoup(html_info, "html.parser").find("div")
+    soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+
+    meta = parse_post_content(soup_content, soup_info)
+
+    assert meta.category == "Unknown"
+    assert meta.language == "Unknown"  # Was empty/whitespace
+    assert meta.format == "Unknown"  # Was ?
+    assert meta.bitrate == "Unknown"  # Was empty
+
+
+# --- Integration Tests: Fetch and Parse Page (Regression Testing) ---
 
 
 def test_fetch_and_parse_page_real_structure(real_world_html, mock_sleep):
@@ -157,7 +236,6 @@ def test_fetch_and_parse_page_language_fallback():
 def test_fetch_and_parse_page_missing_regex_matches():
     """
     Tests the scenario where postInfo exists but regexes fail to find Category or Language.
-    This ensures branches for 'if lang_match:' and 'if cat_match:' are fully covered.
     """
     html = """
     <div class="post">
@@ -178,8 +256,6 @@ def test_fetch_and_parse_page_missing_regex_matches():
 def test_fetch_and_parse_page_no_posted_date():
     """
     Test when the 'Posted:' label is missing from the content paragraphs.
-    This ensures the loop looking for 'details_paragraph' completes without breaking,
-    and the subsequent 'if details_paragraph:' block is skipped.
     """
     hostname = "audiobookbay.lu"
     query = "no_posted"
@@ -203,14 +279,10 @@ def test_fetch_and_parse_page_no_posted_date():
 
     assert len(results) == 1
     assert results[0]["post_date"] == "Unknown"
-    assert results[0]["format"] == "Unknown"
+    assert results[0]["format"] == "MP3"
 
 
 def test_fetch_and_parse_page_missing_title():
-    """
-    Test a post that is missing the title element.
-    This should trigger the 'continue' statement early in the loop.
-    """
     hostname = "audiobookbay.lu"
     query = "no_title"
     html = """
@@ -287,10 +359,6 @@ def test_fetch_and_parse_page_missing_post_info():
 
 
 def test_fetch_and_parse_page_remote_default_cover_optimization():
-    """
-    Test that if a remote cover image is detected as the 'default' placeholder,
-    it is replaced with None to allow the UI to serve the local versioned default.
-    """
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">Remote Default</a></h2></div>
@@ -314,11 +382,7 @@ def test_fetch_and_parse_page_remote_default_cover_optimization():
 
 
 def test_get_book_details_sanitization(mock_sleep):
-    """
-    Test strict HTML sanitization in get_book_details.
-    Covers core.py lines around sanitization logic (looping through tags, unwrapping, etc).
-    """
-    # Create HTML with mix of allowed and disallowed tags
+    """Test strict HTML sanitization in get_book_details."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Sanitized Book</h1></div>
@@ -341,18 +405,11 @@ def test_get_book_details_sanitization(mock_sleep):
 
         description = details["description"]
 
-        # Verify allowed tags are kept but stripped of attributes
         assert "<p>Allowed P tag.</p>" in description
         assert "style" not in description  # Attribute stripped
-
-        # Verify allowed formatting tags are kept
         assert "<b>Bold Text</b>" in description
-
-        # Verify disallowed tags are unwrapped (content remains, tag gone)
         assert "Malicious Link" in description
         assert "<a href" not in description
-
-        # Verify scripts are sanitized (BeautifulSoup unwrap removes the tag)
         assert "<script>" not in description
 
 
@@ -369,11 +426,6 @@ def test_get_book_details_success(details_html, mock_sleep):
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
         assert details["file_size"] == "1.37 GBs"
-        # Verify line 272 (description link cleaning) worked:
-        assert "Spam Link" in details["description"]
-        assert "<a href" not in details["description"]
-
-        # EXPLICITLY CHECK METADATA to ensure regex lines (206, 254) are hit
         assert details["language"] == "English"
         assert details["category"] == "Fantasy"
         assert details["post_date"] == "10 Jan 2024"
@@ -550,7 +602,6 @@ def test_get_book_details_info_hash_strategy_2(mock_sleep):
     """
     Forces Strategy 2: Table structure is broken (no table.torrent_info),
     but 'Info Hash' is found in a loose table cell.
-    Covers core.py lines 373-375.
     """
     html = """
     <div class="post">
@@ -576,8 +627,6 @@ def test_get_book_details_info_hash_strategy_2(mock_sleep):
 def test_get_book_details_info_hash_strategy_3(mock_sleep):
     """
     Forces Strategy 3: Regex fallback.
-    No table, no 'Info Hash' label, just the hash string in the body.
-    Covers core.py line 381.
     """
     html = """
     <div class="post">
@@ -595,3 +644,47 @@ def test_get_book_details_info_hash_strategy_3(mock_sleep):
 
         details = get_book_details("https://audiobookbay.lu/strat3")
         assert details["info_hash"] == "5555555555666666666677777777778888888888"
+
+
+# --- Extract Magnet Link Tests ---
+
+
+def test_extract_magnet_success(mock_sleep):
+    url = "https://audiobookbay.lu/book"
+    mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
+
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+        # PATCH: Use CONFIGURED_TRACKERS to match network.py alias
+        with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
+            magnet, error = extract_magnet_link(url)
+            assert error is None
+            assert "magnet:?xt=urn:btih:abc123hash456" in magnet
+            assert "tracker.com" in magnet
+
+
+def test_extract_magnet_missing_info_hash(mock_sleep):
+    url = "https://audiobookbay.lu/book"
+    mock_details = {"info_hash": "Unknown", "trackers": []}
+
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+        magnet, error = extract_magnet_link(url)
+        assert magnet is None
+        assert "Info Hash could not be found" in error
+
+
+def test_extract_magnet_ssrf_inherited(mock_sleep):
+    url = "https://google.com/evil"
+    with patch("app.scraper.core.get_book_details", side_effect=ValueError("Invalid domain")):
+        magnet, error = extract_magnet_link(url)
+        assert magnet is None
+        assert "Invalid domain" in error
+
+
+def test_extract_magnet_generic_exception(mock_sleep):
+    url = "https://audiobookbay.lu/book"
+    with patch("app.scraper.core.get_book_details", side_effect=Exception("Database down")):
+        with patch("app.scraper.core.logger") as mock_logger:
+            magnet, error = extract_magnet_link(url)
+            assert magnet is None
+            assert "Database down" in error
+            assert mock_logger.error.called

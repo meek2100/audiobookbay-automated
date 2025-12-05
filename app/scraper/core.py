@@ -9,9 +9,9 @@ import requests
 from bs4 import BeautifulSoup
 from requests.sessions import Session
 
-from .network import (
+from app.scraper.network import (
     ABB_FALLBACK_HOSTNAMES,
-    DEFAULT_TRACKERS,
+    CONFIGURED_TRACKERS,
     GLOBAL_REQUEST_SEMAPHORE,
     PAGE_LIMIT,
     find_best_mirror,
@@ -21,12 +21,10 @@ from .network import (
     mirror_cache,
     search_cache,
 )
-from .parser import (
-    RE_CATEGORY,
+from app.scraper.parser import (
     RE_HASH_STRING,
     RE_INFO_HASH,
-    RE_LANGUAGE,
-    get_text_after_label,
+    parse_post_content,
 )
 
 logger = logging.getLogger(__name__)
@@ -92,62 +90,22 @@ def fetch_and_parse_page(
                     if not extracted_cover.endswith("default_cover.jpg"):
                         cover = extracted_cover
 
-                # Default to Unknown
-                language = "Unknown"
-                category = "Unknown"
+                # Use centralized parsing logic
                 post_info = post.select_one(".postInfo")
-                if post_info:
-                    info_text = post_info.get_text(" ", strip=True)
-                    # OPTIMIZATION: Use compiled regex from parser.py
-                    lang_match = RE_LANGUAGE.search(info_text)
-                    if lang_match:
-                        language = lang_match.group(1)
-
-                    cat_match = RE_CATEGORY.search(info_text)
-                    if cat_match:
-                        category = cat_match.group(1).strip()
-
-                details_paragraph = None
                 content_div = post.select_one(".postContent")
-                if content_div:
-                    for p in content_div.find_all("p"):
-                        if "Posted:" in p.get_text():
-                            details_paragraph = p
-                            break
-
-                post_date, book_format, bitrate, file_size = "Unknown", "Unknown", "Unknown", "Unknown"
-
-                if details_paragraph:
-                    post_date = get_text_after_label(details_paragraph, "Posted:")
-                    book_format = get_text_after_label(details_paragraph, "Format:")
-                    bitrate = get_text_after_label(details_paragraph, "Bitrate:")
-                    file_size = get_text_after_label(details_paragraph, "File Size:")
-
-                # Consistency check: convert "?" to "Unknown"
-                if bitrate == "?":
-                    bitrate = "Unknown"
-                if language == "?":
-                    language = "Unknown"
-                if category == "?":
-                    category = "Unknown"
-                if post_date == "?":
-                    post_date = "Unknown"
-                if book_format == "?":
-                    book_format = "Unknown"
-                if file_size == "?":
-                    file_size = "Unknown"
+                meta = parse_post_content(content_div, post_info)
 
                 page_results.append(
                     {
                         "title": title,
                         "link": link,
                         "cover": cover,
-                        "language": language,
-                        "category": category,
-                        "post_date": post_date,
-                        "format": book_format,
-                        "bitrate": bitrate,
-                        "file_size": file_size,
+                        "language": meta.language,
+                        "category": meta.category,
+                        "post_date": meta.post_date,
+                        "format": meta.format,
+                        "bitrate": meta.bitrate,
+                        "file_size": meta.file_size,
                     }
                 )
             except Exception as e:
@@ -269,41 +227,10 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             if not extracted_cover.endswith("default_cover.jpg"):
                 cover = extracted_cover
 
-        # --- Metadata Parsing (Language & Category) ---
-        language = "Unknown"
-        category = "Unknown"
+        # Use centralized parsing logic
         post_info = soup.select_one(".postInfo")
-        if post_info:
-            info_text = post_info.get_text(" ", strip=True)
-            # OPTIMIZATION: Use compiled regex from parser.py
-            lang_match = RE_LANGUAGE.search(info_text)
-            if lang_match:
-                language = lang_match.group(1)
-
-            cat_match = RE_CATEGORY.search(info_text)
-            if cat_match:
-                category = cat_match.group(1).strip()
-
-        # --- Content Parsing (Format, Bitrate, Posted Date) ---
-        book_format = "Unknown"
-        bitrate = "Unknown"
-        post_date = "Unknown"
-
         content_div = soup.select_one(".postContent")
-        if content_div:
-            # We iterate through paragraphs to find metadata labels
-            for p in content_div.find_all("p"):
-                p_text = p.get_text()
-                if "Format:" in p_text:
-                    book_format = get_text_after_label(p, "Format:")
-                if "Bitrate:" in p_text:
-                    bitrate = get_text_after_label(p, "Bitrate:")
-                # FIX: Added Posted Date parsing
-                if "Posted:" in p_text:
-                    post_date = get_text_after_label(p, "Posted:")
-
-        if bitrate == "?":
-            bitrate = "Unknown"
+        meta = parse_post_content(content_div, post_info)
 
         author = "Unknown"
         narrator = "Unknown"
@@ -314,15 +241,6 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if narrator_tag:
             narrator = narrator_tag.get_text(strip=True)
 
-        # Consistency Checks
-        if language == "?":
-            language = "Unknown"
-        if category == "?":
-            category = "Unknown"
-        if post_date == "?":
-            post_date = "Unknown"
-        if book_format == "?":
-            book_format = "Unknown"
         if author == "?":
             author = "Unknown"
         if narrator == "?":
@@ -346,7 +264,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             description = desc_tag.decode_contents()
 
         trackers = []
-        file_size = "Unknown"
+        # Fallback file size if not found in body text
+        file_size = meta.file_size
         info_hash = "Unknown"
 
         # --- INFO HASH & TRACKER EXTRACTION ---
@@ -360,7 +279,7 @@ def get_book_details(details_url: str) -> dict[str, Any]:
                     value = cells[1].get_text(strip=True)
                     if "Tracker:" in label or "Announce URL:" in label:
                         trackers.append(value)
-                    elif "File Size:" in label:
+                    elif "File Size:" in label and file_size == "Unknown":
                         file_size = value
                     elif "Info Hash:" in label:
                         info_hash = value
@@ -391,11 +310,11 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             "file_size": file_size,
             "info_hash": info_hash,
             "link": details_url,
-            "language": language,
-            "category": category,
-            "post_date": post_date,
-            "format": book_format,
-            "bitrate": bitrate,
+            "language": meta.language,
+            "category": meta.category,
+            "post_date": meta.post_date,
+            "format": meta.format,
+            "bitrate": meta.bitrate,
             "author": author,
             "narrator": narrator,
         }
@@ -432,7 +351,7 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             return None, "Info Hash could not be found on the page."
 
         trackers = details.get("trackers", [])
-        trackers.extend(DEFAULT_TRACKERS)
+        trackers.extend(CONFIGURED_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
 
         trackers_query = "&".join(f"tr={quote(tracker)}" for tracker in trackers)

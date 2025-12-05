@@ -12,6 +12,8 @@ from requests.adapters import HTTPAdapter
 from requests.sessions import Session
 from urllib3.util.retry import Retry
 
+from app.constants import DEFAULT_MIRRORS, DEFAULT_TRACKERS, USER_AGENTS
+
 logger = logging.getLogger(__name__)
 
 # --- Configuration ---
@@ -23,19 +25,8 @@ except ValueError:
 
 DEFAULT_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
 
-ABB_FALLBACK_HOSTNAMES: list[str] = [
-    DEFAULT_HOSTNAME,
-    "audiobookbay.is",
-    "audiobookbay.se",
-    "audiobookbay.li",
-    "audiobookbay.ws",
-    "audiobookbay.la",
-    "audiobookbay.me",
-    "audiobookbay.fi",
-    "theaudiobookbay.com",
-    "audiobookbay.nl",
-    "audiobookbay.pl",
-]
+# Start with user preferred hostname, then defaults
+ABB_FALLBACK_HOSTNAMES: list[str] = [DEFAULT_HOSTNAME] + DEFAULT_MIRRORS
 
 # Allow users to add mirrors via env var
 extra_mirrors = os.getenv("ABB_MIRRORS", "")
@@ -45,14 +36,6 @@ if extra_mirrors:
 # OPTIMIZATION: Deduplicate mirrors while preserving the original order.
 # Order matters because we want to prioritize the user-defined hostname and reliable mirrors first.
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
-
-USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64; rv:122.0) Gecko/20100101 Firefox/122.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
-]
 
 # --- Concurrency Control ---
 # OPTIMIZATION: Increased from 2 to 3.
@@ -67,7 +50,7 @@ search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 
 
 def get_random_user_agent() -> str:
-    """Returns a random User-Agent string from the internal list."""
+    """Returns a random User-Agent string from the constants list."""
     return random.choice(USER_AGENTS)
 
 
@@ -94,17 +77,11 @@ def load_trackers() -> list[str]:
         except Exception as e:
             logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 
-    return [
-        "udp://tracker.openbittorrent.com:80",
-        "udp://opentor.org:2710",
-        "udp://tracker.ccc.de:80",
-        "udp://tracker.blackunicorn.xyz:6969",
-        "udp://tracker.coppersurfer.tk:6969",
-        "udp://tracker.leechers-paradise.org:6969",
-    ]
+    return DEFAULT_TRACKERS
 
 
-DEFAULT_TRACKERS = load_trackers()
+# This is called at module level to initialize the list
+CONFIGURED_TRACKERS = load_trackers()
 
 
 def get_session() -> Session:

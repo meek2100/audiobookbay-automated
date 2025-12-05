@@ -431,7 +431,8 @@ def test_extract_magnet_success(mock_sleep):
     mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        with patch("app.scraper.core.DEFAULT_TRACKERS", []):
+        # FIX: Patch the RENAMED variable in core.py
+        with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
             magnet, error = extract_magnet_link(url)
             assert error is None
             assert "magnet:?xt=urn:btih:abc123hash456" in magnet
