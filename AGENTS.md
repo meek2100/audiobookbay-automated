@@ -154,7 +154,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
 ## Rate Limiting & Scraping
 
 - Safety > speed.
-- Random jitter (1–3 seconds) required before all external requests.
+- Random jitter (0.5-1.5 seconds) required before all external requests.
 - Mirror checks use `requests.head` with zero retries.
 - All queries normalized to lowercase.
 
