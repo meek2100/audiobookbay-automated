@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import app
-import app.app
 import app.config
 
 
@@ -51,6 +50,8 @@ def mock_flask_factory():
 
     # Reload modules to restore original state
     with patch.dict(os.environ, safe_env):
+        # CLEANUP: Remove module-level side effects before reloading
+        sys.modules.pop("app.config", None)
         importlib.reload(app.config)
         importlib.reload(app)
         # FIX: Reload module from sys.modules to avoid 'app' variable shadowing

@@ -58,7 +58,8 @@ def fetch_and_parse_page(
             # This is still polite but significantly reduces total search time.
             sleep_time = random.uniform(0.5, 1.5)
             time.sleep(sleep_time)
-            response = session.get(url, params=params, headers=headers, timeout=15)
+            # TIMEOUT: Increased to 30s for better resilience on slow connections/proxies
+            response = session.get(url, params=params, headers=headers, timeout=30)
 
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -240,7 +241,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         with GLOBAL_REQUEST_SEMAPHORE:
             # OPTIMIZATION: Reduced sleep time from (1.0-2.0) to (0.5-1.5)
             time.sleep(random.uniform(0.5, 1.5))
-            response = session.get(details_url, headers=headers, timeout=15)
+            # TIMEOUT: Increased to 30s for better resilience
+            response = session.get(details_url, headers=headers, timeout=30)
 
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -409,7 +411,8 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         with GLOBAL_REQUEST_SEMAPHORE:
             # OPTIMIZATION: Reduced sleep time from (1.0-3.0) to (0.5-1.5)
             time.sleep(random.uniform(0.5, 1.5))
-            response = session.get(details_url, headers=headers, timeout=15)
+            # TIMEOUT: Increased to 30s
+            response = session.get(details_url, headers=headers, timeout=30)
 
         if response.status_code != 200:
             msg = f"Failed to fetch details page. Status Code: {response.status_code}"

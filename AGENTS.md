@@ -152,12 +152,15 @@ We enforce high code quality because "appliance" software is often difficult for
 - **Testing Async/Timers (Critical Pattern):**
   - We use `jest.useFakeTimers()` to control UI delays (spinners, notifications).
   - **The "Flush Promises" Trick:** When testing `fetch` (Promises) alongside `setTimeout` (Timers), standard `await` often deadlocks. You **MUST** use this helper to drain the microtask queue:
+
     ```javascript
     async function flushPromises() {
       return new Promise((resolve) => jest.requireActual("timers").setTimeout(resolve, 0));
     }
     ```
+
   - _Usage:_ Call `await flushPromises()` immediately after triggering a fetch, _before_ running timers or assertions.
+
 - **Coverage:** Maintain high coverage for UI logic (filtering, sorting, API interactions).
 
 ---
@@ -195,10 +198,10 @@ We enforce high code quality because "appliance" software is often difficult for
 
 If you are asked to improve this repo, ask yourself:
 
-1.  **"Does this remove a sleep() call?"** -> If YES, reject it. It protects the user from IP bans.
-2.  **"Does this add a global rate limit?"** -> If YES, check if it blocks the healthcheck or status page auto-refresh.
-3.  **"Does this require an external service (like Redis)?"** -> If YES, reject it unless absolutely necessary.
-4.  **"Does this assume 100 concurrent users?"** -> If YES, you are optimizing for the wrong target. Optimize for **1 user doing 100 things sequentially**, not 100 users doing 1 thing.
+1. **"Does this remove a sleep() call?"** -> If YES, reject it. It protects the user from IP bans.
+2. **"Does this add a global rate limit?"** -> If YES, check if it blocks the healthcheck or status page auto-refresh.
+3. **"Does this require an external service (like Redis)?"** -> If YES, reject it unless absolutely necessary.
+4. **"Does this assume 100 concurrent users?"** -> If YES, you are optimizing for the wrong target. Optimize for **1 user doing 100 things sequentially**, not 100 users doing 1 thing.
 
 ## 7. Quick Reference
 

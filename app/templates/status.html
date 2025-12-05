@@ -1,6 +1,7 @@
 {% extends "base.html" %} {% block title %}Torrent Status{% endblock %} {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/status.css') }}" />
-<meta http-equiv="refresh" content="5" />
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/status.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
 <div class="title-container">
     <h1>Torrent Status</h1>
@@ -22,7 +23,7 @@
             <th>Action</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody id="status-table-body">
         {% if torrents %} {% for torrent in torrents %}
         <tr>
             <td>{{ torrent.name }}</td>

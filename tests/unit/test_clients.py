@@ -105,6 +105,31 @@ def test_qbittorrent_add_magnet_failure_response(mock_env):
             assert "Fails." in args[0]
 
 
+def test_add_magnet_invalid_path_logging(mock_env):
+    """
+    Test logging when the Torrent Client returns an error related to an invalid save path.
+    Specifically checks qBittorrent behavior where it might return "Fails." or "Invalid save path".
+    """
+    with patch("app.clients.QbClient") as MockQbClient:
+        mock_instance = MockQbClient.return_value
+        # Simulate the client rejecting the path with a specific message
+        mock_instance.torrents_add.return_value = "Invalid Save Path"
+
+        manager = TorrentManager()
+        manager._get_client()
+
+        with patch("app.clients.logger") as mock_logger:
+            # We pass a path that we pretend is invalid
+            manager.add_magnet("magnet:?xt=urn:btih:123", "/root/protected")
+
+            # Assert that the manager logged a warning about the response
+            # It doesn't raise an exception (it's soft failure in qbit), but we must ensure it's logged.
+            assert mock_logger.warning.called
+            args, _ = mock_logger.warning.call_args
+            assert "qBittorrent add returned unexpected response" in args[0]
+            assert "Invalid Save Path" in args[0]
+
+
 def test_transmission_add_magnet(mock_env, monkeypatch):
     monkeypatch.setenv("DL_CLIENT", "transmission")
 
@@ -525,6 +550,7 @@ def test_get_status_deluge_robustness(monkeypatch):
     with patch("app.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_response = MagicMock()
+        # Provide messy data to test safety
         mock_response.result = {
             "hash999": {"name": "Broken Book", "state": "Error", "progress": None, "total_size": None}
         }

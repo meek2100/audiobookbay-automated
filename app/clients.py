@@ -316,13 +316,15 @@ class TorrentManager:
                 # STRICT TYPING: Cast result to dict to avoid type errors
                 results_dict = cast(dict[str, Any], torrents.result)
                 for key, torrent in results_dict.items():
+                    # SAFETY: Use .get() and explicit casting to prevent KeyErrors or TypeErrors
+                    # if the API returns malformed data or None values for specific fields.
                     results.append(
                         {
                             "id": key,
-                            "name": torrent["name"],
-                            "progress": round(torrent["progress"], 2) if torrent["progress"] else 0.0,
-                            "state": torrent["state"],
-                            "size": self._format_size(torrent["total_size"]),
+                            "name": torrent.get("name", "Unknown"),
+                            "progress": round(float(torrent.get("progress", 0)), 2),
+                            "state": torrent.get("state", "Unknown"),
+                            "size": self._format_size(torrent.get("total_size")),
                         }
                     )
             else:
