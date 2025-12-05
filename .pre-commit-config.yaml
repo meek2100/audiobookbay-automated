@@ -23,9 +23,9 @@ repos:
 
   # 2. Python (Ruff)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.7
+    rev: v0.14.8
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: ["--fix"]
       - id: ruff-format
 
@@ -57,14 +57,29 @@ repos:
 
   # 5. Type Checking (MyPy) - MANDATORY CHECK FOR TYPE SAFETY
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.11.1"
+    rev: "v1.19.0"
     hooks:
       - id: mypy
         # This tells MyPy to use the overrides defined in your pyproject.toml
         args: ["--no-incremental", "--config=pyproject.toml"]
         files: '\.py$'
 
-  # 6. Spelling
+  # 6. Python Documentation Style (pydocstyle) - NEW
+  - repo: https://github.com/PyCQA/pydocstyle
+    rev: "6.3.0"
+    hooks:
+      - id: pydocstyle
+        exclude: "(tests/|app/clients.py)" # Exclude tests and external client boilerplate
+
+  # 7. Python Security Linter (Bandit) - NEW
+  - repo: https://github.com/PyCQA/bandit
+    rev: "1.9.2"
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml"]
+        exclude: "(tests/|app/clients.py)" # Exclude tests and external client boilerplate
+
+  # 8. Spelling
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:

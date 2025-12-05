@@ -5,16 +5,21 @@
         "ms-python.vscode-pylance",
         "ms-python.debugpy",
         // --- Modern Python Tools ---
-        "charliermarsh.ruff", // You have this: Excellent replacement for flake8
-        "tamasfe.even-better-toml", // INSTALL THIS: Critical for pyproject.toml
-        "njpwerner.autodocstring", // You have this: Great for docs
+        "charliermarsh.ruff",
+        "tamasfe.even-better-toml",
+        "njpwerner.autodocstring",
         // --- Web / Flask ---
-        "samuelcolvin.jinjahtml", // You have this: Critical for templates
-        "esbenp.prettier-vscode", // You have this: Formatting CSS/JS
+        "samuelcolvin.jinjahtml",
+        "esbenp.prettier-vscode",
         // --- Infrastructure ---
         "ms-azuretools.vscode-docker",
         "ms-vscode-remote.remote-containers",
         "redhat.vscode-yaml",
-        "timonwong.shellcheck"
+        "timonwong.shellcheck",
+        // --- Security & Type Safety ---
+        "ms-python.vscode-pylance-docstrings",
+        "samuelcolvin.vscode-bandit",
+        "zhuangtongfa.material-icon-theme",
+        "dbaeumer.vscode-eslint"
     ]
 }

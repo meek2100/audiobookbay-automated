@@ -36,6 +36,15 @@ dev = [
     "requests-mock==1.12.1",
     "ruff==0.14.8",
     "pre-commit==4.5.0",
+    "mypy==1.19.0",
+    "types-requests",
+    "types-cachetools",
+    "types-setuptools",
+    "types-flask",
+    "types-beautifulsoup4",
+    "types-jsonschema",
+    "bandit==1.9.2",
+    "pydocstyle==6.3.0",
 ]
 
 [project.urls]
@@ -68,3 +77,18 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
 ignore = ["E501"]
+
+# MYPY CONFIGURATION (Addresses untyped third-party libraries)
+[tool.mypy]
+python_version = "3.13"
+warn_untyped_defs = true
+ignore_missing_imports = true
+strict = true
+
+[tool.mypy.overrides]
+"requests.*" = { ignore_missing_imports = false }
+"cachetools.*" = { ignore_missing_imports = false }
+"flask_wtf.csrf" = { ignore_missing_imports = true }
+"deluge_web_client" = { ignore_missing_imports = true }
+"transmission_rpc" = { ignore_missing_imports = true }
+"qbittorrentapi" = { ignore_missing_imports = true }

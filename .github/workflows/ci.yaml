@@ -66,6 +66,14 @@ jobs:
         # Installs app + dev dependencies (pytest, cov, etc.) from pyproject.toml
         run: pip install ".[dev]"
 
+      # NEW: Python Security Scan (Bandit)
+      - name: Run Bandit Security Scan
+        run: bandit -r app/ -x "app/clients.py" -ll -a file # -x ignores clients.py due to external library API interaction
+        # Fail fast on medium/high severity issues
+
+      - name: Run MyPy Type Check
+        run: mypy app tests # Explicitly run MyPy as part of CI
+
       - name: Run Tests
         env:
           # Required for tests to run without actual secrets
