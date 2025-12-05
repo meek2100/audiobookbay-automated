@@ -7,6 +7,3 @@ venv:
 # Modern install: Installs deps AND the app in editable mode
 install:
 	.venv/bin/pip install -e ".[dev]"
-
-# Legacy compatibility if you still type 'make requirements'
-requirements: install

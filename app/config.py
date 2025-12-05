@@ -33,6 +33,7 @@ class Config:
     # Robustly handle case-sensitivity from Env vars (e.g. "info", "INFO", "Info")
     LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
     # Fallback to INFO if the string is not a valid logging level attribute
+    # Note: Explicit validation occurs in the validate method below.
     LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
 
     @classmethod
@@ -53,6 +54,12 @@ class Config:
                 raise ValueError(
                     "Application refused to start: Change SECRET_KEY in your .env file for production deployment."
                 )
+
+        # Validate LOG_LEVEL
+        if not hasattr(logging, cls.LOG_LEVEL_STR):
+            logger.warning(
+                f"Configuration Warning: Invalid LOG_LEVEL '{cls.LOG_LEVEL_STR}' provided. Defaulting to INFO."
+            )
 
         if not cls.SAVE_PATH_BASE:
             if not cls.TESTING:

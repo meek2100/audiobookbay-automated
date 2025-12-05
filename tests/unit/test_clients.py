@@ -590,6 +590,31 @@ def test_get_status_deluge_empty_result(monkeypatch):
         assert "Deluge returned empty or invalid" in args[0]
 
 
+def test_get_status_deluge_unexpected_data_type(monkeypatch):
+    """
+    Test handling of Deluge returning a result that is not a dict (unexpected type).
+    Covers app/clients.py: else block logging 'Deluge returned unexpected data type'.
+    """
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_response = MagicMock()
+        # Simulate unexpected return type (e.g., a list instead of a dict)
+        mock_response.result = ["unexpected", "list"]
+        mock_instance.get_torrents_status.return_value = mock_response
+
+        manager = TorrentManager()
+
+        with patch("app.clients.logger") as mock_logger:
+            results = manager.get_status()
+
+        assert results == []
+        # Verify the specific warning was logged
+        args, _ = mock_logger.warning.call_args
+        assert "Deluge returned unexpected data type" in args[0]
+        assert "list" in args[0]
+
+
 def test_get_status_deluge_robustness(monkeypatch):
     """Test Deluge handling of None in individual torrent fields."""
     monkeypatch.setenv("DL_CLIENT", "deluge")

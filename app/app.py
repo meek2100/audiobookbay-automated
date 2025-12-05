@@ -7,6 +7,7 @@ from . import create_app
 app = create_app()
 
 if __name__ == "__main__":  # pragma: no cover
+    # NOTE: This block is for local debugging only. Production uses entrypoint.sh.
     # Local Development Entry Point
     host = os.getenv("LISTEN_HOST", "0.0.0.0")
 

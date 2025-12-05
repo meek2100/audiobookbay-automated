@@ -1,7 +1,6 @@
 import concurrent.futures
 import logging
 import random
-import re
 import time
 from typing import Any
 from urllib.parse import quote, urljoin, urlparse
@@ -10,9 +9,9 @@ import requests
 from bs4 import BeautifulSoup
 from requests.sessions import Session
 
-from .network import (
+from app.scraper.network import (
     ABB_FALLBACK_HOSTNAMES,
-    DEFAULT_TRACKERS,
+    CONFIGURED_TRACKERS,
     GLOBAL_REQUEST_SEMAPHORE,
     PAGE_LIMIT,
     find_best_mirror,
@@ -22,13 +21,10 @@ from .network import (
     mirror_cache,
     search_cache,
 )
-from .parser import (
-    RE_CATEGORY,
+from app.scraper.parser import (
     RE_HASH_STRING,
     RE_INFO_HASH,
-    RE_LANGUAGE,
-    RE_TRACKERS,
-    get_text_after_label,
+    parse_post_content,
 )
 
 logger = logging.getLogger(__name__)
@@ -90,65 +86,26 @@ def fetch_and_parse_page(
                 if cover_img and cover_img.has_attr("src"):
                     extracted_cover = urljoin(base_url, str(cover_img["src"]))
                     # OPTIMIZATION: If remote is default, keep as None to use local versioned default.
-                    if "default_cover.jpg" not in extracted_cover:
+                    # We check specifically for the filename to avoid false positives.
+                    if not extracted_cover.endswith("default_cover.jpg"):
                         cover = extracted_cover
 
-                # Default to Unknown
-                language = "Unknown"
-                category = "Unknown"
+                # Use centralized parsing logic
                 post_info = post.select_one(".postInfo")
-                if post_info:
-                    info_text = post_info.get_text(" ", strip=True)
-                    # OPTIMIZATION: Use compiled regex from parser.py
-                    lang_match = RE_LANGUAGE.search(info_text)
-                    if lang_match:
-                        language = lang_match.group(1)
-
-                    cat_match = RE_CATEGORY.search(info_text)
-                    if cat_match:
-                        category = cat_match.group(1).strip()
-
-                details_paragraph = None
                 content_div = post.select_one(".postContent")
-                if content_div:
-                    for p in content_div.find_all("p"):
-                        if "Posted:" in p.get_text():
-                            details_paragraph = p
-                            break
-
-                post_date, book_format, bitrate, file_size = "Unknown", "Unknown", "Unknown", "Unknown"
-
-                if details_paragraph:
-                    post_date = get_text_after_label(details_paragraph, "Posted:")
-                    book_format = get_text_after_label(details_paragraph, "Format:")
-                    bitrate = get_text_after_label(details_paragraph, "Bitrate:")
-                    file_size = get_text_after_label(details_paragraph, "File Size:")
-
-                # Consistency check: convert "?" to "Unknown"
-                if bitrate == "?":
-                    bitrate = "Unknown"
-                if language == "?":
-                    language = "Unknown"
-                if category == "?":
-                    category = "Unknown"
-                if post_date == "?":
-                    post_date = "Unknown"
-                if book_format == "?":
-                    book_format = "Unknown"
-                if file_size == "?":
-                    file_size = "Unknown"
+                meta = parse_post_content(content_div, post_info)
 
                 page_results.append(
                     {
                         "title": title,
                         "link": link,
                         "cover": cover,
-                        "language": language,
-                        "category": category,
-                        "post_date": post_date,
-                        "format": book_format,
-                        "bitrate": bitrate,
-                        "file_size": file_size,
+                        "language": meta.language,
+                        "category": meta.category,
+                        "post_date": meta.post_date,
+                        "format": meta.format,
+                        "bitrate": meta.bitrate,
+                        "file_size": meta.file_size,
                     }
                 )
             except Exception as e:
@@ -266,44 +223,14 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if cover_tag and cover_tag.has_attr("src"):
             extracted_cover = urljoin(details_url, str(cover_tag["src"]))
             # OPTIMIZATION: Only use remote cover if it is NOT the default one
-            if "default_cover.jpg" not in extracted_cover:
+            # Updated to endswith() for consistency with fetch_and_parse_page
+            if not extracted_cover.endswith("default_cover.jpg"):
                 cover = extracted_cover
 
-        # --- Metadata Parsing (Language & Category) ---
-        language = "Unknown"
-        category = "Unknown"
+        # Use centralized parsing logic
         post_info = soup.select_one(".postInfo")
-        if post_info:
-            info_text = post_info.get_text(" ", strip=True)
-            # OPTIMIZATION: Use compiled regex from parser.py
-            lang_match = RE_LANGUAGE.search(info_text)
-            if lang_match:
-                language = lang_match.group(1)
-
-            cat_match = RE_CATEGORY.search(info_text)
-            if cat_match:
-                category = cat_match.group(1).strip()
-
-        # --- Content Parsing (Format, Bitrate, Posted Date) ---
-        book_format = "Unknown"
-        bitrate = "Unknown"
-        post_date = "Unknown"
-
         content_div = soup.select_one(".postContent")
-        if content_div:
-            # We iterate through paragraphs to find metadata labels
-            for p in content_div.find_all("p"):
-                p_text = p.get_text()
-                if "Format:" in p_text:
-                    book_format = get_text_after_label(p, "Format:")
-                if "Bitrate:" in p_text:
-                    bitrate = get_text_after_label(p, "Bitrate:")
-                # FIX: Added Posted Date parsing
-                if "Posted:" in p_text:
-                    post_date = get_text_after_label(p, "Posted:")
-
-        if bitrate == "?":
-            bitrate = "Unknown"
+        meta = parse_post_content(content_div, post_info)
 
         author = "Unknown"
         narrator = "Unknown"
@@ -314,15 +241,6 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if narrator_tag:
             narrator = narrator_tag.get_text(strip=True)
 
-        # Consistency Checks
-        if language == "?":
-            language = "Unknown"
-        if category == "?":
-            category = "Unknown"
-        if post_date == "?":
-            post_date = "Unknown"
-        if book_format == "?":
-            book_format = "Unknown"
         if author == "?":
             author = "Unknown"
         if narrator == "?":
@@ -346,9 +264,12 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             description = desc_tag.decode_contents()
 
         trackers = []
-        file_size = "Unknown"
+        # Fallback file size if not found in body text
+        file_size = meta.file_size
         info_hash = "Unknown"
 
+        # --- INFO HASH & TRACKER EXTRACTION ---
+        # Strategy 1: Standard Table Layout
         info_table = soup.select_one("table.torrent_info")
         if info_table:
             for row in info_table.find_all("tr"):
@@ -358,10 +279,25 @@ def get_book_details(details_url: str) -> dict[str, Any]:
                     value = cells[1].get_text(strip=True)
                     if "Tracker:" in label or "Announce URL:" in label:
                         trackers.append(value)
-                    elif "File Size:" in label:
+                    elif "File Size:" in label and file_size == "Unknown":
                         file_size = value
                     elif "Info Hash:" in label:
                         info_hash = value
+
+        # Strategy 2: Robust Fallback (if table structure is broken/missing)
+        if info_hash == "Unknown":
+            # Search entire HTML for "Info Hash" label
+            info_hash_row = soup.find("td", string=RE_INFO_HASH)
+            if info_hash_row:
+                sibling = info_hash_row.find_next_sibling("td")
+                if sibling:
+                    info_hash = sibling.text.strip()
+
+        # Strategy 3: Regex Fallback (Last Resort)
+        if info_hash == "Unknown":
+            hash_match = RE_HASH_STRING.search(response.text)
+            if hash_match:
+                info_hash = hash_match.group(1)
 
         if file_size == "?":
             file_size = "Unknown"
@@ -374,11 +310,11 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             "file_size": file_size,
             "info_hash": info_hash,
             "link": details_url,
-            "language": language,
-            "category": category,
-            "post_date": post_date,
-            "format": book_format,
-            "bitrate": bitrate,
+            "language": meta.language,
+            "category": meta.category,
+            "post_date": meta.post_date,
+            "format": meta.format,
+            "bitrate": meta.bitrate,
             "author": author,
             "narrator": narrator,
         }
@@ -394,7 +330,9 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
-    Scrapes the details page to find the info hash and generates a magnet link.
+    Generates a magnet link by retrieving book details.
+    NOW REFACTORED: Uses 'get_book_details' to ensure unified parsing logic,
+    caching, and security validation (SSRF).
 
     Args:
         details_url: The URL of the book page.
@@ -403,62 +341,17 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         tuple[str | None, str | None]: A tuple containing (magnet_link, error_message).
                                        If successful, error_message is None.
     """
-    if not details_url:
-        return None, "No URL provided."
-
     try:
-        parsed = urlparse(details_url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            return None, "Invalid URL scheme."
-    except Exception:
-        return None, "Malformed URL."
+        # ARCHITECTURE IMPROVEMENT: Reuse the robust logic in get_book_details.
+        # This gives us automatic caching, SSRF protection, and unified fallback parsing.
+        details = get_book_details(details_url)
 
-    session = get_session()
-    headers = get_headers(referer=details_url)
+        info_hash = details.get("info_hash")
+        if not info_hash or info_hash == "Unknown":
+            return None, "Info Hash could not be found on the page."
 
-    try:
-        with GLOBAL_REQUEST_SEMAPHORE:
-            # OPTIMIZATION: Reduced sleep time from (1.0-3.0) to (0.5-1.5)
-            time.sleep(random.uniform(0.5, 1.5))
-            # TIMEOUT: Increased to 30s
-            response = session.get(details_url, headers=headers, timeout=30)
-
-        if response.status_code != 200:
-            msg = f"Failed to fetch details page. Status Code: {response.status_code}"
-            logger.error(msg)
-            return None, msg
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        info_hash = None
-
-        info_hash_row = soup.find("td", string=RE_INFO_HASH)
-        if info_hash_row:
-            sibling = info_hash_row.find_next_sibling("td")
-            if sibling:
-                info_hash = sibling.text.strip()
-
-        if not info_hash:
-            logger.debug("Info Hash table cell not found. Attempting regex fallback...")
-            hash_match = RE_HASH_STRING.search(response.text)
-            if hash_match:
-                info_hash = hash_match.group(1)
-
-        if not info_hash:
-            msg = "Info Hash could not be found on the page."
-            logger.error(msg)
-            return None, msg
-
-        # FIX: The regex matches the URL value, so we extract the text.
-        # However, to be robust against "Tracker: http://..." within the same cell, we clean it.
-        tracker_rows = soup.find_all("td", string=RE_TRACKERS)
-        trackers = []
-        for row in tracker_rows:
-            text = row.get_text(strip=True)
-            # Remove "Tracker:" or "Announce URL:" prefixes if they were caught in the cell
-            text = re.sub(r"^(Tracker:|Announce URL:)\s*", "", text, flags=re.IGNORECASE)
-            trackers.append(text)
-
-        trackers.extend(DEFAULT_TRACKERS)
+        trackers = details.get("trackers", [])
+        trackers.extend(CONFIGURED_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
 
         trackers_query = "&".join(f"tr={quote(tracker)}" for tracker in trackers)
@@ -466,8 +359,9 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
 
         return magnet_link, None
 
+    except ValueError as e:
+        # Handle specific validation errors (e.g., Invalid Domain)
+        return None, str(e)
     except Exception as e:
         logger.error(f"Failed to extract magnet link: {e}", exc_info=True)
         return None, str(e)
-    finally:
-        session.close()
