@@ -349,6 +349,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         file_size = "Unknown"
         info_hash = "Unknown"
 
+        # --- INFO HASH & TRACKER EXTRACTION ---
+        # Strategy 1: Standard Table Layout
         info_table = soup.select_one("table.torrent_info")
         if info_table:
             for row in info_table.find_all("tr"):
@@ -362,6 +364,21 @@ def get_book_details(details_url: str) -> dict[str, Any]:
                         file_size = value
                     elif "Info Hash:" in label:
                         info_hash = value
+
+        # Strategy 2: Robust Fallback (if table structure is broken/missing)
+        if info_hash == "Unknown":
+            # Search entire HTML for "Info Hash" label
+            info_hash_row = soup.find("td", string=RE_INFO_HASH)
+            if info_hash_row:
+                sibling = info_hash_row.find_next_sibling("td")
+                if sibling:
+                    info_hash = sibling.text.strip()
+
+        # Strategy 3: Regex Fallback (Last Resort)
+        if info_hash == "Unknown":
+            hash_match = RE_HASH_STRING.search(response.text)
+            if hash_match:
+                info_hash = hash_match.group(1)
 
         if file_size == "?":
             file_size = "Unknown"
@@ -394,7 +411,9 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """
-    Scrapes the details page to find the info hash and generates a magnet link.
+    Generates a magnet link by retrieving book details.
+    NOW REFACTORED: Uses 'get_book_details' to ensure unified parsing logic,
+    caching, and security validation (SSRF).
 
     Args:
         details_url: The URL of the book page.
@@ -403,65 +422,16 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         tuple[str | None, str | None]: A tuple containing (magnet_link, error_message).
                                        If successful, error_message is None.
     """
-    if not details_url:
-        return None, "No URL provided."
-
     try:
-        parsed = urlparse(details_url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            return None, "Invalid URL scheme."
-    except Exception:
-        return None, "Malformed URL."
+        # ARCHITECTURE IMPROVEMENT: Reuse the robust logic in get_book_details.
+        # This gives us automatic caching, SSRF protection, and unified fallback parsing.
+        details = get_book_details(details_url)
 
-    session = get_session()
-    headers = get_headers(referer=details_url)
+        info_hash = details.get("info_hash")
+        if not info_hash or info_hash == "Unknown":
+            return None, "Info Hash could not be found on the page."
 
-    try:
-        with GLOBAL_REQUEST_SEMAPHORE:
-            # OPTIMIZATION: Reduced sleep time from (1.0-3.0) to (0.5-1.5)
-            time.sleep(random.uniform(0.5, 1.5))
-            # TIMEOUT: Increased to 30s
-            response = session.get(details_url, headers=headers, timeout=30)
-
-        if response.status_code != 200:
-            msg = f"Failed to fetch details page. Status Code: {response.status_code}"
-            logger.error(msg)
-            return None, msg
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        info_hash = None
-
-        # --- Extraction Strategy: Info Hash ---
-        info_hash_row = soup.find("td", string=RE_INFO_HASH)
-        if info_hash_row:
-            sibling = info_hash_row.find_next_sibling("td")
-            if sibling:
-                info_hash = sibling.text.strip()
-
-        if not info_hash:
-            logger.debug("Info Hash table cell not found. Attempting regex fallback...")
-            hash_match = RE_HASH_STRING.search(response.text)
-            if hash_match:
-                info_hash = hash_match.group(1)
-
-        if not info_hash:
-            msg = "Info Hash could not be found on the page."
-            logger.error(msg)
-            return None, msg
-
-        # --- Extraction Strategy: Trackers (Robust Table Iteration) ---
-        trackers = []
-        # UNIFIED STRATEGY: Iterate rows like get_book_details to handle variable formatting
-        info_table = soup.select_one("table.torrent_info")
-        if info_table:
-            for row in info_table.find_all("tr"):
-                cells = row.find_all("td")
-                if len(cells) >= 2:
-                    label = cells[0].get_text(strip=True)
-                    value = cells[1].get_text(strip=True)
-                    if "Tracker:" in label or "Announce URL:" in label:
-                        trackers.append(value)
-
+        trackers = details.get("trackers", [])
         trackers.extend(DEFAULT_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
 
@@ -470,8 +440,9 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
 
         return magnet_link, None
 
+    except ValueError as e:
+        # Handle specific validation errors (e.g., Invalid Domain)
+        return None, str(e)
     except Exception as e:
         logger.error(f"Failed to extract magnet link: {e}", exc_info=True)
         return None, str(e)
-    finally:
-        session.close()

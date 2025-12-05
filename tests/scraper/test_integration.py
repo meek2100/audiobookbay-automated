@@ -1,5 +1,4 @@
 # tests/scraper/test_integration.py
-import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -420,145 +419,53 @@ def test_get_book_details_consistency_checks(mock_sleep):
         assert details["file_size"] == "Unknown"
 
 
-# --- Extract Magnet Link Tests ---
+# --- Extract Magnet Link Tests (Updated to use get_book_details) ---
 
 
-def test_extract_magnet_success_table(mock_sleep):
-    url = "http://valid.url/book"
-    # Matches RE_TRACKERS (second cell)
-    html_content = """
-    <html><body><table>
-        <tr><td>Info Hash:</td><td>  abc123hash456  </td></tr>
-        <tr><td>Trackers:</td><td>http://tracker.com/announce</td></tr>
-    </table></body></html>
+def test_extract_magnet_success(mock_sleep):
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html_content
-        mock_get.return_value = mock_response
+    Verifies that extract_magnet_link correctly uses get_book_details results.
+    """
+    url = "https://audiobookbay.lu/book"
+    # Mock return from get_book_details
+    mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
 
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
         with patch("app.scraper.core.DEFAULT_TRACKERS", []):
             magnet, error = extract_magnet_link(url)
             assert error is None
-            # Fix: Ensure logic works for simple value cells
             assert "magnet:?xt=urn:btih:abc123hash456" in magnet
             assert "tracker.com" in magnet
 
 
-def test_extract_magnet_with_label_prefix(mock_sleep):
-    """
-    Test that 'Tracker:' prefix is stripped from the URL if found in the cell.
-    This validates the regex cleanup logic in core.py.
-    """
-    url = "http://valid.url/book"
-    html_content = """
-    <html><body><table>
-        <tr><td>Info Hash:</td><td>abc123hash456</td></tr>
-        <tr><td>Data</td><td>Tracker: http://clean.me/announce</td></tr>
-    </table></body></html>
-    """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html_content
-        mock_get.return_value = mock_response
-
-        with patch("app.scraper.core.DEFAULT_TRACKERS", []):
-            magnet, error = extract_magnet_link(url)
-            assert error is None
-            # Ensure "Tracker:" was removed
-            assert "xt=urn:btih:abc123hash456" in magnet
-            assert "&tr=http%3A//clean.me/announce" in magnet
-
-
-def test_extract_magnet_regex_fallback(mock_sleep):
-    url = "http://fake.url"
-    html_content = """<html><body><p>Hash: aaaaaaaaaabbbbbbbbbbccccccccccdddddddddd</p></body></html>"""
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html_content
-        mock_get.return_value = mock_response
-        magnet, error = extract_magnet_link(url)
-        assert magnet is not None
-
-
 def test_extract_magnet_missing_info_hash(mock_sleep):
-    url = "http://fake.url"
-    html_content = """<html><body><p>No hash here</p></body></html>"""
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html_content
-        mock_get.return_value = mock_response
+    """Test behavior when get_book_details returns Unknown hash."""
+    url = "https://audiobookbay.lu/book"
+    mock_details = {"info_hash": "Unknown", "trackers": []}
+
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
         magnet, error = extract_magnet_link(url)
         assert magnet is None
         assert "Info Hash could not be found" in error
 
 
-def test_extract_magnet_no_hash(mock_sleep):
-    details_url = "https://audiobookbay.lu/audiobook-details"
-    broken_html = """<html><body><table><tr><td>Some other data</td></tr></table></body></html>"""
-    with requests_mock.Mocker() as m:
-        m.get(details_url, text=broken_html)
-        magnet, error = extract_magnet_link(details_url)
+def test_extract_magnet_ssrf_inherited(mock_sleep):
+    """
+    Verifies that extract_magnet_link inherits the SSRF validation from get_book_details.
+    """
+    url = "https://google.com/evil"
+    # Real logic: get_book_details raises ValueError for invalid domains
+    with patch("app.scraper.core.get_book_details", side_effect=ValueError("Invalid domain")):
+        magnet, error = extract_magnet_link(url)
         assert magnet is None
-        assert "Info Hash could not be found" in error
+        assert "Invalid domain" in error
 
 
-def test_extract_magnet_bad_url():
-    res, err = extract_magnet_link("")
-    assert res is None
-    assert "No URL" in err
-    res, err = extract_magnet_link("not-a-url")
-    assert res is None
-    assert "Invalid URL" in err
-
-
-def test_extract_magnet_malformed_url_exception(mock_sleep):
-    with patch("app.scraper.core.urlparse", side_effect=Exception("Parse Error")):
-        res, err = extract_magnet_link("http://some.url")
-        assert res is None
-        assert "Malformed URL" in err
-
-
-def test_extract_magnet_http_error_code(mock_sleep):
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_get.return_value = mock_response
-        magnet, error = extract_magnet_link("http://valid.url")
-        assert magnet is None
-        assert "Status Code: 500" in error
-
-
-def test_extract_magnet_network_error(mock_sleep, caplog):
-    with patch("requests.Session.get", side_effect=Exception("Network Down")):
-        with caplog.at_level(logging.DEBUG):
-            magnet, error = extract_magnet_link("http://valid.url")
-        assert magnet is None
-        assert "Network Down" in error
-
-
-def test_extract_magnet_bs4_error(mock_sleep):
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "<html>"
-        mock_get.return_value = mock_response
-
-        with patch("app.scraper.core.BeautifulSoup", side_effect=Exception("Parse Fail")):
-            magnet, error = extract_magnet_link("http://valid.url")
-            assert magnet is None
-            assert "Parse Fail" in error
-
-
-def test_extract_magnet_link_generic_exception(mock_sleep):
-    url = "http://valid.url"
-    with patch("requests.Session.get", side_effect=ValueError("Generic parsing logic failure")):
+def test_extract_magnet_generic_exception(mock_sleep):
+    url = "https://audiobookbay.lu/book"
+    with patch("app.scraper.core.get_book_details", side_effect=Exception("Database down")):
         with patch("app.scraper.core.logger") as mock_logger:
             magnet, error = extract_magnet_link(url)
             assert magnet is None
-            assert "Generic parsing logic failure" in error
+            assert "Database down" in error
             assert mock_logger.error.called

@@ -544,3 +544,54 @@ def test_get_book_details_consistency_checks(mock_sleep):
         assert details["author"] == "Unknown"
         assert details["narrator"] == "Unknown"
         assert details["file_size"] == "Unknown"
+
+
+def test_get_book_details_info_hash_strategy_2(mock_sleep):
+    """
+    Forces Strategy 2: Table structure is broken (no table.torrent_info),
+    but 'Info Hash' is found in a loose table cell.
+    Covers core.py lines 373-375.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Strategy 2 Book</h1></div>
+        <table>
+            <tr>
+                <td>Info Hash:</td>
+                <td>1111111111222222222233333333334444444444</td>
+            </tr>
+        </table>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/strat2")
+        assert details["info_hash"] == "1111111111222222222233333333334444444444"
+
+
+def test_get_book_details_info_hash_strategy_3(mock_sleep):
+    """
+    Forces Strategy 3: Regex fallback.
+    No table, no 'Info Hash' label, just the hash string in the body.
+    Covers core.py line 381.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Strategy 3 Book</h1></div>
+        <div class="desc">
+            Some text containing the hash 5555555555666666666677777777778888888888 in the body.
+        </div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/strat3")
+        assert details["info_hash"] == "5555555555666666666677777777778888888888"
