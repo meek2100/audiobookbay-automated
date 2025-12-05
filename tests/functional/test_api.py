@@ -5,6 +5,13 @@ import requests
 # FIX: Patch targets updated to 'app.routes'
 
 
+def test_healthcheck(client):
+    """Ensure the healthcheck endpoint works."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json == {"status": "ok"}
+
+
 def test_send_success(client):
     with patch("app.routes.extract_magnet_link") as mock_extract, patch("app.routes.torrent_manager") as mock_tm:
         mock_extract.return_value = ("magnet:?xt=urn:btih:123", None)
@@ -22,6 +29,17 @@ def test_send_missing_data(client):
 def test_send_malformed_json(client):
     response = client.post("/send", data="not json", content_type="application/json")
     assert response.status_code == 400
+
+
+def test_send_invalid_json_type(client):
+    """
+    Test that sending a List instead of a Dict to /send returns 400.
+    Covers coverage gap in routes.py lines 122-123.
+    """
+    # Using json parameter ensures correct Content-Type and serialization
+    response = client.post("/send", json=["not", "a", "dict"])
+    assert response.status_code == 400
+    assert response.json == {"message": "Invalid JSON format"}
 
 
 def test_send_extraction_failure(client):
@@ -73,6 +91,16 @@ def test_delete_torrent_missing_id(client):
     response = client.post("/delete", json={})
     assert response.status_code == 400
     assert b"Torrent ID is required" in response.data
+
+
+def test_delete_invalid_json_type(client):
+    """
+    Test that sending a List instead of a Dict to /delete returns 400.
+    Covers coverage gap in routes.py line 182.
+    """
+    response = client.post("/delete", json=["not", "a", "dict"])
+    assert response.status_code == 400
+    assert response.json == {"message": "Invalid JSON format"}
 
 
 def test_delete_torrent_failure(client):

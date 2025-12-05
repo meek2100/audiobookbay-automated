@@ -1,6 +1,7 @@
 import concurrent.futures
 import logging
 import random
+import re
 import time
 from typing import Any
 from urllib.parse import quote, urljoin, urlparse
@@ -447,14 +448,15 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             logger.error(msg)
             return None, msg
 
-        # FIX: Critical logic bug. RE_TRACKERS finds the *label* (e.g. "Tracker:"),
-        # so row.text returns "Tracker:". We must get the *sibling* cell for the value.
+        # FIX: The regex matches the URL value, so we extract the text.
+        # However, to be robust against "Tracker: http://..." within the same cell, we clean it.
         tracker_rows = soup.find_all("td", string=RE_TRACKERS)
         trackers = []
         for row in tracker_rows:
-            sibling = row.find_next_sibling("td")
-            if sibling:
-                trackers.append(sibling.text.strip())
+            text = row.get_text(strip=True)
+            # Remove "Tracker:" or "Announce URL:" prefixes if they were caught in the cell
+            text = re.sub(r"^(Tracker:|Announce URL:)\s*", "", text, flags=re.IGNORECASE)
+            trackers.append(text)
 
         trackers.extend(DEFAULT_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
