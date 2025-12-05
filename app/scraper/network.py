@@ -42,6 +42,8 @@ extra_mirrors = os.getenv("ABB_MIRRORS", "")
 if extra_mirrors:
     ABB_FALLBACK_HOSTNAMES.extend([m.strip() for m in extra_mirrors.split(",") if m.strip()])
 
+# OPTIMIZATION: Deduplicate mirrors while preserving the original order.
+# Order matters because we want to prioritize the user-defined hostname and reliable mirrors first.
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
 
 USER_AGENTS = [

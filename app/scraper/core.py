@@ -267,7 +267,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if cover_tag and cover_tag.has_attr("src"):
             extracted_cover = urljoin(details_url, str(cover_tag["src"]))
             # OPTIMIZATION: Only use remote cover if it is NOT the default one
-            if "default_cover.jpg" not in extracted_cover:
+            # Updated to endswith() for consistency with fetch_and_parse_page
+            if not extracted_cover.endswith("default_cover.jpg"):
                 cover = extracted_cover
 
         # --- Metadata Parsing (Language & Category) ---
