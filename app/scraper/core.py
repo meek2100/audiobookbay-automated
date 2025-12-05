@@ -57,8 +57,7 @@ def fetch_and_parse_page(
 
     try:
         with GLOBAL_REQUEST_SEMAPHORE:
-            # OPTIMIZATION: Reduced sleep time from (1.0-3.0) to (0.5-1.5)
-            # This is still polite but significantly reduces total search time.
+            # SAFETY: Random jitter (0.5-1.5s) per AGENTS.md to prevent IP bans.
             sleep_time = random.uniform(0.5, 1.5)
             time.sleep(sleep_time)
             # TIMEOUT: Increased to 30s for better resilience on slow connections/proxies
@@ -205,7 +204,7 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 
     try:
         with GLOBAL_REQUEST_SEMAPHORE:
-            # OPTIMIZATION: Reduced sleep time from (1.0-2.0) to (0.5-1.5)
+            # SAFETY: Random jitter (0.5-1.5s) per AGENTS.md to prevent IP bans.
             time.sleep(random.uniform(0.5, 1.5))
             # TIMEOUT: Increased to 30s for better resilience
             response = session.get(details_url, headers=headers, timeout=30)
