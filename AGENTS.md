@@ -76,12 +76,13 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Comments must explain the _why_, not the _what_.
 - Documentation must be updated when code changes.
 - No stale, inaccurate, or mismatched comments/docstrings.
+- **MANDATE:** Docstrings must follow the **Google Style Convention**, strictly enforced by `pydocstyle`.
 
 ---
 
 ## D. Python 3.13 Standards
 
-- Full type hints everywhere.
+- Full type hints everywhere. **Type safety is strictly enforced using MyPy.**
 - Modern Python idioms.
 - Avoid deprecated patterns.
 - Code must be Pylance/MyPy-friendly.
@@ -91,6 +92,11 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 ## E. Test Suite Integrity
 
 - Always maintain **100% coverage** (`--cov-fail-under=100`).
+- **MANDATE:** Code quality is strictly enforced via the following pre-commit hooks:
+  - **MyPy:** Mandatory checks for static type correctness.
+  - **Bandit:** Mandatory scanning for common security vulnerabilities.
+  - **pydocstyle:** Mandatory enforcement of the Google Docstring Convention.
+  - **Ruff:** Mandatory linting and formatting.
 - Tests must be meaningful and not redundant.
 - Avoid testing the same happy/unhappy path twice unless essential.
 - Remove or consolidate redundant tests.
