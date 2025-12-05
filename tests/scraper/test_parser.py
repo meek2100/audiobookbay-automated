@@ -1,11 +1,12 @@
 import logging
 from unittest.mock import MagicMock, patch
 
+import pytest
 import requests
 import requests_mock
 from bs4 import BeautifulSoup
 
-from app.scraper import fetch_and_parse_page, get_text_after_label
+from app.scraper import fetch_and_parse_page, get_book_details, get_text_after_label
 
 # --- Unit Tests: Helper Functions ---
 
@@ -307,3 +308,239 @@ def test_fetch_and_parse_page_remote_default_cover_optimization():
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
     # Assert it was converted to None (logic updated from previous local path assumption)
     assert results[0]["cover"] is None
+
+
+# --- Get Book Details Tests ---
+
+
+def test_get_book_details_sanitization(mock_sleep):
+    """
+    Test strict HTML sanitization in get_book_details.
+    Covers core.py lines around sanitization logic (looping through tags, unwrapping, etc).
+    """
+    # Create HTML with mix of allowed and disallowed tags
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Sanitized Book</h1></div>
+        <div class="desc">
+            <p style="color: red;">Allowed P tag.</p>
+            <script>alert('XSS');</script>
+            <b>Bold Text</b>
+            <a href="http://bad.com">Malicious Link</a>
+        </div>
+    </div>
+    """
+
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/book")
+
+        description = details["description"]
+
+        # Verify allowed tags are kept but stripped of attributes
+        assert "<p>Allowed P tag.</p>" in description
+        assert "style" not in description  # Attribute stripped
+
+        # Verify allowed formatting tags are kept
+        assert "<b>Bold Text</b>" in description
+
+        # Verify disallowed tags are unwrapped (content remains, tag gone)
+        assert "Malicious Link" in description
+        assert "<a href" not in description
+
+        # Verify scripts are sanitized (BeautifulSoup unwrap removes the tag)
+        assert "<script>" not in description
+
+
+def test_get_book_details_success(details_html, mock_sleep):
+    # Cache cleared automatically by fixture
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = details_html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/valid-book")
+
+        assert details["title"] == "A Game of Thrones"
+        assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
+        assert details["file_size"] == "1.37 GBs"
+        # Verify line 272 (description link cleaning) worked:
+        assert "Spam Link" in details["description"]
+        assert "<a href" not in details["description"]
+
+        # EXPLICITLY CHECK METADATA to ensure regex lines (206, 254) are hit
+        assert details["language"] == "English"
+        assert details["category"] == "Fantasy"
+        assert details["post_date"] == "10 Jan 2024"
+
+
+def test_get_book_details_default_cover_skip(mock_sleep):
+    """
+    Test that if details page has the default cover, it is skipped (None).
+    This covers the condition `if "default_cover.jpg" not in extracted_cover:` evaluating to False.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Book Default Cover</h1></div>
+        <div class="postContent">
+            <img itemprop="image" src="/images/default_cover.jpg">
+        </div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/def-cover")
+        assert details["cover"] is None
+
+
+def test_get_book_details_failure(mock_sleep):
+    with patch("requests.Session.get", side_effect=requests.exceptions.RequestException("Net Down")):
+        with pytest.raises(requests.exceptions.RequestException):
+            get_book_details("https://audiobookbay.lu/fail-book")
+
+
+def test_get_book_details_ssrf_protection():
+    """Test that get_book_details rejects non-ABB domains."""
+    with pytest.raises(ValueError) as exc:
+        get_book_details("https://google.com/admin")
+    assert "Invalid domain" in str(exc.value)
+
+
+def test_get_book_details_empty(mock_sleep):
+    with pytest.raises(ValueError) as exc:
+        get_book_details("")
+    assert "No URL provided" in str(exc.value)
+
+
+def test_get_book_details_url_parse_error(mock_sleep):
+    with patch("app.scraper.core.urlparse", side_effect=Exception("Boom")):
+        with pytest.raises(ValueError) as exc:
+            get_book_details("http://anything")
+    assert "Invalid URL format" in str(exc.value)
+
+
+def test_get_book_details_missing_metadata(mock_sleep):
+    html = """<div class="post"><div class="postTitle"><h1>Empty Book</h1></div></div>"""
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+        details = get_book_details("https://audiobookbay.lu/empty")
+        assert details["language"] == "Unknown"
+        assert details["format"] == "Unknown"
+
+
+def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Unknown Bitrate</h1></div>
+        <div class="postContent"><p>Bitrate: ?</p></div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+        details = get_book_details("https://audiobookbay.lu/unknown")
+        assert details["bitrate"] == "Unknown"
+
+
+def test_get_book_details_partial_bitrate(mock_sleep):
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Partial Info</h1></div>
+        <div class="postContent"><p>Bitrate: 128 Kbps</p></div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+        details = get_book_details("https://audiobookbay.lu/partial_bitrate")
+        assert details["format"] == "Unknown"
+        assert details["bitrate"] == "128 Kbps"
+
+
+def test_get_book_details_partial_format(mock_sleep):
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Partial Info</h1></div>
+        <div class="postContent"><p>Format: MP3</p></div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+        details = get_book_details("https://audiobookbay.lu/partial")
+        assert details["format"] == "MP3"
+        assert details["bitrate"] == "Unknown"
+
+
+def test_get_book_details_content_without_metadata_labels(mock_sleep):
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>No Metadata</h1></div>
+        <div class="postContent"><p>Just text.</p></div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+        details = get_book_details("https://audiobookbay.lu/no_meta")
+        assert details["format"] == "Unknown"
+
+
+def test_get_book_details_consistency_checks(mock_sleep):
+    """
+    Test that '?' values in detailed metadata are converted to 'Unknown'.
+    Covers app/scraper/core.py lines 308-318.
+    UPDATED: Added 'Bitrate: ?' to cover line 223.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Mystery Details</h1></div>
+        <div class="postInfo">Category: ? Language: ?</div>
+        <div class="postContent">
+            <p>Posted: ?</p>
+            <p>Format: ?</p>
+            <p>Bitrate: ?</p>
+            <span class="author" itemprop="author">?</span>
+            <span class="narrator" itemprop="author">?</span>
+        </div>
+        <table class="torrent_info">
+            <tr><td>File Size:</td><td>?</td></tr>
+        </table>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/mystery")
+
+        assert details["language"] == "Unknown"
+        assert details["category"] == "Unknown"
+        assert details["post_date"] == "Unknown"
+        assert details["format"] == "Unknown"
+        assert details["bitrate"] == "Unknown"
+        assert details["author"] == "Unknown"
+        assert details["narrator"] == "Unknown"
+        assert details["file_size"] == "Unknown"

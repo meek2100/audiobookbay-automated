@@ -80,12 +80,30 @@ def test_check_mirror_success_head():
 
 
 def test_check_mirror_success_get_fallback():
+    """Test fallback to GET if HEAD raises an exception."""
     with patch("app.scraper.network.requests.head") as mock_head:
         mock_head.side_effect = requests.RequestException("Method Not Allowed")
         with patch("app.scraper.network.requests.get") as mock_get:
             mock_get.return_value.status_code = 200
             result = network.check_mirror("fallback.mirror")
             assert result == "fallback.mirror"
+
+
+def test_check_mirror_head_500_fallback():
+    """
+    Test fallback to GET if HEAD returns a non-200 status (e.g. 500).
+    This ensures the 'if response.status_code == 200' branch is fully covered (False case).
+    """
+    with patch("app.scraper.network.requests.head") as mock_head:
+        # HEAD connects but returns Server Error
+        mock_head.return_value.status_code = 500
+        with patch("app.scraper.network.requests.get") as mock_get:
+            # GET succeeds
+            mock_get.return_value.status_code = 200
+            result = network.check_mirror("flaky.mirror")
+            assert result == "flaky.mirror"
+            # Verify GET was actually called
+            assert mock_get.called
 
 
 def test_check_mirror_fail_both():

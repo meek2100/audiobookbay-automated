@@ -22,7 +22,14 @@ from .network import (
     mirror_cache,
     search_cache,
 )
-from .parser import RE_HASH_STRING, RE_INFO_HASH, RE_TRACKERS, get_text_after_label
+from .parser import (
+    RE_CATEGORY,
+    RE_HASH_STRING,
+    RE_INFO_HASH,
+    RE_LANGUAGE,
+    RE_TRACKERS,
+    get_text_after_label,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +65,8 @@ def fetch_and_parse_page(
             # This is still polite but significantly reduces total search time.
             sleep_time = random.uniform(0.5, 1.5)
             time.sleep(sleep_time)
-            response = session.get(url, params=params, headers=headers, timeout=15)
+            # TIMEOUT: Increased to 30s for better resilience on slow connections/proxies
+            response = session.get(url, params=params, headers=headers, timeout=30)
 
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -91,10 +99,12 @@ def fetch_and_parse_page(
                 post_info = post.select_one(".postInfo")
                 if post_info:
                     info_text = post_info.get_text(" ", strip=True)
-                    lang_match = re.search(r"Language:\s*(\w+)", info_text)
+                    # OPTIMIZATION: Use compiled regex from parser.py
+                    lang_match = RE_LANGUAGE.search(info_text)
                     if lang_match:
                         language = lang_match.group(1)
-                    cat_match = re.search(r"Category:\s*(.+?)(?:\s+Language:|$)", info_text)
+
+                    cat_match = RE_CATEGORY.search(info_text)
                     if cat_match:
                         category = cat_match.group(1).strip()
 
@@ -240,7 +250,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         with GLOBAL_REQUEST_SEMAPHORE:
             # OPTIMIZATION: Reduced sleep time from (1.0-2.0) to (0.5-1.5)
             time.sleep(random.uniform(0.5, 1.5))
-            response = session.get(details_url, headers=headers, timeout=15)
+            # TIMEOUT: Increased to 30s for better resilience
+            response = session.get(details_url, headers=headers, timeout=30)
 
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
@@ -264,12 +275,12 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         post_info = soup.select_one(".postInfo")
         if post_info:
             info_text = post_info.get_text(" ", strip=True)
-            # Language
-            lang_match = re.search(r"Language:\s*(\w+)", info_text)
+            # OPTIMIZATION: Use compiled regex from parser.py
+            lang_match = RE_LANGUAGE.search(info_text)
             if lang_match:
                 language = lang_match.group(1)
-            # FIX: Added Category parsing (matches fetch_and_parse_page logic)
-            cat_match = re.search(r"Category:\s*(.+?)(?:\s+Language:|$)", info_text)
+
+            cat_match = RE_CATEGORY.search(info_text)
             if cat_match:
                 category = cat_match.group(1).strip()
 
@@ -409,7 +420,8 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         with GLOBAL_REQUEST_SEMAPHORE:
             # OPTIMIZATION: Reduced sleep time from (1.0-3.0) to (0.5-1.5)
             time.sleep(random.uniform(0.5, 1.5))
-            response = session.get(details_url, headers=headers, timeout=15)
+            # TIMEOUT: Increased to 30s
+            response = session.get(details_url, headers=headers, timeout=30)
 
         if response.status_code != 200:
             msg = f"Failed to fetch details page. Status Code: {response.status_code}"
@@ -436,8 +448,16 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             logger.error(msg)
             return None, msg
 
+        # FIX: The regex matches the URL value, so we extract the text.
+        # However, to be robust against "Tracker: http://..." within the same cell, we clean it.
         tracker_rows = soup.find_all("td", string=RE_TRACKERS)
-        trackers = [row.text.strip() for row in tracker_rows]
+        trackers = []
+        for row in tracker_rows:
+            text = row.get_text(strip=True)
+            # Remove "Tracker:" or "Announce URL:" prefixes if they were caught in the cell
+            text = re.sub(r"^(Tracker:|Announce URL:)\s*", "", text, flags=re.IGNORECASE)
+            trackers.append(text)
+
         trackers.extend(DEFAULT_TRACKERS)
         trackers = list(dict.fromkeys(trackers))
 

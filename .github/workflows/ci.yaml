@@ -21,7 +21,7 @@ jobs:
           python-version: "3.13"
           cache: "pip"
 
-      # FIX: Set up Node.js for frontend hooks (Jest/Prettier)
+      # Set up Node.js for frontend hooks (Prettier)
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -29,7 +29,7 @@ jobs:
           # This cache requires package-lock.json to be present
           cache: "npm"
 
-      # FIX: Install Node dependencies so 'npx jest' finds the local packages
+      # Install Node dependencies so hooks can find packages if needed
       - name: Install Node Dependencies
         run: npm ci
 
@@ -44,6 +44,8 @@ jobs:
         run: pip install pre-commit
 
       - name: Run pre-commit hooks
+        env:
+          SKIP: no-commit-to-branch
         run: pre-commit run --all-files --show-diff-on-failure
 
   # 2. Automated Python Tests
