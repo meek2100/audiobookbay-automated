@@ -14,6 +14,9 @@ const mockOpen = jest.fn();
 global.confirm = mockConfirm;
 global.open = mockOpen;
 
+// Mock reload function (to bypass JSDOM window.location restrictions)
+window.__mockReload = jest.fn();
+
 // Mock requestAnimationFrame used by showNotification
 global.requestAnimationFrame = jest.fn((cb) => cb());
 
@@ -23,29 +26,34 @@ const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {}
 // Add a required meta tag for CSRF token into the DOM
 document.head.innerHTML = '<meta name="csrf-token" content="test-csrf-token" />';
 
-// Evaluate the script content to define the functions globally (showNotification, sendTorrent, etc.)
-eval(global.actionsJsContent);
+// FIX: Patch the source code string before evaluation.
+// We replace 'location.reload()' with 'window.__mockReload()' to intercept the call
+// without needing to redefine the protected window.location object.
+const patchedActionsContent = global.actionsJsContent.replace(/location\.reload\(\)/g, "window.__mockReload()");
 
-// --- MOCK UTILITIES (MOVED TO TOP-LEVEL SCOPE FOR ACCESSIBILITY) ---
+// Evaluate the script content to define the functions globally
+eval(patchedActionsContent);
+
+// --- MOCK UTILITIES ---
 
 function getNotificationText() {
     const container = document.getElementById("notification-container");
     return container ? container.textContent : "";
 }
 
-// CRITICAL FIX: Helper to drain the microtask queue completely.
-// Uses jest.requireActual("timers").setTimeout to bypass fake timers.
-// This prevents deadlocks where await waits for a mocked timer that hasn't run yet.
+// Helper to drain the microtask queue completely.
 async function flushPromises() {
     return new Promise((resolve) => jest.requireActual("timers").setTimeout(resolve, 0));
 }
-// ---------------------------------------------------------------------
+// ----------------------
 
 // Reset mocks before each test
 beforeEach(() => {
     mockFetch.mockClear();
     mockConfirm.mockClear();
     mockOpen.mockClear();
+    window.__mockReload.mockClear();
+
     // Default mock response for success
     mockFetch.mockResolvedValue({
         ok: true,
@@ -67,19 +75,14 @@ describe("actions.js - Core Functionality", () => {
         showNotification("Test message", "success");
         expect(getNotificationText()).toContain("Test message");
 
-        // Step 1: Get the toast element to dispatch the event later
         const toast = document.querySelector("#notification-container > div");
-
-        // Step 2: Advance the timer (3000ms) to trigger the removal block (setTimeout)
         jest.advanceTimersByTime(3000);
 
-        // Step 3 (Simulate Event): Manually dispatch the 'transitionend' event.
         const transitionEndEvent = new Event("transitionend");
         if (toast) {
             toast.dispatchEvent(transitionEndEvent);
         }
 
-        // Expect element to be removed immediately after the event simulation
         expect(document.querySelector("#notification-container > div")).toBeNull();
         expect(getNotificationText()).toBe("");
     });
@@ -98,8 +101,6 @@ describe("actions.js - API Interactions", () => {
         mockConfirm.mockReturnValue(true);
 
         await reloadLibrary();
-
-        // Use jest.runAllTimers to flush the 3000ms timer of the notification
         jest.runAllTimers();
 
         expect(mockFetch).toHaveBeenCalledWith(
@@ -112,10 +113,8 @@ describe("actions.js - API Interactions", () => {
             })
         );
 
-        // Verify success notification disposal
         const toast = document.querySelector("#notification-container > div");
         if (toast) toast.dispatchEvent(new Event("transitionend"));
-
         expect(getNotificationText()).toBe("");
     });
 
@@ -128,7 +127,6 @@ describe("actions.js - API Interactions", () => {
     // --- deleteTorrent ---
 
     test("deleteTorrent should send DELETE request and reload on success", async () => {
-        // Fix #1: Ensure the success message includes "successfully" to trigger reload.
         mockFetch.mockResolvedValue({
             ok: true,
             json: () => Promise.resolve({ message: "Torrent removed successfully." }),
@@ -137,26 +135,13 @@ describe("actions.js - API Interactions", () => {
 
         mockConfirm.mockReturnValue(true);
 
-        // FIX: Force-mock window.location for JSDOM
-        // Simple assignment (global.location.reload = ...) often fails in JSDOM because location is read-only.
-        const originalLocation = window.location;
-        delete window.location;
-        window.location = { reload: jest.fn() };
-
-        // Trigger the async function
+        // No complicated window.location mocking needed here due to the patch above.
         deleteTorrent("test-hash-123");
 
-        // Wait for the fetch promise to resolve
         await flushPromises();
-
-        // Execute pending timers (the 1000ms reload timer)
         jest.runAllTimers();
 
-        // Verify reload was called
-        expect(window.location.reload).toHaveBeenCalled();
-
-        // Restore original location
-        window.location = originalLocation;
+        expect(window.__mockReload).toHaveBeenCalled();
     });
 
     // --- sendTorrent ---
@@ -165,26 +150,20 @@ describe("actions.js - API Interactions", () => {
         const mockButton = document.createElement("button");
         mockButton.innerText = "Download to Server";
 
-        // Assert initial state is correct (not disabled)
         expect(mockButton.disabled).toBe(false);
 
         sendTorrent("http://link", "Book Title", mockButton);
 
-        // Verify "Sending..." state
         expect(mockButton.innerText).toBe("Sending...");
         expect(mockButton.disabled).toBe(true);
 
-        // Allow microtasks (fetch resolution) to process
         await flushPromises();
 
-        // Assert "Sent!" state (before timeout)
         expect(mockButton.innerText).toBe("Sent!");
         expect(mockButton.disabled).toBe(true);
 
-        // Advance timer by 2000ms (the duration of "Sent!" message)
         jest.advanceTimersByTime(2000);
 
-        // Assert button is re-enabled and text is restored
         expect(mockButton.disabled).toBe(false);
         expect(mockButton.innerText).toBe("Download to Server");
     });
@@ -201,19 +180,14 @@ describe("actions.js - API Interactions", () => {
 
         sendTorrent("http://link", "Book Title", mockButton);
 
-        // Allow microtasks (fetch resolution and JSON parsing) to process
         await flushPromises();
-
-        // Run timers to process notification timeout
         jest.advanceTimersByTime(3000);
 
         const toast = document.querySelector("#notification-container > div");
         if (toast) toast.dispatchEvent(new Event("transitionend"));
         expect(getNotificationText()).toBe("");
 
-        // Check console.error was called
         expect(consoleErrorSpy).toHaveBeenCalled();
-        // Check that button was reset immediately on error
         expect(mockButton.disabled).toBe(false);
         expect(mockButton.innerText).toBe("Download to Server");
     });
@@ -223,11 +197,9 @@ describe("actions.js - API Interactions", () => {
 
         sendTorrent("http://link", "Book Title", null);
 
-        // Run all timers to ensure the cleanup in the promise chain completes
         await flushPromises();
         jest.runAllTimers();
 
-        // Verify error message is disposed
         const toast = document.querySelector("#notification-container > div");
         if (toast) toast.dispatchEvent(new Event("transitionend"));
         expect(getNotificationText()).toBe("");
