@@ -625,6 +625,30 @@ def test_get_status_deluge_robustness(monkeypatch: Any) -> None:
         assert results[0]["size"] == "Unknown"
 
 
+def test_get_status_deluge_malformed_data(monkeypatch: Any) -> None:
+    """
+    Test Deluge handling of malformed progress data (e.g. non-numeric strings).
+    This ensures the 'except (ValueError, TypeError)' block in _get_status_logic is covered.
+    """
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_response = MagicMock()
+        # "Error" string will cause float() to raise ValueError
+        mock_response.result = {
+            "hash_err": {"name": "Bad Data", "state": "Error", "progress": "Error", "total_size": 100}
+        }
+        mock_instance.get_torrents_status.return_value = mock_response
+
+        manager = TorrentManager()
+        results = manager.get_status()
+
+        assert len(results) == 1
+        assert results[0]["name"] == "Bad Data"
+        assert results[0]["progress"] == 0.0  # Fallback triggered
+        assert results[0]["size"] == "100.00 B"
+
+
 def test_get_status_reconnect(monkeypatch: Any) -> None:
     """Test that get_status attempts to reconnect if the first call fails."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")

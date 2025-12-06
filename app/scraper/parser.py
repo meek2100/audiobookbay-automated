@@ -58,8 +58,8 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
 
     Strategy:
     1. Finds the text node containing 'label_text'.
-    2. Checks the next sibling element (e.g., <span>Value</span>).
-    3. If no sibling, attempts to parse the value from the text node itself.
+    2. Strategy 1: Checks the next sibling element (e.g., <span>Value</span>).
+    3. Strategy 2: If no sibling, attempts to parse the value from the text node itself.
 
     Args:
         container: The BeautifulSoup Tag to search within.
