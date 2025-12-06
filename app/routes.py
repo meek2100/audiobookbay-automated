@@ -7,7 +7,8 @@ from typing import Any, cast
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
 
-# Import extensions and logic
+from app.constants import DEFAULT_COVER_FILENAME
+
 from .extensions import limiter, torrent_manager
 from .scraper import BookDict, extract_magnet_link, get_book_details, search_audiobookbay
 from .utils import sanitize_title
@@ -38,6 +39,7 @@ def inject_global_vars() -> dict[str, Any]:
         "nav_link_url": current_app.config.get("NAV_LINK_URL"),
         "library_reload_enabled": library_reload_enabled,
         "static_version": static_version,
+        "default_cover_filename": DEFAULT_COVER_FILENAME,
     }
 
 
