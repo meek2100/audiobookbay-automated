@@ -7,7 +7,7 @@ from qbittorrentapi import LoginFailed
 from app.clients import TorrentManager
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def mock_env(monkeypatch: Any) -> None:
     """Sets up default environment variables for testing."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")

@@ -300,16 +300,15 @@ class TorrentManager:
         elif self.client_type == "qbittorrent":
             qb_client = cast(QbClient, client)
             torrents = qb_client.torrents_info(category=self.category)
-            # FIX: Explicit cast to Any list to avoid strict type mismatch with TorrentInfoList
-            # The qbittorrent-api stubs seem to define this iterator strictly, but dynamic access is needed.
-            safe_torrents: list[Any] = list(torrents)
-            for torrent in safe_torrents:
+            # FIX: Explicit iteration because MyPy struggles with List-like return types from qbittorrentapi
+            for torrent in torrents:
+                # MyPy locally sees these attributes correctly
                 results.append(
                     {
-                        "id": torrent.hash,  # type: ignore[attr-defined]
+                        "id": torrent.hash,
                         "name": torrent.name,
                         "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
-                        "state": torrent.state,  # type: ignore[attr-defined]
+                        "state": torrent.state,
                         "size": self._format_size(torrent.total_size),
                     }
                 )
