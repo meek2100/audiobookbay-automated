@@ -58,10 +58,10 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
 
     try:
         with GLOBAL_REQUEST_SEMAPHORE:
-            # SAFETY: Random jitter (0.5-1.5s) per AGENTS.md to prevent IP bans.
+            # Random jitter (0.5-1.5s) to prevent IP bans.
             sleep_time = random.uniform(0.5, 1.5)  # nosec B311
             time.sleep(sleep_time)
-            # TIMEOUT: Increased to 30s for better resilience on slow connections/proxies
+            # 30s timeout for better resilience on slow connections/proxies.
             response = session.get(url, params=params, headers=headers, timeout=30)
 
         response.raise_for_status()
@@ -85,12 +85,10 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
                 cover = None  # Default to None so UI handles versioned default
                 if cover_img and cover_img.has_attr("src"):
                     extracted_cover = urljoin(base_url, str(cover_img["src"]))
-                    # OPTIMIZATION: If remote is default, keep as None to use local versioned default.
-                    # We check specifically for the filename to avoid false positives.
+                    # If remote is default, keep as None to use local versioned default.
                     if not extracted_cover.endswith(DEFAULT_COVER_FILENAME):
                         cover = extracted_cover
 
-                # Use centralized parsing logic
                 post_info = post.select_one(".postInfo")
                 content_div = post.select_one(".postContent")
                 meta = parse_post_content(content_div, post_info)
@@ -136,7 +134,6 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[BookDic
         ConnectionError: If no mirrors are reachable.
     """
     if query in search_cache:
-        # Explicitly cast cache retrieval for Mypy safety
         cached_result: list[BookDict] = search_cache[query]
         return cached_result
 
@@ -188,7 +185,6 @@ def get_book_details(details_url: str) -> BookDict:
         ValueError: If the URL is invalid or not from an allowed domain.
     """
     if details_url in search_cache:
-        # Explicit cast for Mypy
         cached_result: BookDict = search_cache[details_url]
         return cached_result
 
@@ -209,9 +205,9 @@ def get_book_details(details_url: str) -> BookDict:
 
     try:
         with GLOBAL_REQUEST_SEMAPHORE:
-            # SAFETY: Random jitter (0.5-1.5s) per AGENTS.md to prevent IP bans.
+            # Random jitter (0.5-1.5s) to prevent IP bans.
             time.sleep(random.uniform(0.5, 1.5))  # nosec B311
-            # TIMEOUT: Increased to 30s for better resilience
+            # 30s timeout for better resilience.
             response = session.get(details_url, headers=headers, timeout=30)
 
         response.raise_for_status()
@@ -226,12 +222,10 @@ def get_book_details(details_url: str) -> BookDict:
         cover_tag = soup.select_one('.postContent img[itemprop="image"]')
         if cover_tag and cover_tag.has_attr("src"):
             extracted_cover = urljoin(details_url, str(cover_tag["src"]))
-            # OPTIMIZATION: Only use remote cover if it is NOT the default one
-            # Updated to endswith() for consistency with fetch_and_parse_page
+            # Only use remote cover if it is NOT the default one.
             if not extracted_cover.endswith(DEFAULT_COVER_FILENAME):
                 cover = extracted_cover
 
-        # Use centralized parsing logic
         post_info = soup.select_one(".postInfo")
         content_div = soup.select_one(".postContent")
         meta = parse_post_content(content_div, post_info)
@@ -253,7 +247,7 @@ def get_book_details(details_url: str) -> BookDict:
         description = "No description available."
         desc_tag = soup.select_one("div.desc")
         if desc_tag:
-            # SECURITY FIX: Strict HTML Sanitization to prevent XSS in "Privacy Proxy" mode.
+            # Strict HTML Sanitization to prevent XSS in "Privacy Proxy" mode.
             # We only allow basic formatting tags. Scripts, iframes, styles, and events are stripped.
             allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
 
@@ -268,7 +262,6 @@ def get_book_details(details_url: str) -> BookDict:
             description = desc_tag.decode_contents()
 
         trackers = []
-        # Fallback file size if not found in body text
         file_size = meta.file_size
         info_hash = "Unknown"
 
@@ -290,7 +283,6 @@ def get_book_details(details_url: str) -> BookDict:
 
         # Strategy 2: Robust Fallback (if table structure is broken/missing)
         if info_hash == "Unknown":
-            # Search entire HTML for "Info Hash" label
             info_hash_row = soup.find("td", string=RE_INFO_HASH)
             if info_hash_row:
                 sibling = info_hash_row.find_next_sibling("td")
@@ -335,8 +327,7 @@ def get_book_details(details_url: str) -> BookDict:
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
     """Generate a magnet link by retrieving book details.
 
-    NOW REFACTORED: Uses 'get_book_details' to ensure unified parsing logic,
-    caching, and security validation (SSRF).
+    Uses 'get_book_details' to ensure unified parsing logic, caching, and security.
 
     Args:
         details_url: The URL of the book page.
@@ -346,8 +337,7 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
                                        If successful, error_message is None.
     """
     try:
-        # ARCHITECTURE IMPROVEMENT: Reuse the robust logic in get_book_details.
-        # This gives us automatic caching, SSRF protection, and unified fallback parsing.
+        # Reuse centralized details logic to ensure consistency, caching, and SSRF protection.
         details = get_book_details(details_url)
 
         info_hash = details.get("info_hash")
@@ -358,7 +348,6 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         if trackers is None:
             trackers = []
         trackers.extend(CONFIGURED_TRACKERS)
-        # Type safety: ensure trackers is a list of strings
         safe_trackers: list[str] = [str(t) for t in trackers]
         safe_trackers = list(dict.fromkeys(safe_trackers))
 
@@ -368,7 +357,6 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         return magnet_link, None
 
     except ValueError as e:
-        # Handle specific validation errors (e.g., Invalid Domain)
         return None, str(e)
     except Exception as e:
         logger.error(f"Failed to extract magnet link: {e}", exc_info=True)

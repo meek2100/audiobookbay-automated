@@ -35,12 +35,12 @@ extra_mirrors = os.getenv("ABB_MIRRORS", "")
 if extra_mirrors:
     ABB_FALLBACK_HOSTNAMES.extend([m.strip() for m in extra_mirrors.split(",") if m.strip()])
 
-# OPTIMIZATION: Deduplicate mirrors while preserving the original order.
+# Deduplicate mirrors while preserving the original order.
 # Order matters because we want to prioritize the user-defined hostname and reliable mirrors first.
 ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
 
 # --- Concurrency Control ---
-# OPTIMIZATION: Increased from 2 to 3.
+# Increased from 2 to 3.
 # Since the default PAGE_LIMIT is 3, a limit of 2 forces the 3rd page to wait
 # for one of the first two to finish (serialization), doubling the search time.
 MAX_CONCURRENT_REQUESTS = 3
@@ -66,8 +66,7 @@ def load_trackers() -> list[str]:
     if trackers_env:
         return [t.strip() for t in trackers_env.split(",") if t.strip()]
 
-    # FIX: Look for trackers.json in the current working directory (container root)
-    # rather than inside the package structure.
+    # Load trackers from the container root (cwd) for volume mounting support.
     json_path = os.path.join(os.getcwd(), "trackers.json")
     if os.path.exists(json_path):
         try:

@@ -53,7 +53,6 @@ def health() -> Response:
 @limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def search() -> str:
     """Handle the search interface."""
-    # FIX: Use BookDict type hint to match search_audiobookbay return type
     books: list[BookDict] = []
     query = ""
     error_message = None
@@ -68,13 +67,12 @@ def search() -> str:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        # Cast required to satisfy MyPy no-any-return strict mode
+        # Explicit cast to string for strict type checking
         return cast(str, render_template("search.html", books=books, query=query))
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        # Cast required to satisfy MyPy no-any-return strict mode
         return cast(str, render_template("search.html", books=books, error=error_message, query=query))
 
 
@@ -88,7 +86,7 @@ def details() -> str | Response:
 
     try:
         book_details = get_book_details(link)
-        # Cast required if render_template is inferred as Any
+        # Explicit cast to string for strict type checking
         return cast(str, render_template("details.html", book=book_details))
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
@@ -101,7 +99,6 @@ def send() -> Response:
     """API endpoint to initiate a download."""
     data = request.json
 
-    # ROBUSTNESS: Ensure data is actually a dict before accessing .get()
     if not isinstance(data, dict):
         logger.warning("Invalid send request: JSON body is not a dictionary.")
         return jsonify({"message": "Invalid JSON format"}), 400
@@ -153,7 +150,6 @@ def delete_torrent() -> Response:
     """API endpoint to remove a torrent."""
     data = request.json
 
-    # ROBUSTNESS check
     if not isinstance(data, dict):
         return jsonify({"message": "Invalid JSON format"}), 400
 

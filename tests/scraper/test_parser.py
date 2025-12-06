@@ -54,10 +54,7 @@ def test_get_text_after_label_fallback() -> None:
 
 
 def test_get_text_after_label_not_found() -> None:
-    """Test that it returns 'Unknown' if the label text is not found in the container.
-
-    This covers the `if not label_node: return "Unknown"` branch.
-    """
+    """Test that it returns 'Unknown' if the label text is not found in the container."""
     html = "<div><p>Some other content</p></div>"
     soup = BeautifulSoup(html, "html.parser")
     # 'Format:' does not exist in the HTML
@@ -65,7 +62,7 @@ def test_get_text_after_label_not_found() -> None:
     assert result == "Unknown"
 
 
-# --- Unit Tests: parse_post_content (New Centralized Logic) ---
+# --- Unit Tests: parse_post_content (Centralized Logic) ---
 
 
 def test_parse_post_content_full_validity() -> None:
@@ -182,6 +179,26 @@ def test_fetch_and_parse_page_malformed() -> None:
     adapter.register_uri("GET", "https://host/page/1/?s=q", text="<html><body></body></html>", status_code=200)
 
     results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    assert results == []
+
+
+def test_fetch_and_parse_page_zero_results(mock_sleep: Any) -> None:
+    """Test that a valid page with no posts returns an empty list without error."""
+    html = """
+    <html>
+        <body>
+            <div id="content">
+                <p>No results found for "nonexistent".</p>
+            </div>
+        </body>
+    </html>
+    """
+    session = requests.Session()
+    adapter = requests_mock.Adapter()
+    session.mount("https://", adapter)
+    adapter.register_uri("GET", "https://host/page/1/?s=nonexistent", text=html, status_code=200)
+
+    results = fetch_and_parse_page(session, "host", "nonexistent", 1, "ua")
     assert results == []
 
 
@@ -304,7 +321,7 @@ def test_fetch_page_post_exception(caplog: Any) -> None:
     mock_post = MagicMock()
     mock_post.select_one.side_effect = Exception("Post Error")
 
-    # Correct patching of BeautifulSoup in app.scraper.core where it is imported
+    # Patch BeautifulSoup in app.scraper.core where it is imported
     with patch("app.scraper.core.BeautifulSoup") as mock_bs:
         mock_bs.return_value.select.return_value = [mock_post]
         with caplog.at_level(logging.ERROR):
@@ -318,7 +335,7 @@ def test_fetch_page_urljoin_exception(real_world_html: str) -> None:
     session.get.return_value.text = real_world_html
     session.get.return_value.status_code = 200
 
-    # Correct patching of urljoin in app.scraper.core where it is imported
+    # Patch urljoin in app.scraper.core where it is imported
     with patch("app.scraper.core.urljoin", side_effect=Exception("Join Error")):
         results = fetch_and_parse_page(session, "host", "q", 1, "ua")
     assert results == []
@@ -368,7 +385,7 @@ def test_fetch_and_parse_page_remote_default_cover_optimization() -> None:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
         results = fetch_and_parse_page(session, "host", "q", 1, "ua")
-    # Assert it was converted to None (logic updated from previous local path assumption)
+    # Assert it was converted to None
     assert results[0]["cover"] is None
 
 
@@ -427,10 +444,7 @@ def test_get_book_details_success(details_html: str, mock_sleep: Any) -> None:
 
 
 def test_get_book_details_default_cover_skip(mock_sleep: Any) -> None:
-    """Test that if details page has the default cover, it is skipped (None).
-
-    This covers the condition `if "default_cover.jpg" not in extracted_cover:` evaluating to False.
-    """
+    """Test that if details page has the default cover, it is skipped (None)."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Book Default Cover</h1></div>
@@ -554,11 +568,7 @@ def test_get_book_details_content_without_metadata_labels(mock_sleep: Any) -> No
 
 
 def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
-    """Test that '?' values in detailed metadata are converted to 'Unknown'.
-
-    Covers app/scraper/core.py lines 308-318.
-    UPDATED: Added 'Bitrate: ?' to cover line 223.
-    """
+    """Test that '?' values in detailed metadata are converted to 'Unknown'."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Mystery Details</h1></div>
@@ -592,10 +602,7 @@ def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
-    """Forces Strategy 2: Table structure is broken (no table.torrent_info).
-
-    But 'Info Hash' is found in a loose table cell.
-    """
+    """Forces Strategy 2: Table structure is broken (no table.torrent_info)."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Strategy 2 Book</h1></div>
@@ -645,11 +652,9 @@ def test_extract_magnet_success(mock_sleep: Any) -> None:
     mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        # PATCH: Use CONFIGURED_TRACKERS to match network.py alias
         with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
             magnet, error = extract_magnet_link(url)
             assert error is None
-            # Fix: Ensure logic handles None before calling 'in'
             assert magnet is not None
             assert "magnet:?xt=urn:btih:abc123hash456" in magnet
             assert "tracker.com" in magnet
