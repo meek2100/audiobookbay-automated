@@ -192,12 +192,26 @@ def reload_library() -> Response:
 
 
 @main_bp.route("/status")  # type: ignore[untyped-decorator]
-def status() -> str:
-    """Render the current status of downloads."""
+def status() -> str | Response:
+    """Render the current status of downloads.
+
+    Supports returning JSON for frontend polling via ?json=1.
+    """
     try:
         torrent_list = torrent_manager.get_status()
+
+        # FIX: Return JSON if requested by the frontend poller
+        if request.args.get("json"):
+            return jsonify(torrent_list)
+
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
+        # Explicit cast to string for strict type checking
         return cast(str, render_template("status.html", torrents=torrent_list))
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
+
+        # FIX: Return JSON error if polling, otherwise render error page
+        if request.args.get("json"):
+            return jsonify({"error": str(e)}), 500
+
         return cast(str, render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))
