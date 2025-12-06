@@ -1,6 +1,8 @@
+"""Main application package for AudiobookBay Automated."""
+
 import os
 
-from flask import Flask, request
+from flask import Flask, Response, request
 
 from .config import Config
 from .extensions import csrf, limiter, torrent_manager
@@ -8,10 +10,8 @@ from .routes import main_bp
 from .utils import calculate_static_hash
 
 
-def create_app(config_class=Config):
-    """
-    Application Factory: Creates and configures a Flask application instance.
-    """
+def create_app(config_class: type[Config] = Config) -> Flask:
+    """Create and configure a Flask application instance."""
     # Renamed to 'flask_app' to avoid name shadowing with the global 'app' import below
     flask_app = Flask(__name__)
     flask_app.config.from_object(config_class)
@@ -41,7 +41,7 @@ def create_app(config_class=Config):
     # Since we use versioning (?v=hash) in templates, we can safely tell
     # the browser to cache static files for a year (31536000 seconds).
     @flask_app.after_request
-    def add_header(response):
+    def add_header(response: Response) -> Response:
         if request.path.startswith("/static"):
             response.headers["Cache-Control"] = "public, max-age=31536000"
         return response

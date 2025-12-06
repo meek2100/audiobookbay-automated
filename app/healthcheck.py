@@ -1,12 +1,12 @@
+"""Healthcheck script for Docker."""
+
 import os
 import sys
 import urllib.request
 
 
-def health_check(timeout: int = 3):
-    """
-    Performs a health check against the local Flask application.
-    Exits with 0 on success, 1 on failure.
+def health_check(timeout: int = 3) -> None:
+    """Perform a health check against the local Flask application.
 
     Args:
         timeout: The maximum time in seconds to wait for a response.

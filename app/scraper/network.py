@@ -1,3 +1,5 @@
+"""Network module handling HTTP sessions, proxies, and mirrors."""
+
 import concurrent.futures
 import json
 import logging
@@ -55,8 +57,7 @@ def get_random_user_agent() -> str:
 
 
 def load_trackers() -> list[str]:
-    """
-    Loads trackers from environment variable, local JSON, or internal defaults.
+    """Load trackers from environment variable, local JSON, or internal defaults.
 
     Returns:
         list[str]: A list of tracker URLs.
@@ -85,8 +86,7 @@ CONFIGURED_TRACKERS = load_trackers()
 
 
 def get_session() -> Session:
-    """
-    Configures and returns a requests Session with retry logic.
+    """Configure and return a requests Session with retry logic.
 
     Returns:
         Session: A configured requests Session object.
@@ -105,8 +105,7 @@ def get_session() -> Session:
 
 
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
-    """
-    Generates standard HTTP headers for scraping requests.
+    """Generate standard HTTP headers for scraping requests.
 
     Args:
         user_agent: Optional custom User-Agent string.
@@ -132,8 +131,7 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 
 
 def check_mirror(hostname: str) -> str | None:
-    """
-    Checks if a mirror is reachable via HEAD or GET request.
+    """Check if a mirror is reachable via HEAD or GET request.
 
     Args:
         hostname: The domain name to check (e.g., "audiobookbay.lu").
@@ -162,10 +160,10 @@ def check_mirror(hostname: str) -> str | None:
     return None
 
 
-@cached(cache=mirror_cache)
+@cached(cache=mirror_cache)  # type: ignore[misc]
 def find_best_mirror() -> str | None:
-    """
-    Finds the first reachable AudiobookBay mirror from the configured list.
+    """Find the first reachable AudiobookBay mirror from the configured list.
+
     Uses threaded checks for speed and caches the result.
 
     Returns:

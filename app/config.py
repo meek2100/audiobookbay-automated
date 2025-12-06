@@ -1,11 +1,13 @@
+"""Configuration module."""
+
 import logging
 import os
 import sys
 
 
 class Config:
-    """
-    Centralized configuration for the Flask application.
+    """Centralized configuration for the Flask application.
+
     Loads settings from environment variables with safe defaults.
     """
 
@@ -38,10 +40,8 @@ class Config:
     LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
 
     @classmethod
-    def validate(cls, logger):
-        """
-        Validates critical configuration at startup.
-        """
+    def validate(cls, logger: logging.Logger) -> None:
+        """Validate critical configuration at startup."""
         if cls.SECRET_KEY == "change-this-to-a-secure-random-key":  # nosec B105
             if cls.FLASK_DEBUG or cls.TESTING:
                 logger.warning(

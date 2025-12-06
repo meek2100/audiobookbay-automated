@@ -1,6 +1,4 @@
-"""
-Global constants and static data for the application.
-"""
+"""Global constants and static data for the application."""
 
 from typing import Final
 

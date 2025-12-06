@@ -1,3 +1,5 @@
+"""Utility functions for the application."""
+
 import hashlib
 import os
 import re
@@ -6,8 +8,8 @@ from app.constants import WINDOWS_RESERVED_NAMES
 
 
 def sanitize_title(title: str | None) -> str:
-    r"""
-    Sanitizes a string to be safe for use as a directory name.
+    r"""Sanitize a string to be safe for use as a directory name.
+
     Removes characters like < > : " / \ | ? *
     Also removes trailing periods and spaces (Windows compatibility).
     Returns "Unknown_Title" if the resulting string is empty to prevent
@@ -42,8 +44,8 @@ def sanitize_title(title: str | None) -> str:
 
 
 def calculate_static_hash(static_folder: str) -> str:
-    """
-    Calculates a short MD5 hash of the contents of the static folder.
+    """Calculate a short MD5 hash of the contents of the static folder.
+
     This is used for cache-busting: if any static file changes, this hash
     will change, forcing browsers to download the new version.
 

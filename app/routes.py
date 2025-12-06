@@ -1,3 +1,5 @@
+"""Routes module handling all web endpoints."""
+
 import logging
 import os
 from typing import Any
@@ -18,8 +20,8 @@ main_bp = Blueprint("main", __name__)
 
 @main_bp.context_processor
 def inject_global_vars() -> dict[str, Any]:
-    """
-    Injects global variables into all templates.
+    """Inject global variables into all templates.
+
     Uses current_app.config to access settings loaded in config.py.
     """
     # Retrieve the pre-calculated hash from config to avoid disk I/O on every request.
@@ -46,17 +48,9 @@ def health() -> Response:
 
 
 @main_bp.route("/", methods=["GET", "POST"])
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[misc]
 def search() -> str:
-    """
-    Handles the search interface.
-
-    Args:
-        None (Uses flask.request context).
-
-    Returns:
-        str: The rendered HTML of the search page.
-    """
+    """Handle the search interface."""
     books: list[dict[str, Any]] = []
     query = ""
     error_message = None
@@ -71,50 +65,34 @@ def search() -> str:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        return render_template("search.html", books=books, query=query)
+        return render_template("search.html", books=books, query=query)  # type: ignore[no-any-return]
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        return render_template("search.html", books=books, error=error_message, query=query)
+        return render_template("search.html", books=books, error=error_message, query=query)  # type: ignore[no-any-return]
 
 
 @main_bp.route("/details")
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[misc]
 def details() -> str | Response:
-    """
-    Fetches and renders the details page internally via the server.
-
-    Args:
-        None (Uses flask.request context).
-
-    Returns:
-        str | Response: The rendered HTML of the details page or a redirect.
-    """
+    """Fetch and render the details page internally via the server."""
     link = request.args.get("link")
     if not link:
         return redirect(url_for("main.search"))
 
     try:
         book_details = get_book_details(link)
-        return render_template("details.html", book=book_details)
+        return render_template("details.html", book=book_details)  # type: ignore[no-any-return]
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return render_template("details.html", error=f"Could not load details: {str(e)}")
+        return render_template("details.html", error=f"Could not load details: {str(e)}")  # type: ignore[no-any-return]
 
 
 @main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")
+@limiter.limit("60 per minute")  # type: ignore[misc]
 def send() -> Response:
-    """
-    API endpoint to initiate a download.
-
-    Args:
-        None (Uses flask.request context).
-
-    Returns:
-        Response: JSON indicating success or failure.
-    """
+    """API endpoint to initiate a download."""
     data = request.json
 
     # ROBUSTNESS: Ensure data is actually a dict before accessing .get()
@@ -166,15 +144,7 @@ def send() -> Response:
 
 @main_bp.route("/delete", methods=["POST"])
 def delete_torrent() -> Response:
-    """
-    API endpoint to remove a torrent.
-
-    Args:
-        None (Uses flask.request context).
-
-    Returns:
-        Response: JSON indicating success or failure.
-    """
+    """API endpoint to remove a torrent."""
     data = request.json
 
     # ROBUSTNESS check
@@ -196,15 +166,7 @@ def delete_torrent() -> Response:
 
 @main_bp.route("/reload_library", methods=["POST"])
 def reload_library() -> Response:
-    """
-    API endpoint to trigger an Audiobookshelf library scan.
-
-    Args:
-        None.
-
-    Returns:
-        Response: JSON indicating success or failure.
-    """
+    """API endpoint to trigger an Audiobookshelf library scan."""
     abs_url = current_app.config.get("ABS_URL")
     abs_key = current_app.config.get("ABS_KEY")
     abs_lib = current_app.config.get("ABS_LIB")
@@ -229,19 +191,11 @@ def reload_library() -> Response:
 
 @main_bp.route("/status")
 def status() -> str:
-    """
-    Renders the current status of downloads.
-
-    Args:
-        None.
-
-    Returns:
-        str: The rendered HTML of the status page.
-    """
+    """Render the current status of downloads."""
     try:
         torrent_list = torrent_manager.get_status()
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        return render_template("status.html", torrents=torrent_list)
+        return render_template("status.html", torrents=torrent_list)  # type: ignore[no-any-return]
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
-        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")
+        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")  # type: ignore[no-any-return]

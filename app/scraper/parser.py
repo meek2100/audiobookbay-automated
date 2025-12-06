@@ -1,5 +1,4 @@
-"""
-Parser module for BeautifulSoup HTML processing.
+"""Parser module for BeautifulSoup HTML processing.
 
 This module contains regex patterns and helper functions to extract
 structured data from the raw HTML of AudiobookBay pages.
@@ -26,9 +25,7 @@ RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|$)")
 
 @dataclass
 class BookMetadata:
-    """
-    Data class representing standard audiobook metadata extracted from the page.
-    """
+    """Data class representing standard audiobook metadata extracted from the page."""
 
     language: str = "Unknown"
     category: str = "Unknown"
@@ -39,8 +36,7 @@ class BookMetadata:
 
 
 def get_text_after_label(container: Tag, label_text: str) -> str:
-    """
-    Robustly finds values based on a label within a BS4 container.
+    """Robustly find values based on a label within a BS4 container.
 
     Strategy:
     1. Finds the text node containing 'label_text'.
@@ -70,7 +66,7 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
                 unit_node = next_elem.next_sibling
                 if unit_node and isinstance(unit_node, str):
                     val += f" {unit_node.strip()}"
-            return val
+            return str(val)
 
         # Strategy 2: The value is in the same text node (e.g., "Posted: 30 Nov 2025")
         # Split by the label and take the rest
@@ -87,8 +83,8 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
 
 
 def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> BookMetadata:
-    """
-    Parses the post content and info sections to extract normalized metadata.
+    """Parse the post content and info sections to extract normalized metadata.
+
     Handles '?' to 'Unknown' conversion centrally.
 
     Args:

@@ -1,5 +1,5 @@
-"""
-Extensions module.
+"""Extensions module.
+
 Initializes Flask extensions and singleton objects here to avoid circular imports.
 """
 

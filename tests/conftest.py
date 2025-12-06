@@ -1,14 +1,18 @@
 # tests/conftest.py
+from typing import Generator
+
 import pytest
+from flask import Flask
+from flask.testing import FlaskClient, FlaskCliRunner
 
 from app import create_app
 
 
 @pytest.fixture
-def app():
-    """
-    Creates the 'World' for the tests: A Flask application instance
-    configured specifically for testing (safe paths, disabled CSRF).
+def app() -> Generator[Flask, None, None]:
+    """Create the 'World' for the tests: A Flask application instance.
+
+    Configured specifically for testing (safe paths, disabled CSRF).
     """
     app = create_app()
     app.config.update(
@@ -24,16 +28,12 @@ def app():
 
 
 @pytest.fixture
-def client(app):
-    """
-    The observer within the world: A test client to make requests.
-    """
+def client(app: Flask) -> FlaskClient:
+    """The observer within the world: A test client to make requests."""
     return app.test_client()
 
 
 @pytest.fixture
-def runner(app):
-    """
-    A CLI runner for command-line context.
-    """
+def runner(app: Flask) -> FlaskCliRunner:
+    """A CLI runner for command-line context."""
     return app.test_cli_runner()

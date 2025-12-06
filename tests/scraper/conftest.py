@@ -1,3 +1,4 @@
+from typing import Any, Generator
 from unittest.mock import patch
 
 import pytest
@@ -7,9 +8,9 @@ import app.scraper.network as scraper_network
 
 
 @pytest.fixture(autouse=True)
-def mock_sleep():
-    """
-    Globally mock time.sleep for all tests in this package to speed up execution.
+def mock_sleep() -> Generator[Any, None, None]:
+    """Globally mock time.sleep for all tests in this package to speed up execution.
+
     Automatically applied to all tests in tests/scraper/.
     """
     with patch("time.sleep") as mock_sleep:
@@ -17,9 +18,9 @@ def mock_sleep():
 
 
 @pytest.fixture(autouse=True)
-def clear_caches():
-    """
-    Automatically clear network caches before every test.
+def clear_caches() -> Generator[None, None, None]:
+    """Automatically clear network caches before every test.
+
     CRITICAL: We clear caches in BOTH 'core' and 'network' modules.
     Because 'test_network.py' uses importlib.reload(), the 'search_cache' object
     in 'network' might become different from the one imported in 'core'.
@@ -44,7 +45,7 @@ def clear_caches():
 
 
 @pytest.fixture
-def real_world_html():
+def real_world_html() -> str:
     """Returns a real HTML snippet from Audiobook Bay for testing."""
     return """
 <div class="post">
@@ -75,9 +76,9 @@ def real_world_html():
 
 
 @pytest.fixture
-def details_html():
-    """
-    Returns a mock Details page HTML.
+def details_html() -> str:
+    """Return a mock Details page HTML.
+
     Updated to include Category and Posted fields to ensure full coverage of regex parsers.
     """
     return """

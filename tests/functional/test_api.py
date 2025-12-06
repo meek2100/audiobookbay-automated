@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -5,14 +6,14 @@ import requests
 # FIX: Patch targets updated to 'app.routes'
 
 
-def test_healthcheck(client):
+def test_healthcheck(client: Any) -> None:
     """Ensure the healthcheck endpoint works."""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json == {"status": "ok"}
 
 
-def test_send_success(client):
+def test_send_success(client: Any) -> None:
     with patch("app.routes.extract_magnet_link") as mock_extract, patch("app.routes.torrent_manager") as mock_tm:
         mock_extract.return_value = ("magnet:?xt=urn:btih:123", None)
         response = client.post("/send", json={"link": "https://audiobookbay.lu/book-page", "title": "Test Book"})
@@ -20,20 +21,20 @@ def test_send_success(client):
         mock_tm.add_magnet.assert_called_once()
 
 
-def test_send_missing_data(client):
+def test_send_missing_data(client: Any) -> None:
     response = client.post("/send", json={"link": "http://example.com"})
     assert response.status_code == 400
     assert b"Invalid request" in response.data
 
 
-def test_send_malformed_json(client):
+def test_send_malformed_json(client: Any) -> None:
     response = client.post("/send", data="not json", content_type="application/json")
     assert response.status_code == 400
 
 
-def test_send_invalid_json_type(client):
-    """
-    Test that sending a List instead of a Dict to /send returns 400.
+def test_send_invalid_json_type(client: Any) -> None:
+    """Test that sending a List instead of a Dict to /send returns 400.
+
     Covers coverage gap in routes.py lines 122-123.
     """
     # Using json parameter ensures correct Content-Type and serialization
@@ -42,7 +43,7 @@ def test_send_invalid_json_type(client):
     assert response.json == {"message": "Invalid JSON format"}
 
 
-def test_send_extraction_failure(client):
+def test_send_extraction_failure(client: Any) -> None:
     with patch("app.routes.extract_magnet_link") as mock_extract:
         mock_extract.return_value = (None, "Page Not Found")
         response = client.post("/send", json={"link": "https://audiobookbay.lu/bad-page", "title": "Bad Book"})
@@ -50,7 +51,7 @@ def test_send_extraction_failure(client):
         assert b"Download failed: Page Not Found" in response.data
 
 
-def test_send_torrent_client_failure(client):
+def test_send_torrent_client_failure(client: Any) -> None:
     with patch("app.routes.extract_magnet_link") as mock_extract, patch("app.routes.torrent_manager") as mock_tm:
         mock_extract.return_value = ("magnet:?xt=urn:btih:123", None)
         mock_tm.add_magnet.side_effect = Exception("Connection Refused")
@@ -59,7 +60,7 @@ def test_send_torrent_client_failure(client):
         assert b"Connection Refused" in response.data
 
 
-def test_send_route_no_save_path_base(client):
+def test_send_route_no_save_path_base(client: Any) -> None:
     # FIX: Update config on app instance
     client.application.config["SAVE_PATH_BASE"] = None
 
@@ -70,7 +71,7 @@ def test_send_route_no_save_path_base(client):
             mock_tm.add_magnet.assert_called_with("magnet:...", "t")
 
 
-def test_send_sanitization_warning(client, caplog):
+def test_send_sanitization_warning(client: Any, caplog: Any) -> None:
     with patch("app.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
         with patch("app.routes.torrent_manager") as mock_tm:
             client.post("/send", json={"link": "http://example.com", "title": "..."})
@@ -79,7 +80,7 @@ def test_send_sanitization_warning(client, caplog):
             assert "Unknown_Title" in args[1]
 
 
-def test_delete_torrent(client):
+def test_delete_torrent(client: Any) -> None:
     with patch("app.routes.torrent_manager") as mock_tm:
         mock_tm.remove_torrent.return_value = None
         response = client.post("/delete", json={"id": "hash123"})
@@ -87,15 +88,15 @@ def test_delete_torrent(client):
         mock_tm.remove_torrent.assert_called_with("hash123")
 
 
-def test_delete_torrent_missing_id(client):
+def test_delete_torrent_missing_id(client: Any) -> None:
     response = client.post("/delete", json={})
     assert response.status_code == 400
     assert b"Torrent ID is required" in response.data
 
 
-def test_delete_invalid_json_type(client):
-    """
-    Test that sending a List instead of a Dict to /delete returns 400.
+def test_delete_invalid_json_type(client: Any) -> None:
+    """Test that sending a List instead of a Dict to /delete returns 400.
+
     Covers coverage gap in routes.py line 182.
     """
     response = client.post("/delete", json=["not", "a", "dict"])
@@ -103,7 +104,7 @@ def test_delete_invalid_json_type(client):
     assert response.json == {"message": "Invalid JSON format"}
 
 
-def test_delete_torrent_failure(client):
+def test_delete_torrent_failure(client: Any) -> None:
     with patch("app.routes.torrent_manager") as mock_tm:
         mock_tm.remove_torrent.side_effect = Exception("Removal failed")
         response = client.post("/delete", json={"id": "hash123"})
@@ -111,7 +112,7 @@ def test_delete_torrent_failure(client):
         assert b"Removal failed" in response.data
 
 
-def test_reload_library_success(client):
+def test_reload_library_success(client: Any) -> None:
     # FIX: Update config on app instance
     client.application.config["ABS_URL"] = "http://abs"
     client.application.config["ABS_KEY"] = "token"
@@ -124,7 +125,7 @@ def test_reload_library_success(client):
         assert b"scan initiated" in response.data
 
 
-def test_reload_library_not_configured(client):
+def test_reload_library_not_configured(client: Any) -> None:
     # FIX: Ensure config is missing
     client.application.config["ABS_URL"] = None
     response = client.post("/reload_library")
@@ -132,7 +133,7 @@ def test_reload_library_not_configured(client):
     assert b"not configured" in response.data
 
 
-def test_reload_library_detailed_error(client):
+def test_reload_library_detailed_error(client: Any) -> None:
     client.application.config["ABS_URL"] = "http://abs"
     client.application.config["ABS_KEY"] = "k"
     client.application.config["ABS_LIB"] = "l"
@@ -151,7 +152,7 @@ def test_reload_library_detailed_error(client):
         assert "503 Service Unavailable" in response.json["message"]
 
 
-def test_rate_limit_enforced(client):
+def test_rate_limit_enforced(client: Any) -> None:
     client.application.config["RATELIMIT_ENABLED"] = True
     with (
         patch("app.routes.extract_magnet_link", return_value=("magnet:123", None)),
@@ -165,7 +166,7 @@ def test_rate_limit_enforced(client):
         assert response.status_code == 429
 
 
-def test_rate_limit_headers(client):
+def test_rate_limit_headers(client: Any) -> None:
     client.application.config["RATELIMIT_ENABLED"] = True
     with (
         patch("app.routes.extract_magnet_link", return_value=("magnet:123", None)),

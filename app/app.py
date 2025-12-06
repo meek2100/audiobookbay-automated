@@ -1,3 +1,5 @@
+"""Entry point for the application."""
+
 import os
 
 from . import create_app

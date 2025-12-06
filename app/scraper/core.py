@@ -1,3 +1,5 @@
+"""Core scraping logic for AudiobookBay."""
+
 import concurrent.futures
 import logging
 import random
@@ -33,8 +35,8 @@ logger = logging.getLogger(__name__)
 def fetch_and_parse_page(
     session: Session, hostname: str, query: str, page: int, user_agent: str
 ) -> list[dict[str, Any]]:
-    """
-    Fetches a single search result page and parses it into a list of books.
+    """Fetch a single search result page and parse it into a list of books.
+
     Enforces a global semaphore to limit concurrent scraping requests.
 
     Args:
@@ -120,8 +122,8 @@ def fetch_and_parse_page(
 
 
 def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[str, Any]]:
-    """
-    Searches AudiobookBay for the given query using cached search results if available.
+    """Search AudiobookBay for the given query using cached search results if available.
+
     Manages thread pool for parallel page fetching.
 
     Args:
@@ -135,7 +137,9 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
         ConnectionError: If no mirrors are reachable.
     """
     if query in search_cache:
-        return search_cache[query]
+        # Explicitly cast cache retrieval for Mypy safety
+        cached_result: list[dict[str, Any]] = search_cache[query]
+        return cached_result
 
     active_hostname = find_best_mirror()
     if not active_hostname:
@@ -143,7 +147,7 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
         raise ConnectionError("No reachable AudiobookBay mirrors found.")
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
-    results = []
+    results: list[dict[str, Any]] = []
 
     session_user_agent = get_random_user_agent()
     session = get_session()
@@ -171,8 +175,8 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
 
 
 def get_book_details(details_url: str) -> dict[str, Any]:
-    """
-    Scrapes the specific book details page to retrieve metadata, description, and hash.
+    """Scrape the specific book details page to retrieve metadata, description, and hash.
+
     Validates the URL to prevent SSRF.
 
     Args:
@@ -185,7 +189,9 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         ValueError: If the URL is invalid or not from an allowed domain.
     """
     if details_url in search_cache:
-        return search_cache[details_url]
+        # Explicit cast for Mypy
+        cached_result: dict[str, Any] = search_cache[details_url]
+        return cached_result
 
     if not details_url:
         raise ValueError("No URL provided.")
@@ -328,8 +334,8 @@ def get_book_details(details_url: str) -> dict[str, Any]:
 
 
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
-    """
-    Generates a magnet link by retrieving book details.
+    """Generate a magnet link by retrieving book details.
+
     NOW REFACTORED: Uses 'get_book_details' to ensure unified parsing logic,
     caching, and security validation (SSRF).
 
@@ -351,9 +357,11 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
 
         trackers = details.get("trackers", [])
         trackers.extend(CONFIGURED_TRACKERS)
-        trackers = list(dict.fromkeys(trackers))
+        # Type safety: ensure trackers is a list of strings
+        safe_trackers: list[str] = [str(t) for t in trackers]
+        safe_trackers = list(dict.fromkeys(safe_trackers))
 
-        trackers_query = "&".join(f"tr={quote(tracker)}" for tracker in trackers)
+        trackers_query = "&".join(f"tr={quote(tracker)}" for tracker in safe_trackers)
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
 
         return magnet_link, None
