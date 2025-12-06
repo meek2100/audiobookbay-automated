@@ -11,6 +11,8 @@
         // --- Web / Flask ---
         "samuelcolvin.jinjahtml",
         "esbenp.prettier-vscode",
+        // --- Markdown & Docs (NEW) ---
+        "davidanson.vscode-markdownlint",
         // --- Infrastructure ---
         "ms-azuretools.vscode-docker",
         "ms-vscode-remote.remote-containers",

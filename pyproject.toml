@@ -94,8 +94,11 @@ module = [
     "urllib3.*",
     "requests_mock.*",
     "pytest.*",
+    "requests.*",
+    "cachetools.*",
 ]
 ignore_missing_imports = true
+disable_error_code = ["import-untyped"]
 
 [tool.bandit]
 skips = ["B101"]
