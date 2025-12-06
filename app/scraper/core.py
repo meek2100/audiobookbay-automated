@@ -144,6 +144,8 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
 
     active_hostname = find_best_mirror()
     if not active_hostname:
+        # CRITICAL FIX: Invalidate cache if no mirror found so we don't cache 'None' for 10 mins
+        mirror_cache.clear()
         logger.error("Could not connect to any AudiobookBay mirrors.")
         raise ConnectionError("No reachable AudiobookBay mirrors found.")
 

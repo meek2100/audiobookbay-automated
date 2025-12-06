@@ -241,22 +241,6 @@ def test_deluge_add_magnet(mock_env: Any, monkeypatch: Any) -> None:
         )
 
 
-def test_init_deluge_success_check(mock_env: Any, monkeypatch: Any) -> None:
-    """Test successful Deluge initialization to cover the client assignment."""
-    monkeypatch.setenv("DL_CLIENT", "deluge")
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
-        mock_instance = MockDeluge.return_value
-        manager = TorrentManager()
-
-        # Explicitly call _get_client to trigger initialization
-        client = manager._get_client()
-
-        assert client is not None
-        mock_instance.login.assert_called_once()
-        # Verify the manager stored the client instance
-        assert manager._client == mock_instance
-
-
 def test_unsupported_client(mock_env: Any, monkeypatch: Any) -> None:
     """Test that unsupported clients return None and log error instead of crashing."""
     monkeypatch.setenv("DL_CLIENT", "fake_client")

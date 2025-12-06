@@ -16,7 +16,6 @@ from bs4 import Tag
 # These regexes allow us to match table cells even if casing or whitespace changes slightly.
 RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
-RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
 RE_LANGUAGE = re.compile(r"Language:\s*(\S+)")
