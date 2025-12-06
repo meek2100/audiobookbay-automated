@@ -9,9 +9,7 @@
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 "python.testing.pytestEnabled": true,
-                "python.testing.pytestArgs": [
-                    "tests"
-                ],
+                "python.testing.pytestArgs": ["tests"],
                 "terminal.integrated.cwd": "/app",
                 "python.analysis.typeCheckingMode": "strict",
                 "files.insertFinalNewline": true,
@@ -36,9 +34,7 @@
         "DL_CLIENT": "qbittorrent",
         "DL_HOST": "localhost"
     },
-    "forwardPorts": [
-        5078
-    ],
+    "forwardPorts": [5078],
     // UPDATED: Install Node.js for JS testing, then install Python and JS dependencies
     "postCreateCommand": "apt-get update && apt-get install -y nodejs npm && pip install -e \"\\.[dev]\" && npm install",
     "remoteUser": "appuser"
