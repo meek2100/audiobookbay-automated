@@ -35,6 +35,22 @@ def test_nav_link_injection(client: Any) -> None:
     assert b"http://player.local" in response.data
 
 
+def test_library_reload_injection(client: Any) -> None:
+    """Test that the Reload Library link appears only when configured."""
+    # Case 1: Configured -> Link should be present
+    client.application.config["ABS_URL"] = "http://abs"
+    client.application.config["ABS_KEY"] = "key"
+    client.application.config["ABS_LIB"] = "lib"
+
+    response = client.get("/")
+    assert b"Reload Library" in response.data
+
+    # Case 2: Not Configured -> Link should be absent
+    client.application.config["ABS_URL"] = None
+    response = client.get("/")
+    assert b"Reload Library" not in response.data
+
+
 def test_status_page(client: Any) -> None:
     # FIX: Patch where it is imported in routes.py
     with patch("app.routes.torrent_manager") as mock_tm:

@@ -13,6 +13,8 @@ const getGlobalFunctions = () => {
         initializeFilters: window.initializeFilters,
         applyFilters: window.applyFilters,
         clearFilters: window.clearFilters,
+        showLoadingSpinner: window.showLoadingSpinner,
+        hideLoadingSpinner: window.hideLoadingSpinner,
     };
 };
 
@@ -38,6 +40,15 @@ const setup = () => {
 
     // Setup Filter Controls (required for initialization)
     document.body.innerHTML = `
+        <div id="search-container">
+            <button class="search-button">
+                <span class="button-text">Search</span>
+                <div id="button-spinner" style="display: none"></div>
+            </button>
+        </div>
+        <div id="message-scroller" style="display: none">
+            <p id="scrolling-message"></p>
+        </div>
         <div id="filter-container">
             <select id="category-filter"><option value="">All Categories</option></select>
             <select id="language-filter"><option value="">All Languages</option></select>
@@ -253,5 +264,60 @@ describe("search.js Filter Logic (DOM dependent)", () => {
         document.querySelectorAll(".result-row").forEach((row) => {
             expect(row.style.display).toBe("");
         });
+    });
+});
+
+describe("search.js UI Spinner Logic", () => {
+    beforeEach(() => {
+        setup();
+        jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    test("showLoadingSpinner should disable button and show spinner", () => {
+        const { functions } = setupData;
+        const button = document.querySelector(".search-button");
+        const spinner = document.getElementById("button-spinner");
+
+        expect(button.disabled).toBe(false);
+        expect(spinner.style.display).toBe("none");
+
+        functions.showLoadingSpinner();
+
+        expect(button.disabled).toBe(true);
+        expect(button.querySelector(".button-text").innerText).toBe("Searching...");
+        expect(spinner.style.display).toBe("inline-block");
+    });
+
+    test("hideLoadingSpinner should re-enable button and hide spinner", () => {
+        const { functions } = setupData;
+        const button = document.querySelector(".search-button");
+        const spinner = document.getElementById("button-spinner");
+
+        // Set initial loading state
+        functions.showLoadingSpinner();
+
+        functions.hideLoadingSpinner();
+
+        expect(button.disabled).toBe(false);
+        expect(button.querySelector(".button-text").innerText).toBe("Search");
+        expect(spinner.style.display).toBe("none");
+    });
+
+    test("Scrolling messages should appear after 3 seconds", () => {
+        const { functions } = setupData;
+        const messageScroller = document.getElementById("message-scroller");
+
+        functions.showLoadingSpinner();
+        expect(messageScroller.style.display).toBe("none");
+
+        // Advance 3 seconds
+        jest.advanceTimersByTime(3000);
+
+        expect(messageScroller.style.display).toBe("block");
+        expect(document.getElementById("scrolling-message").textContent).not.toBe("");
     });
 });
