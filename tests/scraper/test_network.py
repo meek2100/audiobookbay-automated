@@ -2,7 +2,7 @@
 import importlib
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 from unittest.mock import mock_open, patch
 
 import requests
