@@ -1,4 +1,5 @@
-# tests/scraper/test_integration.py
+"""Integration tests for the scraper module."""
+
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +9,9 @@ import requests_mock
 
 from app.scraper import core as scraper_core
 from app.scraper import extract_magnet_link, get_book_details, search_audiobookbay
-from app.scraper.network import search_cache  # Import cache for manipulation
+from app.scraper.network import search_cache
+
+# --- Search & Flow Tests ---
 
 
 def test_search_audiobookbay_success(mock_sleep: Any) -> None:
@@ -35,11 +38,7 @@ def test_search_caching(mock_sleep: Any) -> None:
 
 
 def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
-    """Mock ThreadPoolExecutor to run synchronously.
-
-    This guarantees that the 'results.extend' line is executed
-    in the main thread context, ensuring coverage detection.
-    """
+    """Mock ThreadPoolExecutor to run synchronously for coverage."""
     mock_executor = MagicMock()
     mock_future = MagicMock()
     mock_future.result.return_value = [{"title": "Sync Book"}]
@@ -472,7 +471,7 @@ def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
         assert details["info_hash"] == "5555555555666666666677777777778888888888"
 
 
-# --- Extract Magnet Link Tests (Updated to use get_book_details) ---
+# --- Extract Magnet Link Tests ---
 
 
 def test_extract_magnet_success(mock_sleep: Any) -> None:
@@ -523,3 +522,20 @@ def test_extract_magnet_generic_exception(mock_sleep: Any) -> None:
             assert error is not None
             assert "Database down" in error
             assert mock_logger.error.called
+
+
+def test_extract_magnet_none_trackers(mock_sleep: Any) -> None:
+    """Test extract_magnet_link handling when trackers is explicitly None."""
+    url = "https://audiobookbay.lu/book"
+    # Mock details where 'trackers' key exists but value is None
+    mock_details = {"info_hash": "abc123hash", "trackers": None}
+
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+        with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
+            magnet, error = extract_magnet_link(url)
+
+            assert error is None
+            assert magnet is not None
+            assert "magnet:?xt=urn:btih:abc123hash" in magnet
+            # Should not contain any tr= parameters if configured trackers are also empty
+            assert "&tr=" not in magnet
