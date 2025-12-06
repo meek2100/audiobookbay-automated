@@ -3,7 +3,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests  # type: ignore[import-untyped]
+import requests
 import requests_mock
 from bs4 import BeautifulSoup
 

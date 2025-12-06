@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
@@ -65,12 +65,14 @@ def search() -> str:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        return render_template("search.html", books=books, query=query)
+        # Cast required to satisfy MyPy no-any-return strict mode
+        return cast(str, render_template("search.html", books=books, query=query))
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        return render_template("search.html", books=books, error=error_message, query=query)
+        # Cast required to satisfy MyPy no-any-return strict mode
+        return cast(str, render_template("search.html", books=books, error=error_message, query=query))
 
 
 @main_bp.route("/details")  # type: ignore[untyped-decorator]
@@ -83,10 +85,11 @@ def details() -> str | Response:
 
     try:
         book_details = get_book_details(link)
-        return render_template("details.html", book=book_details)
+        # Cast required if render_template is inferred as Any
+        return cast(str, render_template("details.html", book=book_details))
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return render_template("details.html", error=f"Could not load details: {str(e)}")
+        return cast(str, render_template("details.html", error=f"Could not load details: {str(e)}"))
 
 
 @main_bp.route("/send", methods=["POST"])  # type: ignore[untyped-decorator]
@@ -195,7 +198,7 @@ def status() -> str:
     try:
         torrent_list = torrent_manager.get_status()
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        return render_template("status.html", torrents=torrent_list)  # type: ignore[no-any-return]
+        return cast(str, render_template("status.html", torrents=torrent_list))
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
-        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")  # type: ignore[no-any-return]
+        return cast(str, render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))

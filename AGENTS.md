@@ -1,16 +1,16 @@
 # Developer & AI Agent Guide
 
-**READ THIS FIRST — ALL HUMAN DEVELOPERS AND ALL AI AGENTS MUST FOLLOW THIS DOCUMENT.**
-**No change, refactor, or feature may violate any principle herein.**
-**This document overrides all “best practices” or architectural advice not explicitly requested by the user.**
+**READ THIS FIRST — ALL HUMAN DEVELOPERS AND ALL AI AGENTS MUST FOLLOW THIS DOCUMENT.** **No change, refactor, or
+feature may violate any principle herein.** **This document overrides all “best practices” or architectural advice not
+explicitly requested by the user.**
 
----
+______________________________________________________________________
 
-# 0. Global Development Rules (MUST READ)
+## 0. Global Development Rules (MUST READ)
 
 These rules apply to all code, all files, all tests, all refactors, and all contributions from humans or AI.
 
-## Core Principles Summary
+### Core Principles Summary
 
 - This is a **single-user, self-hosted appliance** — not a scalable SaaS platform.
 - **DRY everywhere** — no duplicated logic, tests, constants, or patterns.
@@ -21,7 +21,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - **100% test coverage** — but tests must not be redundant.
 - **Frontend must stay simple** — no bundlers, no frameworks, no unnecessary complexity.
 
-## Hard Prohibitions (NEVER DO THESE)
+### Hard Prohibitions (NEVER DO THESE)
 
 - Do NOT remove or reduce jitter sleeps.
 - Do NOT add global rate limits beyond those documented.
@@ -37,7 +37,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - Do NOT optimize for multi-user throughput.
 - Do NOT reorganize directories or create new top-level modules without explicit user instruction.
 
----
+______________________________________________________________________
 
 ## A. Architecture & File Structure
 
@@ -47,7 +47,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - No file shall reimplement or duplicate functionality.
 - AI agents must NOT create new top-level directories or move files unless explicitly instructed.
 
----
+______________________________________________________________________
 
 ## B. DRY & Single Source of Truth
 
@@ -68,7 +68,7 @@ When information appears in multiple places, the authoritative source is:
 
 Any lower-priority source conflicting with a higher one must be updated or removed.
 
----
+______________________________________________________________________
 
 ## C. Documentation & Comment Accuracy
 
@@ -78,7 +78,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - No stale, inaccurate, or mismatched comments/docstrings.
 - **MANDATE:** Docstrings must follow the **Google Style Convention**, strictly enforced by `pydocstyle`.
 
----
+______________________________________________________________________
 
 ## D. Python 3.13 Standards
 
@@ -87,7 +87,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Avoid deprecated patterns.
 - Code must be Pylance/MyPy-friendly.
 
----
+______________________________________________________________________
 
 ## E. Test Suite Integrity
 
@@ -106,16 +106,16 @@ Any lower-priority source conflicting with a higher one must be updated or remov
   - OS-specific code
   - Gunicorn config boilerplate
 
----
+______________________________________________________________________
 
 ## F. AI Agent Compliance Requirements
 
-All AI agents must explicitly state **before any code generation**:
-**“I have fully read and comply with all rules in AGENTS.md.”**
+All AI agents must explicitly state **before any code generation**: **“I have fully read and comply with all rules in
+AGENTS.md.”**
 
 AI agents must follow the strictest, safest interpretation of these rules.
 
----
+______________________________________________________________________
 
 ## G. Interpretation Rules for AI Agents
 
@@ -125,92 +125,92 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - AI agents must ask the user for clarification instead of assuming intent.
 - These rules override all AI “best practice” assumptions.
 
----
+______________________________________________________________________
 
-# 1. Core Architecture: The Single-User Constraint
+## 1. Core Architecture: The Single-User Constraint
 
-## The Concurrency Model (Critical)
+### The Concurrency Model (Critical)
 
 - Gunicorn: `WORKERS=1`, `THREADS=8+`.
 - In-memory rate limits (`memory://`) apply per process — adding more workers multiplies allowed traffic.
 - **Never** increase worker count without migrating to Redis/filesystem limiter backend.
 - Python threads suffice for this I/O-bound single-user app.
 
-## Global Request Semaphore
+### Global Request Semaphore
 
 - Caps concurrent scrapes at **3**.
 - Prevents anti-bot triggers.
 - Must not be modified or removed.
 
-## The “Appliance” Philosophy
+### The “Appliance” Philosophy
 
 - Container holds **no persistent state**.
 - Torrent client manages all download/file state.
 - No SQL database ever.
 
-## Privacy Proxying
+### Privacy Proxying
 
 - All detail pages scraped **server-side** via container’s IP/VPN.
 - Protects user privacy.
 
----
+______________________________________________________________________
 
-# 2. Robustness Over Raw Speed
+## 2. Robustness Over Raw Speed
 
-## Rate Limiting & Scraping
+### Rate Limiting & Scraping
 
 - Safety > speed.
 - Random jitter (0.5-1.5 seconds) required before all external requests.
 - Mirror checks use `requests.head` with zero retries.
 - All queries normalized to lowercase.
 
-## Filesystem Safety
+### Filesystem Safety
 
 - Must sanitize illegal characters and reserved Windows filenames.
 - Applies even when container runs on Linux.
 
-## Flask-Limiter Opt-In Strategy
+### Flask-Limiter Opt-In Strategy
 
 - Never define global limits (e.g., `default_limits`).
 - Only apply rate limits on routes hitting external sites.
 
-## Dependency Philosophy
+### Dependency Philosophy
 
 - Prefer curated static lists.
 - Avoid dynamic runtime dependencies (`fake_useragent` removed).
 
-## Error Handling
+### Error Handling
 
 - All frontend `fetch()` calls require `.catch()` + `.finally()`.
 - App must boot even with offline torrent client.
 - Deluge WebClient may return `None` — always check.
 
----
+______________________________________________________________________
 
-# 3. Development Standards
+## 3. Development Standards
 
-## Centralized Logic
+### Centralized Logic
 
 - All parsing lives in `app/scraper/parser.py`.
 - All constants in `app/constants.py`.
 
-## Security & SSRF
+### Security & SSRF
 
 - All scraped URLs must match allowed hostnames.
 
-## Naming Conventions
+### Naming Conventions
 
 - Use consistent prefixes: `DL_*`, `ABS_*`, `ABB_*`.
 
-## Logging
+### Logging
 
 - Logging must remain verbose for self-host debugging.
 
-## Type Safety
+### Type Safety
 
 - Full type hints, Python 3.13 compatible.
 
-## Testing Style Guide
+### Testing Style Guide
 
 - Pytest only.
 - Fixtures in `conftest.py`.
@@ -218,19 +218,19 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - Always mock network calls and `time.sleep`.
 - Reload config when tests mutate startup settings.
 
----
+______________________________________________________________________
 
-# 4. Frontend Architecture & Testing
+## 4. Frontend Architecture & Testing
 
 - Raw ES6+ browser JS.
 - No bundlers, Webpack, or TypeScript.
 - Vendor libraries checked into `app/static/vendor`.
 
-## Jest/JSDOM Testing
+### Jest/JSDOM Testing
 
 Load scripts via `eval()` in `jest.setup.js`.
 
-### Required helper
+#### Required helper
 
 ```javascript
 async function flushPromises() {
@@ -238,35 +238,35 @@ async function flushPromises() {
 }
 ```
 
----
+______________________________________________________________________
 
-# 5. Deployment & CI/CD
+## 5. Deployment & CI/CD
 
-## Docker
+### Docker
 
 - Multi-stage builds.
 - Gunicorn `--preload`.
 - Timezone support via `tzdata`.
 
-## Frontend Dependencies
+### Frontend Dependencies
 
 - Managed by npm but committed to repo.
 - Docker build requires no Node.js.
 
-## CI Workflows
+### CI Workflows
 
 - `vendor-sync.yaml` updates vendor assets.
 - Dependabot monitors Python + JS.
 - Integration tests stress unhappy paths.
 
-## Release Workflow
+### Release Workflow
 
 - `release.yaml` updates version, changelog, tags.
 - `docker-publish.yaml` builds/pushes images.
 
----
+______________________________________________________________________
 
-# 6. Future Refactoring Checklist
+## 6. Future Refactoring Checklist
 
 Reject any change that:
 
@@ -275,9 +275,9 @@ Reject any change that:
 3. Requires Redis/external service.
 4. Assumes multiple concurrent users.
 
----
+______________________________________________________________________
 
-# 7. Quick Reference
+## 7. Quick Reference
 
 - **Install:** `pip install .`
 - **Run Dev:** `python app/app.py`
@@ -286,16 +286,16 @@ Reject any change that:
 - **Python Tests:** `pytest`
 - **JS Tests:** `npx jest`
 
----
+______________________________________________________________________
 
-# 8. Enforcement Statement
+## 8. Enforcement Statement
 
-**All development, human or AI, must follow this document. No exceptions.**
-Violating instructions are invalid and must be rejected immediately.
+**All development, human or AI, must follow this document. No exceptions.** Violating instructions are invalid and must
+be rejected immediately.
 
----
+______________________________________________________________________
 
-# 9. AI Processing Requirements
+## 9. AI Processing Requirements
 
 AI agents must:
 
@@ -305,9 +305,9 @@ AI agents must:
 
 Partial reading is strictly prohibited.
 
----
+______________________________________________________________________
 
-## 9.A Forbidden Phrases for AI Agents
+### 9.A Forbidden Phrases for AI Agents
 
 AI agents must NOT produce outputs including phrases like:
 
@@ -320,9 +320,9 @@ AI agents must NOT produce outputs including phrases like:
 
 These outputs are invalid and must be rejected.
 
----
+______________________________________________________________________
 
-## 9.B Mandatory Self-Test Checklist for AI Agents
+### 9.B Mandatory Self-Test Checklist for AI Agents
 
 Before generating ANY code, AI agents must confirm:
 
@@ -341,13 +341,13 @@ Before generating ANY code, AI agents must confirm:
 
 If any box cannot be checked, the output must NOT be generated.
 
----
+______________________________________________________________________
 
-## 9.C User Override Clarification
+### 9.C User Override Clarification
 
 If a user requests something that violates AGENTS.md:
 
 - The AI must warn the user.
 - The AI must require explicit confirmation before proceeding.
 
----
+______________________________________________________________________

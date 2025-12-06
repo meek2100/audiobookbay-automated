@@ -7,7 +7,7 @@ It encapsulates parsing strategies to keep core.py focused on networking and flo
 
 import re
 from dataclasses import dataclass, fields
-from typing import Optional
+from typing import NotRequired, Optional, TypedDict
 
 from bs4 import Tag
 
@@ -21,6 +21,25 @@ RE_TRACKERS = re.compile(r".*(?:udp|http)://.*", re.IGNORECASE)
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
 RE_LANGUAGE = re.compile(r"Language:\s*(\S+)")
 RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|$)")
+
+
+class BookDict(TypedDict):
+    """TypedDict representing the structure of a parsed book dictionary."""
+
+    title: str
+    link: str
+    cover: str | None
+    description: NotRequired[str]
+    trackers: NotRequired[list[str]]
+    info_hash: NotRequired[str]
+    language: str
+    category: str
+    post_date: str
+    format: str
+    bitrate: str
+    file_size: str
+    author: NotRequired[str]
+    narrator: NotRequired[str]
 
 
 @dataclass

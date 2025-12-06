@@ -66,7 +66,9 @@ def load_trackers() -> list[str]:
     if trackers_env:
         return [t.strip() for t in trackers_env.split(",") if t.strip()]
 
-    json_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "trackers.json")
+    # FIX: Look for trackers.json in the current working directory (container root)
+    # rather than inside the package structure.
+    json_path = os.path.join(os.getcwd(), "trackers.json")
     if os.path.exists(json_path):
         try:
             with open(json_path, "r") as f:

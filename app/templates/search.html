@@ -68,7 +68,7 @@
     <table>
         <tbody id="results-table-body">
             {% if books %} {% for book in books %} {# Generate versioned default URL once #} {% set default_cover_url =
-            url_for('static', filename='images/default_cover.jpg', v=static_version) %}
+            url_for('static', filename='images/' + default_cover_filename, v=static_version) %}
             <tr
                 class="result-row"
                 data-category="{{ book.category }}"
@@ -84,7 +84,7 @@
                         alt="Cover Art"
                         class="cover"
                         width="100"
-                        data-default-cover="{{ url_for('static', filename='images/default_cover.jpg', v=static_version) }}"
+                        data-default-cover="{{ url_for('static', filename='images/' + default_cover_filename, v=static_version) }}"
                         onerror="
                             this.onerror = null;
                             this.src = this.dataset.defaultCover;

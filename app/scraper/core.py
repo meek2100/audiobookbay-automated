@@ -4,13 +4,13 @@ import concurrent.futures
 import logging
 import random
 import time
-from typing import Any
 from urllib.parse import quote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 from requests.sessions import Session
 
+from app.constants import DEFAULT_COVER_FILENAME
 from app.scraper.network import (
     ABB_FALLBACK_HOSTNAMES,
     CONFIGURED_TRACKERS,
@@ -26,15 +26,14 @@ from app.scraper.network import (
 from app.scraper.parser import (
     RE_HASH_STRING,
     RE_INFO_HASH,
+    BookDict,
     parse_post_content,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_parse_page(
-    session: Session, hostname: str, query: str, page: int, user_agent: str
-) -> list[dict[str, Any]]:
+def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int, user_agent: str) -> list[BookDict]:
     """Fetch a single search result page and parse it into a list of books.
 
     Enforces a global semaphore to limit concurrent scraping requests.
@@ -47,7 +46,7 @@ def fetch_and_parse_page(
         user_agent: The User-Agent string to use for the request.
 
     Returns:
-        list[dict[str, Any]]: A list of dictionaries, each representing a book found on the page.
+        list[BookDict]: A list of dictionaries, each representing a book found on the page.
     """
     base_url = f"https://{hostname}"
     url = f"{base_url}/page/{page}/"
@@ -55,7 +54,7 @@ def fetch_and_parse_page(
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
 
-    page_results = []
+    page_results: list[BookDict] = []
 
     try:
         with GLOBAL_REQUEST_SEMAPHORE:
@@ -88,7 +87,7 @@ def fetch_and_parse_page(
                     extracted_cover = urljoin(base_url, str(cover_img["src"]))
                     # OPTIMIZATION: If remote is default, keep as None to use local versioned default.
                     # We check specifically for the filename to avoid false positives.
-                    if not extracted_cover.endswith("default_cover.jpg"):
+                    if not extracted_cover.endswith(DEFAULT_COVER_FILENAME):
                         cover = extracted_cover
 
                 # Use centralized parsing logic
@@ -121,7 +120,7 @@ def fetch_and_parse_page(
     return page_results
 
 
-def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[str, Any]]:
+def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[BookDict]:
     """Search AudiobookBay for the given query using cached search results if available.
 
     Manages thread pool for parallel page fetching.
@@ -131,14 +130,14 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
         max_pages: Maximum number of pages to scrape (default: configured limit).
 
     Returns:
-        list[dict[str, Any]]: A list of book dictionaries found across all pages.
+        list[BookDict]: A list of book dictionaries found across all pages.
 
     Raises:
         ConnectionError: If no mirrors are reachable.
     """
     if query in search_cache:
         # Explicitly cast cache retrieval for Mypy safety
-        cached_result: list[dict[str, Any]] = search_cache[query]
+        cached_result: list[BookDict] = search_cache[query]
         return cached_result
 
     active_hostname = find_best_mirror()
@@ -147,7 +146,7 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
         raise ConnectionError("No reachable AudiobookBay mirrors found.")
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
-    results: list[dict[str, Any]] = []
+    results: list[BookDict] = []
 
     session_user_agent = get_random_user_agent()
     session = get_session()
@@ -174,7 +173,7 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[dict[st
     return results
 
 
-def get_book_details(details_url: str) -> dict[str, Any]:
+def get_book_details(details_url: str) -> BookDict:
     """Scrape the specific book details page to retrieve metadata, description, and hash.
 
     Validates the URL to prevent SSRF.
@@ -183,14 +182,14 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         details_url: The full URL of the book page on AudiobookBay.
 
     Returns:
-        dict[str, Any]: A dictionary containing detailed book metadata.
+        BookDict: A dictionary containing detailed book metadata.
 
     Raises:
         ValueError: If the URL is invalid or not from an allowed domain.
     """
     if details_url in search_cache:
         # Explicit cast for Mypy
-        cached_result: dict[str, Any] = search_cache[details_url]
+        cached_result: BookDict = search_cache[details_url]
         return cached_result
 
     if not details_url:
@@ -229,7 +228,7 @@ def get_book_details(details_url: str) -> dict[str, Any]:
             extracted_cover = urljoin(details_url, str(cover_tag["src"]))
             # OPTIMIZATION: Only use remote cover if it is NOT the default one
             # Updated to endswith() for consistency with fetch_and_parse_page
-            if not extracted_cover.endswith("default_cover.jpg"):
+            if not extracted_cover.endswith(DEFAULT_COVER_FILENAME):
                 cover = extracted_cover
 
         # Use centralized parsing logic
@@ -307,7 +306,7 @@ def get_book_details(details_url: str) -> dict[str, Any]:
         if file_size == "?":
             file_size = "Unknown"
 
-        result = {
+        result: BookDict = {
             "title": title,
             "cover": cover,
             "description": description,
@@ -356,6 +355,8 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
             return None, "Info Hash could not be found on the page."
 
         trackers = details.get("trackers", [])
+        if trackers is None:
+            trackers = []
         trackers.extend(CONFIGURED_TRACKERS)
         # Type safety: ensure trackers is a list of strings
         safe_trackers: list[str] = [str(t) for t in trackers]

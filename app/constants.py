@@ -2,6 +2,9 @@
 
 from typing import Final
 
+# --- Application Constants ---
+DEFAULT_COVER_FILENAME: Final[str] = "default_cover.jpg"
+
 # --- Filesystem Constants ---
 # Windows reserved filenames to sanitize against, ensuring SMB/Cross-platform compatibility.
 WINDOWS_RESERVED_NAMES: Final[set[str]] = {
