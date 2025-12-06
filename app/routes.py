@@ -52,7 +52,7 @@ def health() -> Response:
 
 @main_bp.route("/", methods=["GET", "POST"])  # type: ignore[untyped-decorator]
 @limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
-def search() -> str:
+def search() -> str | Response:
     """Handle the search interface."""
     books: list[BookDict] = []
     query = ""

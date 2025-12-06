@@ -339,10 +339,16 @@ class TorrentManager:
                 if isinstance(torrents.result, dict):
                     results_dict = torrents.result
                     for key, torrent in results_dict.items():
-                        # SAFETY: Use .get() and explicit casting to prevent KeyErrors or TypeErrors
-                        # if the API returns malformed data or None values for specific fields.
+                        # SAFETY: Robust conversion of progress to float
+                        # Deluge might return mixed types or None for progress
                         progress_val = torrent.get("progress")
-                        progress = round(float(progress_val) if progress_val is not None else 0.0, 2)
+                        try:
+                            if progress_val is None:
+                                progress = 0.0
+                            else:
+                                progress = round(float(progress_val), 2)
+                        except (ValueError, TypeError):
+                            progress = 0.0
 
                         results.append(
                             {

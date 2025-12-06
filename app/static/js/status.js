@@ -45,6 +45,7 @@ function updateTable(tbody, torrents) {
     }
 
     // Build HTML string for rows
+    // SECURITY: Ensure ALL dynamic fields are escaped to prevent XSS.
     const rowsHtml = torrents
         .map(
             (torrent) => `
@@ -52,7 +53,7 @@ function updateTable(tbody, torrents) {
             <td>${escapeHtml(torrent.name)}</td>
             <td>${torrent.progress}%</td>
             <td>${escapeHtml(torrent.state)}</td>
-            <td>${torrent.size}</td>
+            <td>${escapeHtml(torrent.size)}</td>
             <td>
                 <button class="remove-button" onclick="deleteTorrent('${torrent.id}')">Remove</button>
             </td>
