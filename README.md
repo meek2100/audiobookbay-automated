@@ -19,7 +19,7 @@ search [**AudioBook Bay**](https://audiobookbay.lu/) for audiobooks and send mag
   - A **save location** for downloaded files.
 
 > **Note**: This app does not download or move any material itself (including torrent files). It only searches AudioBook
-> Bay and facilitates magnet link generation for torrent.
+> Bay and facilitates magnet link generation for the torrent client.
 
 ## Features
 
@@ -54,7 +54,7 @@ ______________________________________________________________________
 > **Important for Deluge Users**: It is **strongly recommended** to enable the **Label** plugin in your Deluge client
 > (WebUI or GTK). This app uses the plugin to categorize downloads. If the plugin is missing or disabled, the app will
 > still function and add downloads, but they will **not be categorized**, and the "Status" page may not be able to track
-> them effectively.
+> them effectively. Transmission and qBittorrent support categorization natively without plugins.
 
 ### Environment Variables
 

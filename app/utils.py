@@ -17,6 +17,7 @@ def sanitize_title(title: str | None) -> str:
 
     Also checks for Windows reserved filenames (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
     to ensure compatibility with SMB shares/Windows mounts.
+    Checks both the full name and the root name (e.g. "CON.txt" is also invalid).
 
     Args:
         title: The string to sanitize, potentially None.
@@ -37,7 +38,9 @@ def sanitize_title(title: str | None) -> str:
         return "Unknown_Title"
 
     # Check for Windows reserved filenames (case-insensitive)
-    if sanitized.upper() in WINDOWS_RESERVED_NAMES:
+    # Check both exact match ("CON") and root match ("CON.txt")
+    root, _ = os.path.splitext(sanitized)
+    if sanitized.upper() in WINDOWS_RESERVED_NAMES or root.upper() in WINDOWS_RESERVED_NAMES:
         return f"{sanitized}_Safe"
 
     return sanitized

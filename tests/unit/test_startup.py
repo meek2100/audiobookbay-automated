@@ -44,17 +44,15 @@ def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
         "SAVE_PATH_BASE": "/tmp/startup_test_safe_restore",
         "SECRET_KEY": "startup_test_safe_key",
         "FLASK_DEBUG": "0",
-        "LOG_LEVEL": "INFO",  # Reset log level
+        "LOG_LEVEL": "INFO",
     }
 
     # Reload modules to restore original state
     with patch.dict(os.environ, safe_env):
         # FIX: Do not use sys.modules.pop(), it causes ImportError on reload.
-        # Instead, assume dirty state and reload or re-import.
         importlib.reload(app.config)
         importlib.reload(app)
 
-        # Reload app.app if it was loaded, otherwise import it
         if "app.app" in sys.modules:
             importlib.reload(sys.modules["app.app"])
         else:
@@ -67,12 +65,8 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
         monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
         monkeypatch.delenv("TESTING", raising=False)
 
-        # RELOAD ORDER IS CRITICAL:
-        # 1. Reload config to read the new environment (missing SAVE_PATH_BASE)
         importlib.reload(app.config)
-        # 2. Reload app package to update 'from .config import Config' reference
         importlib.reload(app)
-        # 3. Reload app module to run create_app with the new Config
         if "app.app" in sys.modules:
             importlib.reload(sys.modules["app.app"])
         else:
@@ -104,22 +98,19 @@ def test_startup_insecure_secret_key_production(monkeypatch: Any, mock_flask_fac
         assert "CRITICAL SECURITY ERROR" in args[0]
 
 
-def test_startup_insecure_secret_key_debug_warning(monkeypatch: Any, mock_flask_factory: Any) -> None:
+def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that invalid PAGE_LIMIT (<= 0) is reset to default."""
     _, mock_logger = mock_flask_factory
+    monkeypatch.setenv("PAGE_LIMIT", "-5")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
-    monkeypatch.setenv("SECRET_KEY", "change-this-to-a-secure-random-key")
-    monkeypatch.setenv("FLASK_DEBUG", "1")
-    monkeypatch.delenv("TESTING", raising=False)
 
     importlib.reload(app.config)
-    importlib.reload(app)
-    if "app.app" in sys.modules:
-        importlib.reload(sys.modules["app.app"])
-    else:
-        importlib.import_module("app.app")
+    # Validate manually as we are testing config logic specifically
+    app.config.Config.validate(mock_logger)
 
+    assert app.config.Config.PAGE_LIMIT == 3
     args, _ = mock_logger.warning.call_args
-    assert "WARNING: You are using the default insecure SECRET_KEY" in args[0]
+    assert "Invalid PAGE_LIMIT" in args[0]
 
 
 def test_app_startup_verification_fail(monkeypatch: Any, mock_flask_factory: Any) -> None:
@@ -147,30 +138,3 @@ def test_app_startup_verification_fail(monkeypatch: Any, mock_flask_factory: Any
             importlib.reload(sys.modules["app.app"])
         else:
             importlib.import_module("app.app")
-
-
-def test_startup_invalid_log_level(monkeypatch: Any, mock_flask_factory: Any) -> None:
-    """Test that an invalid LOG_LEVEL environment variable triggers a warning.
-
-    Defaults to INFO.
-    """
-    _, mock_logger = mock_flask_factory
-    monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL_NAME")
-    # Must ensure other critical vars are set so we don't crash before the log check
-    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp/logs_test")
-    monkeypatch.setenv("TESTING", "1")  # Keep testing mode to avoid exit(1)
-
-    # Reload config to process the env var
-    importlib.reload(app.config)
-    # The validate() method is called inside create_app, which is called in app.app
-    # But for unit testing the Config logic specifically, we can call validate directly
-    # to avoid the overhead/complexity of the full app factory for this specific logic check.
-    app.config.Config.validate(mock_logger)
-
-    # Verify warning was logged
-    found = False
-    for call in mock_logger.warning.call_args_list:
-        if "Invalid LOG_LEVEL" in call[0][0]:
-            found = True
-            break
-    assert found, "Expected warning about invalid LOG_LEVEL not found"

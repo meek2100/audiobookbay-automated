@@ -8,19 +8,19 @@ from urllib.parse import quote, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from flask import current_app
 from requests.sessions import Session
 
 from app.constants import DEFAULT_COVER_FILENAME
 from app.scraper.network import (
-    ABB_FALLBACK_HOSTNAMES,
-    CONFIGURED_TRACKERS,
     GLOBAL_REQUEST_SEMAPHORE,
-    PAGE_LIMIT,
     details_cache,
     find_best_mirror,
     get_headers,
+    get_mirrors,
     get_random_user_agent,
     get_session,
+    get_trackers,
     mirror_cache,
     search_cache,
 )
@@ -119,14 +119,14 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
     return page_results
 
 
-def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[BookDict]:
+def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDict]:
     """Search AudiobookBay for the given query using cached search results if available.
 
     Manages thread pool for parallel page fetching.
 
     Args:
         query: The search string.
-        max_pages: Maximum number of pages to scrape (default: configured limit).
+        max_pages: Maximum number of pages to scrape. If None, uses configured limit.
 
     Returns:
         list[BookDict]: A list of book dictionaries found across all pages.
@@ -138,6 +138,10 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[BookDic
         cached_result: list[BookDict] = search_cache[query]
         return cached_result
 
+    # Load configuration dynamically
+    if max_pages is None:
+        max_pages = current_app.config.get("PAGE_LIMIT", 3)
+
     active_hostname = find_best_mirror()
     if not active_hostname:
         logger.error("Could not connect to any AudiobookBay mirrors.")
@@ -148,6 +152,8 @@ def search_audiobookbay(query: str, max_pages: int = PAGE_LIMIT) -> list[BookDic
 
     session_user_agent = get_random_user_agent()
     session = get_session()
+
+    # Cap workers to avoid excessive threads
     safe_workers = min(max_pages, 3)
 
     try:
@@ -185,7 +191,6 @@ def get_book_details(details_url: str) -> BookDict:
     Raises:
         ValueError: If the URL is invalid or not from an allowed domain.
     """
-    # FIX: Use details_cache for BookDict items
     if details_url in details_cache:
         cached_result: BookDict = details_cache[details_url]
         return cached_result
@@ -198,7 +203,9 @@ def get_book_details(details_url: str) -> BookDict:
     except Exception as e:
         raise ValueError(f"Invalid URL format: {str(e)}") from e
 
-    if parsed_url.netloc not in ABB_FALLBACK_HOSTNAMES:
+    # Retrieve valid mirrors dynamically for SSRF check
+    allowed_hosts = get_mirrors()
+    if parsed_url.netloc not in allowed_hosts:
         logger.warning(f"Blocked SSRF attempt to: {details_url}")
         raise ValueError(f"Invalid domain: {parsed_url.netloc}. Only AudiobookBay mirrors are allowed.")
 
@@ -220,11 +227,10 @@ def get_book_details(details_url: str) -> BookDict:
         if title_tag:
             title = title_tag.get_text(strip=True)
 
-        cover = None  # Default to None so UI handles versioned default
+        cover = None
         cover_tag = soup.select_one('.postContent img[itemprop="image"]')
         if cover_tag and cover_tag.has_attr("src"):
             extracted_cover = urljoin(details_url, str(cover_tag["src"]))
-            # Only use remote cover if it is NOT the default one.
             if not extracted_cover.endswith(DEFAULT_COVER_FILENAME):
                 cover = extracted_cover
 
@@ -249,16 +255,13 @@ def get_book_details(details_url: str) -> BookDict:
         description = "No description available."
         desc_tag = soup.select_one("div.desc")
         if desc_tag:
-            # Strict HTML Sanitization to prevent XSS in "Privacy Proxy" mode.
-            # We only allow basic formatting tags. Scripts, iframes, styles, and events are stripped.
+            # Strict HTML Sanitization
             allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
 
             for tag in desc_tag.find_all(True):
                 if tag.name not in allowed_tags:
-                    # Remove the tag wrapper but keep its text content
                     tag.unwrap()
                 else:
-                    # Clear all attributes (e.g., onclick, style, class) from allowed tags
                     tag.attrs = {}
 
             description = desc_tag.decode_contents()
@@ -268,7 +271,6 @@ def get_book_details(details_url: str) -> BookDict:
         info_hash = "Unknown"
 
         # --- INFO HASH & TRACKER EXTRACTION ---
-        # Strategy 1: Standard Table Layout
         info_table = soup.select_one("table.torrent_info")
         if info_table:
             for row in info_table.find_all("tr"):
@@ -283,7 +285,6 @@ def get_book_details(details_url: str) -> BookDict:
                     elif "Info Hash:" in label:
                         info_hash = value
 
-        # Strategy 2: Robust Fallback (if table structure is broken/missing)
         if info_hash == "Unknown":
             info_hash_row = soup.find("td", string=RE_INFO_HASH)
             if info_hash_row:
@@ -291,7 +292,6 @@ def get_book_details(details_url: str) -> BookDict:
                 if sibling:
                     info_hash = sibling.text.strip()
 
-        # Strategy 3: Regex Fallback (Last Resort)
         if info_hash == "Unknown":
             hash_match = RE_HASH_STRING.search(response.text)
             if hash_match:
@@ -316,7 +316,6 @@ def get_book_details(details_url: str) -> BookDict:
             "author": author,
             "narrator": narrator,
         }
-        # FIX: Store in details cache
         details_cache[details_url] = result
         return result
 
@@ -340,7 +339,6 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
                                        If successful, error_message is None.
     """
     try:
-        # Reuse centralized details logic to ensure consistency, caching, and SSRF protection.
         details = get_book_details(details_url)
 
         info_hash = details.get("info_hash")
@@ -350,7 +348,11 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         trackers = details.get("trackers", [])
         if trackers is None:
             trackers = []
-        trackers.extend(CONFIGURED_TRACKERS)
+
+        # Load additional trackers lazy (IO or Config access)
+        extra_trackers = get_trackers()
+        trackers.extend(extra_trackers)
+
         safe_trackers: list[str] = [str(t) for t in trackers]
         safe_trackers = list(dict.fromkeys(safe_trackers))
 

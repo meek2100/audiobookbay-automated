@@ -6,10 +6,12 @@ import logging
 import os
 import random
 import threading
+from functools import lru_cache
 from typing import cast
 
 import requests
 from cachetools import TTLCache, cached
+from flask import current_app
 from requests.adapters import HTTPAdapter
 from requests.sessions import Session
 from urllib3.util.retry import Retry
@@ -19,39 +21,15 @@ from app.scraper.parser import BookDict
 
 logger = logging.getLogger(__name__)
 
-# --- Configuration ---
-try:
-    PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", "3").strip())
-except ValueError:
-    logger.warning("Invalid PAGE_LIMIT in environment. Defaulting to 3.")
-    PAGE_LIMIT = 3
-
-DEFAULT_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
-
-# Start with user preferred hostname, then defaults
-ABB_FALLBACK_HOSTNAMES: list[str] = [DEFAULT_HOSTNAME] + DEFAULT_MIRRORS
-
-# Allow users to add mirrors via env var
-extra_mirrors = os.getenv("ABB_MIRRORS", "")
-if extra_mirrors:
-    ABB_FALLBACK_HOSTNAMES.extend([m.strip() for m in extra_mirrors.split(",") if m.strip()])
-
-# Deduplicate mirrors while preserving the original order.
-# Order matters because we want to prioritize the user-defined hostname and reliable mirrors first.
-ABB_FALLBACK_HOSTNAMES = list(dict.fromkeys(ABB_FALLBACK_HOSTNAMES))
-
 # --- Concurrency Control ---
-# Increased from 2 to 3.
-# Since the default PAGE_LIMIT is 3, a limit of 2 forces the 3rd page to wait
-# for one of the first two to finish (serialization), doubling the search time.
+# Caps concurrent scrapes at 3 to prevent anti-bot triggers.
 MAX_CONCURRENT_REQUESTS = 3
 GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
 # --- Caches ---
-# FIX: Added explicit type parameters for TTLCache to satisfy strict MyPy
+# Explicit type parameters for TTLCache to satisfy strict MyPy
 mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
 search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
-# FIX: Separate cache for details to enforce strict typing (BookDict vs list[BookDict])
 details_cache: TTLCache[str, BookDict] = TTLCache(maxsize=100, ttl=300)
 
 
@@ -60,34 +38,56 @@ def get_random_user_agent() -> str:
     return random.choice(USER_AGENTS)  # nosec B311
 
 
-def load_trackers() -> list[str]:
-    """Load trackers from environment variable, local JSON, or internal defaults.
+@lru_cache(maxsize=1)
+def get_trackers() -> list[str]:
+    """Load trackers from configuration and optional local JSON file.
+
+    Lazy-loaded and cached to avoid repeated I/O.
+    Prioritizes:
+    1. Environment Variable (via Config)
+    2. trackers.json (Volume Mount)
+    3. Internal Defaults
 
     Returns:
         list[str]: A list of tracker URLs.
     """
-    trackers_env = os.getenv("MAGNET_TRACKERS")
-    if trackers_env:
-        return [t.strip() for t in trackers_env.split(",") if t.strip()]
+    # 1. Configured via Env/Config
+    # We must access current_app inside the function (request time), not at module level
+    env_trackers = current_app.config.get("MAGNET_TRACKERS", [])
+    if env_trackers:
+        return cast(list[str], env_trackers)
 
-    # Load trackers from the container root (cwd) for volume mounting support.
+    # 2. Volume Mount Override
     json_path = os.path.join(os.getcwd(), "trackers.json")
     if os.path.exists(json_path):
         try:
             with open(json_path, "r") as f:
                 data = json.load(f)
                 if isinstance(data, list):
+                    logger.info("Loaded custom trackers from trackers.json")
                     return cast(list[str], data)
                 else:
                     logger.warning("trackers.json contains invalid data (expected a list). Using defaults.")
         except Exception as e:
             logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 
+    # 3. Defaults
     return DEFAULT_TRACKERS
 
 
-# This is called at module level to initialize the list
-CONFIGURED_TRACKERS = load_trackers()
+def get_mirrors() -> list[str]:
+    """Retrieve the list of mirrors to attempt, in priority order.
+
+    Combines the primary hostname, user-defined mirrors, and default mirrors.
+    """
+    primary = current_app.config.get("ABB_HOSTNAME", "audiobookbay.lu")
+    extra = current_app.config.get("ABB_MIRRORS", [])
+
+    # Start with user preference
+    candidates = [primary] + extra + DEFAULT_MIRRORS
+
+    # Deduplicate while preserving order
+    return list(dict.fromkeys(candidates))
 
 
 def get_session() -> Session:
@@ -174,11 +174,14 @@ def find_best_mirror() -> str | None:
     Returns:
         str | None: The hostname of the active mirror, or None if all fail.
     """
-    logger.debug("Checking connectivity for all mirrors...")
+    # Dynamic retrieval of mirrors list
+    mirrors = get_mirrors()
+
+    logger.debug(f"Checking connectivity for {len(mirrors)} mirrors...")
     safe_mirror_workers = 5
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=safe_mirror_workers) as executor:
-        future_to_host = {executor.submit(check_mirror, host): host for host in ABB_FALLBACK_HOSTNAMES}
+        future_to_host = {executor.submit(check_mirror, host): host for host in mirrors}
         for future in concurrent.futures.as_completed(future_to_host):
             result = future.result()
             if result:

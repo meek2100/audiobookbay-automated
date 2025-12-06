@@ -488,8 +488,8 @@ def test_extract_magnet_success(mock_sleep: Any) -> None:
     mock_details = cast(BookDict, {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]})
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        # FIX: Patch the RENAMED variable in core.py
-        with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
+        # FIX: Patch the get_trackers function instead of the removed global
+        with patch("app.scraper.core.get_trackers", return_value=[]):
             magnet, error = extract_magnet_link(url)
             assert error is None
             assert magnet is not None
@@ -539,7 +539,8 @@ def test_extract_magnet_none_trackers(mock_sleep: Any) -> None:
     mock_details = cast(BookDict, {"info_hash": "abc123hash", "trackers": None})
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
+        # Patch get_trackers to return empty list
+        with patch("app.scraper.core.get_trackers", return_value=[]):
             magnet, error = extract_magnet_link(url)
 
             assert error is None

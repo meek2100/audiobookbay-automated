@@ -46,6 +46,13 @@ def test_sanitize_reserved_filenames() -> None:
     assert sanitize_title("NULLIFY") == "NULLIFY"
 
 
+def test_sanitize_reserved_filenames_with_extensions() -> None:
+    """Test that reserved filenames with extensions are also caught (New Requirement)."""
+    assert sanitize_title("CON.txt") == "CON.txt_Safe"
+    assert sanitize_title("lpt1.mp3") == "lpt1.mp3_Safe"
+    assert sanitize_title("AUX.json") == "AUX.json_Safe"
+
+
 # --- Calculate Static Hash Tests ---
 
 
