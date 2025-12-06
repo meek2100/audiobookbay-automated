@@ -9,7 +9,7 @@ from flask import Blueprint, Response, current_app, jsonify, redirect, render_te
 
 # Import extensions and logic
 from .extensions import limiter, torrent_manager
-from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
+from .scraper import BookDict, extract_magnet_link, get_book_details, search_audiobookbay
 from .utils import sanitize_title
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,8 @@ def health() -> Response:
 @limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def search() -> str:
     """Handle the search interface."""
-    books: list[dict[str, Any]] = []
+    # FIX: Use BookDict type hint to match search_audiobookbay return type
+    books: list[BookDict] = []
     query = ""
     error_message = None
 
