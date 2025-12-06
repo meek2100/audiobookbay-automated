@@ -8,7 +8,7 @@ import pytest
 from app.scraper.network import details_cache, mirror_cache, search_cache
 
 
-@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
+@pytest.fixture(autouse=True)
 def mock_sleep() -> Generator[Any, None, None]:
     """Globally mock time.sleep for all tests in this package to speed up execution.
 
@@ -18,7 +18,7 @@ def mock_sleep() -> Generator[Any, None, None]:
         yield mock_sleep
 
 
-@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
+@pytest.fixture(autouse=True)
 def clear_caches() -> Generator[None, None, None]:
     """Automatically clear network caches before every test.
 
@@ -41,7 +41,7 @@ def clear_caches() -> Generator[None, None, None]:
     details_cache.clear()
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def real_world_html() -> str:
     """Returns a real HTML snippet from Audiobook Bay for testing."""
     return """
@@ -72,7 +72,7 @@ def real_world_html() -> str:
 """
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def details_html() -> str:
     """Return a mock Details page HTML.
 

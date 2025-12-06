@@ -48,10 +48,8 @@ MAX_CONCURRENT_REQUESTS = 3
 GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
 # --- Caches ---
-# FIX: Added explicit type parameters for TTLCache to satisfy strict MyPy
 mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
 search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
-# FIX: Separate cache for details to enforce strict typing (BookDict vs list[BookDict])
 details_cache: TTLCache[str, BookDict] = TTLCache(maxsize=100, ttl=300)
 
 
@@ -165,7 +163,7 @@ def check_mirror(hostname: str) -> str | None:
     return None
 
 
-@cached(cache=mirror_cache)  # type: ignore[untyped-decorator]
+@cached(cache=mirror_cache)
 def find_best_mirror() -> str | None:
     """Find the first reachable AudiobookBay mirror from the configured list.
 

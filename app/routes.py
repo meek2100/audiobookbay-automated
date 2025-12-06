@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 main_bp = Blueprint("main", __name__)
 
 
-@main_bp.context_processor  # type: ignore[untyped-decorator]
+@main_bp.context_processor
 def inject_global_vars() -> dict[str, Any]:
     """Inject global variables into all templates.
 
@@ -43,15 +43,14 @@ def inject_global_vars() -> dict[str, Any]:
     }
 
 
-@main_bp.route("/health")  # type: ignore[untyped-decorator]
+@main_bp.route("/health")
 def health() -> Response:
     """Dedicated health check endpoint."""
-    # FIX: Cast jsonify result to Response to satisfy strict return type
     return cast(Response, jsonify({"status": "ok"}))
 
 
-@main_bp.route("/", methods=["GET", "POST"])  # type: ignore[untyped-decorator]
-@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
+@main_bp.route("/", methods=["GET", "POST"])
+@limiter.limit("30 per minute")
 def search() -> str:
     """Handle the search interface."""
     books: list[BookDict] = []
@@ -68,18 +67,16 @@ def search() -> str:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        # Wrap in str() to enforce string return type, avoiding "Returning Any" errors
-        return str(render_template("search.html", books=books, query=query))
+        return cast(str, render_template("search.html", books=books, query=query))
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        # Wrap in str() to enforce string return type
-        return str(render_template("search.html", books=books, error=error_message, query=query))
+        return cast(str, render_template("search.html", books=books, error=error_message, query=query))
 
 
-@main_bp.route("/details")  # type: ignore[untyped-decorator]
-@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
+@main_bp.route("/details")
+@limiter.limit("30 per minute")
 def details() -> str | Response:
     """Fetch and render the details page internally via the server."""
     link = request.args.get("link")
@@ -88,15 +85,14 @@ def details() -> str | Response:
 
     try:
         book_details = get_book_details(link)
-        return str(render_template("details.html", book=book_details))
+        return cast(str, render_template("details.html", book=book_details))
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return str(render_template("details.html", error=f"Could not load details: {str(e)}"))
+        return cast(str, render_template("details.html", error=f"Could not load details: {str(e)}"))
 
 
-# FIX: Updated return type to include tuple[Response, int] for error codes
-@main_bp.route("/send", methods=["POST"])  # type: ignore[untyped-decorator]
-@limiter.limit("60 per minute")  # type: ignore[untyped-decorator]
+@main_bp.route("/send", methods=["POST"])
+@limiter.limit("60 per minute")
 def send() -> Response | tuple[Response, int]:
     """API endpoint to initiate a download."""
     data = request.json
@@ -147,7 +143,7 @@ def send() -> Response | tuple[Response, int]:
         return jsonify({"message": str(e)}), 500
 
 
-@main_bp.route("/delete", methods=["POST"])  # type: ignore[untyped-decorator]
+@main_bp.route("/delete", methods=["POST"])
 def delete_torrent() -> Response | tuple[Response, int]:
     """API endpoint to remove a torrent."""
     data = request.json
@@ -168,7 +164,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
         return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
 
 
-@main_bp.route("/reload_library", methods=["POST"])  # type: ignore[untyped-decorator]
+@main_bp.route("/reload_library", methods=["POST"])
 def reload_library() -> Response | tuple[Response, int]:
     """API endpoint to trigger an Audiobookshelf library scan."""
     abs_url = current_app.config.get("ABS_URL")
@@ -193,7 +189,7 @@ def reload_library() -> Response | tuple[Response, int]:
         return jsonify({"message": f"Failed to trigger library scan: {error_message}"}), 500
 
 
-@main_bp.route("/status")  # type: ignore[untyped-decorator]
+@main_bp.route("/status")
 def status() -> str | Response | tuple[Response, int]:
     """Render the current status of downloads.
 
@@ -207,8 +203,7 @@ def status() -> str | Response | tuple[Response, int]:
             return jsonify(torrent_list)
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        # Wrap in str() to ensure return type is string
-        return str(render_template("status.html", torrents=torrent_list))
+        return cast(str, render_template("status.html", torrents=torrent_list))
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
 
@@ -216,5 +211,4 @@ def status() -> str | Response | tuple[Response, int]:
         if request.args.get("json"):
             return jsonify({"error": str(e)}), 500
 
-        # Wrap in str() to ensure return type is string
-        return str(render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))
+        return cast(str, render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))
