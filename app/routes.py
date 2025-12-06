@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 main_bp = Blueprint("main", __name__)
 
 
-@main_bp.context_processor
+@main_bp.context_processor  # type: ignore[untyped-decorator]
 def inject_global_vars() -> dict[str, Any]:
     """Inject global variables into all templates.
 
@@ -41,14 +41,14 @@ def inject_global_vars() -> dict[str, Any]:
     }
 
 
-@main_bp.route("/health")
+@main_bp.route("/health")  # type: ignore[untyped-decorator]
 def health() -> Response:
     """Dedicated health check endpoint."""
     return jsonify({"status": "ok"})
 
 
-@main_bp.route("/", methods=["GET", "POST"])
-@limiter.limit("30 per minute")  # type: ignore[misc]
+@main_bp.route("/", methods=["GET", "POST"])  # type: ignore[untyped-decorator]
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def search() -> str:
     """Handle the search interface."""
     books: list[dict[str, Any]] = []
@@ -65,16 +65,16 @@ def search() -> str:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        return render_template("search.html", books=books, query=query)  # type: ignore[no-any-return]
+        return render_template("search.html", books=books, query=query)
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        return render_template("search.html", books=books, error=error_message, query=query)  # type: ignore[no-any-return]
+        return render_template("search.html", books=books, error=error_message, query=query)
 
 
-@main_bp.route("/details")
-@limiter.limit("30 per minute")  # type: ignore[misc]
+@main_bp.route("/details")  # type: ignore[untyped-decorator]
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def details() -> str | Response:
     """Fetch and render the details page internally via the server."""
     link = request.args.get("link")
@@ -83,14 +83,14 @@ def details() -> str | Response:
 
     try:
         book_details = get_book_details(link)
-        return render_template("details.html", book=book_details)  # type: ignore[no-any-return]
+        return render_template("details.html", book=book_details)
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return render_template("details.html", error=f"Could not load details: {str(e)}")  # type: ignore[no-any-return]
+        return render_template("details.html", error=f"Could not load details: {str(e)}")
 
 
-@main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")  # type: ignore[misc]
+@main_bp.route("/send", methods=["POST"])  # type: ignore[untyped-decorator]
+@limiter.limit("60 per minute")  # type: ignore[untyped-decorator]
 def send() -> Response:
     """API endpoint to initiate a download."""
     data = request.json
@@ -142,7 +142,7 @@ def send() -> Response:
         return jsonify({"message": str(e)}), 500
 
 
-@main_bp.route("/delete", methods=["POST"])
+@main_bp.route("/delete", methods=["POST"])  # type: ignore[untyped-decorator]
 def delete_torrent() -> Response:
     """API endpoint to remove a torrent."""
     data = request.json
@@ -164,7 +164,7 @@ def delete_torrent() -> Response:
         return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
 
 
-@main_bp.route("/reload_library", methods=["POST"])
+@main_bp.route("/reload_library", methods=["POST"])  # type: ignore[untyped-decorator]
 def reload_library() -> Response:
     """API endpoint to trigger an Audiobookshelf library scan."""
     abs_url = current_app.config.get("ABS_URL")
@@ -189,7 +189,7 @@ def reload_library() -> Response:
         return jsonify({"message": f"Failed to trigger library scan: {error_message}"}), 500
 
 
-@main_bp.route("/status")
+@main_bp.route("/status")  # type: ignore[untyped-decorator]
 def status() -> str:
     """Render the current status of downloads."""
     try:

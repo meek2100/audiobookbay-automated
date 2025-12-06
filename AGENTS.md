@@ -230,7 +230,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
 
 Load scripts via `eval()` in `jest.setup.js`.
 
-### Required helper:
+### Required helper
 
 ```javascript
 async function flushPromises() {

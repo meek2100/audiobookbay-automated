@@ -2,6 +2,7 @@
 import importlib
 import os
 import sys
+from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,23 +12,19 @@ import app.app
 import app.config
 
 
-class MockConfig(dict):
-    """
-    A dictionary that behaves like a Flask config object (supporting from_object).
-    """
+class MockConfig(dict[str, Any]):
+    """A dictionary that behaves like a Flask config object (supporting from_object)."""
 
-    def from_object(self, obj):
+    def from_object(self, obj: Any) -> None:
         # Emulate Flask config.from_object by reading uppercase attributes
         for key in dir(obj):
             if key.isupper():
                 self[key] = getattr(obj, key)
 
 
-@pytest.fixture
-def mock_flask_factory():
-    """
-    Patches Flask class to return a mock app with a traceable logger and working config.
-    """
+@pytest.fixture  # type: ignore[untyped-decorator]
+def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
+    """Patches Flask class to return a mock app with a traceable logger and working config."""
     with patch("flask.Flask") as mock_class:
         mock_app = MagicMock()
         mock_logger = MagicMock()
@@ -64,7 +61,7 @@ def mock_flask_factory():
             importlib.import_module("app.app")
 
 
-def test_startup_missing_save_path(monkeypatch, mock_flask_factory):
+def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) -> None:
     _, mock_logger = mock_flask_factory
     with patch("sys.exit") as mock_exit:
         monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
@@ -86,7 +83,7 @@ def test_startup_missing_save_path(monkeypatch, mock_flask_factory):
         assert "Configuration Error: SAVE_PATH_BASE is missing" in args[0]
 
 
-def test_startup_insecure_secret_key_production(monkeypatch, mock_flask_factory):
+def test_startup_insecure_secret_key_production(monkeypatch: Any, mock_flask_factory: Any) -> None:
     _, mock_logger = mock_flask_factory
     with patch("sys.exit"):
         monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
@@ -107,7 +104,7 @@ def test_startup_insecure_secret_key_production(monkeypatch, mock_flask_factory)
         assert "CRITICAL SECURITY ERROR" in args[0]
 
 
-def test_startup_insecure_secret_key_debug_warning(monkeypatch, mock_flask_factory):
+def test_startup_insecure_secret_key_debug_warning(monkeypatch: Any, mock_flask_factory: Any) -> None:
     _, mock_logger = mock_flask_factory
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
     monkeypatch.setenv("SECRET_KEY", "change-this-to-a-secure-random-key")
@@ -125,10 +122,8 @@ def test_startup_insecure_secret_key_debug_warning(monkeypatch, mock_flask_facto
     assert "WARNING: You are using the default insecure SECRET_KEY" in args[0]
 
 
-def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
-    """
-    Test that verify_credentials is called during startup when not in testing mode.
-    """
+def test_app_startup_verification_fail(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that verify_credentials is called during startup when not in testing mode."""
     _, mock_logger = mock_flask_factory
     monkeypatch.setenv("TESTING", "0")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
@@ -154,10 +149,10 @@ def test_app_startup_verification_fail(monkeypatch, mock_flask_factory):
             importlib.import_module("app.app")
 
 
-def test_startup_invalid_log_level(monkeypatch, mock_flask_factory):
-    """
-    Test that an invalid LOG_LEVEL environment variable triggers a warning
-    and defaults to INFO.
+def test_startup_invalid_log_level(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that an invalid LOG_LEVEL environment variable triggers a warning.
+
+    Defaults to INFO.
     """
     _, mock_logger = mock_flask_factory
     monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL_NAME")

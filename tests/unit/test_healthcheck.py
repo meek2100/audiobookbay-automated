@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from app.healthcheck import health_check
@@ -5,7 +6,7 @@ from app.healthcheck import health_check
 
 @patch("app.healthcheck.urllib.request.urlopen")
 @patch("app.healthcheck.sys.exit")
-def test_health_check_success(mock_exit, mock_urlopen):
+def test_health_check_success(mock_exit: Any, mock_urlopen: Any) -> None:
     # Simulate HTTP 200
     mock_response = MagicMock()
     mock_response.status = 200
@@ -19,7 +20,7 @@ def test_health_check_success(mock_exit, mock_urlopen):
 
 @patch("app.healthcheck.urllib.request.urlopen")
 @patch("app.healthcheck.sys.exit")
-def test_health_check_failure_500(mock_exit, mock_urlopen):
+def test_health_check_failure_500(mock_exit: Any, mock_urlopen: Any) -> None:
     # Simulate HTTP 500
     mock_response = MagicMock()
     mock_response.status = 500
@@ -33,7 +34,7 @@ def test_health_check_failure_500(mock_exit, mock_urlopen):
 
 @patch("app.healthcheck.urllib.request.urlopen")
 @patch("app.healthcheck.sys.exit")
-def test_health_check_exception(mock_exit, mock_urlopen):
+def test_health_check_exception(mock_exit: Any, mock_urlopen: Any) -> None:
     # Simulate Connection Refused
     mock_urlopen.side_effect = Exception("Connection refused")
 
@@ -46,7 +47,7 @@ def test_health_check_exception(mock_exit, mock_urlopen):
 @patch("app.healthcheck.os.getenv")
 @patch("app.healthcheck.urllib.request.urlopen")
 @patch("app.healthcheck.sys.exit")
-def test_health_check_host_0000(mock_exit, mock_urlopen, mock_getenv):
+def test_health_check_host_0000(mock_exit: Any, mock_urlopen: Any, mock_getenv: Any) -> None:
     """Test mapping 0.0.0.0 to 127.0.0.1"""
     # Simulate LISTEN_HOST=0.0.0.0
     mock_getenv.side_effect = lambda key, default=None: "0.0.0.0" if key == "LISTEN_HOST" else default
@@ -66,7 +67,7 @@ def test_health_check_host_0000(mock_exit, mock_urlopen, mock_getenv):
 @patch("app.healthcheck.os.getenv")
 @patch("app.healthcheck.urllib.request.urlopen")
 @patch("app.healthcheck.sys.exit")
-def test_health_check_host_ipv6(mock_exit, mock_urlopen, mock_getenv):
+def test_health_check_host_ipv6(mock_exit: Any, mock_urlopen: Any, mock_getenv: Any) -> None:
     """Test mapping [::] to [::1]"""
     # Simulate LISTEN_HOST=[::]
     mock_getenv.side_effect = lambda key, default=None: "[::]" if key == "LISTEN_HOST" else default

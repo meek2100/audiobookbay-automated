@@ -3,11 +3,12 @@ from unittest.mock import patch
 
 import pytest
 
-import app.scraper.core as scraper_core
-import app.scraper.network as scraper_network
+# FIX: Import caches directly from network where they are defined to avoid mypy export errors
+# Previously imported via scraper_core which caused "does not explicitly export" errors
+from app.scraper.network import mirror_cache, search_cache
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
 def mock_sleep() -> Generator[Any, None, None]:
     """Globally mock time.sleep for all tests in this package to speed up execution.
 
@@ -17,7 +18,7 @@ def mock_sleep() -> Generator[Any, None, None]:
         yield mock_sleep
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
 def clear_caches() -> Generator[None, None, None]:
     """Automatically clear network caches before every test.
 
@@ -27,24 +28,18 @@ def clear_caches() -> Generator[None, None, None]:
     Clearing both ensures state is truly reset and prevents 'zombie' cache entries
     from breaking integration tests.
     """
-    # Clear cache in core (used by search_audiobookbay)
-    scraper_core.mirror_cache.clear()
-    scraper_core.search_cache.clear()
-
     # Clear cache in network (used by low-level tests)
-    scraper_network.mirror_cache.clear()
-    scraper_network.search_cache.clear()
+    mirror_cache.clear()
+    search_cache.clear()
 
     yield
 
     # Cleanup after test
-    scraper_core.mirror_cache.clear()
-    scraper_core.search_cache.clear()
-    scraper_network.mirror_cache.clear()
-    scraper_network.search_cache.clear()
+    mirror_cache.clear()
+    search_cache.clear()
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def real_world_html() -> str:
     """Returns a real HTML snippet from Audiobook Bay for testing."""
     return """
@@ -75,7 +70,7 @@ def real_world_html() -> str:
 """
 
 
-@pytest.fixture
+@pytest.fixture  # type: ignore[untyped-decorator]
 def details_html() -> str:
     """Return a mock Details page HTML.
 

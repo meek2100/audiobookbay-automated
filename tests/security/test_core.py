@@ -1,13 +1,15 @@
+from typing import Any
+
 import pytest
 
 from app.scraper import get_book_details
 from app.utils import sanitize_title
 
 
-def test_csrf_protection_enabled(app):
-    """
-    Verify that POST requests are rejected without a CSRF token
-    when protection is actually enabled.
+def test_csrf_protection_enabled(app: Any) -> None:
+    """Verify that POST requests are rejected without a CSRF token.
+
+    Checks when protection is actually enabled.
     """
     # Temporarily enable CSRF for this specific test
     app.config["WTF_CSRF_ENABLED"] = True
@@ -21,9 +23,9 @@ def test_csrf_protection_enabled(app):
     assert b"The CSRF token is missing" in response.data or response.status_code == 400
 
 
-def test_ssrf_protection_on_details_scrape():
-    """
-    Test that get_book_details rejects non-ABB domains.
+def test_ssrf_protection_on_details_scrape() -> None:
+    """Test that get_book_details rejects non-ABB domains.
+
     This prevents Server-Side Request Forgery (SSRF) attacks.
     """
     with pytest.raises(ValueError) as exc:
@@ -31,18 +33,18 @@ def test_ssrf_protection_on_details_scrape():
     assert "Invalid domain" in str(exc.value)
 
 
-def test_sanitize_simple_title():
+def test_sanitize_simple_title() -> None:
     """Test basic title sanitization."""
     assert sanitize_title("Harry Potter") == "Harry Potter"
 
 
-def test_sanitize_special_chars():
+def test_sanitize_special_chars() -> None:
     """Test removal of filesystem-unsafe characters."""
     # Colons and slashes should be removed
     assert sanitize_title("Book: The Movie / Part 1") == "Book The Movie  Part 1"
 
 
-def test_sanitize_windows_reserved():
+def test_sanitize_windows_reserved() -> None:
     """Test handling of Windows reserved filenames."""
     assert sanitize_title("CON") == "CON_Safe"
     assert sanitize_title("nul") == "nul_Safe"
@@ -51,7 +53,7 @@ def test_sanitize_windows_reserved():
     assert sanitize_title("CONFERENCE") == "CONFERENCE"
 
 
-def test_sanitize_strips_to_empty():
+def test_sanitize_strips_to_empty() -> None:
     """Test that a title composed only of illegal chars falls back safely."""
     assert sanitize_title("...") == "Unknown_Title"
     assert sanitize_title("???") == "Unknown_Title"

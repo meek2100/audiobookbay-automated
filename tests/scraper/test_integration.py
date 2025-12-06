@@ -1,4 +1,5 @@
 # tests/scraper/test_integration.py
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +11,7 @@ from app.scraper import extract_magnet_link, get_book_details, search_audiobookb
 from app.scraper.network import search_cache  # Import cache for manipulation
 
 
-def test_search_audiobookbay_success(mock_sleep):
+def test_search_audiobookbay_success(mock_sleep: Any) -> None:
     """Standard success test."""
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
@@ -20,7 +21,7 @@ def test_search_audiobookbay_success(mock_sleep):
                 assert results[0]["title"] == "Test Book"
 
 
-def test_search_caching(mock_sleep):
+def test_search_caching(mock_sleep: Any) -> None:
     """Test that search results are returned from cache if available."""
     query = "cached_query"
     expected_result = [{"title": "Cached Book"}]
@@ -33,9 +34,9 @@ def test_search_caching(mock_sleep):
         mock_mirror.assert_not_called()
 
 
-def test_search_audiobookbay_sync_coverage(mock_sleep):
-    """
-    Mocks ThreadPoolExecutor to run synchronously.
+def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
+    """Mock ThreadPoolExecutor to run synchronously.
+
     This guarantees that the 'results.extend' line is executed
     in the main thread context, ensuring coverage detection.
     """
@@ -54,14 +55,14 @@ def test_search_audiobookbay_sync_coverage(mock_sleep):
                     assert results[0]["title"] == "Sync Book"
 
 
-def test_search_no_mirrors_raises_error(mock_sleep):
+def test_search_no_mirrors_raises_error(mock_sleep: Any) -> None:
     with patch("app.scraper.core.find_best_mirror", return_value=None):
         with pytest.raises(ConnectionError) as exc:
             search_audiobookbay("test")
         assert "No reachable AudiobookBay mirrors" in str(exc.value)
 
 
-def test_search_thread_failure(mock_sleep):
+def test_search_thread_failure(mock_sleep: Any) -> None:
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
             with patch("app.scraper.core.fetch_and_parse_page", side_effect=Exception("Scrape Fail")):
@@ -71,7 +72,7 @@ def test_search_thread_failure(mock_sleep):
                     mock_cache.clear.assert_called()
 
 
-def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
+def test_search_audiobookbay_generic_exception_in_thread(mock_sleep: Any) -> None:
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
             with patch("app.scraper.core.concurrent.futures.ThreadPoolExecutor") as MockExecutor:
@@ -90,21 +91,27 @@ def test_search_audiobookbay_generic_exception_in_thread(mock_sleep):
                             mock_mirror_clear.clear.assert_called()
 
 
-def test_search_special_characters(real_world_html, mock_sleep):
+def test_search_special_characters(real_world_html: str, mock_sleep: Any) -> None:
+    """Test that special characters in queries are passed correctly to the session."""
     hostname = "audiobookbay.lu"
     query = "Batman & Robin [Special Edition]"
     page = 1
     user_agent = "TestAgent/1.0"
     session = requests.Session()
-    adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
-    adapter.register_uri("GET", f"https://{hostname}/page/{page}/", text=real_world_html, status_code=200)
 
-    results = scraper_core.fetch_and_parse_page(session, hostname, query, page, user_agent)
-    assert len(results) > 0
+    with patch.object(session, "get") as mock_get:
+        mock_get.return_value.text = real_world_html
+        mock_get.return_value.status_code = 200
+
+        scraper_core.fetch_and_parse_page(session, hostname, query, page, user_agent)
+
+        # Verify the query was passed in the params dict
+        mock_get.assert_called()
+        call_args = mock_get.call_args
+        assert call_args[1]["params"]["s"] == query
 
 
-def test_fetch_page_timeout(mock_sleep):
+def test_fetch_page_timeout(mock_sleep: Any) -> None:
     hostname = "audiobookbay.lu"
     query = "timeout"
     page = 1
@@ -118,7 +125,7 @@ def test_fetch_page_timeout(mock_sleep):
         scraper_core.fetch_and_parse_page(session, hostname, query, page, user_agent)
 
 
-def test_fetch_and_parse_page_missing_cover_image():
+def test_fetch_and_parse_page_missing_cover_image(mock_sleep: Any) -> None:
     hostname = "audiobookbay.lu"
     query = "no_cover"
     html = """
@@ -144,7 +151,7 @@ def test_fetch_and_parse_page_missing_cover_image():
     assert results[0]["language"] == "English"
 
 
-def test_fetch_and_parse_page_missing_post_info():
+def test_fetch_and_parse_page_missing_post_info(mock_sleep: Any) -> None:
     hostname = "audiobookbay.lu"
     query = "no_info"
     html = """
@@ -174,9 +181,9 @@ def test_fetch_and_parse_page_missing_post_info():
     assert results[0]["post_date"] == "01 Jan 2025"
 
 
-def test_fetch_and_parse_page_consistency_checks():
-    """
-    Test that '?' values in metadata are converted to 'Unknown'.
+def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
+    """Test that '?' values in metadata are converted to 'Unknown'.
+
     FIX: HTML structure updated to place all metadata in the same paragraph as 'Posted:',
     ensuring 'details_paragraph' logic finds them and triggers the '?' conversion logic.
     """
@@ -211,7 +218,7 @@ def test_fetch_and_parse_page_consistency_checks():
 # --- Get Book Details Tests ---
 
 
-def test_get_book_details_sanitization(mock_sleep):
+def test_get_book_details_sanitization(mock_sleep: Any) -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h1>Sanitized Book</h1></div>
@@ -240,7 +247,7 @@ def test_get_book_details_sanitization(mock_sleep):
         assert "<script>" not in description
 
 
-def test_get_book_details_caching(mock_sleep):
+def test_get_book_details_caching(mock_sleep: Any) -> None:
     """Test that details are returned from cache."""
     url = "https://audiobookbay.lu/cached_details"
     expected = {"title": "Cached Details"}
@@ -252,7 +259,7 @@ def test_get_book_details_caching(mock_sleep):
         mock_get.assert_not_called()
 
 
-def test_get_book_details_success(details_html, mock_sleep):
+def test_get_book_details_success(details_html: str, mock_sleep: Any) -> None:
     with patch("requests.Session.get") as mock_get:
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -265,7 +272,7 @@ def test_get_book_details_success(details_html, mock_sleep):
         assert details["file_size"] == "1.37 GBs"
 
 
-def test_get_book_details_default_cover_skip(mock_sleep):
+def test_get_book_details_default_cover_skip(mock_sleep: Any) -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h1>Book Default Cover</h1></div>
@@ -284,32 +291,32 @@ def test_get_book_details_default_cover_skip(mock_sleep):
         assert details["cover"] is None
 
 
-def test_get_book_details_failure(mock_sleep):
+def test_get_book_details_failure(mock_sleep: Any) -> None:
     with patch("requests.Session.get", side_effect=requests.exceptions.RequestException("Net Down")):
         with pytest.raises(requests.exceptions.RequestException):
             get_book_details("https://audiobookbay.lu/fail-book")
 
 
-def test_get_book_details_ssrf_protection():
+def test_get_book_details_ssrf_protection() -> None:
     with pytest.raises(ValueError) as exc:
         get_book_details("https://google.com/admin")
     assert "Invalid domain" in str(exc.value)
 
 
-def test_get_book_details_empty(mock_sleep):
+def test_get_book_details_empty(mock_sleep: Any) -> None:
     with pytest.raises(ValueError) as exc:
         get_book_details("")
     assert "No URL provided" in str(exc.value)
 
 
-def test_get_book_details_url_parse_error(mock_sleep):
+def test_get_book_details_url_parse_error(mock_sleep: Any) -> None:
     with patch("app.scraper.core.urlparse", side_effect=Exception("Boom")):
         with pytest.raises(ValueError) as exc:
             get_book_details("http://anything")
     assert "Invalid URL format" in str(exc.value)
 
 
-def test_get_book_details_missing_metadata(mock_sleep):
+def test_get_book_details_missing_metadata(mock_sleep: Any) -> None:
     html = """<div class="post"><div class="postTitle"><h1>Empty Book</h1></div></div>"""
     with patch("requests.Session.get") as mock_get:
         mock_response = MagicMock()
@@ -321,7 +328,7 @@ def test_get_book_details_missing_metadata(mock_sleep):
         assert details["format"] == "Unknown"
 
 
-def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
+def test_get_book_details_unknown_bitrate_normalization(mock_sleep: Any) -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h1>Unknown Bitrate</h1></div>
@@ -337,7 +344,7 @@ def test_get_book_details_unknown_bitrate_normalization(mock_sleep):
         assert details["bitrate"] == "Unknown"
 
 
-def test_get_book_details_partial_bitrate(mock_sleep):
+def test_get_book_details_partial_bitrate(mock_sleep: Any) -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -354,7 +361,7 @@ def test_get_book_details_partial_bitrate(mock_sleep):
         assert details["bitrate"] == "128 Kbps"
 
 
-def test_get_book_details_partial_format(mock_sleep):
+def test_get_book_details_partial_format(mock_sleep: Any) -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -371,7 +378,7 @@ def test_get_book_details_partial_format(mock_sleep):
         assert details["bitrate"] == "Unknown"
 
 
-def test_get_book_details_content_without_metadata_labels(mock_sleep):
+def test_get_book_details_content_without_metadata_labels(mock_sleep: Any) -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h1>No Metadata</h1></div>
@@ -387,7 +394,7 @@ def test_get_book_details_content_without_metadata_labels(mock_sleep):
         assert details["format"] == "Unknown"
 
 
-def test_get_book_details_consistency_checks(mock_sleep):
+def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h1>Mystery Details</h1></div>
@@ -419,13 +426,57 @@ def test_get_book_details_consistency_checks(mock_sleep):
         assert details["file_size"] == "Unknown"
 
 
+def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
+    """Forces Strategy 2: Table structure is broken (no table.torrent_info).
+
+    But 'Info Hash' is found in a loose table cell.
+    """
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Strategy 2 Book</h1></div>
+        <table>
+            <tr>
+                <td>Info Hash:</td>
+                <td>1111111111222222222233333333334444444444</td>
+            </tr>
+        </table>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/strat2")
+        assert details["info_hash"] == "1111111111222222222233333333334444444444"
+
+
+def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
+    """Forces Strategy 3: Regex fallback."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Strategy 3 Book</h1></div>
+        <div class="desc">
+            Some text containing the hash 5555555555666666666677777777778888888888 in the body.
+        </div>
+    </div>
+    """
+    with patch("requests.Session.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = html
+        mock_get.return_value = mock_response
+
+        details = get_book_details("https://audiobookbay.lu/strat3")
+        assert details["info_hash"] == "5555555555666666666677777777778888888888"
+
+
 # --- Extract Magnet Link Tests (Updated to use get_book_details) ---
 
 
-def test_extract_magnet_success(mock_sleep):
-    """
-    Verifies that extract_magnet_link correctly uses get_book_details results.
-    """
+def test_extract_magnet_success(mock_sleep: Any) -> None:
+    """Verifies that extract_magnet_link correctly uses get_book_details results."""
     url = "https://audiobookbay.lu/book"
     # Mock return from get_book_details
     mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
@@ -435,11 +486,12 @@ def test_extract_magnet_success(mock_sleep):
         with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
             magnet, error = extract_magnet_link(url)
             assert error is None
+            assert magnet is not None
             assert "magnet:?xt=urn:btih:abc123hash456" in magnet
             assert "tracker.com" in magnet
 
 
-def test_extract_magnet_missing_info_hash(mock_sleep):
+def test_extract_magnet_missing_info_hash(mock_sleep: Any) -> None:
     """Test behavior when get_book_details returns Unknown hash."""
     url = "https://audiobookbay.lu/book"
     mock_details = {"info_hash": "Unknown", "trackers": []}
@@ -447,26 +499,27 @@ def test_extract_magnet_missing_info_hash(mock_sleep):
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
         magnet, error = extract_magnet_link(url)
         assert magnet is None
+        assert error is not None
         assert "Info Hash could not be found" in error
 
 
-def test_extract_magnet_ssrf_inherited(mock_sleep):
-    """
-    Verifies that extract_magnet_link inherits the SSRF validation from get_book_details.
-    """
+def test_extract_magnet_ssrf_inherited(mock_sleep: Any) -> None:
+    """Verifies that extract_magnet_link inherits the SSRF validation from get_book_details."""
     url = "https://google.com/evil"
     # Real logic: get_book_details raises ValueError for invalid domains
     with patch("app.scraper.core.get_book_details", side_effect=ValueError("Invalid domain")):
         magnet, error = extract_magnet_link(url)
         assert magnet is None
+        assert error is not None
         assert "Invalid domain" in error
 
 
-def test_extract_magnet_generic_exception(mock_sleep):
+def test_extract_magnet_generic_exception(mock_sleep: Any) -> None:
     url = "https://audiobookbay.lu/book"
     with patch("app.scraper.core.get_book_details", side_effect=Exception("Database down")):
         with patch("app.scraper.core.logger") as mock_logger:
             magnet, error = extract_magnet_link(url)
             assert magnet is None
+            assert error is not None
             assert "Database down" in error
             assert mock_logger.error.called

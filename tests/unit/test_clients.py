@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -6,8 +7,8 @@ from qbittorrentapi import LoginFailed
 from app.clients import TorrentManager
 
 
-@pytest.fixture
-def mock_env(monkeypatch):
+@pytest.fixture  # type: ignore[untyped-decorator]
+def mock_env(monkeypatch: Any) -> None:
     """Sets up default environment variables for testing."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")
     monkeypatch.setenv("DL_HOST", "localhost")
@@ -20,7 +21,7 @@ def mock_env(monkeypatch):
 # --- Initialization & Connection Tests ---
 
 
-def test_init_with_dl_url(monkeypatch):
+def test_init_with_dl_url(monkeypatch: Any) -> None:
     """Test that DL_URL takes precedence if provided directly."""
     # This covers the logic branch in __init__ where DL_URL is already set,
     # skipping the auto-construction from host/port.
@@ -33,7 +34,7 @@ def test_init_with_dl_url(monkeypatch):
     assert manager.dl_url == "http://custom-url:1234"
 
 
-def test_init_deluge_success(monkeypatch):
+def test_init_deluge_success(monkeypatch: Any) -> None:
     """
     Test successful Deluge initialization to explicitly cover the client assignment.
     Covers app/clients.py lines 111-112.
@@ -57,7 +58,7 @@ def test_init_deluge_success(monkeypatch):
         mock_instance.login.assert_called_once()
 
 
-def test_verify_credentials_success():
+def test_verify_credentials_success() -> None:
     """
     Targets verify_credentials success path (True).
     Covers app/clients.py lines 109-115.
@@ -68,7 +69,7 @@ def test_verify_credentials_success():
         mock_get.assert_called()
 
 
-def test_verify_credentials_failure():
+def test_verify_credentials_failure() -> None:
     """
     Targets verify_credentials failure path (False).
     Covers app/clients.py lines 109-115 (else branch).
@@ -79,7 +80,7 @@ def test_verify_credentials_failure():
         mock_get.assert_called()
 
 
-def test_qbittorrent_add_magnet(mock_env):
+def test_qbittorrent_add_magnet(mock_env: Any) -> None:
     with patch("app.clients.QbClient") as MockQbClient:
         # Setup the mock client instance
         mock_instance = MockQbClient.return_value
@@ -108,7 +109,7 @@ def test_qbittorrent_add_magnet(mock_env):
         )
 
 
-def test_qbittorrent_add_magnet_failure_response(mock_env):
+def test_qbittorrent_add_magnet_failure_response(mock_env: Any) -> None:
     """Test logging when qBittorrent returns a failure string (Robustness coverage)."""
     with patch("app.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
@@ -127,7 +128,7 @@ def test_qbittorrent_add_magnet_failure_response(mock_env):
             assert "Fails." in args[0]
 
 
-def test_add_magnet_invalid_path_logging(mock_env):
+def test_add_magnet_invalid_path_logging(mock_env: Any) -> None:
     """
     Test logging when the Torrent Client returns an error related to an invalid save path.
     Specifically checks qBittorrent behavior where it might return "Fails." or "Invalid save path".
@@ -151,7 +152,7 @@ def test_add_magnet_invalid_path_logging(mock_env):
             assert "Invalid Save Path" in args[0]
 
 
-def test_transmission_add_magnet(mock_env, monkeypatch):
+def test_transmission_add_magnet(mock_env: Any, monkeypatch: Any) -> None:
     monkeypatch.setenv("DL_CLIENT", "transmission")
 
     with patch("app.clients.TxClient") as MockTxClient:
@@ -165,7 +166,7 @@ def test_transmission_add_magnet(mock_env, monkeypatch):
         )
 
 
-def test_transmission_add_magnet_fallback(mock_env, monkeypatch):
+def test_transmission_add_magnet_fallback(mock_env: Any, monkeypatch: Any) -> None:
     """
     Test that Transmission falls back to adding torrent without label if first attempt fails.
     This covers the robustness logic for older Transmission daemons.
@@ -199,7 +200,7 @@ def test_transmission_add_magnet_fallback(mock_env, monkeypatch):
         mock_instance.add_torrent.assert_any_call("magnet:?xt=urn:btih:FALLBACK", download_dir="/downloads/Book")
 
 
-def test_transmission_add_magnet_generic_exception_fallback(mock_env, monkeypatch):
+def test_transmission_add_magnet_generic_exception_fallback(mock_env: Any, monkeypatch: Any) -> None:
     """
     Test that Transmission falls back even on generic exceptions (not just TypeError).
     This ensures robustness against network or protocol errors during label assignment.
@@ -225,7 +226,7 @@ def test_transmission_add_magnet_generic_exception_fallback(mock_env, monkeypatc
         assert mock_instance.add_torrent.call_count == 2
 
 
-def test_deluge_add_magnet(mock_env, monkeypatch):
+def test_deluge_add_magnet(mock_env: Any, monkeypatch: Any) -> None:
     monkeypatch.setenv("DL_CLIENT", "deluge")
 
     with patch("app.clients.DelugeWebClient") as MockDeluge:
@@ -240,7 +241,7 @@ def test_deluge_add_magnet(mock_env, monkeypatch):
         )
 
 
-def test_init_deluge_success_check(mock_env, monkeypatch):
+def test_init_deluge_success_check(mock_env: Any, monkeypatch: Any) -> None:
     """Test successful Deluge initialization to cover the client assignment."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
     with patch("app.clients.DelugeWebClient") as MockDeluge:
@@ -256,7 +257,7 @@ def test_init_deluge_success_check(mock_env, monkeypatch):
         assert manager._client == mock_instance
 
 
-def test_unsupported_client(mock_env, monkeypatch):
+def test_unsupported_client(mock_env: Any, monkeypatch: Any) -> None:
     """Test that unsupported clients return None and log error instead of crashing."""
     monkeypatch.setenv("DL_CLIENT", "fake_client")
     manager = TorrentManager()
@@ -273,7 +274,7 @@ def test_unsupported_client(mock_env, monkeypatch):
         assert "Error initializing torrent client" in args[0]
 
 
-def test_init_transmission_failure(monkeypatch):
+def test_init_transmission_failure(monkeypatch: Any) -> None:
     """Test handling of Transmission connection failure."""
     monkeypatch.setenv("DL_CLIENT", "transmission")
     monkeypatch.setenv("DL_HOST", "localhost")
@@ -283,7 +284,7 @@ def test_init_transmission_failure(monkeypatch):
         assert manager._get_client() is None
 
 
-def test_init_deluge_failure(monkeypatch):
+def test_init_deluge_failure(monkeypatch: Any) -> None:
     """Test handling of Deluge login failure."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
     monkeypatch.setenv("DL_URL", "http://deluge:8112")
@@ -304,7 +305,7 @@ def test_init_deluge_failure(monkeypatch):
             assert "Failed to connect to Deluge" in args[0]
 
 
-def test_init_deluge_constructor_failure(monkeypatch):
+def test_init_deluge_constructor_failure(monkeypatch: Any) -> None:
     """
     Test handling of DelugeWebClient constructor failure.
     This ensures the 'try' block catches errors during instantiation.
@@ -317,7 +318,7 @@ def test_init_deluge_constructor_failure(monkeypatch):
         assert manager._get_client() is None
 
 
-def test_init_qbittorrent_login_failed(monkeypatch):
+def test_init_qbittorrent_login_failed(monkeypatch: Any) -> None:
     """Test handling of qBittorrent authentication failure."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")
     with patch("app.clients.QbClient") as MockQb:
@@ -326,7 +327,7 @@ def test_init_qbittorrent_login_failed(monkeypatch):
         assert manager._get_client() is None
 
 
-def test_verify_credentials_fail(monkeypatch):
+def test_verify_credentials_fail(monkeypatch: Any) -> None:
     """Test verify_credentials returns False when client fails to init."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")
     with patch("app.clients.TorrentManager._get_client", return_value=None):
@@ -337,7 +338,7 @@ def test_verify_credentials_fail(monkeypatch):
 # --- Utility Tests ---
 
 
-def test_format_size_logic():
+def test_format_size_logic() -> None:
     """Verify that bytes are converted to human-readable strings correctly."""
     tm = TorrentManager
     # Standard units
@@ -354,13 +355,17 @@ def test_format_size_logic():
     # Invalid inputs
     assert tm._format_size(None) == "Unknown"
     assert tm._format_size("not a number") == "Unknown"
-    assert tm._format_size([1, 2]) == "Unknown"
+
+    # Safe test with cast to bypass strict static check while verifying runtime behavior
+    # The actual code handles TypeError, so we simulate bad input.
+    bad_input: Any = [1, 2]
+    assert tm._format_size(bad_input) == "Unknown"
 
 
 # --- Removal Tests ---
 
 
-def test_remove_torrent_qbittorrent(mock_env):
+def test_remove_torrent_qbittorrent(mock_env: Any) -> None:
     """Test removing torrent for qBittorrent."""
     with patch("app.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
@@ -370,7 +375,7 @@ def test_remove_torrent_qbittorrent(mock_env):
         mock_instance.torrents_delete.assert_called_with(torrent_hashes="hash123", delete_files=False)
 
 
-def test_remove_torrent_transmission_hash(mock_env, monkeypatch):
+def test_remove_torrent_transmission_hash(mock_env: Any, monkeypatch: Any) -> None:
     """Test removing torrent for Transmission using a string hash."""
     monkeypatch.setenv("DL_CLIENT", "transmission")
     with patch("app.clients.TxClient") as MockTxClient:
@@ -382,7 +387,7 @@ def test_remove_torrent_transmission_hash(mock_env, monkeypatch):
         mock_instance.remove_torrent.assert_called_with(ids=["hash123"], delete_data=False)
 
 
-def test_remove_torrent_transmission_numeric_id(mock_env, monkeypatch):
+def test_remove_torrent_transmission_numeric_id(mock_env: Any, monkeypatch: Any) -> None:
     """Test removing torrent for Transmission with a numeric ID (int conversion path)."""
     monkeypatch.setenv("DL_CLIENT", "transmission")
     with patch("app.clients.TxClient") as MockTxClient:
@@ -395,7 +400,7 @@ def test_remove_torrent_transmission_numeric_id(mock_env, monkeypatch):
         mock_instance.remove_torrent.assert_called_with(ids=[12345], delete_data=False)
 
 
-def test_remove_torrent_transmission_int_conversion_failure(mock_env, monkeypatch):
+def test_remove_torrent_transmission_int_conversion_failure(mock_env: Any, monkeypatch: Any) -> None:
     """
     Test removing torrent for Transmission when ID is not an integer.
     Ensures the ValueError catch block is executed.
@@ -412,7 +417,7 @@ def test_remove_torrent_transmission_int_conversion_failure(mock_env, monkeypatc
         mock_instance.remove_torrent.assert_called_with(ids=["not_an_int"], delete_data=False)
 
 
-def test_remove_torrent_deluge(monkeypatch):
+def test_remove_torrent_deluge(monkeypatch: Any) -> None:
     """
     Test removing torrent for Deluge.
     Removed mock_env fixture to prevent potential environment pollution.
@@ -434,7 +439,7 @@ def test_remove_torrent_deluge(monkeypatch):
         mock_instance.remove_torrent.assert_called_with("hash123", remove_data=False)
 
 
-def test_remove_torrent_no_client_raises(monkeypatch):
+def test_remove_torrent_no_client_raises(monkeypatch: Any) -> None:
     """
     Test that an error is raised if no client can be connected during removal.
     Covers app/clients.py lines 231-233.
@@ -447,7 +452,7 @@ def test_remove_torrent_no_client_raises(monkeypatch):
         assert "Torrent client is not connected" in str(exc.value)
 
 
-def test_remove_torrent_retry(mock_env):
+def test_remove_torrent_retry(mock_env: Any) -> None:
     """Test that remove_torrent attempts to reconnect if the first call fails."""
     with patch("app.clients.QbClient"):
         manager = TorrentManager()
@@ -464,7 +469,7 @@ def test_remove_torrent_retry(mock_env):
 # --- Status & Info Tests ---
 
 
-def test_get_status_qbittorrent(mock_env):
+def test_get_status_qbittorrent(mock_env: Any) -> None:
     """Test fetching status from qBittorrent."""
     with patch("app.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
@@ -488,7 +493,7 @@ def test_get_status_qbittorrent(mock_env):
         assert results[0]["size"] == "1.00 MB"
 
 
-def test_get_status_qbittorrent_robustness(mock_env):
+def test_get_status_qbittorrent_robustness(mock_env: Any) -> None:
     """Test qBittorrent handling of None progress (e.g. stalled metadata)."""
     with patch("app.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
@@ -510,7 +515,7 @@ def test_get_status_qbittorrent_robustness(mock_env):
         assert results[0]["size"] == "Unknown"
 
 
-def test_get_status_transmission(mock_env, monkeypatch):
+def test_get_status_transmission(mock_env: Any, monkeypatch: Any) -> None:
     """Test fetching status from Transmission."""
     monkeypatch.setenv("DL_CLIENT", "transmission")
     with patch("app.clients.TxClient") as MockTxClient:
@@ -533,7 +538,7 @@ def test_get_status_transmission(mock_env, monkeypatch):
         assert results[0]["size"] == "1.00 KB"
 
 
-def test_get_status_transmission_robustness(mock_env, monkeypatch):
+def test_get_status_transmission_robustness(mock_env: Any, monkeypatch: Any) -> None:
     """Test fetching status from Transmission handles None values gracefully."""
     monkeypatch.setenv("DL_CLIENT", "transmission")
     with patch("app.clients.TxClient") as MockTxClient:
@@ -557,7 +562,7 @@ def test_get_status_transmission_robustness(mock_env, monkeypatch):
         assert results[0]["size"] == "Unknown"
 
 
-def test_get_status_deluge(monkeypatch):
+def test_get_status_deluge(monkeypatch: Any) -> None:
     """Test fetching status from Deluge."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
     with patch("app.clients.DelugeWebClient") as MockDeluge:
@@ -571,7 +576,7 @@ def test_get_status_deluge(monkeypatch):
         assert results[0]["name"] == "D Book"
 
 
-def test_get_status_deluge_empty_result(monkeypatch):
+def test_get_status_deluge_empty_result(monkeypatch: Any) -> None:
     """Test handling of Deluge returning a None result payload."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
     with patch("app.clients.DelugeWebClient") as MockDeluge:
@@ -590,7 +595,7 @@ def test_get_status_deluge_empty_result(monkeypatch):
         assert "Deluge returned empty or invalid" in args[0]
 
 
-def test_get_status_deluge_unexpected_data_type(monkeypatch):
+def test_get_status_deluge_unexpected_data_type(monkeypatch: Any) -> None:
     """
     Test handling of Deluge returning a result that is not a dict (unexpected type).
     Covers app/clients.py: else block logging 'Deluge returned unexpected data type'.
@@ -615,7 +620,7 @@ def test_get_status_deluge_unexpected_data_type(monkeypatch):
         assert "list" in args[0]
 
 
-def test_get_status_deluge_robustness(monkeypatch):
+def test_get_status_deluge_robustness(monkeypatch: Any) -> None:
     """Test Deluge handling of None in individual torrent fields."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
     with patch("app.clients.DelugeWebClient") as MockDeluge:
@@ -636,7 +641,7 @@ def test_get_status_deluge_robustness(monkeypatch):
         assert results[0]["size"] == "Unknown"
 
 
-def test_get_status_reconnect(monkeypatch):
+def test_get_status_reconnect(monkeypatch: Any) -> None:
     """Test that get_status attempts to reconnect if the first call fails."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")
     with patch("app.clients.QbClient"):
@@ -652,7 +657,7 @@ def test_get_status_reconnect(monkeypatch):
 # --- Error Handling & Retries ---
 
 
-def test_deluge_label_plugin_error(mock_env, monkeypatch):
+def test_deluge_label_plugin_error(mock_env: Any, monkeypatch: Any) -> None:
     """Test that Deluge falls back to adding torrent without label if plugin is missing."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
 
@@ -680,7 +685,7 @@ def test_deluge_label_plugin_error(mock_env, monkeypatch):
         mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book")
 
 
-def test_deluge_fallback_failure(mock_env, monkeypatch):
+def test_deluge_fallback_failure(mock_env: Any, monkeypatch: Any) -> None:
     """Test that if the Deluge fallback (retrying without label) also fails, it raises an error."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
 
@@ -714,7 +719,7 @@ def test_deluge_fallback_failure(mock_env, monkeypatch):
             assert found
 
 
-def test_deluge_add_magnet_generic_error(monkeypatch):
+def test_deluge_add_magnet_generic_error(monkeypatch: Any) -> None:
     """Test that a generic error in Deluge addition is raised (not swallowed)."""
     monkeypatch.setenv("DL_CLIENT", "deluge")
     with patch("app.clients.DelugeWebClient") as MockDeluge:
@@ -726,7 +731,7 @@ def test_deluge_add_magnet_generic_error(monkeypatch):
         assert "Generic Failure" in str(exc.value)
 
 
-def test_add_magnet_reconnect_retry(monkeypatch):
+def test_add_magnet_reconnect_retry(monkeypatch: Any) -> None:
     """Test that add_magnet attempts to reconnect if the first call fails."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")
     with patch("app.clients.QbClient"):
@@ -739,7 +744,7 @@ def test_add_magnet_reconnect_retry(monkeypatch):
             assert manager._client is None
 
 
-def test_logic_methods_no_client(monkeypatch):
+def test_logic_methods_no_client(monkeypatch: Any) -> None:
     """Test that logic methods raise ConnectionError when client is None."""
     manager = TorrentManager()
     # Force client to be None despite any init attempts

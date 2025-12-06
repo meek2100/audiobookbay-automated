@@ -2,11 +2,12 @@
 import importlib
 import logging
 import os
-from typing import Any, cast
+from typing import Any
 from unittest.mock import mock_open, patch
 
 import requests
 
+from app.constants import USER_AGENTS
 from app.scraper import network  # Import explicitly to reload the module itself
 
 
@@ -154,8 +155,8 @@ def test_get_random_user_agent_returns_string() -> None:
     ua = network.get_random_user_agent()
     assert isinstance(ua, str)
     assert len(ua) > 10
-    # Casting to avoid MyPy error about unexported attribute (it IS exported implicitly)
-    assert ua in cast(list[str], network.USER_AGENTS)
+    # USER_AGENTS is imported as list[str], so check existence directly
+    assert ua in USER_AGENTS
 
 
 def test_get_headers_with_user_agent_and_referer() -> None:

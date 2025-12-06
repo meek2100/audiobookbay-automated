@@ -160,7 +160,7 @@ def check_mirror(hostname: str) -> str | None:
     return None
 
 
-@cached(cache=mirror_cache)  # type: ignore[misc]
+@cached(cache=mirror_cache)  # type: ignore[untyped-decorator]
 def find_best_mirror() -> str | None:
     """Find the first reachable AudiobookBay mirror from the configured list.
 

@@ -5,9 +5,9 @@ import sys
 # We must ensure it is imported at least once before reloading sys.modules key.
 
 
-def test_app_entry_point():
-    """
-    Ensures the app module can be imported and the global app instance is created.
+def test_app_entry_point() -> None:
+    """Ensures the app module can be imported and the global app instance is created.
+
     Reloading ensures coverage captures the top-level code execution.
     """
     # FIX: Use sys.modules to retrieve the actual module object.
