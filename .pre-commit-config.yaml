@@ -68,6 +68,7 @@ repos:
     rev: v3.0.1
     hooks:
       - id: docker-compose-check
+        files: .*(docker-compose|compose).*\.y[a]?ml$
 
   - repo: https://github.com/AleksaC/hadolint-py
     rev: v2.14.0
