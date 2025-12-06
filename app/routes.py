@@ -68,12 +68,14 @@ def search() -> str:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        return render_template("search.html", books=books, query=query)
+        # Wrap in str() to enforce string return type, avoiding "Returning Any" errors
+        return str(render_template("search.html", books=books, query=query))
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        return render_template("search.html", books=books, error=error_message, query=query)
+        # Wrap in str() to enforce string return type
+        return str(render_template("search.html", books=books, error=error_message, query=query))
 
 
 @main_bp.route("/details")  # type: ignore[untyped-decorator]
@@ -86,10 +88,10 @@ def details() -> str | Response:
 
     try:
         book_details = get_book_details(link)
-        return render_template("details.html", book=book_details)
+        return str(render_template("details.html", book=book_details))
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return render_template("details.html", error=f"Could not load details: {str(e)}")
+        return str(render_template("details.html", error=f"Could not load details: {str(e)}"))
 
 
 # FIX: Updated return type to include tuple[Response, int] for error codes
@@ -205,7 +207,8 @@ def status() -> str | Response | tuple[Response, int]:
             return jsonify(torrent_list)
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        return render_template("status.html", torrents=torrent_list)
+        # Wrap in str() to ensure return type is string
+        return str(render_template("status.html", torrents=torrent_list))
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
 
@@ -213,4 +216,5 @@ def status() -> str | Response | tuple[Response, int]:
         if request.args.get("json"):
             return jsonify({"error": str(e)}), 500
 
-        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")
+        # Wrap in str() to ensure return type is string
+        return str(render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))
