@@ -113,6 +113,20 @@ def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -
     assert "Invalid PAGE_LIMIT" in args[0]
 
 
+def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that non-integer PAGE_LIMIT defaults to 3 (covers ValueError)."""
+    _, mock_logger = mock_flask_factory
+    monkeypatch.setenv("PAGE_LIMIT", "invalid_string")
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
+
+    importlib.reload(app.config)
+    # No explicit validate call needed as the try/except block is in the class body
+    # but validation might trigger logging if we call it.
+    # The parsing logic happens at import time for PAGE_LIMIT.
+
+    assert app.config.Config.PAGE_LIMIT == 3
+
+
 def test_app_startup_verification_fail(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Test that verify_credentials is called during startup when not in testing mode."""
     _, mock_logger = mock_flask_factory

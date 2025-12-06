@@ -137,10 +137,13 @@ def send() -> Response | tuple[Response, int]:
         torrent_manager.add_magnet(magnet_link, save_path)
 
         logger.info(f"Successfully sent '{safe_title}' to {torrent_manager.client_type}")
-        return jsonify(
-            {
-                "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."
-            }
+        return cast(
+            Response,
+            jsonify(
+                {
+                    "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."
+                }
+            ),
         )
     except Exception as e:
         logger.error(f"Send failed: {e}", exc_info=True)
@@ -162,7 +165,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
 
     try:
         torrent_manager.remove_torrent(torrent_id)
-        return jsonify({"message": "Torrent removed successfully."})
+        return cast(Response, jsonify({"message": "Torrent removed successfully."}))
     except Exception as e:
         logger.error(f"Failed to remove torrent: {e}", exc_info=True)
         return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
@@ -184,7 +187,7 @@ def reload_library() -> Response | tuple[Response, int]:
         response = requests.post(url, headers=headers, timeout=10)
         response.raise_for_status()
         logger.info("Audiobookshelf library scan initiated successfully.")
-        return jsonify({"message": "Audiobookshelf library scan initiated."})
+        return cast(Response, jsonify({"message": "Audiobookshelf library scan initiated."}))
     except requests.exceptions.RequestException as e:
         error_message = str(e)
         if e.response is not None:
@@ -204,7 +207,7 @@ def status() -> str | Response | tuple[Response, int]:
 
         # FIX: Return JSON if requested by the frontend poller
         if request.args.get("json"):
-            return jsonify(torrent_list)
+            return cast(Response, jsonify(torrent_list))
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
         # Wrap in str() to ensure return type is string

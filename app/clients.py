@@ -4,7 +4,6 @@ from typing import Any, Literal, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
-from qbittorrentapi import LoginFailed
 from transmission_rpc import Client as TxClient
 
 logger = logging.getLogger(__name__)
@@ -54,19 +53,17 @@ class TorrentManager:
 
         try:
             if self.client_type == "qbittorrent":
-                try:
-                    # Configuration for older versions of the API (requests_args removed).
-                    qb = QbClient(
-                        host=safe_host,
-                        port=safe_port,
-                        username=self.username or "",
-                        password=self.password or "",
-                    )
-                    qb.auth_log_in()
-                    self._client = qb
-                except LoginFailed as e:
-                    logger.error("qBittorrent login failed.")
-                    raise e
+                # OPTIMIZATION: Removed redundant inner try/except block.
+                # LoginFailed inherits from Exception and will be caught/logged by the outer block.
+                # Configuration for older versions of the API (requests_args removed).
+                qb = QbClient(
+                    host=safe_host,
+                    port=safe_port,
+                    username=self.username or "",
+                    password=self.password or "",
+                )
+                qb.auth_log_in()
+                self._client = qb
 
             elif self.client_type == "transmission":
                 try:
