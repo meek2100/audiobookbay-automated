@@ -22,7 +22,7 @@ def health_check(timeout: int = 3):
     # If using [::] (all IPv6), we query [::1].
     listen_host = os.getenv("LISTEN_HOST", "127.0.0.1")
 
-    if listen_host == "0.0.0.0":
+    if listen_host == "0.0.0.0":  # nosec B104
         host = "127.0.0.1"
     elif listen_host == "[::]":
         host = "[::1]"
@@ -34,12 +34,13 @@ def health_check(timeout: int = 3):
 
     try:
         # TIMEOUT ADDED: Prevents the healthcheck from hanging indefinitely
-        with urllib.request.urlopen(url, timeout=timeout) as response:
+        # nosec B310: URL is constructed from trusted local env vars (localhost/loopback)
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310
             if response.status == 200:
                 sys.exit(0)  # Success
             else:
                 print(f"Health check failed with status: {response.status}", file=sys.stderr)
-                sys.exit(1)  # Failure
+                sys.exit(1)
     except Exception as e:
         # Print error to stderr so it shows up in docker logs if healthcheck fails
         print(f"Health check failed: {e}", file=sys.stderr)

@@ -51,7 +51,7 @@ search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
 
 def get_random_user_agent() -> str:
     """Returns a random User-Agent string from the constants list."""
-    return random.choice(USER_AGENTS)
+    return random.choice(USER_AGENTS)  # nosec B311
 
 
 def load_trackers() -> list[str]:
