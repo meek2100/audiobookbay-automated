@@ -3,6 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+# FIX: Import fallback constant
+from app.constants import FALLBACK_TITLE
+
 # FIX: Patch targets updated to 'app.routes'
 
 
@@ -75,9 +78,9 @@ def test_send_sanitization_warning(client: Any, caplog: Any) -> None:
     with patch("app.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
         with patch("app.routes.torrent_manager") as mock_tm:
             client.post("/send", json={"link": "http://example.com", "title": "..."})
-            assert "Title '...' was sanitized to fallback 'Unknown_Title'" in caplog.text
+            assert f"Title '...' was sanitized to fallback '{FALLBACK_TITLE}'" in caplog.text
             args, _ = mock_tm.add_magnet.call_args
-            assert "Unknown_Title" in args[1]
+            assert FALLBACK_TITLE in args[1]
 
 
 def test_delete_torrent(client: Any) -> None:

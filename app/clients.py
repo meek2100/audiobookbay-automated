@@ -40,8 +40,15 @@ class TorrentManager:
 
         # Normalize connection URL for Deluge
         self.dl_url: str | None = os.getenv("DL_URL")
-        if not self.dl_url and self.host and self.port:
-            self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+
+        # FIX: Robustly handle missing host for URL construction
+        if not self.dl_url:
+            if self.host and self.port:
+                self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+            elif self.client_type == "deluge":
+                # Only warn if using Deluge, as other clients use host/port directly
+                logger.warning("DL_HOST or DL_PORT missing. Defaulting Deluge URL to localhost:8112.")
+                self.dl_url = "http://localhost:8112"
 
         self._client: QbClient | TxClient | DelugeWebClient | None = None
 

@@ -106,12 +106,21 @@ function initializeDateRangePicker() {
             if (!dateStr || dateStr === "Unknown") return null;
             try {
                 let date;
+                // Robust Date Parsing Strategy
+                // Format 1: "01 Jan 2024" (AudiobookBay Default)
                 if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(dateStr)) {
                     const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, "$2 $1, $3");
                     date = new Date(formattedStr);
-                } else {
+                }
+                // Format 2: ISO 8601 "2024-01-01" (Standard Fallback/Change)
+                else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
                     date = new Date(dateStr);
                 }
+                // Format 3: Fallback to browser parsing (e.g. "Jan 1, 2024")
+                else {
+                    date = new Date(dateStr);
+                }
+
                 return isNaN(date.getTime()) ? null : date;
             } catch (e) {
                 console.warn("Date parsing error for:", dateStr, e);
@@ -263,6 +272,8 @@ function applyFilters() {
                     if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(rowDateStr)) {
                         const formattedStr = rowDateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, "$2 $1, $3");
                         rowDate = new Date(formattedStr);
+                    } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                        rowDate = new Date(rowDateStr);
                     } else {
                         rowDate = new Date(rowDateStr);
                     }

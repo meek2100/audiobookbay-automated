@@ -4,7 +4,7 @@ import hashlib
 import os
 import re
 
-from app.constants import WINDOWS_RESERVED_NAMES
+from app.constants import FALLBACK_TITLE, WINDOWS_RESERVED_NAMES
 
 
 def sanitize_title(title: str | None) -> str:
@@ -12,7 +12,7 @@ def sanitize_title(title: str | None) -> str:
 
     Removes characters like < > : " / \ | ? *
     Also removes trailing periods and spaces (Windows compatibility).
-    Returns "Unknown_Title" if the resulting string is empty to prevent
+    Returns FALLBACK_TITLE if the resulting string is empty to prevent
     file operations in the root directory.
 
     Also checks for Windows reserved filenames (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
@@ -23,10 +23,10 @@ def sanitize_title(title: str | None) -> str:
         title: The string to sanitize, potentially None.
 
     Returns:
-        A sanitized string safe for use as a directory name, or "Unknown_Title".
+        A sanitized string safe for use as a directory name, or FALLBACK_TITLE.
     """
     if not title:
-        return "Unknown_Title"
+        return FALLBACK_TITLE
 
     # Remove illegal characters
     cleaned = re.sub(r'[<>:"/\\|?*]', "", title)
@@ -35,7 +35,7 @@ def sanitize_title(title: str | None) -> str:
     sanitized = cleaned.strip(". ")
 
     if not sanitized:
-        return "Unknown_Title"
+        return FALLBACK_TITLE
 
     # Check for Windows reserved filenames (case-insensitive)
     # Check both exact match ("CON") and root match ("CON.txt")

@@ -3,6 +3,7 @@ import tempfile
 from typing import Any
 from unittest.mock import patch
 
+from app.constants import FALLBACK_TITLE
 from app.utils import calculate_static_hash, sanitize_title
 
 # --- Sanitize Title Tests ---
@@ -23,16 +24,16 @@ def test_sanitize_windows_reserved() -> None:
 
 
 def test_sanitize_empty() -> None:
-    """Test that explicit empty/None inputs fallback to Unknown_Title."""
-    assert sanitize_title("") == "Unknown_Title"
-    assert sanitize_title(None) == "Unknown_Title"
+    """Test that explicit empty/None inputs fallback to FALLBACK_TITLE."""
+    assert sanitize_title("") == FALLBACK_TITLE
+    assert sanitize_title(None) == FALLBACK_TITLE
 
 
 def test_sanitize_strips_to_empty() -> None:
     """Test that a title composed only of illegal chars falls back safely."""
     # A title like "..." cleans to "" then strips to "", so we need a fallback.
-    assert sanitize_title("...") == "Unknown_Title"
-    assert sanitize_title("???") == "Unknown_Title"
+    assert sanitize_title("...") == FALLBACK_TITLE
+    assert sanitize_title("???") == FALLBACK_TITLE
 
 
 def test_sanitize_reserved_filenames() -> None:

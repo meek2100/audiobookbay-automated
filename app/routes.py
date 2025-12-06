@@ -7,7 +7,7 @@ from typing import Any, cast
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
 
-from app.constants import DEFAULT_COVER_FILENAME
+from app.constants import DEFAULT_COVER_FILENAME, FALLBACK_TITLE
 
 from .extensions import limiter, torrent_manager
 from .scraper import BookDict, extract_magnet_link, get_book_details, search_audiobookbay
@@ -123,9 +123,9 @@ def send() -> Response | tuple[Response, int]:
             logger.error(f"Failed to extract magnet link for '{safe_title}': {error}")
             return jsonify({"message": f"Download failed: {error}"}), 500
 
-        if safe_title == "Unknown_Title":
+        if safe_title == FALLBACK_TITLE:
             logger.warning(
-                f"Title '{title}' was sanitized to fallback 'Unknown_Title'. Files will be saved in a generic folder."
+                f"Title '{title}' was sanitized to fallback '{FALLBACK_TITLE}'. Files will be saved in a generic folder."
             )
 
         save_path_base = current_app.config.get("SAVE_PATH_BASE")

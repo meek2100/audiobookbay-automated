@@ -4,6 +4,8 @@ from typing import Final
 
 # --- Application Constants ---
 DEFAULT_COVER_FILENAME: Final[str] = "default_cover.jpg"
+# Fallback directory name if title sanitization fails completely
+FALLBACK_TITLE: Final[str] = "Unknown_Title"
 
 # --- Filesystem Constants ---
 # Windows reserved filenames to sanitize against, ensuring SMB/Cross-platform compatibility.
