@@ -46,7 +46,8 @@ def inject_global_vars() -> dict[str, Any]:
 @main_bp.route("/health")  # type: ignore[untyped-decorator]
 def health() -> Response:
     """Dedicated health check endpoint."""
-    return jsonify({"status": "ok"})
+    # FIX: Cast jsonify result to Response to satisfy strict return type
+    return cast(Response, jsonify({"status": "ok"}))
 
 
 @main_bp.route("/", methods=["GET", "POST"])  # type: ignore[untyped-decorator]
@@ -67,13 +68,12 @@ def search() -> str:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        # FIX: render_template returns str, explicit cast for MyPy
-        return cast(str, render_template("search.html", books=books, query=query))
+        return render_template("search.html", books=books, query=query)
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        return cast(str, render_template("search.html", books=books, error=error_message, query=query))
+        return render_template("search.html", books=books, error=error_message, query=query)
 
 
 @main_bp.route("/details")  # type: ignore[untyped-decorator]
@@ -86,10 +86,10 @@ def details() -> str | Response:
 
     try:
         book_details = get_book_details(link)
-        return cast(str, render_template("details.html", book=book_details))
+        return render_template("details.html", book=book_details)
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return cast(str, render_template("details.html", error=f"Could not load details: {str(e)}"))
+        return render_template("details.html", error=f"Could not load details: {str(e)}")
 
 
 # FIX: Updated return type to include tuple[Response, int] for error codes
@@ -205,7 +205,7 @@ def status() -> str | Response | tuple[Response, int]:
             return jsonify(torrent_list)
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        return cast(str, render_template("status.html", torrents=torrent_list))
+        return render_template("status.html", torrents=torrent_list)
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
 
@@ -213,4 +213,4 @@ def status() -> str | Response | tuple[Response, int]:
         if request.args.get("json"):
             return jsonify({"error": str(e)}), 500
 
-        return cast(str, render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))
+        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")

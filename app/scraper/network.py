@@ -51,6 +51,8 @@ GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 # FIX: Added explicit type parameters for TTLCache to satisfy strict MyPy
 mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
 search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
+# FIX: Separate cache for details to enforce strict typing (BookDict vs list[BookDict])
+details_cache: TTLCache[str, BookDict] = TTLCache(maxsize=100, ttl=300)
 
 
 def get_random_user_agent() -> str:
@@ -153,7 +155,6 @@ def check_mirror(hostname: str) -> str | None:
         pass
 
     try:
-        # FIX: Removed unused ignore comment
         response = requests.get(url, headers=headers, timeout=5, stream=True)
         response.close()
         if response.status_code == 200:

@@ -1,6 +1,6 @@
 """Integration tests for the scraper module."""
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +10,7 @@ import requests_mock
 from app.scraper import core as scraper_core
 from app.scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from app.scraper.network import search_cache
+from app.scraper.parser import BookDict
 
 # --- Search & Flow Tests ---
 
@@ -18,7 +19,9 @@ def test_search_audiobookbay_success(mock_sleep: Any) -> None:
     """Standard success test."""
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
-            with patch("app.scraper.core.fetch_and_parse_page", return_value=[{"title": "Test Book"}]):
+            # FIX: Explicitly cast mock return value to list[BookDict]
+            mock_results = cast(list[BookDict], [{"title": "Test Book"}])
+            with patch("app.scraper.core.fetch_and_parse_page", return_value=mock_results):
                 results = search_audiobookbay("query", max_pages=1)
                 assert len(results) == 1
                 assert results[0]["title"] == "Test Book"
@@ -27,7 +30,8 @@ def test_search_audiobookbay_success(mock_sleep: Any) -> None:
 def test_search_caching(mock_sleep: Any) -> None:
     """Test that search results are returned from cache if available."""
     query = "cached_query"
-    expected_result = [{"title": "Cached Book"}]
+    # FIX: Explicitly typed list of BookDict
+    expected_result = cast(list[BookDict], [{"title": "Cached Book"}])
     search_cache[query] = expected_result
 
     # Ensure no network calls are made
@@ -41,7 +45,8 @@ def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
     """Mock ThreadPoolExecutor to run synchronously for coverage."""
     mock_executor = MagicMock()
     mock_future = MagicMock()
-    mock_future.result.return_value = [{"title": "Sync Book"}]
+    # FIX: Explicitly cast mock result
+    mock_future.result.return_value = cast(list[BookDict], [{"title": "Sync Book"}])
     mock_executor.__enter__.return_value = mock_executor
     mock_executor.submit.return_value = mock_future
 
@@ -237,7 +242,7 @@ def test_get_book_details_sanitization(mock_sleep: Any) -> None:
 
         details = get_book_details("https://audiobookbay.lu/book")
 
-        description = details["description"]
+        description = str(details.get("description", ""))
         assert "<p>Allowed P tag.</p>" in description
         assert "style" not in description
         assert "<b>Bold Text</b>" in description
@@ -249,8 +254,13 @@ def test_get_book_details_sanitization(mock_sleep: Any) -> None:
 def test_get_book_details_caching(mock_sleep: Any) -> None:
     """Test that details are returned from cache."""
     url = "https://audiobookbay.lu/cached_details"
-    expected = {"title": "Cached Details"}
-    search_cache[url] = expected
+    # FIX: Explicit cast for mock cache entry
+    expected = cast(BookDict, {"title": "Cached Details"})
+    # FIX: Use the new details_cache instead of search_cache (which stores lists)
+    # The cache is imported from scraper.core (which gets it from network)
+    from app.scraper.network import details_cache
+
+    details_cache[url] = expected
 
     with patch("requests.Session.get") as mock_get:
         result = get_book_details(url)
@@ -266,6 +276,7 @@ def test_get_book_details_success(details_html: str, mock_sleep: Any) -> None:
         mock_get.return_value = mock_response
 
         details = get_book_details("https://audiobookbay.lu/valid-book")
+
         assert details["title"] == "A Game of Thrones"
         assert details["info_hash"] == "eb154ac7886539c4d01eae14908586e336cdb550"
         assert details["file_size"] == "1.37 GBs"
@@ -426,10 +437,7 @@ def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
-    """Forces Strategy 2: Table structure is broken (no table.torrent_info).
-
-    But 'Info Hash' is found in a loose table cell.
-    """
+    """Forces Strategy 2: Table structure is broken (no table.torrent_info)."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Strategy 2 Book</h1></div>
@@ -475,10 +483,9 @@ def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
 
 
 def test_extract_magnet_success(mock_sleep: Any) -> None:
-    """Verifies that extract_magnet_link correctly uses get_book_details results."""
     url = "https://audiobookbay.lu/book"
     # Mock return from get_book_details
-    mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
+    mock_details = cast(BookDict, {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]})
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
         # FIX: Patch the RENAMED variable in core.py
@@ -493,7 +500,7 @@ def test_extract_magnet_success(mock_sleep: Any) -> None:
 def test_extract_magnet_missing_info_hash(mock_sleep: Any) -> None:
     """Test behavior when get_book_details returns Unknown hash."""
     url = "https://audiobookbay.lu/book"
-    mock_details = {"info_hash": "Unknown", "trackers": []}
+    mock_details = cast(BookDict, {"info_hash": "Unknown", "trackers": []})
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
         magnet, error = extract_magnet_link(url)
@@ -528,7 +535,8 @@ def test_extract_magnet_none_trackers(mock_sleep: Any) -> None:
     """Test extract_magnet_link handling when trackers is explicitly None."""
     url = "https://audiobookbay.lu/book"
     # Mock details where 'trackers' key exists but value is None
-    mock_details = {"info_hash": "abc123hash", "trackers": None}
+    # We cast to avoid MyPy errors, simulating runtime data that might violate TypedDict if not careful
+    mock_details = cast(BookDict, {"info_hash": "abc123hash", "trackers": None})
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
         with patch("app.scraper.core.CONFIGURED_TRACKERS", []):

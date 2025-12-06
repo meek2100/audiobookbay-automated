@@ -5,7 +5,7 @@ import pytest
 
 # FIX: Import caches directly from network where they are defined to avoid mypy export errors
 # Previously imported via scraper_core which caused "does not explicitly export" errors
-from app.scraper.network import mirror_cache, search_cache
+from app.scraper.network import details_cache, mirror_cache, search_cache
 
 
 @pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
@@ -31,12 +31,14 @@ def clear_caches() -> Generator[None, None, None]:
     # Clear cache in network (used by low-level tests)
     mirror_cache.clear()
     search_cache.clear()
+    details_cache.clear()
 
     yield
 
     # Cleanup after test
     mirror_cache.clear()
     search_cache.clear()
+    details_cache.clear()
 
 
 @pytest.fixture  # type: ignore[untyped-decorator]

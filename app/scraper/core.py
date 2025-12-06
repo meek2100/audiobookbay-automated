@@ -16,6 +16,7 @@ from app.scraper.network import (
     CONFIGURED_TRACKERS,
     GLOBAL_REQUEST_SEMAPHORE,
     PAGE_LIMIT,
+    details_cache,
     find_best_mirror,
     get_headers,
     get_random_user_agent,
@@ -184,8 +185,9 @@ def get_book_details(details_url: str) -> BookDict:
     Raises:
         ValueError: If the URL is invalid or not from an allowed domain.
     """
-    if details_url in search_cache:
-        cached_result: BookDict = search_cache[details_url]
+    # FIX: Use details_cache for BookDict items
+    if details_url in details_cache:
+        cached_result: BookDict = details_cache[details_url]
         return cached_result
 
     if not details_url:
@@ -314,7 +316,8 @@ def get_book_details(details_url: str) -> BookDict:
             "author": author,
             "narrator": narrator,
         }
-        search_cache[details_url] = result
+        # FIX: Store in details cache
+        details_cache[details_url] = result
         return result
 
     except Exception as e:

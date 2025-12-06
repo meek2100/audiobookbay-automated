@@ -302,13 +302,13 @@ class TorrentManager:
             torrents = qb_client.torrents_info(category=self.category)
             # FIX: Explicit iteration because MyPy struggles with List-like return types from qbittorrentapi
             for torrent in torrents:
-                # FIX: Removed unused ignores; MyPy seems to handle the dynamic attrs now or ignores them correctly
+                # FIX: Suppress attr-defined errors for dynamic qBittorrent attributes that MyPy CI misses
                 results.append(
                     {
-                        "id": torrent.hash,
+                        "id": torrent.hash,  # type: ignore[attr-defined]
                         "name": torrent.name,
                         "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
-                        "state": torrent.state,
+                        "state": torrent.state,  # type: ignore[attr-defined]
                         "size": self._format_size(torrent.total_size),
                     }
                 )
