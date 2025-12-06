@@ -1,12 +1,22 @@
 import logging
 import os
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypedDict, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
 from transmission_rpc import Client as TxClient
 
 logger = logging.getLogger(__name__)
+
+
+class TorrentStatus(TypedDict):
+    """TypedDict representing a standardized torrent status object."""
+
+    id: str | int
+    name: str
+    progress: float
+    state: str
+    size: str
 
 
 class TorrentManager:
@@ -257,13 +267,13 @@ class TorrentManager:
             deluge_client = cast(DelugeWebClient, client)
             deluge_client.remove_torrent(torrent_id, remove_data=False)
 
-    def get_status(self) -> list[dict[str, Any]]:
+    def get_status(self) -> list[TorrentStatus]:
         """
         Retrieves the status of current downloads in the configured category.
         Includes internal retry logic to attempt reconnecting to the client once on failure.
 
         Returns:
-            list[dict[str, Any]]: A list of dictionaries containing torrent details.
+            list[TorrentStatus]: A list of dictionaries containing standardized torrent details.
         """
         try:
             return self._get_status_logic()
@@ -272,13 +282,13 @@ class TorrentManager:
             self._client = None
             return self._get_status_logic()
 
-    def _get_status_logic(self) -> list[dict[str, Any]]:
+    def _get_status_logic(self) -> list[TorrentStatus]:
         """Internal logic to fetch status."""
         client = self._get_client()
         if not client:
             raise ConnectionError("Torrent client is not connected.")
 
-        results: list[dict[str, Any]] = []
+        results: list[TorrentStatus] = []
 
         if self.client_type == "transmission":
             tx_client = cast(TxClient, client)

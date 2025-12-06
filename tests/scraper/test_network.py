@@ -1,4 +1,5 @@
 # tests/scraper/test_network.py
+import json
 import os
 from typing import Any, Generator
 from unittest.mock import MagicMock, mock_open, patch
@@ -39,6 +40,40 @@ def test_get_trackers_from_json(mock_app_context: Any) -> None:
             with patch("os.path.exists", return_value=True):
                 trackers = network.get_trackers()
                 assert trackers == ["udp://json.tracker:80"]
+
+
+def test_get_trackers_json_invalid_structure(mock_app_context: Any) -> None:
+    """Test when trackers.json exists but contains a dict instead of a list."""
+    network.get_trackers.cache_clear()
+    mock_app_context.config["MAGNET_TRACKERS"] = []
+
+    with patch.dict(os.environ, {}, clear=True):
+        # Mock data as a JSON object/dict, not a list
+        mock_data = '{"key": "value"}'
+        with patch("builtins.open", mock_open(read_data=mock_data)):
+            with patch("os.path.exists", return_value=True):
+                with patch("app.scraper.network.logger") as mock_logger:
+                    trackers = network.get_trackers()
+                    # Should fallback to defaults
+                    assert trackers == DEFAULT_TRACKERS
+                    # Verify the specific warning was logged
+                    args, _ = mock_logger.warning.call_args
+                    assert "trackers.json contains invalid data" in args[0]
+
+
+def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
+    """Test when reading/parsing trackers.json raises an exception."""
+    network.get_trackers.cache_clear()
+    mock_app_context.config["MAGNET_TRACKERS"] = []
+
+    with patch("os.path.exists", return_value=True):
+        with patch("builtins.open", side_effect=json.JSONDecodeError("Expecting value", "doc", 0)):
+            with patch("app.scraper.network.logger") as mock_logger:
+                trackers = network.get_trackers()
+                assert trackers == DEFAULT_TRACKERS
+                # Verify exception logging
+                args, _ = mock_logger.warning.call_args
+                assert "Failed to load trackers.json" in args[0]
 
 
 def test_get_trackers_defaults(mock_app_context: Any) -> None:

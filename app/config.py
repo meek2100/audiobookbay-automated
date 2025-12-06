@@ -13,41 +13,42 @@ class Config:
 
     # Core Flask Config
     # nosec B105: Default key is intentional for development; validation logic handles warning user.
-    SECRET_KEY = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
-    FLASK_DEBUG = os.getenv("FLASK_DEBUG", "0") == "1"
-    TESTING = os.getenv("TESTING", "0") == "1"
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
+    FLASK_DEBUG: bool = os.getenv("FLASK_DEBUG", "0") == "1"
+    TESTING: bool = os.getenv("TESTING", "0") == "1"
 
     # Static Asset Caching (1 Year)
-    SEND_FILE_MAX_AGE_DEFAULT = 31536000
+    SEND_FILE_MAX_AGE_DEFAULT: int = 31536000
 
     # File System
-    SAVE_PATH_BASE = os.getenv("SAVE_PATH_BASE")
+    SAVE_PATH_BASE: str | None = os.getenv("SAVE_PATH_BASE")
 
     # Integrations
-    ABS_URL = os.getenv("ABS_URL")
-    ABS_KEY = os.getenv("ABS_KEY")
-    ABS_LIB = os.getenv("ABS_LIB")
+    ABS_URL: str | None = os.getenv("ABS_URL")
+    ABS_KEY: str | None = os.getenv("ABS_KEY")
+    ABS_LIB: str | None = os.getenv("ABS_LIB")
 
     # UI Customization
-    NAV_LINK_NAME = os.getenv("NAV_LINK_NAME")
-    NAV_LINK_URL = os.getenv("NAV_LINK_URL")
+    NAV_LINK_NAME: str | None = os.getenv("NAV_LINK_NAME")
+    NAV_LINK_URL: str | None = os.getenv("NAV_LINK_URL")
 
     # Logging
-    LOG_LEVEL_STR = os.getenv("LOG_LEVEL", "INFO").upper()
-    LOG_LEVEL = getattr(logging, LOG_LEVEL_STR, logging.INFO)
+    LOG_LEVEL_STR: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    LOG_LEVEL: int = getattr(logging, LOG_LEVEL_STR, logging.INFO)
 
     # Scraper Configuration
-    ABB_HOSTNAME = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
+    ABB_HOSTNAME: str = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
 
     # Parse comma-separated mirrors into a list
-    _mirrors_str = os.getenv("ABB_MIRRORS", "")
-    ABB_MIRRORS = [m.strip() for m in _mirrors_str.split(",") if m.strip()]
+    _mirrors_str: str = os.getenv("ABB_MIRRORS", "")
+    ABB_MIRRORS: list[str] = [m.strip() for m in _mirrors_str.split(",") if m.strip()]
 
     # Parse comma-separated trackers into a list
-    _trackers_str = os.getenv("MAGNET_TRACKERS", "")
-    MAGNET_TRACKERS = [t.strip() for t in _trackers_str.split(",") if t.strip()]
+    _trackers_str: str = os.getenv("MAGNET_TRACKERS", "")
+    MAGNET_TRACKERS: list[str] = [t.strip() for t in _trackers_str.split(",") if t.strip()]
 
     # Page Limit (Default 3)
+    PAGE_LIMIT: int
     try:
         PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", "3").strip())
     except ValueError:
