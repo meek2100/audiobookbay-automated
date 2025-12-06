@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Literal, TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
