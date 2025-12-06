@@ -15,6 +15,7 @@ from requests.sessions import Session
 from urllib3.util.retry import Retry
 
 from app.constants import DEFAULT_MIRRORS, DEFAULT_TRACKERS, USER_AGENTS
+from app.scraper.parser import BookDict
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +48,9 @@ MAX_CONCURRENT_REQUESTS = 3
 GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 
 # --- Caches ---
-mirror_cache: TTLCache = TTLCache(maxsize=1, ttl=600)
-search_cache: TTLCache = TTLCache(maxsize=100, ttl=300)
+# FIX: Added explicit type parameters for TTLCache to satisfy strict MyPy
+mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
+search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
 
 
 def get_random_user_agent() -> str:
@@ -151,6 +153,7 @@ def check_mirror(hostname: str) -> str | None:
         pass
 
     try:
+        # FIX: Removed unused ignore comment
         response = requests.get(url, headers=headers, timeout=5, stream=True)
         response.close()
         if response.status_code == 200:

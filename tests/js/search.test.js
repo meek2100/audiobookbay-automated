@@ -268,8 +268,12 @@ describe("search.js Filter Logic (DOM dependent)", () => {
 });
 
 describe("search.js UI Spinner Logic", () => {
+    // FIX: Declare setupData variable to be accessible in tests
+    let setupData;
+
     beforeEach(() => {
-        setup();
+        // FIX: Assign return value of setup() to setupData
+        setupData = setup();
         jest.useFakeTimers();
     });
 
@@ -288,7 +292,8 @@ describe("search.js UI Spinner Logic", () => {
         functions.showLoadingSpinner();
 
         expect(button.disabled).toBe(true);
-        expect(button.querySelector(".button-text").innerText).toBe("Searching...");
+        // FIX: Use textContent for JSDOM compatibility
+        expect(button.querySelector(".button-text").textContent).toBe("Searching...");
         expect(spinner.style.display).toBe("inline-block");
     });
 
@@ -303,7 +308,8 @@ describe("search.js UI Spinner Logic", () => {
         functions.hideLoadingSpinner();
 
         expect(button.disabled).toBe(false);
-        expect(button.querySelector(".button-text").innerText).toBe("Search");
+        // FIX: Use textContent for JSDOM compatibility
+        expect(button.querySelector(".button-text").textContent).toBe("Search");
         expect(spinner.style.display).toBe("none");
     });
 

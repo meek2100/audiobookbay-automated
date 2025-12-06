@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
@@ -48,15 +48,19 @@ class TorrentManager:
 
         logger.debug(f"Initializing new {self.client_type} client connection...")
 
+        # FIX: Ensure host/port are not None for strict type checking
+        safe_host = self.host or "localhost"
+        safe_port = int(self.port) if self.port else 8080
+
         try:
             if self.client_type == "qbittorrent":
                 try:
                     # Configuration for older versions of the API (requests_args removed).
                     qb = QbClient(
-                        host=self.host,
-                        port=self.port,
-                        username=self.username,
-                        password=self.password,
+                        host=safe_host,
+                        port=safe_port,
+                        username=self.username or "",
+                        password=self.password or "",
                     )
                     qb.auth_log_in()
                     self._client = qb
@@ -67,10 +71,12 @@ class TorrentManager:
             elif self.client_type == "transmission":
                 try:
                     # OPTIMIZATION: Added timeout to prevent hanging
+                    # FIX: Cast scheme to Literal for MyPy strictness
+                    safe_scheme = cast(Literal["http", "https"], self.scheme)
                     self._client = TxClient(
-                        host=self.host,
-                        port=self.port,
-                        protocol=self.scheme,
+                        host=safe_host,
+                        port=safe_port,
+                        protocol=safe_scheme,
                         username=self.username,
                         password=self.password,
                         timeout=30,
@@ -82,7 +88,7 @@ class TorrentManager:
 
             elif self.client_type == "deluge":
                 try:
-                    dw = DelugeWebClient(url=self.dl_url, password=self.password)
+                    dw = DelugeWebClient(url=self.dl_url or "", password=self.password or "")
                     dw.login()
                     self._client = dw
                 except Exception as e:
@@ -294,13 +300,15 @@ class TorrentManager:
         elif self.client_type == "qbittorrent":
             qb_client = cast(QbClient, client)
             torrents = qb_client.torrents_info(category=self.category)
+            # FIX: Explicit iteration because MyPy struggles with List-like return types from qbittorrentapi
             for torrent in torrents:
+                # FIX: Suppress attr-defined errors for dynamic qBittorrent attributes
                 results.append(
                     {
-                        "id": torrent.hash,
+                        "id": torrent.hash,  # type: ignore[attr-defined]
                         "name": torrent.name,
                         "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
-                        "state": torrent.state,
+                        "state": torrent.state,  # type: ignore[attr-defined]
                         "size": self._format_size(torrent.total_size),
                     }
                 )
@@ -311,8 +319,8 @@ class TorrentManager:
                 filter_dict={"label": self.category},
                 keys=["name", "state", "progress", "total_size"],
             )
-            # ROBUSTNESS: Check if result is not None before iterating
-            if torrents.result:
+            # ROBUSTNESS: Explicit check for None to allow empty dict (no torrents) as valid.
+            if torrents.result is not None:
                 # STRICT TYPING: Runtime type check instead of unsafe cast to dict
                 if isinstance(torrents.result, dict):
                     results_dict = torrents.result

@@ -1,5 +1,5 @@
 # tests/conftest.py
-from typing import Generator
+from typing import Any, Generator
 
 import pytest
 from flask import Flask
@@ -8,7 +8,7 @@ from flask.testing import FlaskClient, FlaskCliRunner
 from app import create_app
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def app() -> Generator[Flask, None, None]:
     """Create the 'World' for the tests: A Flask application instance.
 
@@ -27,13 +27,13 @@ def app() -> Generator[Flask, None, None]:
     yield app
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
-def client(app: Flask) -> FlaskClient:
+@pytest.fixture
+def client(app: Flask) -> FlaskClient[Any]:
     """The observer within the world: A test client to make requests."""
     return app.test_client()
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def runner(app: Flask) -> FlaskCliRunner:
     """A CLI runner for command-line context."""
     return app.test_cli_runner()

@@ -309,9 +309,10 @@ function showLoadingSpinner() {
     if (button) {
         button.disabled = true;
         if (!button.dataset.originalText) {
-            button.dataset.originalText = button.querySelector(".button-text").innerText;
+            // FIX: Use textContent instead of innerText for JSDOM compatibility
+            button.dataset.originalText = button.querySelector(".button-text").textContent;
         }
-        button.querySelector(".button-text").innerText = "Searching...";
+        button.querySelector(".button-text").textContent = "Searching...";
     }
 
     const buttonSpinner = document.getElementById("button-spinner");
@@ -328,7 +329,8 @@ function hideLoadingSpinner() {
     if (button) {
         button.disabled = false;
         if (button.dataset.originalText) {
-            button.querySelector(".button-text").innerText = button.dataset.originalText;
+            // FIX: Use textContent instead of innerText for JSDOM compatibility
+            button.querySelector(".button-text").textContent = button.dataset.originalText;
         }
     }
 

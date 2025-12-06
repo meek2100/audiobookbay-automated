@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 import requests_mock
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from app.scraper import extract_magnet_link, fetch_and_parse_page, get_book_details
 from app.scraper.parser import get_text_after_label, parse_post_content
@@ -17,6 +17,8 @@ def test_get_text_after_label_valid() -> None:
     html = "<div><p>Format: <span>MP3</span></p></div>"
     soup = BeautifulSoup(html, "html.parser")
     p_tag = soup.find("p")
+    # FIX: Ensure p_tag is treated as a Tag for MyPy safety
+    assert isinstance(p_tag, Tag)
     res = get_text_after_label(p_tag, "Format:")
     assert res == "MP3"
 
@@ -25,13 +27,14 @@ def test_get_text_after_label_inline() -> None:
     html = "<div><p>Posted: 10 Jan 2020</p></div>"
     soup = BeautifulSoup(html, "html.parser")
     p_tag = soup.find("p")
+    assert isinstance(p_tag, Tag)
     res = get_text_after_label(p_tag, "Posted:")
     assert res == "10 Jan 2020"
 
 
 def test_get_text_after_label_exception() -> None:
     """Test that exceptions during parsing are handled gracefully."""
-    mock_container = MagicMock()
+    mock_container = MagicMock(spec=Tag)
     # Force an exception when .find() is called
     mock_container.find.side_effect = Exception("BS4 Internal Error")
     result = get_text_after_label(mock_container, "Label:")
@@ -45,7 +48,7 @@ def test_get_text_after_label_fallback() -> None:
         def find_next_sibling(self) -> Any:
             return None
 
-    mock_container = MagicMock()
+    mock_container = MagicMock(spec=Tag)
     mock_label_node = FakeNavigableString("Format:")
     mock_container.find.return_value = mock_label_node
 
@@ -57,7 +60,7 @@ def test_get_text_after_label_not_found() -> None:
     """Test that it returns 'Unknown' if the label text is not found in the container."""
     html = "<div><p>Some other content</p></div>"
     soup = BeautifulSoup(html, "html.parser")
-    # 'Format:' does not exist in the HTML
+    # 'Format:' does not exist in the HTML (pass soup which is Tag-like)
     result = get_text_after_label(soup, "Format:")
     assert result == "Unknown"
 
@@ -83,6 +86,10 @@ def test_parse_post_content_full_validity() -> None:
     soup_info = BeautifulSoup(html_info, "html.parser").find("div")
     soup_content = BeautifulSoup(html_content, "html.parser").find("div")
 
+    # Cast to Tag to satisfy strict typing
+    assert isinstance(soup_info, Tag)
+    assert isinstance(soup_content, Tag)
+
     meta = parse_post_content(soup_content, soup_info)
 
     assert meta.category == "Fantasy"
@@ -103,6 +110,7 @@ def test_parse_post_content_missing_elements() -> None:
     # One None
     html_content = """<div class="postContent"><p>Format: M4B</p></div>"""
     soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+    assert isinstance(soup_content, Tag)
     meta = parse_post_content(soup_content, None)
 
     assert meta.format == "M4B"
@@ -119,6 +127,9 @@ def test_parse_post_content_normalization() -> None:
     """
     soup_info = BeautifulSoup(html_info, "html.parser").find("div")
     soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+
+    assert isinstance(soup_info, Tag)
+    assert isinstance(soup_content, Tag)
 
     meta = parse_post_content(soup_content, soup_info)
 

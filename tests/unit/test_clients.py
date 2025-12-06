@@ -7,7 +7,7 @@ from qbittorrentapi import LoginFailed
 from app.clients import TorrentManager
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def mock_env(monkeypatch: Any) -> None:
     """Sets up default environment variables for testing."""
     monkeypatch.setenv("DL_CLIENT", "qbittorrent")
@@ -96,7 +96,7 @@ def test_qbittorrent_add_magnet(mock_env: Any) -> None:
         # Note: requests_args removed to fix compatibility issues
         MockQbClient.assert_called_with(
             host="localhost",
-            port="8080",
+            port=8080,
             username="admin",
             password="admin",
         )
