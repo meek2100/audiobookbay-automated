@@ -32,6 +32,19 @@ def test_get_text_after_label_inline() -> None:
     assert res == "10 Jan 2020"
 
 
+def test_get_text_after_label_split_unit() -> None:
+    """Test the specific branch where File Size unit is in the next sibling node.
+
+    This covers the 'val += f" {unit_node.strip()}"' logic in parser.py.
+    """
+    html = "<div><p>File Size: <span>1.5</span> GB</p></div>"
+    soup = BeautifulSoup(html, "html.parser")
+    p_tag = soup.find("p")
+    assert isinstance(p_tag, Tag)
+    res = get_text_after_label(p_tag, "File Size:")
+    assert res == "1.5 GB"
+
+
 def test_get_text_after_label_exception() -> None:
     """Test that exceptions during parsing are handled gracefully."""
     mock_container = MagicMock(spec=Tag)
@@ -663,7 +676,7 @@ def test_extract_magnet_success(mock_sleep: Any) -> None:
     mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        with patch("app.scraper.core.CONFIGURED_TRACKERS", []):
+        with patch("app.scraper.core.get_trackers", return_value=[]):
             magnet, error = extract_magnet_link(url)
             assert error is None
             assert magnet is not None

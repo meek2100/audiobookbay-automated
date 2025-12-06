@@ -23,8 +23,7 @@ def test_extract_magnet_deduplication(mock_sleep: Any) -> None:
     )
 
     with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        # Mock global trackers to include duplicates of what's already in the book details
-        # plus a unique one.
+        # Patch the correct function 'get_trackers' instead of the non-existent 'CONFIGURED_TRACKERS'
         with patch(
             "app.scraper.core.get_trackers", return_value=["http://tracker.com/announce", "udp://new.tracker:80"]
         ):
@@ -37,3 +36,70 @@ def test_extract_magnet_deduplication(mock_sleep: Any) -> None:
             # We check the count of the encoded URL component
             assert magnet.count("tracker.com") == 1
             assert "new.tracker" in magnet
+
+
+def test_extract_magnet_success(mock_sleep: Any) -> None:
+    """Test successful magnet link extraction."""
+    url = "https://audiobookbay.lu/book"
+    mock_details = cast(
+        BookDict,
+        {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]},
+    )
+
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+        # Patch the function actually used in core.py
+        with patch("app.scraper.core.get_trackers", return_value=[]):
+            magnet, error = extract_magnet_link(url)
+            assert error is None
+            assert magnet is not None
+            assert "magnet:?xt=urn:btih:abc123hash456" in magnet
+            assert "tracker.com" in magnet
+
+
+def test_extract_magnet_missing_info_hash(mock_sleep: Any) -> None:
+    """Test behavior when get_book_details returns Unknown hash."""
+    url = "https://audiobookbay.lu/book"
+    mock_details = cast(BookDict, {"info_hash": "Unknown", "trackers": []})
+
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+        magnet, error = extract_magnet_link(url)
+        assert magnet is None
+        assert error is not None
+        assert "Info Hash could not be found" in error
+
+
+def test_extract_magnet_ssrf_inherited(mock_sleep: Any) -> None:
+    """Verifies that extract_magnet_link inherits the SSRF validation from get_book_details."""
+    url = "https://google.com/evil"
+    # Real logic: get_book_details raises ValueError for invalid domains
+    with patch("app.scraper.core.get_book_details", side_effect=ValueError("Invalid domain")):
+        magnet, error = extract_magnet_link(url)
+        assert magnet is None
+        assert error is not None
+        assert "Invalid domain" in error
+
+
+def test_extract_magnet_generic_exception(mock_sleep: Any) -> None:
+    """Test handling of generic exceptions during extraction."""
+    url = "https://audiobookbay.lu/book"
+    with patch("app.scraper.core.get_book_details", side_effect=Exception("Database down")):
+        with patch("app.scraper.core.logger") as mock_logger:
+            magnet, error = extract_magnet_link(url)
+            assert magnet is None
+            assert error is not None
+            assert "Database down" in error
+            assert mock_logger.error.called
+
+
+def test_extract_magnet_none_trackers(mock_sleep: Any) -> None:
+    """Test extract_magnet_link handling when trackers is explicitly None."""
+    url = "https://audiobookbay.lu/book"
+    mock_details = cast(BookDict, {"info_hash": "abc123hash", "trackers": None})
+
+    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+        with patch("app.scraper.core.get_trackers", return_value=[]):
+            magnet, error = extract_magnet_link(url)
+            assert error is None
+            assert magnet is not None
+            assert "magnet:?xt=urn:btih:abc123hash" in magnet
+            assert "&tr=" not in magnet
