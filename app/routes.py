@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, cast
+from typing import Any
 
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
@@ -46,12 +46,11 @@ def inject_global_vars() -> dict[str, Any]:
 @main_bp.route("/health")
 def health() -> Response:
     """Perform a health check."""
-    # FIX: Cast jsonify result to Response to satisfy strict return type
-    return cast(Response, jsonify({"status": "ok"}))
+    return jsonify({"status": "ok"})
 
 
 @main_bp.route("/", methods=["GET", "POST"])
-@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
+@limiter.limit("30 per minute")
 def search() -> str | Response:
     """Handle the search interface."""
     books: list[BookDict] = []
@@ -79,13 +78,13 @@ def search() -> str | Response:
 
 
 @main_bp.route("/details")
-@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
+@limiter.limit("30 per minute")
 def details() -> str | Response:
     """Fetch and render the details page internally via the server."""
     link = request.args.get("link")
     if not link:
-        # Cast redirect to Response to satisfy MyPy return type checking
-        return cast(Response, redirect(url_for("main.search")))
+        # redirect() returns Response | str, but in this context it's a response
+        return redirect(url_for("main.search"))
 
     try:
         book_details = get_book_details(link)
@@ -97,7 +96,7 @@ def details() -> str | Response:
 
 # FIX: Updated return type to include tuple[Response, int] for error codes
 @main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")  # type: ignore[untyped-decorator]
+@limiter.limit("60 per minute")
 def send() -> Response | tuple[Response, int]:
     """Initiate a download."""
     data = request.json
@@ -138,13 +137,10 @@ def send() -> Response | tuple[Response, int]:
         torrent_manager.add_magnet(magnet_link, save_path)
 
         logger.info(f"Successfully sent '{safe_title}' to {torrent_manager.client_type}")
-        return cast(
-            Response,
-            jsonify(
-                {
-                    "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."
-                }
-            ),
+        return jsonify(
+            {
+                "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."
+            }
         )
     except Exception as e:
         logger.error(f"Send failed: {e}", exc_info=True)
@@ -166,7 +162,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
 
     try:
         torrent_manager.remove_torrent(torrent_id)
-        return cast(Response, jsonify({"message": "Torrent removed successfully."}))
+        return jsonify({"message": "Torrent removed successfully."})
     except Exception as e:
         logger.error(f"Failed to remove torrent: {e}", exc_info=True)
         return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
@@ -188,7 +184,7 @@ def reload_library() -> Response | tuple[Response, int]:
         response = requests.post(url, headers=headers, timeout=10)
         response.raise_for_status()
         logger.info("Audiobookshelf library scan initiated successfully.")
-        return cast(Response, jsonify({"message": "Audiobookshelf library scan initiated."}))
+        return jsonify({"message": "Audiobookshelf library scan initiated."})
     except requests.exceptions.RequestException as e:
         error_message = str(e)
         if e.response is not None:
@@ -208,7 +204,7 @@ def status() -> str | Response | tuple[Response, int]:
 
         # FIX: Return JSON if requested by the frontend poller
         if request.args.get("json"):
-            return cast(Response, jsonify(torrent_list))
+            return jsonify(torrent_list)
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
         # Wrap in str() to ensure return type is string

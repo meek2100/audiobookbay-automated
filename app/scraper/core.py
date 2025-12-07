@@ -288,6 +288,7 @@ def get_book_details(details_url: str) -> BookDict:
                         info_hash = value
 
         if info_hash == "Unknown":
+            # type: ignore[call-overload]
             info_hash_row = soup.find("td", string=RE_INFO_HASH)
             if info_hash_row:
                 sibling = info_hash_row.find_next_sibling("td")
