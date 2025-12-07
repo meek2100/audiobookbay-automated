@@ -127,6 +127,32 @@ def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: A
     assert app.config.Config.PAGE_LIMIT == 3
 
 
+def test_startup_insecure_secret_key_development(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    _, mock_logger = mock_flask_factory
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
+    monkeypatch.setenv("SECRET_KEY", "change-this-to-a-secure-random-key")
+    monkeypatch.setenv("FLASK_DEBUG", "1")
+    monkeypatch.delenv("TESTING", raising=False)
+
+    importlib.reload(app.config)
+    app.config.Config.validate(mock_logger)
+
+    args, _ = mock_logger.warning.call_args
+    assert "WARNING: You are using the default insecure SECRET_KEY" in args[0]
+
+
+def test_startup_invalid_log_level(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    _, mock_logger = mock_flask_factory
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
+    monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL")
+
+    importlib.reload(app.config)
+    app.config.Config.validate(mock_logger)
+
+    args, _ = mock_logger.warning.call_args
+    assert "Configuration Warning: Invalid LOG_LEVEL" in args[0]
+
+
 def test_app_startup_verification_fail(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Test that verify_credentials is called during startup when not in testing mode."""
     _, mock_logger = mock_flask_factory

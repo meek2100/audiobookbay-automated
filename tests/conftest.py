@@ -1,7 +1,7 @@
 # tests/conftest.py
 from __future__ import annotations
 
-from typing import Generator
+from typing import Any, Generator, cast
 
 import pytest
 from flask import Flask
@@ -30,7 +30,7 @@ def app() -> Generator[Flask, None, None]:
 
 
 @pytest.fixture
-def client(app: Flask) -> FlaskClient:
+def client(app: Flask) -> FlaskClient[Any]:
     """The observer within the world: A test client to make requests."""
     return app.test_client()
 
@@ -38,4 +38,11 @@ def client(app: Flask) -> FlaskClient:
 @pytest.fixture
 def runner(app: Flask) -> FlaskCliRunner:
     """A CLI runner for command-line context."""
-    return app.test_cli_runner()
+    return cast(FlaskCliRunner, app.test_cli_runner())
+
+
+@pytest.fixture(autouse=True)
+def push_app_context(app: Flask) -> Generator[None, None, None]:
+    """Automatically push application context for all tests."""
+    with app.app_context():
+        yield
