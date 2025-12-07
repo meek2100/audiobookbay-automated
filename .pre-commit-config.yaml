@@ -97,6 +97,15 @@ repos:
       - id: mypy
         args: ["--no-incremental", "--config=pyproject.toml"]
         files: '\.py$'
+        additional_dependencies:
+          - pytest
+          - flask
+          - types-flask
+          - types-requests
+          - types-cachetools
+          - types-setuptools
+          - types-beautifulsoup4
+          - types-jsonschema
 
   - repo: https://github.com/PyCQA/pydocstyle
     rev: "6.3.0"

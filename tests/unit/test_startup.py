@@ -22,7 +22,7 @@ class MockConfig(dict[str, Any]):
                 self[key] = getattr(obj, key)
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
     """Patches Flask class to return a mock app with a traceable logger and working config."""
     with patch("flask.Flask") as mock_class:
