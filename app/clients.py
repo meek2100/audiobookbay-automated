@@ -313,9 +313,10 @@ class TorrentManager:
 
         elif self.client_type == "qbittorrent":
             qb_client = cast(QbClient, client)
-            # FIX: Explicitly cast to Any to bypass MyPy strictness with qbittorrentapi types
-            torrents: Any = qb_client.torrents_info(category=self.category)
-            for torrent in torrents:
+            # FIX: Rename variable to avoid [no-redef] conflict with Transmission's 'torrents'
+            # Explicitly cast to Any to bypass MyPy strictness with qbittorrentapi types
+            qb_torrents: Any = qb_client.torrents_info(category=self.category)
+            for torrent in qb_torrents:
                 # With 'Any', MyPy won't complain about missing 'hash' or 'state' attributes
                 results.append(
                     {
@@ -329,15 +330,15 @@ class TorrentManager:
 
         elif self.client_type == "deluge":
             deluge_client = cast(DelugeWebClient, client)
-            torrents = deluge_client.get_torrents_status(
+            deluge_torrents = deluge_client.get_torrents_status(
                 filter_dict={"label": self.category},
                 keys=["name", "state", "progress", "total_size"],
             )
             # ROBUSTNESS: Explicit check for None to allow empty dict (no torrents) as valid.
-            if torrents.result is not None:
+            if deluge_torrents.result is not None:
                 # STRICT TYPING: Runtime type check instead of unsafe cast to dict
-                if isinstance(torrents.result, dict):
-                    results_dict = torrents.result
+                if isinstance(deluge_torrents.result, dict):
+                    results_dict = deluge_torrents.result
                     for key, torrent in results_dict.items():
                         # SAFETY: Robust conversion of progress to float
                         # Deluge might return mixed types or None for progress
@@ -360,7 +361,7 @@ class TorrentManager:
                             }
                         )
                 else:
-                    logger.warning(f"Deluge returned unexpected data type: {type(torrents.result)}")
+                    logger.warning(f"Deluge returned unexpected data type: {type(deluge_torrents.result)}")
             else:
                 logger.warning("Deluge returned empty or invalid result payload.")
 
