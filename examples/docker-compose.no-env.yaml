@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   audiobookbay-automated:
     image: ghcr.io/jamesry96/audiobookbay-automated:latest
