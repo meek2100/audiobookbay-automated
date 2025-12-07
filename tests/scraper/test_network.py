@@ -11,7 +11,7 @@ from app.constants import DEFAULT_TRACKERS, USER_AGENTS
 from app.scraper import network
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def mock_app_context() -> Generator[MagicMock, None, None]:
     """Fixture to mock current_app.config for network functions."""
     with patch("app.scraper.network.current_app") as mock_app:

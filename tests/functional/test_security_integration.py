@@ -8,7 +8,7 @@ from flask import Flask
 from app import create_app
 
 
-@pytest.fixture  # type: ignore[untyped-decorator]
+@pytest.fixture
 def csrf_app() -> Generator[Flask, None, None]:
     """Fixture creating an app with CSRF protection explicitly ENABLED.
 
