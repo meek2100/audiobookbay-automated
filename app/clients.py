@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Literal, TypedDict, cast
+from typing import Any, Literal, TypedDict, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
@@ -313,10 +313,10 @@ class TorrentManager:
 
         elif self.client_type == "qbittorrent":
             qb_client = cast(QbClient, client)
-            torrents = qb_client.torrents_info(category=self.category)
-            # FIX: Explicit iteration because MyPy struggles with List-like return types from qbittorrentapi
+            # FIX: Explicitly cast to Any to bypass MyPy strictness with qbittorrentapi types
+            torrents: Any = qb_client.torrents_info(category=self.category)
             for torrent in torrents:
-                # MyPy locally sees these attributes correctly
+                # With 'Any', MyPy won't complain about missing 'hash' or 'state' attributes
                 results.append(
                     {
                         "id": torrent.hash,

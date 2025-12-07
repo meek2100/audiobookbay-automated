@@ -51,7 +51,7 @@ def health() -> Response:
 
 
 @main_bp.route("/", methods=["GET", "POST"])
-@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
+@limiter.limit("30 per minute")
 def search() -> str | Response:
     """Handle the search interface."""
     books: list[BookDict] = []
@@ -79,7 +79,7 @@ def search() -> str | Response:
 
 
 @main_bp.route("/details")
-@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
+@limiter.limit("30 per minute")
 def details() -> str | Response:
     """Fetch and render the details page internally via the server."""
     link = request.args.get("link")
@@ -97,7 +97,7 @@ def details() -> str | Response:
 
 # FIX: Updated return type to include tuple[Response, int] for error codes
 @main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")  # type: ignore[untyped-decorator]
+@limiter.limit("60 per minute")
 def send() -> Response | tuple[Response, int]:
     """Initiate a download."""
     data = request.json
