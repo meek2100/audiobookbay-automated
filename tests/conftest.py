@@ -1,5 +1,7 @@
 # tests/conftest.py
-from typing import Generator, cast
+from __future__ import annotations
+
+from typing import Any, Generator, cast
 
 import pytest
 from flask import Flask
@@ -28,7 +30,7 @@ def app() -> Generator[Flask, None, None]:
 
 
 @pytest.fixture
-def client(app: Flask) -> FlaskClient:
+def client(app: Flask) -> FlaskClient[Any]:
     """The observer within the world: A test client to make requests."""
     return app.test_client()
 

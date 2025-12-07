@@ -54,7 +54,7 @@ class TorrentManager:
 
     def _get_client(self) -> QbClient | TxClient | DelugeWebClient | None:
         """
-        Returns the existing client instance or creates a new one if it doesn't exist.
+        Return the existing client instance or creates a new one if it doesn't exist.
 
         Returns:
             The active client instance or None if connection fails.
@@ -121,7 +121,7 @@ class TorrentManager:
 
     def verify_credentials(self) -> bool:
         """
-        Verifies if the client can connect with the provided credentials.
+        Verify if the client can connect with the provided credentials.
 
         Returns:
             bool: True if connected successfully, False otherwise.
@@ -137,7 +137,7 @@ class TorrentManager:
     @staticmethod
     def _format_size(size_bytes: int | float | str | None) -> str:
         """
-        Formats bytes into human-readable B, KB, MB, GB, TB, PB.
+        Format bytes into human-readable B, KB, MB, GB, TB, PB.
 
         Args:
             size_bytes: The size in bytes.
@@ -160,7 +160,7 @@ class TorrentManager:
 
     def add_magnet(self, magnet_link: str, save_path: str) -> None:
         """
-        Adds a magnet link to the configured torrent client.
+        Add a magnet link to the configured torrent client.
 
         Args:
             magnet_link: The magnet URI.
@@ -225,7 +225,7 @@ class TorrentManager:
 
     def remove_torrent(self, torrent_id: str) -> None:
         """
-        Removes a torrent by ID.
+        Remove a torrent by ID.
         Note: Configured to keep data files (soft delete) to avoid accidental data loss.
 
         Args:
@@ -276,7 +276,7 @@ class TorrentManager:
 
     def get_status(self) -> list[TorrentStatus]:
         """
-        Retrieves the status of current downloads in the configured category.
+        Retrieve the status of current downloads in the configured category.
         Includes internal retry logic to attempt reconnecting to the client once on failure.
 
         Returns:

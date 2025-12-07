@@ -34,7 +34,8 @@ def test_health_check_failure_500(mock_exit: Any, mock_urlopen: Any) -> None:
 
 @patch("app.healthcheck.urllib.request.urlopen")
 @patch("app.healthcheck.sys.exit")
-def test_health_check_exception(mock_exit: Any, mock_urlopen: Any) -> None:
+def test_health_check_exception(mock_exit: Any, mock_urlopen: Any, capsys: Any) -> None:
+    """Test that exceptions result in failure and are logged to stderr."""
     # Simulate Connection Refused
     mock_urlopen.side_effect = Exception("Connection refused")
 
@@ -42,6 +43,10 @@ def test_health_check_exception(mock_exit: Any, mock_urlopen: Any) -> None:
 
     # Should exit with 1 (Failure)
     mock_exit.assert_called_with(1)
+
+    # Verify the error was printed to stderr (Fixing coverage meaningfulness)
+    captured = capsys.readouterr()
+    assert "Health check failed: Connection refused" in captured.err
 
 
 @patch("app.healthcheck.os.getenv")

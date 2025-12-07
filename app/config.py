@@ -37,7 +37,9 @@ class Config:
     LOG_LEVEL: int = getattr(logging, LOG_LEVEL_STR, logging.INFO)
 
     # Scraper Configuration
-    ABB_HOSTNAME: str = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
+    # ROBUSTNESS: Fallback if env var is set but empty string
+    _hostname: str = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
+    ABB_HOSTNAME: str = _hostname if _hostname else "audiobookbay.lu"
 
     # Parse comma-separated mirrors into a list
     _mirrors_str: str = os.getenv("ABB_MIRRORS", "")

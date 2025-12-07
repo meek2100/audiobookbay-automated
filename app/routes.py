@@ -45,13 +45,13 @@ def inject_global_vars() -> dict[str, Any]:
 
 @main_bp.route("/health")
 def health() -> Response:
-    """Dedicated health check endpoint."""
+    """Perform a health check."""
     # FIX: Cast jsonify result to Response to satisfy strict return type
     return cast(Response, jsonify({"status": "ok"}))
 
 
 @main_bp.route("/", methods=["GET", "POST"])
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def search() -> str | Response:
     """Handle the search interface."""
     books: list[BookDict] = []
@@ -79,7 +79,7 @@ def search() -> str | Response:
 
 
 @main_bp.route("/details")
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def details() -> str | Response:
     """Fetch and render the details page internally via the server."""
     link = request.args.get("link")
@@ -97,9 +97,9 @@ def details() -> str | Response:
 
 # FIX: Updated return type to include tuple[Response, int] for error codes
 @main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")
+@limiter.limit("60 per minute")  # type: ignore[untyped-decorator]
 def send() -> Response | tuple[Response, int]:
-    """API endpoint to initiate a download."""
+    """Initiate a download."""
     data = request.json
 
     if not isinstance(data, dict):
@@ -153,7 +153,7 @@ def send() -> Response | tuple[Response, int]:
 
 @main_bp.route("/delete", methods=["POST"])
 def delete_torrent() -> Response | tuple[Response, int]:
-    """API endpoint to remove a torrent."""
+    """Remove a torrent."""
     data = request.json
 
     if not isinstance(data, dict):
@@ -174,7 +174,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
 
 @main_bp.route("/reload_library", methods=["POST"])
 def reload_library() -> Response | tuple[Response, int]:
-    """API endpoint to trigger an Audiobookshelf library scan."""
+    """Trigger an Audiobookshelf library scan."""
     abs_url = current_app.config.get("ABS_URL")
     abs_key = current_app.config.get("ABS_KEY")
     abs_lib = current_app.config.get("ABS_LIB")
