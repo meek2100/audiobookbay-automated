@@ -53,19 +53,16 @@ class TorrentManager:
         self.port: str | None = os.getenv("DL_PORT")
         self.username: str | None = os.getenv("DL_USERNAME")
         self.password: str | None = os.getenv("DL_PASSWORD")
-        # CONSISTENCY FIX: Updated default category to match project name
         self.category: str = os.getenv("DL_CATEGORY", "abb-automated")
         self.scheme: str = os.getenv("DL_SCHEME", "http")
 
         # Normalize connection URL for Deluge
         self.dl_url: str | None = os.getenv("DL_URL")
 
-        # FIX: Robustly handle missing host for URL construction
         if not self.dl_url:
             if self.host and self.port:
                 self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
             elif self.client_type == TorrentClientType.DELUGE:
-                # Only warn if using Deluge, as other clients use host/port directly
                 logger.warning("DL_HOST or DL_PORT missing. Defaulting Deluge URL to localhost:8112.")
                 self.dl_url = "http://localhost:8112"
 
@@ -83,7 +80,6 @@ class TorrentManager:
 
         logger.debug(f"Initializing new {self.client_type} client connection...")
 
-        # FIX: Ensure host/port are not None for strict type checking
         safe_host = self.host or "localhost"
         safe_port = int(self.port) if self.port else 8080
 
@@ -99,7 +95,6 @@ class TorrentManager:
                 self._client = qb
 
             elif self.client_type == TorrentClientType.TRANSMISSION:
-                # OPTIMIZATION: Added timeout to prevent hanging
                 safe_scheme = cast(Literal["http", "https"], self.scheme)
                 self._client = TxClient(
                     host=safe_host,
@@ -157,7 +152,6 @@ class TorrentManager:
                 if size < 1024.0:
                     return f"{size:.2f} {unit}"
                 size /= 1024.0
-            # If we exhausted the loop, we are in PB territory (or higher)
             return f"{size:.2f} PB"
         except (ValueError, TypeError):
             return "Unknown"
@@ -195,9 +189,7 @@ class TorrentManager:
         logger.info(f"Adding torrent to {self.client_type} at {save_path}")
 
         if self.client_type == TorrentClientType.QBITTORRENT:
-            # Explicit cast for type safety
             qb_client = cast(QbClient, client)
-            # ROBUSTNESS: Capture return value and warn if it indicates failure
             result = qb_client.torrents_add(urls=magnet_link, save_path=save_path, category=self.category)
             if isinstance(result, str) and result.lower() != "ok.":
                 logger.warning(f"qBittorrent add returned unexpected response: {result}")
@@ -207,7 +199,6 @@ class TorrentManager:
             try:
                 tx_client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])
             except Exception as e:
-                # Fallback for older daemons that don't support labels
                 logger.warning(f"Transmission label assignment failed: {e}. Retrying without labels.")
                 tx_client.add_torrent(magnet_link, download_dir=save_path)
 
@@ -216,8 +207,6 @@ class TorrentManager:
             try:
                 deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
             except Exception as e:
-                # ROBUSTNESS: Handle Deluge missing label plugin or other errors gracefully
-                # Check for various error strings that indicate the label parameter is invalid
                 error_msg = str(e).lower()
                 if "label" in error_msg or "unknown parameter" in error_msg:
                     logger.warning(
@@ -234,7 +223,6 @@ class TorrentManager:
     def remove_torrent(self, torrent_id: str) -> None:
         """
         Remove a torrent by ID.
-        Note: Configured to keep data files (soft delete) to avoid accidental data loss.
 
         Args:
             torrent_id: The hash or ID of the torrent to remove.
@@ -268,8 +256,6 @@ class TorrentManager:
 
         elif self.client_type == TorrentClientType.TRANSMISSION:
             tx_client = cast(TxClient, client)
-            # Transmission expects IDs as integers usually, but hashes work in some versions.
-            # safe conversion if it's digit, else pass as string (hash)
             tid: int | str
             try:
                 tid = int(torrent_id)
@@ -285,7 +271,6 @@ class TorrentManager:
     def get_status(self) -> list[TorrentStatus]:
         """
         Retrieve the status of current downloads in the configured category.
-        Includes internal retry logic to attempt reconnecting to the client once on failure.
 
         Returns:
             list[TorrentStatus]: A list of dictionaries containing standardized torrent details.
@@ -307,30 +292,31 @@ class TorrentManager:
 
         if self.client_type == TorrentClientType.TRANSMISSION:
             tx_client = cast(TxClient, client)
-            torrents = tx_client.get_torrents()
-            for torrent in torrents:
+            # FIX: Rename loop variable to avoid scope leaking and type collision
+            tx_torrents = tx_client.get_torrents()
+            for tx_torrent in tx_torrents:
                 results.append(
                     {
-                        "id": torrent.id,
-                        "name": torrent.name,
-                        "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
-                        "state": torrent.status,
-                        "size": self._format_size(torrent.total_size),
+                        "id": tx_torrent.id,
+                        "name": tx_torrent.name,
+                        "progress": round(tx_torrent.progress * 100, 2) if tx_torrent.progress else 0.0,
+                        "state": tx_torrent.status,
+                        "size": self._format_size(tx_torrent.total_size),
                     }
                 )
 
         elif self.client_type == TorrentClientType.QBITTORRENT:
             qb_client = cast(QbClient, client)
-            # Use Protocol for stronger typing instead of Any
             qb_torrents = cast(list[QbTorrentProtocol], qb_client.torrents_info(category=self.category))
-            for torrent in qb_torrents:
+            # FIX: Use unique variable name 'qb_torrent' to prevent MyPy confusing it with Transmission's 'torrent'
+            for qb_torrent in qb_torrents:
                 results.append(
                     {
-                        "id": torrent.hash,
-                        "name": torrent.name,
-                        "progress": round(torrent.progress * 100, 2) if torrent.progress else 0.0,
-                        "state": torrent.state,
-                        "size": self._format_size(torrent.total_size),
+                        "id": qb_torrent.hash,
+                        "name": qb_torrent.name,
+                        "progress": round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
+                        "state": qb_torrent.state,
+                        "size": self._format_size(qb_torrent.total_size),
                     }
                 )
 
@@ -340,15 +326,12 @@ class TorrentManager:
                 filter_dict={"label": self.category},
                 keys=["name", "state", "progress", "total_size"],
             )
-            # ROBUSTNESS: Explicit check for None to allow empty dict (no torrents) as valid.
             if deluge_torrents.result is not None:
-                # STRICT TYPING: Runtime type check instead of unsafe cast to dict
                 if isinstance(deluge_torrents.result, dict):
                     results_dict = deluge_torrents.result
-                    for key, torrent in results_dict.items():
-                        # SAFETY: Robust conversion of progress to float
-                        # Deluge might return mixed types or None for progress
-                        progress_val = torrent.get("progress")
+                    # FIX: Use unique variable 'deluge_data' to avoid type conflict with object-based torrents
+                    for key, deluge_data in results_dict.items():
+                        progress_val = deluge_data.get("progress")
                         try:
                             if progress_val is None:
                                 progress = 0.0
@@ -360,10 +343,10 @@ class TorrentManager:
                         results.append(
                             {
                                 "id": key,
-                                "name": torrent.get("name", "Unknown"),
+                                "name": deluge_data.get("name", "Unknown"),
                                 "progress": progress,
-                                "state": torrent.get("state", "Unknown"),
-                                "size": self._format_size(torrent.get("total_size")),
+                                "state": deluge_data.get("state", "Unknown"),
+                                "size": self._format_size(deluge_data.get("total_size")),
                             }
                         )
                 else:
