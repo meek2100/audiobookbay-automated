@@ -8,7 +8,7 @@ import requests_mock
 from bs4 import BeautifulSoup, Tag
 
 from app.scraper import extract_magnet_link, fetch_and_parse_page, get_book_details
-from app.scraper.parser import get_text_after_label, parse_post_content
+from app.scraper.parser import get_text_after_label, normalize_cover_url, parse_post_content
 
 # --- Unit Tests: Helper Functions ---
 
@@ -76,6 +76,11 @@ def test_get_text_after_label_not_found() -> None:
     # 'Format:' does not exist in the HTML (pass soup which is Tag-like)
     result = get_text_after_label(soup, "Format:")
     assert result == "Unknown"
+
+
+def test_normalize_cover_url_empty() -> None:
+    """Test that empty relative_url returns None (Lines 116-117 coverage)."""
+    assert normalize_cover_url("http://base.com", "") is None
 
 
 # --- Unit Tests: parse_post_content (Centralized Logic) ---

@@ -152,6 +152,20 @@ def test_find_best_mirror_success(mock_app_context: Any) -> None:
             assert result == "mirror1.com"
 
 
+def test_find_best_mirror_cached(mock_app_context: Any) -> None:
+    """Test that find_best_mirror returns cached value directly (Coverage Line 180)."""
+    # Setup cache state manually
+    network.mirror_cache["active_mirror"] = "cached-mirror.lu"
+
+    # Execute - should return immediately without calling get_mirrors or checking them
+    # We do NOT patch check_mirror here to prove it doesn't get called
+    result = network.find_best_mirror()
+
+    assert result == "cached-mirror.lu"
+    # Clean up to avoid pollution
+    network.mirror_cache.clear()
+
+
 def test_get_random_user_agent_returns_string() -> None:
     ua = network.get_random_user_agent()
     assert isinstance(ua, str)
