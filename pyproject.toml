@@ -7,7 +7,10 @@ name = "audiobookbay-automated"
 version = "1.0.0"
 description = "Automated AudiobookBay downloader and torrent manager"
 requires-python = ">=3.13"
-authors = [{ name = "Your Name", email = "your@email.com" }]
+authors = [
+    { name = "meek2100", email = "meek2100@users.noreply.github.com" },
+    { name = "jamesry96", email = "jamesry96@users.noreply.github.com" }
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
@@ -103,7 +106,7 @@ disable_error_code = ["import-untyped"]
 
 [tool.bandit]
 skips = ["B101"]
-exclude = ["tests/", "app/clients.py"]
+exclude = ["tests/"]
 
 [tool.pydocstyle]
 convention = "google"

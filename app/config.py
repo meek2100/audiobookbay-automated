@@ -32,6 +32,16 @@ class Config:
     NAV_LINK_NAME: str | None = os.getenv("NAV_LINK_NAME")
     NAV_LINK_URL: str | None = os.getenv("NAV_LINK_URL")
 
+    # Torrent Client Configuration
+    DL_CLIENT: str | None = os.getenv("DL_CLIENT")
+    DL_HOST: str | None = os.getenv("DL_HOST")
+    DL_PORT: str | None = os.getenv("DL_PORT")
+    DL_USERNAME: str | None = os.getenv("DL_USERNAME")
+    DL_PASSWORD: str | None = os.getenv("DL_PASSWORD")
+    DL_CATEGORY: str = os.getenv("DL_CATEGORY", "abb-automated")
+    DL_SCHEME: str = os.getenv("DL_SCHEME", "http")
+    DL_URL: str | None = os.getenv("DL_URL")
+
     # Logging
     LOG_LEVEL_STR: str = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_LEVEL: int = getattr(logging, LOG_LEVEL_STR, logging.INFO)

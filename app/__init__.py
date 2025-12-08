@@ -28,6 +28,9 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     limiter.init_app(flask_app)
     csrf.init_app(flask_app)
 
+    # Initialize TorrentManager with app configuration
+    torrent_manager.init_app(flask_app)
+
     # Initialize singleton managers (if they need app context or config)
     # TorrentManager loads config from env vars, so it doesn't strictly need init_app,
     # but we ensure it's ready.

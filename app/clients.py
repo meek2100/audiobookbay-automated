@@ -1,9 +1,9 @@
 import logging
-import os
 from enum import StrEnum
 from typing import Literal, Protocol, TypedDict, cast
 
 from deluge_web_client import DelugeWebClient
+from flask import Flask
 from qbittorrentapi import Client as QbClient
 from transmission_rpc import Client as TxClient
 
@@ -45,19 +45,35 @@ class TorrentManager:
     """
 
     def __init__(self) -> None:
+        """Initialize the TorrentManager state."""
+        self.client_type: str | None = None
+        self.host: str | None = None
+        self.port: str | None = None
+        self.username: str | None = None
+        self.password: str | None = None
+        self.category: str = "abb-automated"
+        self.scheme: str = "http"
+        self.dl_url: str | None = None
+        self._client: QbClient | TxClient | DelugeWebClient | None = None
+
+    def init_app(self, app: Flask) -> None:
         """
-        Initializes the TorrentManager by loading configuration from environment variables.
+        Initialize the TorrentManager with configuration from the Flask app.
+
+        Args:
+            app: The Flask application instance.
         """
-        self.client_type: str | None = os.getenv("DL_CLIENT")
-        self.host: str | None = os.getenv("DL_HOST")
-        self.port: str | None = os.getenv("DL_PORT")
-        self.username: str | None = os.getenv("DL_USERNAME")
-        self.password: str | None = os.getenv("DL_PASSWORD")
-        self.category: str = os.getenv("DL_CATEGORY", "abb-automated")
-        self.scheme: str = os.getenv("DL_SCHEME", "http")
+        config = app.config
+        self.client_type = config.get("DL_CLIENT")
+        self.host = config.get("DL_HOST")
+        self.port = config.get("DL_PORT")
+        self.username = config.get("DL_USERNAME")
+        self.password = config.get("DL_PASSWORD")
+        self.category = config.get("DL_CATEGORY", "abb-automated")
+        self.scheme = config.get("DL_SCHEME", "http")
 
         # Normalize connection URL for Deluge
-        self.dl_url: str | None = os.getenv("DL_URL")
+        self.dl_url = config.get("DL_URL")
 
         if not self.dl_url:
             if self.host and self.port:
@@ -65,8 +81,6 @@ class TorrentManager:
             elif self.client_type == TorrentClientType.DELUGE:
                 logger.warning("DL_HOST or DL_PORT missing. Defaulting Deluge URL to localhost:8112.")
                 self.dl_url = "http://localhost:8112"
-
-        self._client: QbClient | TxClient | DelugeWebClient | None = None
 
     def _get_client(self) -> QbClient | TxClient | DelugeWebClient | None:
         """

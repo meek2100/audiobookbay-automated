@@ -62,10 +62,13 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
     page_results: list[BookDict] = []
 
     try:
+        # OPTIMIZATION: Sleep outside the semaphore.
+        # Sleeping while holding the semaphore blocks other threads from doing useful work.
+        # Random jitter (0.5-1.5s) to prevent IP bans.
+        sleep_time = random.uniform(0.5, 1.5)  # nosec B311
+        time.sleep(sleep_time)
+
         with GLOBAL_REQUEST_SEMAPHORE:
-            # Random jitter (0.5-1.5s) to prevent IP bans.
-            sleep_time = random.uniform(0.5, 1.5)  # nosec B311
-            time.sleep(sleep_time)
             # 30s timeout for better resilience on slow connections/proxies.
             response = session.get(url, params=params, headers=headers, timeout=30)
 
@@ -222,9 +225,10 @@ def get_book_details(details_url: str) -> BookDict:
     headers = get_headers(referer=details_url)
 
     try:
+        # OPTIMIZATION: Sleep outside the semaphore (same as in fetch_and_parse_page)
+        time.sleep(random.uniform(0.5, 1.5))  # nosec B311
+
         with GLOBAL_REQUEST_SEMAPHORE:
-            # Random jitter (0.5-1.5s) to prevent IP bans.
-            time.sleep(random.uniform(0.5, 1.5))  # nosec B311
             # 30s timeout for better resilience.
             response = session.get(details_url, headers=headers, timeout=30)
 
