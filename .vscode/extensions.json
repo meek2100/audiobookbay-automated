@@ -4,24 +4,30 @@
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.debugpy",
-        // --- Modern Python Tools ---
+        "ms-python.vscode-pylance-docstrings",
+        // --- Modern Python Tools (Linter/Formatter/Typing/Docs) ---
         "charliermarsh.ruff",
         "tamasfe.even-better-toml",
         "njpwerner.autodocstring",
-        // --- Web / Flask ---
+        "samuelcolvin.vscode-bandit",
+        // --- Web / Flask / Frontend ---
         "samuelcolvin.jinjahtml",
         "esbenp.prettier-vscode",
-        // --- Markdown & Docs (NEW) ---
+        "dbaeumer.vscode-eslint",
+        // --- Markdown & Docs ---
         "davidanson.vscode-markdownlint",
+        "yzhang.markdown-all-in-one",
         // --- Infrastructure ---
         "ms-azuretools.vscode-docker",
         "ms-vscode-remote.remote-containers",
         "redhat.vscode-yaml",
         "timonwong.shellcheck",
-        // --- Security & Type Safety ---
-        "ms-python.vscode-pylance-docstrings",
-        "samuelcolvin.vscode-bandit",
+        // --- Aesthetics ---
         "zhuangtongfa.material-icon-theme",
-        "dbaeumer.vscode-eslint"
+        // --- Recommended Productivity Tools ---
+        "eamodio.gitlens",
+        "mikestead.dotenv",
+        "humao.rest-client",
+        "christian-kohler.path-intellisense"
     ]
 }
