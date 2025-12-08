@@ -209,6 +209,7 @@ ______________________________________________________________________
 ### Type Safety
 
 - Full type hints, Python 3.13 compatible.
+- When a MyPy error appears in one environment but not another (causing 'unused type ignore' errors), use the robust ignore pattern: `# type: ignore[error-code, unused-ignore]`. This suppresses both the original error and the warning about the ignore being unused.
 
 ### Testing Style Guide
 
@@ -217,6 +218,7 @@ ______________________________________________________________________
 - Mock where imported.
 - Always mock network calls and `time.sleep`.
 - Reload config when tests mutate startup settings.
+- Ensure all tests run within an application context. Use an `autouse=True` fixture in `conftest.py` to automatically push `app.app_context()` for every test, ensuring `current_app` and `config` are always accessible.
 
 ______________________________________________________________________
 

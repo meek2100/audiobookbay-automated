@@ -34,6 +34,31 @@ def test_init_with_dl_url(monkeypatch: Any) -> None:
     assert manager.dl_url == "http://custom-url:1234"
 
 
+def test_init_dl_url_construction(monkeypatch: Any) -> None:
+    """Test construction of DL_URL from host and port."""
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    monkeypatch.delenv("DL_URL", raising=False)
+    monkeypatch.setenv("DL_HOST", "myhost")
+    monkeypatch.setenv("DL_PORT", "9999")
+    monkeypatch.setenv("DL_SCHEME", "https")
+
+    manager = TorrentManager()
+    assert manager.dl_url == "https://myhost:9999"
+
+
+def test_init_dl_url_deluge_default(monkeypatch: Any) -> None:
+    """Test default DL_URL for Deluge when host/port missing."""
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+    monkeypatch.delenv("DL_URL", raising=False)
+    monkeypatch.delenv("DL_HOST", raising=False)
+    monkeypatch.delenv("DL_PORT", raising=False)
+
+    with patch("app.clients.logger") as mock_logger:
+        manager = TorrentManager()
+        assert manager.dl_url == "http://localhost:8112"
+        mock_logger.warning.assert_called_with("DL_HOST or DL_PORT missing. Defaulting Deluge URL to localhost:8112.")
+
+
 def test_init_deluge_success(monkeypatch: Any) -> None:
     """
     Test successful Deluge initialization to explicitly cover the client assignment.

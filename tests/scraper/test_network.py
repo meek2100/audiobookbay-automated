@@ -2,21 +2,20 @@
 import json
 import os
 from typing import Any, Generator
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 import requests
+from flask import Flask
 
 from app.constants import DEFAULT_TRACKERS, USER_AGENTS
 from app.scraper import network
 
 
 @pytest.fixture
-def mock_app_context() -> Generator[MagicMock, None, None]:
-    """Fixture to mock current_app.config for network functions."""
-    with patch("app.scraper.network.current_app") as mock_app:
-        mock_app.config = {}
-        yield mock_app
+def mock_app_context(app: Flask) -> Generator[Flask, None, None]:
+    """Fixture to provide app for network functions."""
+    yield app
 
 
 def test_get_trackers_from_env(mock_app_context: Any) -> None:
@@ -125,6 +124,16 @@ def test_check_mirror_head_500_fallback() -> None:
             mock_get.return_value.status_code = 200
             result = network.check_mirror("flaky.mirror")
             assert result == "flaky.mirror"
+
+
+def test_check_mirror_get_exception() -> None:
+    """Test check_mirror returns None if both HEAD and GET fail."""
+    with patch("app.scraper.network.requests.head") as mock_head:
+        mock_head.side_effect = requests.RequestException("HEAD Failed")
+        with patch("app.scraper.network.requests.get") as mock_get:
+            mock_get.side_effect = requests.RequestException("GET Failed")
+            result = network.check_mirror("bad.mirror")
+            assert result is None
 
 
 def test_find_best_mirror_all_fail(mock_app_context: Any) -> None:
