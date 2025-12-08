@@ -1,12 +1,21 @@
 import logging
 import os
-from typing import Any, Literal, TypedDict, cast
+from enum import StrEnum
+from typing import Literal, Protocol, TypedDict, cast
 
 from deluge_web_client import DelugeWebClient
 from qbittorrentapi import Client as QbClient
 from transmission_rpc import Client as TxClient
 
 logger = logging.getLogger(__name__)
+
+
+class TorrentClientType(StrEnum):
+    """Enumeration of supported torrent clients."""
+
+    QBITTORRENT = "qbittorrent"
+    TRANSMISSION = "transmission"
+    DELUGE = "deluge"
 
 
 class TorrentStatus(TypedDict):
@@ -17,6 +26,16 @@ class TorrentStatus(TypedDict):
     progress: float
     state: str
     size: str
+
+
+class QbTorrentProtocol(Protocol):
+    """Protocol defining the expected structure of a qBittorrent torrent object."""
+
+    hash: str
+    name: str
+    state: str
+    total_size: int
+    progress: float
 
 
 class TorrentManager:
@@ -45,7 +64,7 @@ class TorrentManager:
         if not self.dl_url:
             if self.host and self.port:
                 self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
-            elif self.client_type == "deluge":
+            elif self.client_type == TorrentClientType.DELUGE:
                 # Only warn if using Deluge, as other clients use host/port directly
                 logger.warning("DL_HOST or DL_PORT missing. Defaulting Deluge URL to localhost:8112.")
                 self.dl_url = "http://localhost:8112"
@@ -69,10 +88,7 @@ class TorrentManager:
         safe_port = int(self.port) if self.port else 8080
 
         try:
-            if self.client_type == "qbittorrent":
-                # OPTIMIZATION: Removed redundant inner try/except block.
-                # LoginFailed inherits from Exception and will be caught/logged by the outer block.
-                # Configuration for older versions of the API (requests_args removed).
+            if self.client_type == TorrentClientType.QBITTORRENT:
                 qb = QbClient(
                     host=safe_host,
                     port=safe_port,
@@ -82,33 +98,22 @@ class TorrentManager:
                 qb.auth_log_in()
                 self._client = qb
 
-            elif self.client_type == "transmission":
-                try:
-                    # OPTIMIZATION: Added timeout to prevent hanging
-                    # FIX: Cast scheme to Literal for MyPy strictness
-                    safe_scheme = cast(Literal["http", "https"], self.scheme)
-                    self._client = TxClient(
-                        host=safe_host,
-                        port=safe_port,
-                        protocol=safe_scheme,
-                        username=self.username,
-                        password=self.password,
-                        timeout=30,
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to connect to Transmission: {e}", exc_info=True)
-                    # Allow app to start even if client is down; commands will fail later.
-                    return None
+            elif self.client_type == TorrentClientType.TRANSMISSION:
+                # OPTIMIZATION: Added timeout to prevent hanging
+                safe_scheme = cast(Literal["http", "https"], self.scheme)
+                self._client = TxClient(
+                    host=safe_host,
+                    port=safe_port,
+                    protocol=safe_scheme,
+                    username=self.username,
+                    password=self.password,
+                    timeout=30,
+                )
 
-            elif self.client_type == "deluge":
-                try:
-                    dw = DelugeWebClient(url=self.dl_url or "", password=self.password or "")
-                    dw.login()
-                    self._client = dw
-                except Exception as e:
-                    logger.error(f"Failed to connect to Deluge: {e}", exc_info=True)
-                    # Allow app to start even if client is down; commands will fail later.
-                    return None
+            elif self.client_type == TorrentClientType.DELUGE:
+                dw = DelugeWebClient(url=self.dl_url or "", password=self.password or "")
+                dw.login()
+                self._client = dw
 
             else:
                 raise ValueError(f"Unsupported download client configured: {self.client_type}")
@@ -126,13 +131,12 @@ class TorrentManager:
         Returns:
             bool: True if connected successfully, False otherwise.
         """
-        client = self._get_client()
-        if client:
+        if self._get_client():
             logger.info(f"Successfully connected to {self.client_type}")
             return True
-        else:
-            logger.warning(f"Could not connect to {self.client_type} at startup.")
-            return False
+
+        logger.warning(f"Could not connect to {self.client_type} at startup.")
+        return False
 
     @staticmethod
     def _format_size(size_bytes: int | float | str | None) -> str:
@@ -190,7 +194,7 @@ class TorrentManager:
 
         logger.info(f"Adding torrent to {self.client_type} at {save_path}")
 
-        if self.client_type == "qbittorrent":
+        if self.client_type == TorrentClientType.QBITTORRENT:
             # Explicit cast for type safety
             qb_client = cast(QbClient, client)
             # ROBUSTNESS: Capture return value and warn if it indicates failure
@@ -198,7 +202,7 @@ class TorrentManager:
             if isinstance(result, str) and result.lower() != "ok.":
                 logger.warning(f"qBittorrent add returned unexpected response: {result}")
 
-        elif self.client_type == "transmission":
+        elif self.client_type == TorrentClientType.TRANSMISSION:
             tx_client = cast(TxClient, client)
             try:
                 tx_client.add_torrent(magnet_link, download_dir=save_path, labels=[self.category])
@@ -207,7 +211,7 @@ class TorrentManager:
                 logger.warning(f"Transmission label assignment failed: {e}. Retrying without labels.")
                 tx_client.add_torrent(magnet_link, download_dir=save_path)
 
-        elif self.client_type == "deluge":
+        elif self.client_type == TorrentClientType.DELUGE:
             deluge_client = cast(DelugeWebClient, client)
             try:
                 deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
@@ -258,11 +262,11 @@ class TorrentManager:
 
         logger.info(f"Removing torrent {torrent_id} from {self.client_type}")
 
-        if self.client_type == "qbittorrent":
+        if self.client_type == TorrentClientType.QBITTORRENT:
             qb_client = cast(QbClient, client)
             qb_client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)
 
-        elif self.client_type == "transmission":
+        elif self.client_type == TorrentClientType.TRANSMISSION:
             tx_client = cast(TxClient, client)
             # Transmission expects IDs as integers usually, but hashes work in some versions.
             # safe conversion if it's digit, else pass as string (hash)
@@ -274,7 +278,7 @@ class TorrentManager:
                 logger.debug(f"Transmission: ID {torrent_id} is not an integer, using as string hash.")
             tx_client.remove_torrent(ids=[tid], delete_data=False)
 
-        elif self.client_type == "deluge":
+        elif self.client_type == TorrentClientType.DELUGE:
             deluge_client = cast(DelugeWebClient, client)
             deluge_client.remove_torrent(torrent_id, remove_data=False)
 
@@ -301,7 +305,7 @@ class TorrentManager:
 
         results: list[TorrentStatus] = []
 
-        if self.client_type == "transmission":
+        if self.client_type == TorrentClientType.TRANSMISSION:
             tx_client = cast(TxClient, client)
             torrents = tx_client.get_torrents()
             for torrent in torrents:
@@ -315,13 +319,11 @@ class TorrentManager:
                     }
                 )
 
-        elif self.client_type == "qbittorrent":
+        elif self.client_type == TorrentClientType.QBITTORRENT:
             qb_client = cast(QbClient, client)
-            # FIX: Rename variable to avoid [no-redef] conflict with Transmission's 'torrents'
-            # Explicitly cast to Any to bypass MyPy strictness with qbittorrentapi types
-            qb_torrents: Any = qb_client.torrents_info(category=self.category)
+            # Use Protocol for stronger typing instead of Any
+            qb_torrents = cast(list[QbTorrentProtocol], qb_client.torrents_info(category=self.category))
             for torrent in qb_torrents:
-                # With 'Any', MyPy won't complain about missing 'hash' or 'state' attributes
                 results.append(
                     {
                         "id": torrent.hash,
@@ -332,7 +334,7 @@ class TorrentManager:
                     }
                 )
 
-        elif self.client_type == "deluge":
+        elif self.client_type == TorrentClientType.DELUGE:
             deluge_client = cast(DelugeWebClient, client)
             deluge_torrents = deluge_client.get_torrents_status(
                 filter_dict={"label": self.category},

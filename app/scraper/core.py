@@ -3,6 +3,7 @@
 import concurrent.futures
 import logging
 import random
+import threading
 import time
 from urllib.parse import quote, urljoin, urlparse
 
@@ -32,6 +33,9 @@ from app.scraper.parser import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Lock to ensure thread-safe operations on shared caches (search_cache, mirror_cache)
+CACHE_LOCK = threading.Lock()
 
 
 def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int, user_agent: str) -> list[BookDict]:
@@ -142,8 +146,9 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
 
     active_hostname = find_best_mirror()
     if not active_hostname:
-        # CRITICAL FIX: Invalidate cache if no mirror found so we don't cache 'None' for 10 mins
-        mirror_cache.clear()
+        # CRITICAL FIX: Invalidate cache if no mirror found
+        with CACHE_LOCK:
+            mirror_cache.clear()
         logger.error("Could not connect to any AudiobookBay mirrors.")
         raise ConnectionError("No reachable AudiobookBay mirrors found.")
 
@@ -168,12 +173,16 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
                     results.extend(page_data)
                 except Exception as exc:
                     logger.error(f"Page scrape failed, invalidating mirror cache. {exc}", exc_info=True)
-                    mirror_cache.clear()
+                    with CACHE_LOCK:
+                        mirror_cache.clear()
     finally:
         session.close()
 
     logger.info(f"Search for '{query}' completed. Found {len(results)} results.")
-    search_cache[query] = results
+
+    with CACHE_LOCK:
+        search_cache[query] = results
+
     return results
 
 

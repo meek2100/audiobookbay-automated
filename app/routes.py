@@ -202,22 +202,20 @@ def status() -> str | Response | tuple[Response, int]:
 
     Supports returning JSON for frontend polling via ?json=1.
     """
+    is_json = request.args.get("json")
+
     try:
         torrent_list = torrent_manager.get_status()
 
-        # FIX: Return JSON if requested by the frontend poller
-        if request.args.get("json"):
+        if is_json:
             return cast(Response, jsonify(torrent_list))
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        # Wrap in str() to ensure return type is string
         return str(render_template("status.html", torrents=torrent_list))
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
 
-        # FIX: Return JSON error if polling, otherwise render error page
-        if request.args.get("json"):
+        if is_json:
             return cast(Response, jsonify({"error": str(e)})), 500
 
-        # Wrap in str() to ensure return type is string
         return str(render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))

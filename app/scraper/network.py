@@ -10,7 +10,7 @@ from functools import lru_cache
 from typing import cast
 
 import requests
-from cachetools import TTLCache, cached
+from cachetools import TTLCache
 from flask import current_app
 from requests.adapters import HTTPAdapter
 from requests.sessions import Session
@@ -165,15 +165,20 @@ def check_mirror(hostname: str) -> str | None:
     return None
 
 
-@cached(cache=mirror_cache)
 def find_best_mirror() -> str | None:
     """Find the first reachable AudiobookBay mirror from the configured list.
 
-    Uses threaded checks for speed and caches the result.
+    Uses threaded checks for speed and caches the result manually to ensure
+    failed attempts (None) are not cached.
 
     Returns:
         str | None: The hostname of the active mirror, or None if all fail.
     """
+    # Manual caching check using a static key since this function is parameterless
+    cache_key = "active_mirror"
+    if cache_key in mirror_cache:
+        return mirror_cache[cache_key]
+
     # Dynamic retrieval of mirrors list
     mirrors = get_mirrors()
 
@@ -186,6 +191,10 @@ def find_best_mirror() -> str | None:
             result = future.result()
             if result:
                 logger.info(f"Found active mirror: {result}")
+                # CACHE UPDATE: Only cache successful results
+                mirror_cache[cache_key] = result
                 return result
+
     logger.error("No working AudiobookBay mirrors found!")
+    # Do not cache None
     return None
