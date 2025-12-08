@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
@@ -46,11 +46,11 @@ def inject_global_vars() -> dict[str, Any]:
 @main_bp.route("/health")
 def health() -> Response:
     """Perform a health check."""
-    return jsonify({"status": "ok"})
+    return cast(Response, jsonify({"status": "ok"}))
 
 
 @main_bp.route("/", methods=["GET", "POST"])
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator, unused-ignore]
 def search() -> str | Response:
     """Handle the search interface."""
     books: list[BookDict] = []
@@ -78,13 +78,13 @@ def search() -> str | Response:
 
 
 @main_bp.route("/details")
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator, unused-ignore]
 def details() -> str | Response:
     """Fetch and render the details page internally via the server."""
     link = request.args.get("link")
     if not link:
         # redirect() returns Response | str, but in this context it's a response
-        return redirect(url_for("main.search"))
+        return cast(Response, redirect(url_for("main.search")))
 
     try:
         book_details = get_book_details(link)
@@ -96,21 +96,21 @@ def details() -> str | Response:
 
 # FIX: Updated return type to include tuple[Response, int] for error codes
 @main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")
+@limiter.limit("60 per minute")  # type: ignore[untyped-decorator, unused-ignore]
 def send() -> Response | tuple[Response, int]:
     """Initiate a download."""
     data = request.json
 
     if not isinstance(data, dict):
         logger.warning("Invalid send request: JSON body is not a dictionary.")
-        return jsonify({"message": "Invalid JSON format"}), 400
+        return cast(Response, jsonify({"message": "Invalid JSON format"})), 400
 
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
 
     if not details_url or not title:
         logger.warning("Invalid send request received: missing link or title")
-        return jsonify({"message": "Invalid request"}), 400
+        return cast(Response, jsonify({"message": "Invalid request"})), 400
 
     # Sanitize title immediately for safe logging
     safe_title = sanitize_title(title)
@@ -121,7 +121,7 @@ def send() -> Response | tuple[Response, int]:
 
         if not magnet_link:
             logger.error(f"Failed to extract magnet link for '{safe_title}': {error}")
-            return jsonify({"message": f"Download failed: {error}"}), 500
+            return cast(Response, jsonify({"message": f"Download failed: {error}"})), 500
 
         if safe_title == FALLBACK_TITLE:
             logger.warning(
@@ -137,14 +137,17 @@ def send() -> Response | tuple[Response, int]:
         torrent_manager.add_magnet(magnet_link, save_path)
 
         logger.info(f"Successfully sent '{safe_title}' to {torrent_manager.client_type}")
-        return jsonify(
-            {
-                "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."
-            }
+        return cast(
+            Response,
+            jsonify(
+                {
+                    "message": "Download added successfully! This may take some time; the download will show in Audiobookshelf when completed."
+                }
+            ),
         )
     except Exception as e:
         logger.error(f"Send failed: {e}", exc_info=True)
-        return jsonify({"message": str(e)}), 500
+        return cast(Response, jsonify({"message": str(e)})), 500
 
 
 @main_bp.route("/delete", methods=["POST"])
@@ -153,19 +156,19 @@ def delete_torrent() -> Response | tuple[Response, int]:
     data = request.json
 
     if not isinstance(data, dict):
-        return jsonify({"message": "Invalid JSON format"}), 400
+        return cast(Response, jsonify({"message": "Invalid JSON format"})), 400
 
     torrent_id = data.get("id") if data else None
 
     if not torrent_id:
-        return jsonify({"message": "Torrent ID is required"}), 400
+        return cast(Response, jsonify({"message": "Torrent ID is required"})), 400
 
     try:
         torrent_manager.remove_torrent(torrent_id)
-        return jsonify({"message": "Torrent removed successfully."})
+        return cast(Response, jsonify({"message": "Torrent removed successfully."}))
     except Exception as e:
         logger.error(f"Failed to remove torrent: {e}", exc_info=True)
-        return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
+        return cast(Response, jsonify({"message": f"Failed to remove torrent: {str(e)}"})), 500
 
 
 @main_bp.route("/reload_library", methods=["POST"])
@@ -176,7 +179,7 @@ def reload_library() -> Response | tuple[Response, int]:
     abs_lib = current_app.config.get("ABS_LIB")
 
     if not all([abs_url, abs_key, abs_lib]):
-        return jsonify({"message": "Audiobookshelf integration not configured."}), 400
+        return cast(Response, jsonify({"message": "Audiobookshelf integration not configured."})), 400
 
     try:
         url = f"{abs_url}/api/libraries/{abs_lib}/scan"
@@ -184,13 +187,13 @@ def reload_library() -> Response | tuple[Response, int]:
         response = requests.post(url, headers=headers, timeout=10)
         response.raise_for_status()
         logger.info("Audiobookshelf library scan initiated successfully.")
-        return jsonify({"message": "Audiobookshelf library scan initiated."})
+        return cast(Response, jsonify({"message": "Audiobookshelf library scan initiated."}))
     except requests.exceptions.RequestException as e:
         error_message = str(e)
         if e.response is not None:
             error_message = f"{e.response.status_code} {e.response.reason}: {e.response.text}"
         logger.error(f"ABS Scan Failed: {error_message}", exc_info=True)
-        return jsonify({"message": f"Failed to trigger library scan: {error_message}"}), 500
+        return cast(Response, jsonify({"message": f"Failed to trigger library scan: {error_message}"})), 500
 
 
 @main_bp.route("/status")
@@ -204,7 +207,7 @@ def status() -> str | Response | tuple[Response, int]:
 
         # FIX: Return JSON if requested by the frontend poller
         if request.args.get("json"):
-            return jsonify(torrent_list)
+            return cast(Response, jsonify(torrent_list))
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
         # Wrap in str() to ensure return type is string
@@ -214,7 +217,7 @@ def status() -> str | Response | tuple[Response, int]:
 
         # FIX: Return JSON error if polling, otherwise render error page
         if request.args.get("json"):
-            return jsonify({"error": str(e)}), 500
+            return cast(Response, jsonify({"error": str(e)})), 500
 
         # Wrap in str() to ensure return type is string
         return str(render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))
