@@ -11,7 +11,9 @@ from app.config import Config
 def test_config_validate_missing_save_path(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     """Ensure validation fails hard if SAVE_PATH_BASE is missing."""
     monkeypatch.setenv("SAVE_PATH_BASE", "")
-    Config.SAVE_PATH_BASE = None
+    monkeypatch.setattr(Config, "SAVE_PATH_BASE", None)
+    # Force TESTING to False to trigger the sys.exit(1) call
+    monkeypatch.setattr(Config, "TESTING", False)
 
     with pytest.raises(SystemExit):
         Config.validate(logging.getLogger("test"))
@@ -23,9 +25,11 @@ def test_config_validate_insecure_secret_prod(monkeypatch: MonkeyPatch, caplog: 
     """Ensure validation raises ValueError for insecure secret key in production."""
     monkeypatch.setenv("FLASK_DEBUG", "0")
     monkeypatch.setenv("TESTING", "0")
-    Config.FLASK_DEBUG = False
-    Config.TESTING = False
-    Config.SECRET_KEY = "change-this-to-a-secure-random-key"
+
+    # Use setattr to prevent polluting the Config class for other tests
+    monkeypatch.setattr(Config, "FLASK_DEBUG", False)
+    monkeypatch.setattr(Config, "TESTING", False)
+    monkeypatch.setattr(Config, "SECRET_KEY", "change-this-to-a-secure-random-key")
 
     with pytest.raises(ValueError, match="Application refused to start"):
         Config.validate(logging.getLogger("test"))
@@ -36,8 +40,8 @@ def test_config_validate_insecure_secret_prod(monkeypatch: MonkeyPatch, caplog: 
 def test_config_validate_insecure_secret_dev(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     """Ensure validation only warns for insecure secret key in dev/test."""
     monkeypatch.setenv("FLASK_DEBUG", "1")
-    Config.FLASK_DEBUG = True
-    Config.SECRET_KEY = "change-this-to-a-secure-random-key"
+    monkeypatch.setattr(Config, "FLASK_DEBUG", True)
+    monkeypatch.setattr(Config, "SECRET_KEY", "change-this-to-a-secure-random-key")
 
     # Should not raise
     Config.validate(logging.getLogger("test"))
