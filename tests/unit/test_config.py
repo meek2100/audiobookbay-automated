@@ -47,3 +47,14 @@ def test_config_validate_insecure_secret_dev(monkeypatch: MonkeyPatch, caplog: L
     Config.validate(logging.getLogger("test"))
 
     assert "WARNING: You are using the default insecure SECRET_KEY" in caplog.text
+
+
+def test_config_validate_invalid_log_level(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
+    """Ensure validation warns on invalid LOG_LEVEL and defaults to INFO."""
+    monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL")
+    # We must patch the class attribute because it's loaded at import time
+    monkeypatch.setattr(Config, "LOG_LEVEL_STR", "INVALID_LEVEL")
+
+    Config.validate(logging.getLogger("test"))
+
+    assert "Configuration Warning: Invalid LOG_LEVEL 'INVALID_LEVEL' provided" in caplog.text

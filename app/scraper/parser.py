@@ -24,6 +24,12 @@ RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
 RE_LANGUAGE = re.compile(r"Language:\s*(\S+)")
 RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|$)")
 
+# Pre-compiled label patterns for parsing content
+RE_LABEL_POSTED = re.compile(r"Posted:")
+RE_LABEL_FORMAT = re.compile(r"Format:")
+RE_LABEL_BITRATE = re.compile(r"Bitrate:")
+RE_LABEL_SIZE = re.compile(r"File Size:")
+
 
 class BookDict(TypedDict):
     """TypedDict representing the structure of a parsed book dictionary."""
@@ -56,24 +62,25 @@ class BookMetadata:
     file_size: str = "Unknown"
 
 
-def get_text_after_label(container: Tag, label_text: str) -> str:
-    """Robustly find values based on a label within a BS4 container.
+def get_text_after_label(container: Tag, label_pattern: re.Pattern[str], is_file_size: bool = False) -> str:
+    """Robustly find values based on a label within a BS4 container using a compiled regex.
 
     Strategy:
-    1. Finds the text node containing 'label_text'.
+    1. Finds the text node containing the pattern.
     2. Strategy 1: Checks the next sibling element (e.g., <span>Value</span>).
     3. Strategy 2: If no sibling, attempts to parse the value from the text node itself.
 
     Args:
         container: The BeautifulSoup Tag to search within.
-        label_text: The label string to search for (e.g. "Format:").
+        label_pattern: The compiled regex pattern to search for.
+        is_file_size: Flag to enable specific logic for file size units.
 
     Returns:
         str: The extracted value, or "Unknown" if not found.
     """
     try:
         # Find the text string (e.g., "Format:")
-        label_node = container.find(string=re.compile(label_text))
+        label_node = container.find(string=label_pattern)
         if not label_node:
             return "Unknown"
 
@@ -83,7 +90,7 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
         if next_elem and isinstance(next_elem, Tag) and next_elem.name == "span":
             val = next_elem.get_text(strip=True)
             # Special handling for File Size which might have unit in next text node
-            if "File Size" in label_text:
+            if is_file_size:
                 unit_node = next_elem.next_sibling
                 if unit_node and isinstance(unit_node, str):
                     val += f" {unit_node.strip()}"
@@ -154,13 +161,13 @@ def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> 
         for p in content_div.find_all("p"):
             p_text = p.get_text()
             if "Posted:" in p_text:
-                meta.post_date = get_text_after_label(p, "Posted:")
+                meta.post_date = get_text_after_label(p, RE_LABEL_POSTED)
             if "Format:" in p_text:
-                meta.format = get_text_after_label(p, "Format:")
+                meta.format = get_text_after_label(p, RE_LABEL_FORMAT)
             if "Bitrate:" in p_text:
-                meta.bitrate = get_text_after_label(p, "Bitrate:")
+                meta.bitrate = get_text_after_label(p, RE_LABEL_BITRATE)
             if "File Size:" in p_text:
-                meta.file_size = get_text_after_label(p, "File Size:")
+                meta.file_size = get_text_after_label(p, RE_LABEL_SIZE, is_file_size=True)
 
     # Normalization Rule: Convert "?" or empty strings to "Unknown"
     # We iterate over the dataclass fields to ensure consistent normalization

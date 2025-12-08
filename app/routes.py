@@ -67,14 +67,12 @@ def search() -> str | Response:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        # Wrap in str() to enforce string return type, avoiding "Returning Any" errors
-        return str(render_template("search.html", books=books, query=query))
+        return render_template("search.html", books=books, query=query)
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        # Wrap in str() to enforce string return type
-        return str(render_template("search.html", books=books, error=error_message, query=query))
+        return render_template("search.html", books=books, error=error_message, query=query)
 
 
 @main_bp.route("/details")
@@ -88,13 +86,12 @@ def details() -> str | Response:
 
     try:
         book_details = get_book_details(link)
-        return str(render_template("details.html", book=book_details))
+        return render_template("details.html", book=book_details)
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return str(render_template("details.html", error=f"Could not load details: {str(e)}"))
+        return render_template("details.html", error=f"Could not load details: {str(e)}")
 
 
-# FIX: Updated return type to include tuple[Response, int] for error codes
 @main_bp.route("/send", methods=["POST"])
 @limiter.limit("60 per minute")  # type: ignore[untyped-decorator, unused-ignore]
 def send() -> Response | tuple[Response, int]:
@@ -211,11 +208,11 @@ def status() -> str | Response | tuple[Response, int]:
             return cast(Response, jsonify(torrent_list))
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        return str(render_template("status.html", torrents=torrent_list))
+        return render_template("status.html", torrents=torrent_list)
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
 
         if is_json:
             return cast(Response, jsonify({"error": str(e)})), 500
 
-        return str(render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}"))
+        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")

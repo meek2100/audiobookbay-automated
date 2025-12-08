@@ -76,10 +76,19 @@ class TorrentManager:
         self.dl_url = config.get("DL_URL")
 
         if not self.dl_url:
+            # Handle case where host is set but port is missing
+            if self.host and not self.port:
+                if self.client_type == TorrentClientType.DELUGE:
+                    self.port = "8112"
+                else:
+                    self.port = "8080"
+                logger.info(f"DL_PORT missing. Defaulting to {self.port} for {self.client_type}.")
+
+            # Construct URL if host and port are available
             if self.host and self.port:
                 self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
             elif self.client_type == TorrentClientType.DELUGE:
-                logger.warning("DL_HOST or DL_PORT missing. Defaulting Deluge URL to localhost:8112.")
+                logger.warning("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
                 self.dl_url = "http://localhost:8112"
 
     def _get_client(self) -> QbClient | TxClient | DelugeWebClient | None:
@@ -306,7 +315,7 @@ class TorrentManager:
 
         if self.client_type == TorrentClientType.TRANSMISSION:
             tx_client = cast(TxClient, client)
-            # FIX: Rename loop variable to avoid scope leaking and type collision
+            # Use specific variable to avoid scope leaking and type collision
             tx_torrents = tx_client.get_torrents()
             for tx_torrent in tx_torrents:
                 results.append(
@@ -322,7 +331,6 @@ class TorrentManager:
         elif self.client_type == TorrentClientType.QBITTORRENT:
             qb_client = cast(QbClient, client)
             qb_torrents = cast(list[QbTorrentProtocol], qb_client.torrents_info(category=self.category))
-            # FIX: Use unique variable name 'qb_torrent' to prevent MyPy confusing it with Transmission's 'torrent'
             for qb_torrent in qb_torrents:
                 results.append(
                     {
@@ -343,8 +351,11 @@ class TorrentManager:
             if deluge_torrents.result is not None:
                 if isinstance(deluge_torrents.result, dict):
                     results_dict = deluge_torrents.result
-                    # FIX: Use unique variable 'deluge_data' to avoid type conflict with object-based torrents
                     for key, deluge_data in results_dict.items():
+                        # Strict type check for safety
+                        if not isinstance(deluge_data, dict):
+                            continue
+
                         progress_val = deluge_data.get("progress")
                         try:
                             if progress_val is None:

@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -19,7 +20,7 @@ def test_get_text_after_label_valid() -> None:
     p_tag = soup.find("p")
     # FIX: Ensure p_tag is treated as a Tag for MyPy safety
     assert isinstance(p_tag, Tag)
-    res = get_text_after_label(p_tag, "Format:")
+    res = get_text_after_label(p_tag, re.compile("Format:"))
     assert res == "MP3"
 
 
@@ -28,7 +29,7 @@ def test_get_text_after_label_inline() -> None:
     soup = BeautifulSoup(html, "html.parser")
     p_tag = soup.find("p")
     assert isinstance(p_tag, Tag)
-    res = get_text_after_label(p_tag, "Posted:")
+    res = get_text_after_label(p_tag, re.compile("Posted:"))
     assert res == "10 Jan 2020"
 
 
@@ -41,7 +42,8 @@ def test_get_text_after_label_split_unit() -> None:
     soup = BeautifulSoup(html, "html.parser")
     p_tag = soup.find("p")
     assert isinstance(p_tag, Tag)
-    res = get_text_after_label(p_tag, "File Size:")
+    # Note: We must explicitly pass is_file_size=True to trigger the unit concatenation logic
+    res = get_text_after_label(p_tag, re.compile("File Size:"), is_file_size=True)
     assert res == "1.5 GB"
 
 
@@ -50,7 +52,7 @@ def test_get_text_after_label_exception() -> None:
     mock_container = MagicMock(spec=Tag)
     # Force an exception when .find() is called
     mock_container.find.side_effect = Exception("BS4 Internal Error")
-    result = get_text_after_label(mock_container, "Label:")
+    result = get_text_after_label(mock_container, re.compile("Label:"))
     assert result == "Unknown"
 
 
@@ -65,7 +67,7 @@ def test_get_text_after_label_fallback() -> None:
     mock_label_node = FakeNavigableString("Format:")
     mock_container.find.return_value = mock_label_node
 
-    result = get_text_after_label(mock_container, "Format:")
+    result = get_text_after_label(mock_container, re.compile("Format:"))
     assert result == "Unknown"
 
 
@@ -74,7 +76,7 @@ def test_get_text_after_label_not_found() -> None:
     html = "<div><p>Some other content</p></div>"
     soup = BeautifulSoup(html, "html.parser")
     # 'Format:' does not exist in the HTML (pass soup which is Tag-like)
-    result = get_text_after_label(soup, "Format:")
+    result = get_text_after_label(soup, re.compile("Format:"))
     assert result == "Unknown"
 
 
