@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
 /**
  * Updates the table body with new torrent data.
  * @param {HTMLElement} tbody - The table body element.
- * @param {Array} torrents - List of torrent objects.
+ * @param {Array<{id: string|number, name: string, progress: number, state: string, size: string}>} torrents - List of torrent objects.
  */
 function updateTable(tbody, torrents) {
     // If empty list, show empty message
@@ -67,6 +67,8 @@ function updateTable(tbody, torrents) {
 
 /**
  * Simple HTML escaping to prevent XSS in table cells.
+ * @param {string} text - The text to escape.
+ * @returns {string} - Escaped text.
  */
 function escapeHtml(text) {
     if (!text) return "";

@@ -1,6 +1,12 @@
 """Extensions module.
 
 Initializes Flask extensions and singleton objects here to avoid circular imports.
+
+Note:
+    Flask-Limiter uses `storage_uri="memory://"` to enforce the architecture
+    constraint of a single-user, self-contained appliance. This avoids the need
+    for external dependencies like Redis, which would overcomplicate the deployment
+    model defined in AGENTS.md.
 """
 
 from flask_limiter import Limiter

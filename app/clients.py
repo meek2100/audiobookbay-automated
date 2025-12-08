@@ -213,8 +213,12 @@ class TorrentManager:
                 deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path, label=self.category)
             except Exception as e:
                 # ROBUSTNESS: Handle Deluge missing label plugin or other errors gracefully
-                if "label" in str(e).lower():
-                    logger.warning("Deluge Label plugin likely missing. Adding torrent without category.")
+                # Check for various error strings that indicate the label parameter is invalid
+                error_msg = str(e).lower()
+                if "label" in error_msg or "unknown parameter" in error_msg:
+                    logger.warning(
+                        f"Deluge Plugin Error ({e}). Adding torrent without category (Label plugin likely disabled)."
+                    )
                     try:
                         deluge_client.add_torrent_magnet(magnet_link, save_directory=save_path)
                     except Exception as e2:

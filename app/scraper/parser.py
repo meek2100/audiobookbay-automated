@@ -8,8 +8,11 @@ It encapsulates parsing strategies to keep core.py focused on networking and flo
 import re
 from dataclasses import dataclass, fields
 from typing import NotRequired, Optional, TypedDict
+from urllib.parse import urljoin
 
 from bs4 import Tag
+
+from app.constants import DEFAULT_COVER_FILENAME
 
 # --- Regex Patterns ---
 # Why: AudioBookBay formats the info table unpredictably.
@@ -98,6 +101,27 @@ def get_text_after_label(container: Tag, label_text: str) -> str:
         return "Unknown"
     except Exception:
         return "Unknown"
+
+
+def normalize_cover_url(base_url: str, relative_url: str) -> str | None:
+    """Normalize a cover image URL and handle default placeholders.
+
+    Args:
+        base_url: The base URL of the page (for joining relative paths).
+        relative_url: The raw 'src' attribute from the image tag.
+
+    Returns:
+        str | None: The absolute URL if valid and not the default placeholder, else None.
+    """
+    if not relative_url:
+        return None
+
+    extracted_cover = urljoin(base_url, relative_url)
+    # If remote is the default placeholder, return None so UI uses the local versioned asset
+    if extracted_cover.endswith(DEFAULT_COVER_FILENAME):
+        return None
+
+    return extracted_cover
 
 
 def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> BookMetadata:

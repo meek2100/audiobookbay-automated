@@ -184,6 +184,8 @@ ______________________________________________________________________
 - All frontend `fetch()` calls require `.catch()` + `.finally()`.
 - App must boot even with offline torrent client.
 - Deluge WebClient may return `None` — always check.
+- **Deluge Warning:** The logic for detecting missing Label plugins relies on string matching error messages (e.g.
+  "unknown parameter"). This is fragile; any changes to the client library must be tested against this logic.
 
 ______________________________________________________________________
 
@@ -279,6 +281,7 @@ Reject any change that:
 2. Adds global rate limits.
 3. Requires Redis/external service.
 4. Assumes multiple concurrent users.
+5. Changes Flask-Limiter backend from `memory://` without an explicit multi-container architecture shift.
 
 ______________________________________________________________________
 

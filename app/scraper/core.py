@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup
 from flask import current_app
 from requests.sessions import Session
 
-from app.constants import DEFAULT_COVER_FILENAME
 from app.scraper.network import (
     GLOBAL_REQUEST_SEMAPHORE,
     details_cache,
@@ -28,6 +27,7 @@ from app.scraper.parser import (
     RE_HASH_STRING,
     RE_INFO_HASH,
     BookDict,
+    normalize_cover_url,
     parse_post_content,
 )
 
@@ -83,12 +83,10 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
                 link = urljoin(base_url, str(title_element["href"]))
 
                 cover_img = post.select_one(".postContent img")
-                cover = None  # Default to None so UI handles versioned default
+                cover = None
                 if cover_img and cover_img.has_attr("src"):
-                    extracted_cover = urljoin(base_url, str(cover_img["src"]))
-                    # If remote is default, keep as None to use local versioned default.
-                    if not extracted_cover.endswith(DEFAULT_COVER_FILENAME):
-                        cover = extracted_cover
+                    # Use centralized helper for consistent normalization
+                    cover = normalize_cover_url(base_url, str(cover_img["src"]))
 
                 post_info = post.select_one(".postInfo")
                 content_div = post.select_one(".postContent")
@@ -232,9 +230,8 @@ def get_book_details(details_url: str) -> BookDict:
         cover = None
         cover_tag = soup.select_one('.postContent img[itemprop="image"]')
         if cover_tag and cover_tag.has_attr("src"):
-            extracted_cover = urljoin(details_url, str(cover_tag["src"]))
-            if not extracted_cover.endswith(DEFAULT_COVER_FILENAME):
-                cover = extracted_cover
+            # Use centralized helper
+            cover = normalize_cover_url(details_url, str(cover_tag["src"]))
 
         post_info = soup.select_one(".postInfo")
         content_div = soup.select_one(".postContent")

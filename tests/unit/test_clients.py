@@ -193,7 +193,7 @@ def test_transmission_add_magnet(mock_env: Any, monkeypatch: Any) -> None:
 
 def test_transmission_add_magnet_fallback(mock_env: Any, monkeypatch: Any) -> None:
     """
-    Test that Transmission falls back to adding torrent without label if first attempt fails.
+    Test that transmission falls back to adding torrent without label if first attempt fails.
     This covers the robustness logic for older Transmission daemons.
     """
     monkeypatch.setenv("DL_CLIENT", "transmission")
@@ -716,6 +716,33 @@ def test_deluge_label_plugin_error(mock_env: Any, monkeypatch: Any) -> None:
         )
         # 2. Second attempt without label
         mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book")
+
+
+def test_deluge_fallback_robustness_strings(mock_env: Any, monkeypatch: Any) -> None:
+    """Test that the fallback works with various Deluge error messages about the 'label' param."""
+    monkeypatch.setenv("DL_CLIENT", "deluge")
+
+    error_variations = [
+        "Unknown parameter 'label'",
+        "Parameter 'label' not found",
+        "Invalid argument: label",
+    ]
+
+    with patch("app.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+
+        for error_msg in error_variations:
+            mock_instance.add_torrent_magnet.reset_mock()
+            mock_instance.add_torrent_magnet.side_effect = [
+                Exception(error_msg),
+                None,
+            ]
+
+            manager = TorrentManager()
+            manager.add_magnet("magnet:?xt=urn:btih:FAIL", "/downloads/Book")
+
+            # Verify successful fallback for each error variation
+            assert mock_instance.add_torrent_magnet.call_count == 2
 
 
 def test_deluge_fallback_failure(mock_env: Any, monkeypatch: Any) -> None:
