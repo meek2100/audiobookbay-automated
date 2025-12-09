@@ -137,28 +137,43 @@ def test_check_mirror_get_exception() -> None:
 
 
 def test_find_best_mirror_all_fail(mock_app_context: Any) -> None:
+    """Test that find_best_mirror returns None and caches failure if all mirrors fail."""
     network.mirror_cache.clear()
+    network.failure_cache.clear()
+
     with patch("app.scraper.network.check_mirror", return_value=None):
         result = network.find_best_mirror()
         assert result is None
+        # Verify negative cache was set
+        assert "failure" in network.failure_cache
 
 
 def test_find_best_mirror_success(mock_app_context: Any) -> None:
+    """Test successful mirror finding updates the cache."""
+    # Important: Clear caches to ensure we don't hit the negative cache from previous tests
     network.mirror_cache.clear()
+    network.failure_cache.clear()
+
     # Mock get_mirrors to return a controlled list
     with patch("app.scraper.network.get_mirrors", return_value=["mirror1.com"]):
         with patch("app.scraper.network.check_mirror", side_effect=["mirror1.com"]):
             result = network.find_best_mirror()
             assert result == "mirror1.com"
+            # Verify it was added to the positive cache
+            assert network.mirror_cache["active_mirror"] == "mirror1.com"
 
 
 def test_find_best_mirror_cached(mock_app_context: Any) -> None:
-    """Test that find_best_mirror returns cached value directly (Coverage Line 180)."""
+    """Test that find_best_mirror returns cached value directly."""
+    # Clear caches to remove any negative cache
+    network.mirror_cache.clear()
+    network.failure_cache.clear()
+
     # Setup cache state manually
     network.mirror_cache["active_mirror"] = "cached-mirror.lu"
 
     # Execute - should return immediately without calling get_mirrors or checking them
-    # We do NOT patch check_mirror here to prove it doesn't get called
+    # We do NOT patch check_mirror here to prove it doesn't get called (would error if called)
     result = network.find_best_mirror()
 
     assert result == "cached-mirror.lu"
