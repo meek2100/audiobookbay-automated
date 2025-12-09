@@ -44,11 +44,10 @@ def test_search_caching(mock_sleep: Any) -> None:
 def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
     """Mock ThreadPoolExecutor to run synchronously for coverage."""
     mock_future = MagicMock()
-    # FIX: Explicitly cast mock result
+
     mock_future.result.return_value = cast(list[BookDict], [{"title": "Sync Book"}])
 
-    # FIX: Patch the INSTANCE in app.extensions, not the class definition
-    with patch("app.extensions.executor") as mock_executor_instance:
+    with patch("app.scraper.core.executor") as mock_executor_instance:
         mock_executor_instance.submit.return_value = mock_future
 
         with patch("app.scraper.core.concurrent.futures.as_completed", return_value=[mock_future]):
@@ -79,8 +78,7 @@ def test_search_thread_failure(mock_sleep: Any) -> None:
 def test_search_audiobookbay_generic_exception_in_thread(mock_sleep: Any) -> None:
     with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
         with patch("app.scraper.core.get_session"):
-            # FIX: Patch the INSTANCE in app.extensions, not the class definition
-            with patch("app.extensions.executor") as mock_executor_instance:
+            with patch("app.scraper.core.executor") as mock_executor_instance:
                 mock_future = MagicMock()
                 mock_future.result.side_effect = ArithmeticError("Unexpected calculation error")
                 mock_executor_instance.submit.return_value = mock_future
