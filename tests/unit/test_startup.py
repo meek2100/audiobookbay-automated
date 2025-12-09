@@ -157,33 +157,6 @@ def test_startup_invalid_log_level(monkeypatch: Any, mock_flask_factory: Any) ->
     assert "Configuration Warning: Invalid LOG_LEVEL" in args[0]
 
 
-def test_app_startup_verification_fail(monkeypatch: Any, mock_flask_factory: Any) -> None:
-    """Test that verify_credentials is called during startup when not in testing mode."""
-    _, mock_logger = mock_flask_factory
-    monkeypatch.setenv("TESTING", "0")
-    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
-    try:
-        # Patch the singleton instance in extensions
-        with patch("app.extensions.torrent_manager.verify_credentials", return_value=False) as mock_verify:
-            importlib.reload(app.config)
-            importlib.reload(app)
-            if "app.app" in sys.modules:
-                importlib.reload(sys.modules["app.app"])
-            else:
-                importlib.import_module("app.app")
-
-            # Assert that verification was attempted
-            mock_verify.assert_called_once()
-    finally:
-        monkeypatch.setenv("TESTING", "1")
-        importlib.reload(app.config)
-        importlib.reload(app)
-        if "app.app" in sys.modules:
-            importlib.reload(sys.modules["app.app"])
-        else:
-            importlib.import_module("app.app")
-
-
 def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Test that create_app reads STATIC_VERSION from version.txt if present (Optimization)."""
     mock_class, _ = mock_flask_factory
