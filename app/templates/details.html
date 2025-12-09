@@ -1,0 +1,72 @@
+{% extends "base.html" %} {% block title %}Details - {{ book.title if book else 'Error' }}{% endblock %} {% block
+extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css', v=static_version) }}" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/details.css', v=static_version) }}" />
+{% endblock %} {# OPTIMIZATION: This page does not need the search filters or vendor JS #} {% block extra_js %}{%
+endblock %} {% block content %}
+<div class="title-container">
+    <h1>Audiobook Details</h1>
+</div>
+
+{% if error %}
+<div class="error-message">
+    <p>{{ error }}</p>
+    <p><a href="javascript:history.back()" class="back-link">← Back to Search</a></p>
+</div>
+{% elif book %}
+<div class="details-container">
+    <div class="details-left">
+        {# Generate versioned default URL once #} {% set default_cover_url = url_for('static', filename='images/' +
+        default_cover_filename, v=static_version) %}
+        <img
+            src="{{ book.cover if book.cover else default_cover_url }}"
+            alt="Cover"
+            class="details-cover"
+            onerror="this.src='{{ default_cover_url }}'"
+        />
+    </div>
+    <div class="details-info">
+        <h2>{{ book.title }}</h2>
+
+        <div class="meta-info">
+            <p><strong>Author:</strong> {{ book.author }} | <strong>Narrator:</strong> {{ book.narrator }}</p>
+            <p><strong>Language:</strong> {{ book.language }}</p>
+            <p><strong>Category:</strong> {{ book.category if book.category else 'Unknown' }}</p>
+            <p><strong>Format:</strong> {{ book.format }} | <strong>Bitrate:</strong> {{ book.bitrate }}</p>
+            <p><strong>File Size:</strong> {{ book.file_size }}</p>
+            <p><strong>Info Hash:</strong> <code>{{ book.info_hash }}</code></p>
+        </div>
+
+        <div class="action-bar">
+            <button
+                class="details-download-btn"
+                onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)"
+            >
+                Download to Server
+            </button>
+
+            <button class="direct-link-btn" onclick="openExternalLink('{{ book.link|escape }}')">
+                Open Original Page (External)
+            </button>
+
+            <a href="javascript:history.back()" class="back-link">← Back to Search</a>
+        </div>
+
+        <div class="details-description">
+            <h3>Description</h3>
+            {# Description is sanitized in scraper.py to remove links #} {{ book.description | safe }}
+        </div>
+
+        {% if book.trackers %}
+        <div class="tracker-list">
+            <strong>Trackers:</strong>
+            <ul>
+                {% for tracker in book.trackers %}
+                <li>{{ tracker }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %} {% endblock %}
