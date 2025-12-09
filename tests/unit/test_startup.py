@@ -63,10 +63,12 @@ def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
 def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Ensure startup fails with critical error if SAVE_PATH_BASE is missing."""
     _, mock_logger = mock_flask_factory
-    with patch("sys.exit") as mock_exit:
-        monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
-        monkeypatch.delenv("TESTING", raising=False)
 
+    # Updated: Expect RuntimeError instead of SystemExit (Gunicorn safety improvement)
+    monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
+    monkeypatch.delenv("TESTING", raising=False)
+
+    with pytest.raises(RuntimeError) as excinfo:
         importlib.reload(app.config)
         importlib.reload(app)
         if "app.app" in sys.modules:
@@ -74,31 +76,31 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
         else:
             importlib.import_module("app.app")
 
-        mock_exit.assert_called_with(1)
-        args, _ = mock_logger.critical.call_args
-        assert "Configuration Error: SAVE_PATH_BASE is missing" in args[0]
+    assert "Configuration Error: SAVE_PATH_BASE is missing" in str(excinfo.value)
+    args, _ = mock_logger.critical.call_args
+    assert "Configuration Error: SAVE_PATH_BASE is missing" in args[0]
 
 
 def test_startup_insecure_secret_key_production(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Ensure startup raises ValueError for insecure secret key in production."""
     _, mock_logger = mock_flask_factory
-    with patch("sys.exit"):
-        monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
-        monkeypatch.setenv("SECRET_KEY", "change-this-to-a-secure-random-key")
-        monkeypatch.setenv("FLASK_DEBUG", "0")
-        monkeypatch.delenv("TESTING", raising=False)
 
-        with pytest.raises(ValueError) as excinfo:
-            importlib.reload(app.config)
-            importlib.reload(app)
-            if "app.app" in sys.modules:
-                importlib.reload(sys.modules["app.app"])
-            else:
-                importlib.import_module("app.app")
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
+    monkeypatch.setenv("SECRET_KEY", "change-this-to-a-secure-random-key")
+    monkeypatch.setenv("FLASK_DEBUG", "0")
+    monkeypatch.delenv("TESTING", raising=False)
 
-        assert "Application refused to start" in str(excinfo.value)
-        args, _ = mock_logger.critical.call_args
-        assert "CRITICAL SECURITY ERROR" in args[0]
+    with pytest.raises(ValueError) as excinfo:
+        importlib.reload(app.config)
+        importlib.reload(app)
+        if "app.app" in sys.modules:
+            importlib.reload(sys.modules["app.app"])
+        else:
+            importlib.import_module("app.app")
+
+    assert "Application refused to start" in str(excinfo.value)
+    args, _ = mock_logger.critical.call_args
+    assert "CRITICAL SECURITY ERROR" in args[0]
 
 
 def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -> None:

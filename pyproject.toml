@@ -72,6 +72,9 @@ env = [
     "DL_USERNAME=admin",
     "DL_PASSWORD=admin",
 ]
+filterwarnings = [
+    "ignore::DeprecationWarning:bs4.*",
+]
 
 [tool.ruff]
 line-length = 120

@@ -2,7 +2,6 @@
 
 import logging
 import os
-import sys
 
 
 class Config:
@@ -60,6 +59,8 @@ class Config:
     MAGNET_TRACKERS: list[str] = [t.strip() for t in _trackers_str.split(",") if t.strip()]
 
     # Page Limit (Default 3)
+    # Handles parsing of the environment variable for page scraping limits.
+    # Falls back to 3 if the value is invalid or less than 1.
     PAGE_LIMIT: int
     try:
         PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", "3").strip())
@@ -93,7 +94,8 @@ class Config:
         if not cls.SAVE_PATH_BASE:
             if not cls.TESTING:
                 logger.critical("Configuration Error: SAVE_PATH_BASE is missing.")
-                sys.exit(1)
+                # Raise RuntimeError instead of sys.exit(1) to allow WSGI servers to log the error properly
+                raise RuntimeError("Configuration Error: SAVE_PATH_BASE is missing.")
         else:
             logger.info(f"SAVE_PATH_BASE configured as: {cls.SAVE_PATH_BASE}")
             logger.info(

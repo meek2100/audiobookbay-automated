@@ -4,6 +4,7 @@ import concurrent.futures
 import logging
 import random
 import time
+from concurrent.futures import Future
 from urllib.parse import quote, urljoin, urlparse
 
 import requests
@@ -160,7 +161,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
 
     try:
         # Use the global executor to avoid spinning up new threads per request
-        futures = []
+        futures: list[Future[list[BookDict]]] = []
         for page in range(1, max_pages + 1):
             futures.append(
                 executor.submit(fetch_and_parse_page, session, active_hostname, query, page, session_user_agent)

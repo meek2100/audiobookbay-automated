@@ -14,10 +14,10 @@ def test_config_validate_missing_save_path(monkeypatch: MonkeyPatch, caplog: Log
     """Ensure validation fails hard if SAVE_PATH_BASE is missing."""
     monkeypatch.setenv("SAVE_PATH_BASE", "")
     monkeypatch.setattr(Config, "SAVE_PATH_BASE", None)
-    # Force TESTING to False to trigger the sys.exit(1) call
+    # Force TESTING to False to trigger the validation error
     monkeypatch.setattr(Config, "TESTING", False)
 
-    with pytest.raises(SystemExit):
+    with pytest.raises(RuntimeError):
         Config.validate(logging.getLogger("test"))
 
     assert "Configuration Error: SAVE_PATH_BASE is missing" in caplog.text

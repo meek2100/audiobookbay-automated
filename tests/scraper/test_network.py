@@ -136,6 +136,17 @@ def test_check_mirror_get_exception() -> None:
             assert result is None
 
 
+def test_check_mirror_timeout() -> None:
+    """Test specific handling of requests.Timeout which is critical for network resilience."""
+    with patch("app.scraper.network.requests.head") as mock_head:
+        mock_head.side_effect = requests.Timeout("Connection Timed Out")
+        with patch("app.scraper.network.requests.get") as mock_get:
+            # Also timeout on fallback
+            mock_get.side_effect = requests.Timeout("Connection Timed Out")
+            result = network.check_mirror("timeout.mirror")
+            assert result is None
+
+
 def test_find_best_mirror_all_fail(mock_app_context: Any) -> None:
     """Test that find_best_mirror returns None and caches failure if all mirrors fail."""
     network.mirror_cache.clear()

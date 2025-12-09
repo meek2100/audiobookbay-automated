@@ -1,5 +1,6 @@
 """Extensions module initializing Flask extensions."""
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 from flask_limiter import Limiter
@@ -22,6 +23,8 @@ limiter = Limiter(
 torrent_manager = TorrentManager()
 
 # GLOBAL EXECUTOR: Shared thread pool for concurrent scraping.
-# Matches the PAGE_LIMIT (default 3) and GLOBAL_REQUEST_SEMAPHORE (3).
+# Matches the PAGE_LIMIT (default 3) but allows scaling via SCRAPER_THREADS.
 # Prevents overhead of spawning new threads per request.
-executor = ThreadPoolExecutor(max_workers=3)
+# Defaults to 3 to match the global request semaphore.
+_workers = int(os.getenv("SCRAPER_THREADS", "3"))
+executor = ThreadPoolExecutor(max_workers=_workers)
