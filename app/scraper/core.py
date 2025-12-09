@@ -286,6 +286,11 @@ def get_book_details(details_url: str) -> BookDict:
                 if len(cells) >= 2:
                     label = cells[0].get_text(strip=True)
                     value = cells[1].get_text(strip=True)
+
+                    # Normalization: Ensure '?' or empty strings from table become 'Unknown'
+                    if value == "?" or not value:
+                        value = "Unknown"
+
                     if "Tracker:" in label or "Announce URL:" in label:
                         trackers.append(value)
                     elif "File Size:" in label and file_size == "Unknown":

@@ -106,3 +106,13 @@ def test_config_page_limit_parsing_error(monkeypatch: MonkeyPatch) -> None:
     importlib.reload(config)
 
     assert config.Config.PAGE_LIMIT == 3
+
+
+def test_config_scraper_threads_parsing_error(monkeypatch: MonkeyPatch) -> None:
+    """Ensure module-level parsing falls back to 3 on invalid SCRAPER_THREADS."""
+    monkeypatch.setenv("SCRAPER_THREADS", "invalid_int")
+
+    # Reload to re-trigger parsing
+    importlib.reload(config)
+
+    assert config.Config.SCRAPER_THREADS == 3

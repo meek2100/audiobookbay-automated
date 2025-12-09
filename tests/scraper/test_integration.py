@@ -101,18 +101,19 @@ def test_search_special_characters(real_world_html: str, mock_sleep: Any) -> Non
     query = "Batman & Robin [Special Edition]"
     page = 1
     user_agent = "TestAgent/1.0"
-    session = requests.Session()
 
-    with patch.object(session, "get") as mock_get:
-        mock_get.return_value.text = real_world_html
-        mock_get.return_value.status_code = 200
+    mock_session = requests.Session()
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        with patch.object(mock_session, "get") as mock_get:
+            mock_get.return_value.text = real_world_html
+            mock_get.return_value.status_code = 200
 
-        scraper_core.fetch_and_parse_page(session, hostname, query, page, user_agent)
+            scraper_core.fetch_and_parse_page(hostname, query, page, user_agent)
 
-        # Verify the query was passed in the params dict
-        mock_get.assert_called()
-        call_args = mock_get.call_args
-        assert call_args[1]["params"]["s"] == query
+            # Verify the query was passed in the params dict
+            mock_get.assert_called()
+            call_args = mock_get.call_args
+            assert call_args[1]["params"]["s"] == query
 
 
 def test_fetch_page_timeout(mock_sleep: Any) -> None:
@@ -120,13 +121,15 @@ def test_fetch_page_timeout(mock_sleep: Any) -> None:
     query = "timeout"
     page = 1
     user_agent = "TestAgent/1.0"
+
     session = requests.Session()
     adapter = requests_mock.Adapter()
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", exc=requests.exceptions.Timeout)
 
-    with pytest.raises(requests.exceptions.Timeout):
-        scraper_core.fetch_and_parse_page(session, hostname, query, page, user_agent)
+    with patch("app.scraper.core.get_session", return_value=session):
+        with pytest.raises(requests.exceptions.Timeout):
+            scraper_core.fetch_and_parse_page(hostname, query, page, user_agent)
 
 
 def test_fetch_and_parse_page_missing_cover_image(mock_sleep: Any) -> None:
@@ -148,7 +151,8 @@ def test_fetch_and_parse_page_missing_cover_image(mock_sleep: Any) -> None:
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+    with patch("app.scraper.core.get_session", return_value=session):
+        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
     assert results[0]["cover"] is None
@@ -178,7 +182,8 @@ def test_fetch_and_parse_page_missing_post_info(mock_sleep: Any) -> None:
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+    with patch("app.scraper.core.get_session", return_value=session):
+        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
     assert results[0]["language"] == "Unknown"
@@ -207,7 +212,8 @@ def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
     session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    results = scraper_core.fetch_and_parse_page(session, hostname, query, 1, "TestAgent/1.0")
+    with patch("app.scraper.core.get_session", return_value=session):
+        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
     r = results[0]
