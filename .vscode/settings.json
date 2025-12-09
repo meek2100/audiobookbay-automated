@@ -10,10 +10,8 @@
     "python.testing.pytestArgs": ["tests"],
 
     // Type Checking (Handled by Pylance with Mypy config from pyproject.toml)
-    "python.analysis.typeCheckingMode": "strict", // Use strict to match mypy's strict=true config
+    "python.analysis.typeCheckingMode": "strict",
     "python.analysis.autoImportCompletions": true,
-
-    // The old `python.linting.*` settings are replaced by the Ruff extension:
 
     // -------------------------------------------------------------------------
     // FORMATTING AND LINTING CONSISTENCY
@@ -33,7 +31,7 @@
 
     // PRETTIER (Web/Config Formatting)
     "prettier.enable": true,
-    "prettier.configPath": ".prettierrc.yaml", // Respects your global Prettier configuration
+    "prettier.configPath": ".prettierrc.yaml",
 
     // Explicitly set Prettier as default for file types handled by your pre-commit
     "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
@@ -43,10 +41,17 @@
     "[html]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
     "[yaml]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
 
-    // Markdown: Align markdownlint with your mdformat pre-commit rule
-    "markdownlint.config": {
-        "line-length": 120
+    // MARKDOWN CONFIGURATION (Aligns to mdformat/markdownlint rules)
+    "[markdown]": {
+        // Use the built-in formatter, relying on markdownlint for style consistency
+        "editor.defaultFormatter": "vscode.markdown-language-features"
     },
+    // Markdown All in One and other extension fixes:
+    // These settings explicitly disable features that conflict with mdformat's strict formatting,
+    // ensuring .markdownlint.yaml rules are respected.
+    "markdown.extension.list.indentationSize": 2,
+    "markdown.extension.orderedList.autoRenumber": false,
+    "markdown.extension.syntax.decorations": false,
 
     // -------------------------------------------------------------------------
     // FILE EXCLUSIONS

@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Labels for container registry metadata
 LABEL org.opencontainers.image.title="audiobookbay-automated"
@@ -22,7 +22,6 @@ RUN apt-get update && \
 
 # 1. Copy project definition first
 COPY pyproject.toml .
-
 # 2. Install dependencies and create user in a single layer (Fixes DL3059)
 # We create the user here to ensure it exists before we COPY files with ownership
 RUN pip install --no-cache-dir . && \
@@ -31,7 +30,6 @@ RUN pip install --no-cache-dir . && \
 # 3. Copy the source code with correct ownership (Avoids huge chown layer)
 COPY --chown=appuser:appuser app app/
 COPY --chown=appuser:appuser entrypoint.sh .
-
 # 4. Set permissions on scripts and verify utils
 RUN chmod +x entrypoint.sh && \
     python3 -m app.utils
