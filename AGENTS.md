@@ -153,6 +153,12 @@ ______________________________________________________________________
 - All detail pages scraped **server-side** via container’s IP/VPN.
 - Protects user privacy.
 
+### Global Concurrency Controls
+
+- **Global Request Semaphore:** Caps concurrent scrapes at **3**. Must not be modified.
+- **Cache Locks:** Shared memory caches must be guarded by thread locks to prevent race conditions during concurrent
+  reads/writes.
+
 ______________________________________________________________________
 
 ## 2. Robustness Over Raw Speed
@@ -168,6 +174,13 @@ ______________________________________________________________________
 
 - Must sanitize illegal characters and reserved Windows filenames.
 - Applies even when container runs on Linux.
+
+### Resilience & Negative Caching
+
+- **Retry Storm Prevention:** If all external mirrors/resources fail, the application **MUST** cache this failure state
+  (e.g., for 30 seconds) to prevent retry storms.
+- **Do Not Clear Caches Aggressively:** Do not clear mirror caches immediately upon a search failure if doing so would
+  bypass the negative caching backoff period.
 
 ### Flask-Limiter Opt-In Strategy
 
@@ -191,10 +204,13 @@ ______________________________________________________________________
 
 ## 3. Development Standards
 
-### Centralized Logic
+### Centralized Logic & Concurrency
 
 - All parsing lives in `app/scraper/parser.py`.
+- **MANDATE:** Use `lxml` parser for all BeautifulSoup operations (performance & robustness).
 - All constants in `app/constants.py`.
+- **Thread Safety:** Shared resources (e.g., `mirror_cache`, `search_cache`) and their associated locks (e.g.,
+  `CACHE_LOCK`) **MUST** be defined in the same module (`app/scraper/network.py`) to ensure atomic access.
 
 ### Security & SSRF
 
