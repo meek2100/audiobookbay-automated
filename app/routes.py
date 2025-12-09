@@ -157,7 +157,17 @@ def send() -> Response | tuple[Response, int]:
 
 @main_bp.route("/delete", methods=["POST"])
 def delete_torrent() -> Response | tuple[Response, int]:
-    """Remove a torrent."""
+    """Remove a torrent.
+
+    Requires a JSON payload with the torrent ID.
+
+    Args:
+        JSON Payload:
+            id (str): The ID or Hash of the torrent to remove.
+
+    Returns:
+        JSON Response indicating success or failure.
+    """
     data = request.json
 
     if not isinstance(data, dict):

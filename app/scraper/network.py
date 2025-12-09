@@ -28,6 +28,11 @@ GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
 # Lock to ensure thread-safe operations on shared caches (search_cache, mirror_cache)
 CACHE_LOCK = threading.Lock()
 
+# --- Thread-Local Storage ---
+# Stores objects that are not thread-safe (e.g. requests.Session) to ensure
+# unique instances per thread while allowing reuse across multiple requests within that thread.
+_thread_local = threading.local()
+
 # --- Caches ---
 # Explicit type parameters for TTLCache to satisfy strict MyPy
 mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
@@ -114,6 +119,21 @@ def get_session() -> Session:
     return session
 
 
+def get_thread_session() -> Session:
+    """Retrieve or create a thread-local Session.
+
+    This optimizes performance by reusing the TCP/TLS connection for multiple
+    requests made by the same thread (e.g. during pagination or search),
+    while ensuring thread safety.
+
+    Returns:
+        Session: The active thread-local session.
+    """
+    if not hasattr(_thread_local, "session"):
+        _thread_local.session = get_session()
+    return cast(Session, _thread_local.session)
+
+
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
     """Generate standard HTTP headers for scraping requests.
 
@@ -180,9 +200,11 @@ def find_best_mirror() -> str | None:
         str | None: The hostname of the active mirror, or None if all fail.
     """
     # 1. Check Negative Cache (Backoff)
-    if "failure" in failure_cache:
-        logger.debug("Skipping mirror check due to recent failure (Negative Cache hit).")
-        return None
+    # CRITICAL FIX: Wrapped read in CACHE_LOCK to prevent race conditions with failure_cache updates.
+    with CACHE_LOCK:
+        if "failure" in failure_cache:
+            logger.debug("Skipping mirror check due to recent failure (Negative Cache hit).")
+            return None
 
     # 2. Check Positive Cache
     cache_key = "active_mirror"

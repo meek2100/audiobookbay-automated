@@ -50,6 +50,7 @@ ______________________________________________________________________
 
 - **Deluge, qBittorrent or Transmission** (with the WebUI enabled)
 - **Docker** (optional, for containerized deployments)
+- **Python 3.11+** (for local execution)
 
 > **Important for Deluge Users**: It is **strongly recommended** to enable the **Label** plugin in your Deluge client
 > (WebUI or GTK). This app uses the plugin to categorize downloads. If the plugin is missing or disabled, the app will
@@ -131,7 +132,7 @@ NAV_LINK_URL=http://...        # URL for the custom link.
 
 ### Running Locally
 
-1. **Install Dependencies**: Ensure you have Python installed, then install the required dependencies:
+1. **Install Dependencies**: Ensure you have **Python 3.11+** installed, then install the required dependencies:
 
    ```bash
    # Install from pyproject.toml
@@ -175,8 +176,11 @@ ______________________________________________________________________
 
 ## Feedback and Contributions
 
-This project is a work in progress, and your feedback is welcome! Feel free to open issues or contribute by submitting
-pull requests.
+This project is production-ready, but your feedback is always welcome! Feel free to open issues or contribute by
+submitting pull requests.
+
+**Developers:** Please review [`AGENTS.md`](AGENTS.md) for strict architectural rules and coding standards before
+contributing.
 
 ______________________________________________________________________
 

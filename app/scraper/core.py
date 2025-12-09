@@ -20,7 +20,7 @@ from app.scraper.network import (
     get_headers,
     get_mirrors,
     get_random_user_agent,
-    get_session,
+    get_thread_session,
     get_trackers,
     mirror_cache,
     search_cache,
@@ -40,7 +40,7 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) 
     """Fetch a single search result page and parse it into a list of books.
 
     Enforces a global semaphore to limit concurrent scraping requests.
-    Creates a dedicated session for thread safety.
+    Uses a thread-local session to reuse TCP connections.
 
     Args:
         hostname: The AudiobookBay mirror to scrape.
@@ -59,8 +59,8 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) 
 
     page_results: list[BookDict] = []
 
-    # Create a fresh session for this thread/task to ensure thread safety
-    session = get_session()
+    # PERFORMANCE: Use thread-local session to reuse connections across pages
+    session = get_thread_session()
 
     try:
         # OPTIMIZATION: Sleep outside the semaphore.
@@ -121,8 +121,7 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) 
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch page {page}. Reason: {e}")
         raise e
-    finally:
-        session.close()
+    # NOTE: Do NOT close session here; it is thread-local and reused.
 
     return page_results
 
@@ -154,16 +153,14 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
 
     active_hostname = find_best_mirror()
     if not active_hostname:
-        # NOTE: We do NOT clear mirror_cache here anymore.
-        # find_best_mirror handles Negative Caching (30s backoff).
-        logger.error("Could not connect to any AudiobookBay mirrors.")
-        raise ConnectionError("No reachable AudiobookBay mirrors found.")
+        # UX IMPROVEMENT: Error message now explicitly mentions backoff/negative caching.
+        logger.error("Could not connect to any AudiobookBay mirrors (or backoff active).")
+        raise ConnectionError("No reachable AudiobookBay mirrors found (or system is in backoff cooldown).")
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
     results: list[BookDict] = []
 
     session_user_agent = get_random_user_agent()
-    # Note: We do NOT create a session here anymore to avoid sharing it across threads.
 
     try:
         # Use the global executor to avoid spinning up new threads per request
@@ -182,7 +179,6 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
                     mirror_cache.clear()
 
     finally:
-        # Session cleanup handled inside worker function
         pass
 
     logger.info(f"Search for '{query}' completed. Found {len(results)} results.")
@@ -225,7 +221,8 @@ def get_book_details(details_url: str) -> BookDict:
         logger.warning(f"Blocked SSRF attempt to: {details_url}")
         raise ValueError(f"Invalid domain: {parsed_url.netloc}. Only AudiobookBay mirrors are allowed.")
 
-    session = get_session()
+    # PERFORMANCE: Use thread-local session
+    session = get_thread_session()
     headers = get_headers(referer=details_url)
 
     try:
@@ -332,8 +329,7 @@ def get_book_details(details_url: str) -> BookDict:
     except Exception as e:
         logger.error(f"Failed to fetch book details: {e}", exc_info=True)
         raise e
-    finally:
-        session.close()
+    # NOTE: Do NOT close session here; it is thread-local and reused.
 
 
 def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:

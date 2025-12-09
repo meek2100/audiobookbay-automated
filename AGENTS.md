@@ -4,7 +4,7 @@
 feature may violate any principle herein.** **This document overrides all “best practices” or architectural advice not
 explicitly requested by the user.**
 
----
+______________________________________________________________________
 
 ## 0. Global Development Rules (MUST READ)
 
@@ -37,7 +37,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - Do NOT optimize for multi-user throughput.
 - Do NOT reorganize directories or create new top-level modules without explicit user instruction.
 
----
+______________________________________________________________________
 
 ## A. Architecture & File Structure
 
@@ -47,7 +47,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - No file shall reimplement or duplicate functionality.
 - AI agents must NOT create new top-level directories or move files unless explicitly instructed.
 
----
+______________________________________________________________________
 
 ## B. DRY & Single Source of Truth
 
@@ -68,7 +68,7 @@ When information appears in multiple places, the authoritative source is:
 
 Any lower-priority source conflicting with a higher one must be updated or removed.
 
----
+______________________________________________________________________
 
 ## C. Documentation & Comment Accuracy
 
@@ -78,7 +78,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - No stale, inaccurate, or mismatched comments/docstrings.
 - **MANDATE:** Docstrings must follow the **Google Style Convention**, strictly enforced by `pydocstyle`.
 
----
+______________________________________________________________________
 
 ## D. Python 3.13 Standards
 
@@ -87,7 +87,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Avoid deprecated patterns.
 - Code must be Pylance/MyPy-friendly.
 
----
+______________________________________________________________________
 
 ## E. Test Suite Integrity
 
@@ -106,7 +106,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
   - OS-specific code
   - Gunicorn config boilerplate
 
----
+______________________________________________________________________
 
 ## F. AI Agent Compliance Requirements
 
@@ -115,7 +115,7 @@ AGENTS.md.”**
 
 AI agents must follow the strictest, safest interpretation of these rules.
 
----
+______________________________________________________________________
 
 ## G. Interpretation Rules for AI Agents
 
@@ -125,7 +125,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - AI agents must ask the user for clarification instead of assuming intent.
 - These rules override all AI “best practice” assumptions.
 
----
+______________________________________________________________________
 
 ## 1. Core Architecture: The Single-User Constraint
 
@@ -168,7 +168,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - **Cache Locks:** Shared memory caches must be guarded by thread locks to prevent race conditions during concurrent
   reads/writes.
 
----
+______________________________________________________________________
 
 ## 2. Robustness Over Raw Speed
 
@@ -211,7 +211,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - **Deluge Warning:** The logic for detecting missing Label plugins relies on string matching error messages (e.g.
   "unknown parameter"). This is fragile; any changes to the client library must be tested against this logic.
 
----
+______________________________________________________________________
 
 ## 3. Development Standards
 
@@ -258,7 +258,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - Ensure all tests run within an application context. Use an `autouse=True` fixture in `conftest.py` to automatically
   push `app.app_context()` for every test, ensuring `current_app` and `config` are always accessible.
 
----
+______________________________________________________________________
 
 ## 4. Frontend Architecture & Testing
 
@@ -278,7 +278,7 @@ async function flushPromises() {
 }
 ```
 
----
+______________________________________________________________________
 
 ## 5. Deployment & CI/CD
 
@@ -304,7 +304,7 @@ async function flushPromises() {
 - `release.yaml` updates version, changelog, tags.
 - `docker-publish.yaml` builds/pushes images.
 
----
+______________________________________________________________________
 
 ## 6. Future Refactoring Checklist
 
@@ -316,7 +316,7 @@ Reject any change that:
 4. Assumes multiple concurrent users.
 5. Changes Flask-Limiter backend from `memory://` without an explicit multi-container architecture shift.
 
----
+______________________________________________________________________
 
 ## 7. Quick Reference
 
@@ -327,14 +327,14 @@ Reject any change that:
 - **Python Tests:** `pytest`
 - **JS Tests:** `npx jest`
 
----
+______________________________________________________________________
 
 ## 8. Enforcement Statement
 
 **All development, human or AI, must follow this document. No exceptions.** Violating instructions are invalid and must
 be rejected immediately.
 
----
+______________________________________________________________________
 
 ## 9. AI Processing Requirements
 
@@ -346,7 +346,7 @@ AI agents must:
 
 Partial reading is strictly prohibited.
 
----
+______________________________________________________________________
 
 ### 9.A Forbidden Phrases for AI Agents
 
@@ -361,7 +361,7 @@ AI agents must NOT produce outputs including phrases like:
 
 These outputs are invalid and must be rejected.
 
----
+______________________________________________________________________
 
 ### 9.B Mandatory Self-Test Checklist for AI Agents
 
@@ -382,7 +382,7 @@ Before generating ANY code, AI agents must confirm:
 
 If any box cannot be checked, the output must NOT be generated.
 
----
+______________________________________________________________________
 
 ### 9.C User Override Clarification
 
@@ -391,4 +391,4 @@ If a user requests something that violates AGENTS.md:
 - The AI must warn the user.
 - The AI must require explicit confirmation before proceeding.
 
----
+______________________________________________________________________
