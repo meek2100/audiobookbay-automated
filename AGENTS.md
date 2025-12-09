@@ -141,6 +141,8 @@ ______________________________________________________________________
 - Caps concurrent scrapes at **3**.
 - Prevents anti-bot triggers.
 - Must not be modified or removed.
+- **Note:** The application may allow configuring the worker thread pool size (e.g., via `SCRAPER_THREADS`), but this
+  **MUST NOT** bypass the semaphore. The semaphore remains the absolute hard limit for concurrent external requests.
 
 ### The “Appliance” Philosophy
 
@@ -174,6 +176,8 @@ ______________________________________________________________________
 
 - Must sanitize illegal characters and reserved Windows filenames.
 - Applies even when container runs on Linux.
+- **Collision Avoidance:** When using fallback directory names (e.g., for missing titles), **MUST** use `uuid` (e.g.,
+  `uuid.uuid4().hex[:8]`) to guarantee uniqueness. `time.time()` is insufficient for high-concurrency environments.
 
 ### Resilience & Negative Caching
 
@@ -203,6 +207,12 @@ ______________________________________________________________________
 ______________________________________________________________________
 
 ## 3. Development Standards
+
+### Startup & Configuration
+
+- **No Silent Exits:** Critical startup errors (e.g., missing config) **MUST** `raise RuntimeError` rather than calling
+  `sys.exit()`. This ensures the WSGI server (Gunicorn) captures and logs the stack trace before the worker process
+  dies.
 
 ### Centralized Logic & Concurrency
 
