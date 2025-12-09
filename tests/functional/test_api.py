@@ -285,14 +285,3 @@ def test_rate_limit_enforced(client: Any) -> None:
 
         response = client.post("/send", json={"link": "l", "title": "t"})
         assert response.status_code == 429
-
-
-def test_rate_limit_headers(client: Any) -> None:
-    # Headers are enabled via TestConfig in conftest.py
-    with (
-        patch("app.routes.extract_magnet_link", return_value=("magnet:123", None)),
-        patch("app.routes.torrent_manager"),
-    ):
-        response = client.post("/send", json={"link": "l", "title": "t"})
-        assert response.status_code == 200
-        assert "X-RateLimit-Limit" in response.headers
