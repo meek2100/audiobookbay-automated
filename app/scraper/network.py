@@ -25,10 +25,15 @@ logger = logging.getLogger(__name__)
 # Caps concurrent scrapes at 3 to prevent anti-bot triggers.
 MAX_CONCURRENT_REQUESTS = 3
 GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
+# Lock to ensure thread-safe operations on shared caches (search_cache, mirror_cache)
+CACHE_LOCK = threading.Lock()
 
 # --- Caches ---
 # Explicit type parameters for TTLCache to satisfy strict MyPy
 mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
+# Short-lived cache for connection failures (Negative Caching) to prevent retry storms
+failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
+
 search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
 details_cache: TTLCache[str, BookDict] = TTLCache(maxsize=100, ttl=300)
 
@@ -168,16 +173,22 @@ def check_mirror(hostname: str) -> str | None:
 def find_best_mirror() -> str | None:
     """Find the first reachable AudiobookBay mirror from the configured list.
 
-    Uses threaded checks for speed and caches the result manually to ensure
-    failed attempts (None) are not cached.
+    Uses threaded checks for speed.
+    Implements Negative Caching: If no mirrors work, backs off for 30s.
 
     Returns:
         str | None: The hostname of the active mirror, or None if all fail.
     """
-    # Manual caching check using a static key since this function is parameterless
+    # 1. Check Negative Cache (Backoff)
+    if "failure" in failure_cache:
+        logger.debug("Skipping mirror check due to recent failure (Negative Cache hit).")
+        return None
+
+    # 2. Check Positive Cache
     cache_key = "active_mirror"
-    if cache_key in mirror_cache:
-        return mirror_cache[cache_key]
+    with CACHE_LOCK:
+        if cache_key in mirror_cache:
+            return mirror_cache[cache_key]
 
     # Dynamic retrieval of mirrors list
     mirrors = get_mirrors()
@@ -191,10 +202,13 @@ def find_best_mirror() -> str | None:
             result = future.result()
             if result:
                 logger.info(f"Found active mirror: {result}")
-                # CACHE UPDATE: Only cache successful results
-                mirror_cache[cache_key] = result
+                # CACHE UPDATE: Cache successful result
+                with CACHE_LOCK:
+                    mirror_cache[cache_key] = result
                 return result
 
-    logger.error("No working AudiobookBay mirrors found!")
-    # Do not cache None
+    logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
+    # CACHE UPDATE: Cache failure (Negative Caching)
+    with CACHE_LOCK:
+        failure_cache["failure"] = True
     return None
