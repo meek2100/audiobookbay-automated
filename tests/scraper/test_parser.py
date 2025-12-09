@@ -8,7 +8,7 @@ import requests
 import requests_mock
 from bs4 import BeautifulSoup, Tag
 
-from app.scraper import extract_magnet_link, fetch_and_parse_page, get_book_details
+from app.scraper import fetch_and_parse_page, get_book_details
 from app.scraper.parser import get_text_after_label, normalize_cover_url, parse_post_content
 
 # --- Unit Tests: Helper Functions ---
@@ -182,13 +182,14 @@ def test_fetch_and_parse_page_real_structure(real_world_html: str, mock_sleep: A
     page = 1
     user_agent = "TestAgent/1.0"
 
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
 
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=real_world_html, status_code=200)
 
-    results = fetch_and_parse_page(session, hostname, query, page, user_agent)
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page(hostname, query, page, user_agent)
 
     assert mock_sleep.called
     assert len(results) == 1
@@ -208,22 +209,24 @@ def test_fetch_and_parse_page_unknown_bitrate() -> None:
         </div>
     </div>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["bitrate"] == "Unknown"
 
 
 def test_fetch_and_parse_page_malformed() -> None:
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text="<html><body></body></html>", status_code=200)
 
-    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results == []
 
 
@@ -238,12 +241,13 @@ def test_fetch_and_parse_page_zero_results(mock_sleep: Any) -> None:
         </body>
     </html>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=nonexistent", text=html, status_code=200)
 
-    results = fetch_and_parse_page(session, "host", "nonexistent", 1, "ua")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page("host", "nonexistent", 1, "ua")
     assert results == []
 
 
@@ -254,12 +258,13 @@ def test_fetch_and_parse_page_mixed_validity() -> None:
         <div class="postTitle"><h2><a href="/valid">Valid Book</a></h2></div>
     </div>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=mixed_html, status_code=200)
 
-    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page("host", "q", 1, "ua")
     assert len(results) == 1
     assert results[0]["title"] == "Valid Book"
 
@@ -271,12 +276,13 @@ def test_parsing_structure_change() -> None:
         <div class="postContent"><p>Random text.</p></div>
     </div>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["format"] == "Unknown"
 
 
@@ -287,12 +293,13 @@ def test_fetch_and_parse_page_language_fallback() -> None:
         <div class="postInfo">Languages: English</div>
     </div>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["language"] == "Unknown"
 
 
@@ -304,12 +311,13 @@ def test_fetch_and_parse_page_missing_regex_matches() -> None:
         <div class="postInfo">No recognizable labels here</div>
     </div>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["language"] == "Unknown"
     assert results[0]["category"] == "Unknown"
 
@@ -329,12 +337,13 @@ def test_fetch_and_parse_page_no_posted_date() -> None:
         </div>
     </div>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    results = fetch_and_parse_page(session, hostname, query, 1, "UA")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page(hostname, query, 1, "UA")
 
     assert len(results) == 1
     assert results[0]["post_date"] == "Unknown"
@@ -349,19 +358,20 @@ def test_fetch_and_parse_page_missing_title() -> None:
         <div class="postContent"><p>Content but no title</p></div>
     </div>
     """
-    session = requests.Session()
+    mock_session = requests.Session()
     adapter = requests_mock.Adapter()
-    session.mount("https://", adapter)
+    mock_session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    results = fetch_and_parse_page(session, hostname, query, 1, "UA")
+    with patch("app.scraper.core.get_session", return_value=mock_session):
+        results = fetch_and_parse_page(hostname, query, 1, "UA")
     assert results == []
 
 
 def test_fetch_page_post_exception(caplog: Any) -> None:
-    session = MagicMock()
-    session.get.return_value.text = "<html></html>"
-    session.get.return_value.status_code = 200
+    mock_session = MagicMock()
+    mock_session.get.return_value.text = "<html></html>"
+    mock_session.get.return_value.status_code = 200
 
     mock_post = MagicMock()
     mock_post.select_one.side_effect = Exception("Post Error")
@@ -370,19 +380,21 @@ def test_fetch_page_post_exception(caplog: Any) -> None:
     with patch("app.scraper.core.BeautifulSoup") as mock_bs:
         mock_bs.return_value.select.return_value = [mock_post]
         with caplog.at_level(logging.ERROR):
-            results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+            with patch("app.scraper.core.get_session", return_value=mock_session):
+                results = fetch_and_parse_page("host", "q", 1, "ua")
             assert results == []
             assert "Could not process post" in caplog.text
 
 
 def test_fetch_page_urljoin_exception(real_world_html: str) -> None:
-    session = MagicMock()
-    session.get.return_value.text = real_world_html
-    session.get.return_value.status_code = 200
+    mock_session = MagicMock()
+    mock_session.get.return_value.text = real_world_html
+    mock_session.get.return_value.status_code = 200
 
     # Patch urljoin in app.scraper.core where it is imported
     with patch("app.scraper.core.urljoin", side_effect=Exception("Join Error")):
-        results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+        with patch("app.scraper.core.get_session", return_value=mock_session):
+            results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results == []
 
 
@@ -392,11 +404,12 @@ def test_fetch_and_parse_page_missing_cover_image() -> None:
         <div class="postTitle"><h2><a href="/link">No Cover</a></h2></div>
     </div>
     """
-    session = requests.Session()
-    with patch.object(session, "get") as mock_get:
+    mock_session = requests.Session()
+    with patch.object(mock_session, "get") as mock_get:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
-        results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+        with patch("app.scraper.core.get_session", return_value=mock_session):
+            results = fetch_and_parse_page("host", "q", 1, "ua")
     # Expect None so UI handles versioning
     assert results[0]["cover"] is None
 
@@ -407,11 +420,12 @@ def test_fetch_and_parse_page_missing_post_info() -> None:
         <div class="postTitle"><h2><a href="/link">No Info</a></h2></div>
     </div>
     """
-    session = requests.Session()
-    with patch.object(session, "get") as mock_get:
+    mock_session = requests.Session()
+    with patch.object(mock_session, "get") as mock_get:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
-        results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+        with patch("app.scraper.core.get_session", return_value=mock_session):
+            results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["language"] == "Unknown"
 
 
@@ -425,11 +439,12 @@ def test_fetch_and_parse_page_remote_default_cover_optimization() -> None:
         </div>
     </div>
     """
-    session = requests.Session()
-    with patch.object(session, "get") as mock_get:
+    mock_session = requests.Session()
+    with patch.object(mock_session, "get") as mock_get:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
-        results = fetch_and_parse_page(session, "host", "q", 1, "ua")
+        with patch("app.scraper.core.get_session", return_value=mock_session):
+            results = fetch_and_parse_page("host", "q", 1, "ua")
     # Assert it was converted to None
     assert results[0]["cover"] is None
 
@@ -687,50 +702,3 @@ def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
 
         details = get_book_details("https://audiobookbay.lu/strat3")
         assert details["info_hash"] == "5555555555666666666677777777778888888888"
-
-
-# --- Extract Magnet Link Tests ---
-
-
-def test_extract_magnet_success(mock_sleep: Any) -> None:
-    url = "https://audiobookbay.lu/book"
-    mock_details = {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]}
-
-    with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        with patch("app.scraper.core.get_trackers", return_value=[]):
-            magnet, error = extract_magnet_link(url)
-            assert error is None
-            assert magnet is not None
-            assert "magnet:?xt=urn:btih:abc123hash456" in magnet
-            assert "tracker.com" in magnet
-
-
-def test_extract_magnet_missing_info_hash(mock_sleep: Any) -> None:
-    url = "https://audiobookbay.lu/book"
-    mock_details = {"info_hash": "Unknown", "trackers": []}
-
-    with patch("app.scraper.core.get_book_details", return_value=mock_details):
-        magnet, error = extract_magnet_link(url)
-        assert magnet is None
-        assert error is not None
-        assert "Info Hash could not be found" in error
-
-
-def test_extract_magnet_ssrf_inherited(mock_sleep: Any) -> None:
-    url = "https://google.com/evil"
-    with patch("app.scraper.core.get_book_details", side_effect=ValueError("Invalid domain")):
-        magnet, error = extract_magnet_link(url)
-        assert magnet is None
-        assert error is not None
-        assert "Invalid domain" in error
-
-
-def test_extract_magnet_generic_exception(mock_sleep: Any) -> None:
-    url = "https://audiobookbay.lu/book"
-    with patch("app.scraper.core.get_book_details", side_effect=Exception("Database down")):
-        with patch("app.scraper.core.logger") as mock_logger:
-            magnet, error = extract_magnet_link(url)
-            assert magnet is None
-            assert error is not None
-            assert "Database down" in error
-            assert mock_logger.error.called
