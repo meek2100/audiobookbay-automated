@@ -43,12 +43,6 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(flask_app)
 
-    # Initialize singleton managers (if they need app context or config)
-    # TorrentManager loads config from env vars, so it doesn't strictly need init_app,
-    # but we ensure it's ready.
-    if not flask_app.config.get("TESTING"):
-        torrent_manager.verify_credentials()
-
     # Register Blueprints
     flask_app.register_blueprint(main_bp)
 

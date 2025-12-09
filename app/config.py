@@ -107,3 +107,8 @@ class Config:
         if cls.PAGE_LIMIT < 1:
             logger.warning(f"Invalid PAGE_LIMIT '{cls.PAGE_LIMIT}'. Resetting to 3.")
             cls.PAGE_LIMIT = 3
+
+        # Validate DL_SCHEME
+        if cls.DL_SCHEME not in ("http", "https"):
+            logger.critical(f"Configuration Error: Invalid DL_SCHEME '{cls.DL_SCHEME}'. Must be 'http' or 'https'.")
+            raise ValueError(f"Invalid DL_SCHEME '{cls.DL_SCHEME}'.")

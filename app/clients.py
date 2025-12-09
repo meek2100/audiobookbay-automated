@@ -121,6 +121,7 @@ class TorrentManager:
                 self._client = qb
 
             elif self.client_type == TorrentClientType.TRANSMISSION:
+                # Validated in Config.validate to be http/https
                 safe_scheme = cast(Literal["http", "https"], self.scheme)
                 self._client = TxClient(
                     host=safe_host,
@@ -309,7 +310,12 @@ class TorrentManager:
             return self._get_status_logic()
 
     def _get_status_logic(self) -> list[TorrentStatus]:
-        """Internal logic to fetch status."""
+        """
+        Internal logic to fetch status from the client.
+
+        Raises:
+            ConnectionError: If the client is not connected.
+        """
         client = self._get_client()
         if not client:
             raise ConnectionError("Torrent client is not connected.")
@@ -323,7 +329,7 @@ class TorrentManager:
             for tx_torrent in tx_torrents:
                 results.append(
                     {
-                        "id": tx_torrent.id,
+                        "id": str(tx_torrent.id),
                         "name": tx_torrent.name,
                         "progress": round(tx_torrent.progress * 100, 2) if tx_torrent.progress else 0.0,
                         # SAFETY: Explicitly cast to string to avoid Enum issues with older/newer versions

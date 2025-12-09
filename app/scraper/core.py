@@ -72,7 +72,7 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
             response = session.get(url, params=params, headers=headers, timeout=30)
 
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "lxml")
         posts = soup.select(".post")
 
         if not posts:
@@ -231,7 +231,7 @@ def get_book_details(details_url: str) -> BookDict:
             response = session.get(details_url, headers=headers, timeout=30)
 
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "lxml")
 
         title = "Unknown Title"
         title_tag = soup.select_one(".postTitle h1")

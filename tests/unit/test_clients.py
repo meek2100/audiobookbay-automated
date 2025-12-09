@@ -1,3 +1,5 @@
+"""Unit tests for TorrentManager wrapper."""
+
 from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
