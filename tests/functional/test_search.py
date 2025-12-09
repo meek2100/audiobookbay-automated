@@ -26,10 +26,24 @@ def test_search_whitespace_query(client: Any) -> None:
 
 def test_search_exception_handling(client: Any) -> None:
     with patch("app.routes.search_audiobookbay") as mock_search:
-        mock_search.side_effect = Exception("Connection timed out")
+        mock_search.side_effect = Exception("Generic error")
         response = client.get("/?query=my+book")
         assert response.status_code == 200
-        assert b"Search Failed: Connection timed out" in response.data
+        assert b"Search Failed: Generic error" in response.data
+
+
+def test_search_connection_error(client: Any) -> None:
+    """Test specific handling of ConnectionError during search.
+
+    This covers the explicit exception handler added to routes.py for
+    user-friendly error messages when mirrors are down.
+    """
+    with patch("app.routes.search_audiobookbay") as mock_search:
+        mock_search.side_effect = ConnectionError("No mirrors reachable")
+        response = client.get("/?query=test")
+        assert response.status_code == 200
+        # Verify the user-friendly message is displayed
+        assert b"Could not connect to AudiobookBay mirrors" in response.data
 
 
 def test_details_route_success(client: Any) -> None:

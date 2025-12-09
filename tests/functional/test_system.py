@@ -41,12 +41,18 @@ def test_library_reload_injection(client: Any) -> None:
     client.application.config["ABS_URL"] = "http://abs"
     client.application.config["ABS_KEY"] = "key"
     client.application.config["ABS_LIB"] = "lib"
+    # FIX: The app calculates this at startup. We must manually update it for the test
+    # to simulate the state derived from the env vars above.
+    client.application.config["LIBRARY_RELOAD_ENABLED"] = True
 
     response = client.get("/")
     assert b"Reload Library" in response.data
 
     # Case 2: Not Configured -> Link should be absent
     client.application.config["ABS_URL"] = None
+    # FIX: Manually update to False
+    client.application.config["LIBRARY_RELOAD_ENABLED"] = False
+
     response = client.get("/")
     assert b"Reload Library" not in response.data
 

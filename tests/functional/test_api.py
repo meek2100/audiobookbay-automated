@@ -274,7 +274,7 @@ def test_status_page_failure_json(client: Any) -> None:
 
 
 def test_rate_limit_enforced(client: Any) -> None:
-    client.application.config["RATELIMIT_ENABLED"] = True
+    # Ensure limiter is enabled (TestConfig already sets it)
     with (
         patch("app.routes.extract_magnet_link", return_value=("magnet:123", None)),
         patch("app.routes.torrent_manager"),
@@ -288,7 +288,7 @@ def test_rate_limit_enforced(client: Any) -> None:
 
 
 def test_rate_limit_headers(client: Any) -> None:
-    client.application.config["RATELIMIT_ENABLED"] = True
+    # Headers are enabled via TestConfig in conftest.py
     with (
         patch("app.routes.extract_magnet_link", return_value=("magnet:123", None)),
         patch("app.routes.torrent_manager"),

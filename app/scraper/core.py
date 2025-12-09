@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from flask import current_app
 from requests.sessions import Session
 
+from app.extensions import executor
 from app.scraper.network import (
     CACHE_LOCK,
     GLOBAL_REQUEST_SEMAPHORE,
@@ -124,7 +125,7 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
 def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDict]:
     """Search AudiobookBay for the given query using cached search results if available.
 
-    Manages thread pool for parallel page fetching.
+    Uses a shared global thread pool for parallel page fetching to reduce overhead.
 
     Args:
         query: The search string.
@@ -148,7 +149,6 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
     if not active_hostname:
         # NOTE: We do NOT clear mirror_cache here anymore.
         # find_best_mirror handles Negative Caching (30s backoff).
-        # Clearing it here would trigger a retry storm.
         logger.error("Could not connect to any AudiobookBay mirrors.")
         raise ConnectionError("No reachable AudiobookBay mirrors found.")
 
@@ -158,24 +158,23 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
     session_user_agent = get_random_user_agent()
     session = get_session()
 
-    # Cap workers to avoid excessive threads
-    safe_workers = min(max_pages, 3)
-
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=safe_workers) as executor:
-            future_to_page = {
-                executor.submit(fetch_and_parse_page, session, active_hostname, query, page, session_user_agent): page
-                for page in range(1, max_pages + 1)
-            }
-            for future in concurrent.futures.as_completed(future_to_page):
-                try:
-                    page_data = future.result()
-                    results.extend(page_data)
-                except Exception as exc:
-                    logger.error(f"Page scrape failed, invalidating mirror cache. {exc}", exc_info=True)
-                    # This clears cache because the SPECIFIC mirror failed, not because we found none.
-                    with CACHE_LOCK:
-                        mirror_cache.clear()
+        # Use the global executor to avoid spinning up new threads per request
+        futures = []
+        for page in range(1, max_pages + 1):
+            futures.append(
+                executor.submit(fetch_and_parse_page, session, active_hostname, query, page, session_user_agent)
+            )
+
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                page_data = future.result()
+                results.extend(page_data)
+            except Exception as exc:
+                logger.error(f"Page scrape failed, invalidating mirror cache. {exc}", exc_info=True)
+                # This clears cache because the SPECIFIC mirror failed, not because we found none.
+                with CACHE_LOCK:
+                    mirror_cache.clear()
     finally:
         session.close()
 

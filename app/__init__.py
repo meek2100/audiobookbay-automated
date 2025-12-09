@@ -30,6 +30,12 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         static_folder = os.path.join(flask_app.root_path, "static")
         flask_app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
 
+    # OPTIMIZATION: Calculate enabled status once at startup to avoid per-request logic
+    abs_url = flask_app.config.get("ABS_URL")
+    abs_key = flask_app.config.get("ABS_KEY")
+    abs_lib = flask_app.config.get("ABS_LIB")
+    flask_app.config["LIBRARY_RELOAD_ENABLED"] = all([abs_url, abs_key, abs_lib])
+
     # Initialize Extensions
     limiter.init_app(flask_app)
     csrf.init_app(flask_app)

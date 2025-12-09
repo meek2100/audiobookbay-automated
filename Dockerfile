@@ -22,16 +22,19 @@ RUN apt-get update && \
 
 # 1. Copy project definition first
 COPY pyproject.toml .
-# 2. Install dependencies (creates a cached layer)
-RUN pip install --no-cache-dir .
-# 3. Copy the source code (including the committed vendor files)
-COPY app app/
-COPY entrypoint.sh .
 
-# 4. Set permissions, generate static hash, and configure user
+# 2. Install dependencies and create user in a single layer (Fixes DL3059)
+# We create the user here to ensure it exists before we COPY files with ownership
+RUN pip install --no-cache-dir . && \
+    useradd -m appuser
+
+# 3. Copy the source code with correct ownership (Avoids huge chown layer)
+COPY --chown=appuser:appuser app app/
+COPY --chown=appuser:appuser entrypoint.sh .
+
+# 4. Set permissions on scripts and verify utils
 RUN chmod +x entrypoint.sh && \
-    python3 -m app.utils && \
-    useradd -m appuser && chown -R appuser /app
+    python3 -m app.utils
 
 # Switch to non-root user for security
 USER appuser

@@ -21,14 +21,15 @@ RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
 
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
-RE_LANGUAGE = re.compile(r"Language:\s*(\S+)")
+RE_LANGUAGE = re.compile(r"Language:\s*(\S+)", re.IGNORECASE)
 RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|$)")
 
 # Pre-compiled label patterns for parsing content
-RE_LABEL_POSTED = re.compile(r"Posted:")
-RE_LABEL_FORMAT = re.compile(r"Format:")
-RE_LABEL_BITRATE = re.compile(r"Bitrate:")
-RE_LABEL_SIZE = re.compile(r"File Size:")
+# Robustness: Use IGNORECASE and allow optional whitespace for reliability
+RE_LABEL_POSTED = re.compile(r"Posted:", re.IGNORECASE)
+RE_LABEL_FORMAT = re.compile(r"Format:", re.IGNORECASE)
+RE_LABEL_BITRATE = re.compile(r"Bitrate:", re.IGNORECASE)
+RE_LABEL_SIZE = re.compile(r"File\s*Size:", re.IGNORECASE)
 
 
 class BookDict(TypedDict):
@@ -160,13 +161,13 @@ def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> 
     if content_div:
         for p in content_div.find_all("p"):
             p_text = p.get_text()
-            if "Posted:" in p_text:
+            if RE_LABEL_POSTED.search(p_text):
                 meta.post_date = get_text_after_label(p, RE_LABEL_POSTED)
-            if "Format:" in p_text:
+            if RE_LABEL_FORMAT.search(p_text):
                 meta.format = get_text_after_label(p, RE_LABEL_FORMAT)
-            if "Bitrate:" in p_text:
+            if RE_LABEL_BITRATE.search(p_text):
                 meta.bitrate = get_text_after_label(p, RE_LABEL_BITRATE)
-            if "File Size:" in p_text:
+            if RE_LABEL_SIZE.search(p_text):
                 meta.file_size = get_text_after_label(p, RE_LABEL_SIZE, is_file_size=True)
 
     # Normalization Rule: Convert "?" or empty strings to "Unknown"

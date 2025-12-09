@@ -29,11 +29,8 @@ def inject_global_vars() -> dict[str, Any]:
     # Retrieve the pre-calculated hash from config to avoid disk I/O on every request.
     static_version = current_app.config.get("STATIC_VERSION", "v1")
 
-    # Determine if library reload is enabled based on config
-    abs_url = current_app.config.get("ABS_URL")
-    abs_key = current_app.config.get("ABS_KEY")
-    abs_lib = current_app.config.get("ABS_LIB")
-    library_reload_enabled = all([abs_url, abs_key, abs_lib])
+    # OPTIMIZATION: Retrieve pre-calculated flag from config instead of re-evaluating
+    library_reload_enabled = current_app.config.get("LIBRARY_RELOAD_ENABLED", False)
 
     return {
         "nav_link_name": current_app.config.get("NAV_LINK_NAME"),
@@ -69,6 +66,12 @@ def search() -> str | Response:
             books = search_audiobookbay(search_query)
 
         return render_template("search.html", books=books, query=query)
+
+    except ConnectionError as ce:
+        # Specific handling for when mirrors are unreachable
+        logger.error(f"Search failed due to connection error: {ce}")
+        error_message = "Could not connect to AudiobookBay mirrors. Please try again later."
+        return render_template("search.html", books=books, error=error_message, query=query)
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)

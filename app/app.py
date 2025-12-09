@@ -1,8 +1,11 @@
 """Entry point for the application."""
 
+import logging
 import os
 
 from . import create_app
+
+logger = logging.getLogger(__name__)
 
 # Create the application instance using the factory.
 # This global 'app' variable is what Gunicorn looks for by default.
@@ -17,7 +20,7 @@ if __name__ == "__main__":  # pragma: no cover
     try:
         port = int(port_str)
     except ValueError:
-        print(f"Invalid LISTEN_PORT '{port_str}'. Defaulting to 5078.")
+        logger.warning(f"Invalid LISTEN_PORT '{port_str}'. Defaulting to 5078.")
         port = 5078
 
     app.run(host=host, port=port)

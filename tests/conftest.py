@@ -8,23 +8,33 @@ from flask import Flask
 from flask.testing import FlaskClient, FlaskCliRunner
 
 from app import create_app
+from app.config import Config
+
+
+class TestConfig(Config):
+    """Test configuration with overrides.
+
+    Passed to create_app to ensure extensions (like Flask-Limiter)
+    pick up settings during their init_app() phase.
+    """
+
+    TESTING = True
+    SAVE_PATH_BASE = "/tmp/test_downloads"
+    SECRET_KEY = "test-secret-key"
+    WTF_CSRF_ENABLED = False
+
+    # Enable Rate Limit headers for assertions
+    RATELIMIT_HEADERS_ENABLED = True
+    RATELIMIT_ENABLED = True
 
 
 @pytest.fixture
 def app() -> Generator[Flask, None, None]:
     """Create the 'World' for the tests: A Flask application instance.
 
-    Configured specifically for testing (safe paths, disabled CSRF).
+    Uses TestConfig to ensure configuration is present before extension initialization.
     """
-    app = create_app()
-    app.config.update(
-        {
-            "TESTING": True,
-            "SAVE_PATH_BASE": "/tmp/test_downloads",
-            "SECRET_KEY": "test-secret-key",
-            "WTF_CSRF_ENABLED": False,  # Disable CSRF for easier functional testing
-        }
-    )
+    app = create_app(TestConfig)
 
     yield app
 

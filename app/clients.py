@@ -91,6 +91,9 @@ class TorrentManager:
                 logger.warning("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
                 self.dl_url = "http://localhost:8112"
 
+        # RESET: Ensure clean state if re-initialized (e.g. testing)
+        self._client = None
+
     def _get_client(self) -> QbClient | TxClient | DelugeWebClient | None:
         """
         Return the existing client instance or creates a new one if it doesn't exist.
@@ -323,7 +326,8 @@ class TorrentManager:
                         "id": tx_torrent.id,
                         "name": tx_torrent.name,
                         "progress": round(tx_torrent.progress * 100, 2) if tx_torrent.progress else 0.0,
-                        "state": tx_torrent.status,
+                        # SAFETY: Explicitly cast to string to avoid Enum issues with older/newer versions
+                        "state": str(tx_torrent.status),
                         "size": self._format_size(tx_torrent.total_size),
                     }
                 )
