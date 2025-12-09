@@ -181,6 +181,31 @@ def test_find_best_mirror_cached(mock_app_context: Any) -> None:
     network.mirror_cache.clear()
 
 
+def test_find_best_mirror_negative_cache_hit(mock_app_context: Any) -> None:
+    """Test that find_best_mirror returns None immediately if negative cache is set.
+
+    Covers app/scraper/network.py lines 184-185 (Negative Cache hit).
+    """
+    # Clear caches
+    network.mirror_cache.clear()
+    network.failure_cache.clear()
+
+    # Inject failure into negative cache
+    network.failure_cache["failure"] = True
+
+    with patch("app.scraper.network.logger") as mock_logger:
+        # Patch check_mirror to verify it is NOT called
+        with patch("app.scraper.network.check_mirror") as mock_check:
+            result = network.find_best_mirror()
+
+            assert result is None
+            mock_check.assert_not_called()
+
+            # Verify the debug log was triggered
+            args, _ = mock_logger.debug.call_args
+            assert "Negative Cache hit" in args[0]
+
+
 def test_get_random_user_agent_returns_string() -> None:
     ua = network.get_random_user_agent()
     assert isinstance(ua, str)
