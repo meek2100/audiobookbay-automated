@@ -170,7 +170,7 @@ class TorrentManager:
         if size_bytes is None:
             return "Unknown"
         try:
-            size = float(size_bytes)
+            size: float = float(size_bytes)
             for unit in ["B", "KB", "MB", "GB", "TB"]:
                 if size < 1024.0:
                     return f"{size:.2f} {unit}"

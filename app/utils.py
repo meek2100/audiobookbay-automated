@@ -85,3 +85,20 @@ def calculate_static_hash(static_folder: str) -> str:
 
     # Return first 8 chars (sufficient for uniqueness)
     return hash_md5.hexdigest()[:8]
+
+
+if __name__ == "__main__":  # pragma: no cover
+    # Script entry point for build-time hash generation.
+    # This allows us to calculate the hash once during Docker build
+    # rather than every time the application starts up.
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    static_dir = os.path.join(base_dir, "static")
+    output_path = os.path.join(base_dir, "version.txt")
+
+    print(f"Generating static asset hash for: {static_dir}")
+    version_hash = calculate_static_hash(static_dir)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(version_hash)
+
+    print(f"Version hash '{version_hash}' written to: {output_path}")

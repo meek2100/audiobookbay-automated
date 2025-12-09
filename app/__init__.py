@@ -19,10 +19,16 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Validate critical configuration
     config_class.validate(flask_app.logger)
 
-    # OPTIMIZATION: Calculate static asset hash once at startup.
-    # This prevents hitting the disk (os.walk) on every single request.
-    static_folder = os.path.join(flask_app.root_path, "static")
-    flask_app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
+    # OPTIMIZATION: Load pre-calculated static asset hash.
+    # If the file exists (production build), use it to avoid disk I/O.
+    # Otherwise, calculate it dynamically (local development).
+    version_file = os.path.join(flask_app.root_path, "version.txt")
+    if os.path.exists(version_file):
+        with open(version_file, "r", encoding="utf-8") as f:
+            flask_app.config["STATIC_VERSION"] = f.read().strip()
+    else:
+        static_folder = os.path.join(flask_app.root_path, "static")
+        flask_app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
 
     # Initialize Extensions
     limiter.init_app(flask_app)

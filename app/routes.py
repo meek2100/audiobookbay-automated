@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from typing import Any, cast
 
 import requests
@@ -124,6 +125,10 @@ def send() -> Response | tuple[Response, int]:
             logger.warning(
                 f"Title '{title}' was sanitized to fallback '{FALLBACK_TITLE}'. Files will be saved in a generic folder."
             )
+            # Collision Prevention: Append timestamp to ensure unique folder for fallbacks
+            timestamp = int(time.time())
+            safe_title = f"{FALLBACK_TITLE}_{timestamp}"
+            logger.info(f"Using collision-safe directory name: {safe_title}")
 
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
         if save_path_base:

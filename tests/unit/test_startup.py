@@ -1,9 +1,10 @@
-# tests/unit/test_startup.py
+"""Unit tests for startup configuration and verification logic."""
+
 import importlib
 import os
 import sys
 from typing import Any, Generator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
@@ -16,7 +17,7 @@ class MockConfig(dict[str, Any]):
     """A dictionary that behaves like a Flask config object (supporting from_object)."""
 
     def from_object(self, obj: Any) -> None:
-        # Emulate Flask config.from_object by reading uppercase attributes
+        """Emulate Flask config.from_object by reading uppercase attributes."""
         for key in dir(obj):
             if key.isupper():
                 self[key] = getattr(obj, key)
@@ -24,7 +25,7 @@ class MockConfig(dict[str, Any]):
 
 @pytest.fixture
 def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
-    """Patches Flask class to return a mock app with a traceable logger and working config."""
+    """Patch Flask class to return a mock app with a traceable logger and working config."""
     with patch("flask.Flask") as mock_class:
         mock_app = MagicMock()
         mock_logger = MagicMock()
@@ -38,7 +39,7 @@ def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
         yield mock_class, mock_logger
 
     # --- TEARDOWN ---
-    # Restore the app module to a clean state.
+    # Restore the app module to a clean state to prevent pollution between tests.
     safe_env = {
         "TESTING": "1",
         "SAVE_PATH_BASE": "/tmp/startup_test_safe_restore",
@@ -49,7 +50,7 @@ def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
 
     # Reload modules to restore original state
     with patch.dict(os.environ, safe_env):
-        # FIX: Do not use sys.modules.pop(), it causes ImportError on reload.
+        # Do not use sys.modules.pop(), it causes ImportError on reload.
         importlib.reload(app.config)
         importlib.reload(app)
 
@@ -60,6 +61,7 @@ def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
 
 
 def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Ensure startup fails with critical error if SAVE_PATH_BASE is missing."""
     _, mock_logger = mock_flask_factory
     with patch("sys.exit") as mock_exit:
         monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
@@ -78,6 +80,7 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
 
 
 def test_startup_insecure_secret_key_production(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Ensure startup raises ValueError for insecure secret key in production."""
     _, mock_logger = mock_flask_factory
     with patch("sys.exit"):
         monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
@@ -114,20 +117,18 @@ def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -
 
 
 def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: Any) -> None:
-    """Test that non-integer PAGE_LIMIT defaults to 3 (covers ValueError)."""
+    """Test that non-integer PAGE_LIMIT defaults to 3."""
     _, mock_logger = mock_flask_factory
     monkeypatch.setenv("PAGE_LIMIT", "invalid_string")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
 
     importlib.reload(app.config)
-    # No explicit validate call needed as the try/except block is in the class body
-    # but validation might trigger logging if we call it.
     # The parsing logic happens at import time for PAGE_LIMIT.
-
     assert app.config.Config.PAGE_LIMIT == 3
 
 
 def test_startup_insecure_secret_key_development(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Ensure startup only warns for insecure secret key in dev/test."""
     _, mock_logger = mock_flask_factory
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
     monkeypatch.setenv("SECRET_KEY", "change-this-to-a-secure-random-key")
@@ -142,6 +143,7 @@ def test_startup_insecure_secret_key_development(monkeypatch: Any, mock_flask_fa
 
 
 def test_startup_invalid_log_level(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Ensure startup warns on invalid LOG_LEVEL."""
     _, mock_logger = mock_flask_factory
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
     monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL")
@@ -178,3 +180,40 @@ def test_app_startup_verification_fail(monkeypatch: Any, mock_flask_factory: Any
             importlib.reload(sys.modules["app.app"])
         else:
             importlib.import_module("app.app")
+
+
+def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that create_app reads STATIC_VERSION from version.txt if present (Optimization)."""
+    mock_class, _ = mock_flask_factory
+
+    # CRITICAL: Reload app module so it imports the patched Flask class from the fixture.
+    # Without this, app.create_app() uses the real Flask class, causing the mock assertions to fail.
+    importlib.reload(app)
+
+    mock_app = mock_class.return_value
+    mock_app.root_path = "/mock/root"
+
+    # Ensure environment is valid for create_app
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp/test")
+
+    expected_hash = "production-hash-123"
+
+    with (
+        patch("app.os.path.exists") as mock_exists,
+        patch("builtins.open", mock_open(read_data=expected_hash)) as mock_file,
+        patch("app.calculate_static_hash") as mock_calc,
+    ):
+        # Configure exists to return True only if checking for version.txt
+        mock_exists.side_effect = lambda p: p.endswith("version.txt")
+
+        # Call create_app directly
+        app.create_app()
+
+        assert mock_app.config["STATIC_VERSION"] == expected_hash
+
+        mock_file.assert_called_once()
+        args, _ = mock_file.call_args
+        assert args[0].endswith("version.txt")
+
+        # Verify the expensive calculation was skipped
+        mock_calc.assert_not_called()

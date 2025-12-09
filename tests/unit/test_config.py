@@ -1,10 +1,12 @@
 """Unit tests for configuration validation."""
 
+import importlib
 import logging
 
 import pytest
 from pytest import LogCaptureFixture, MonkeyPatch
 
+from app import config
 from app.config import Config
 
 
@@ -58,3 +60,23 @@ def test_config_validate_invalid_log_level(monkeypatch: MonkeyPatch, caplog: Log
     Config.validate(logging.getLogger("test"))
 
     assert "Configuration Warning: Invalid LOG_LEVEL 'INVALID_LEVEL' provided" in caplog.text
+
+
+def test_config_validate_page_limit_low(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
+    """Ensure validation resets PAGE_LIMIT if < 1."""
+    monkeypatch.setattr(Config, "PAGE_LIMIT", 0)
+
+    Config.validate(logging.getLogger("test"))
+
+    assert Config.PAGE_LIMIT == 3
+    assert "Invalid PAGE_LIMIT '0'" in caplog.text
+
+
+def test_config_page_limit_parsing_error(monkeypatch: MonkeyPatch) -> None:
+    """Ensure module-level parsing falls back to 3 on invalid int."""
+    monkeypatch.setenv("PAGE_LIMIT", "not_an_integer")
+
+    # Reload the module to re-execute the module-level parsing logic
+    importlib.reload(config)
+
+    assert config.Config.PAGE_LIMIT == 3

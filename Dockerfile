@@ -7,34 +7,33 @@ LABEL org.opencontainers.image.description="Automated AudiobookBay downloader an
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.source="https://github.com/jamesry96/audiobookbay-automated"
 
-# OPTIMIZATION: Prevent Python from writing .pyc files (saves space/io)
+# Prevent Python from writing .pyc files (saves space/io)
 ENV PYTHONDONTWRITEBYTECODE=1
-# OPTIMIZATION: Ensure logs are flushed immediately (easier debugging)
+# Ensure logs are flushed immediately (easier debugging)
 ENV PYTHONUNBUFFERED=1
 
 # Set the working directory in the container
 WORKDIR /app
 
-# OPTIMIZATION: Install tzdata for correct timezone logging
+# Install tzdata for correct timezone logging
 RUN apt-get update && \
     apt-get install -y --no-install-recommends tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 # 1. Copy project definition first
 COPY pyproject.toml .
-
 # 2. Install dependencies (creates a cached layer)
 RUN pip install --no-cache-dir .
-
 # 3. Copy the source code (including the committed vendor files)
 COPY app app/
 COPY entrypoint.sh .
 
-# 4. Set permissions
-RUN chmod +x entrypoint.sh
+# 4. Set permissions, generate static hash, and configure user
+RUN chmod +x entrypoint.sh && \
+    python3 -m app.utils && \
+    useradd -m appuser && chown -R appuser /app
 
-# Create a non-root user and switch to it for security
-RUN useradd -m appuser && chown -R appuser /app
+# Switch to non-root user for security
 USER appuser
 
 # Expose the port the app runs on
