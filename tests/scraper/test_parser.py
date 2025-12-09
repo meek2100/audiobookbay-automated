@@ -16,7 +16,7 @@ from app.scraper.parser import get_text_after_label, normalize_cover_url, parse_
 
 def test_get_text_after_label_valid() -> None:
     html = "<div><p>Format: <span>MP3</span></p></div>"
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     p_tag = soup.find("p")
     # FIX: Ensure p_tag is treated as a Tag for MyPy safety
     assert isinstance(p_tag, Tag)
@@ -26,7 +26,7 @@ def test_get_text_after_label_valid() -> None:
 
 def test_get_text_after_label_inline() -> None:
     html = "<div><p>Posted: 10 Jan 2020</p></div>"
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     p_tag = soup.find("p")
     assert isinstance(p_tag, Tag)
     res = get_text_after_label(p_tag, re.compile("Posted:"))
@@ -39,7 +39,7 @@ def test_get_text_after_label_split_unit() -> None:
     This covers the 'val += f" {unit_node.strip()}"' logic in parser.py.
     """
     html = "<div><p>File Size: <span>1.5</span> GB</p></div>"
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     p_tag = soup.find("p")
     assert isinstance(p_tag, Tag)
     # Note: We must explicitly pass is_file_size=True to trigger the unit concatenation logic
@@ -74,10 +74,24 @@ def test_get_text_after_label_fallback() -> None:
 def test_get_text_after_label_not_found() -> None:
     """Test that it returns 'Unknown' if the label text is not found in the container."""
     html = "<div><p>Some other content</p></div>"
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     # 'Format:' does not exist in the HTML (pass soup which is Tag-like)
     result = get_text_after_label(soup, re.compile("Format:"))
     assert result == "Unknown"
+
+
+def test_normalize_cover_url_valid() -> None:
+    """Test valid cover URL normalization."""
+    base = "https://audiobookbay.lu/page/1"
+    url = normalize_cover_url(base, "/images/book.jpg")
+    assert url == "https://audiobookbay.lu/images/book.jpg"
+
+
+def test_normalize_cover_url_default() -> None:
+    """Test that default cover image returns None (optimization)."""
+    base = "https://audiobookbay.lu/page/1"
+    url = normalize_cover_url(base, "/images/default_cover.jpg")
+    assert url is None
 
 
 def test_normalize_cover_url_empty() -> None:
@@ -103,8 +117,8 @@ def test_parse_post_content_full_validity() -> None:
         <p>File Size: 500 MBs</p>
     </div>
     """
-    soup_info = BeautifulSoup(html_info, "html.parser").find("div")
-    soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+    soup_info = BeautifulSoup(html_info, "lxml").find("div")
+    soup_content = BeautifulSoup(html_content, "lxml").find("div")
 
     # Cast to Tag to satisfy strict typing
     assert isinstance(soup_info, Tag)
@@ -129,7 +143,7 @@ def test_parse_post_content_missing_elements() -> None:
 
     # One None
     html_content = """<div class="postContent"><p>Format: M4B</p></div>"""
-    soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+    soup_content = BeautifulSoup(html_content, "lxml").find("div")
     assert isinstance(soup_content, Tag)
     meta = parse_post_content(soup_content, None)
 
@@ -145,8 +159,8 @@ def test_parse_post_content_normalization() -> None:
         <p>Format: ?</p>
         <p>Bitrate: </p> </div>
     """
-    soup_info = BeautifulSoup(html_info, "html.parser").find("div")
-    soup_content = BeautifulSoup(html_content, "html.parser").find("div")
+    soup_info = BeautifulSoup(html_info, "lxml").find("div")
+    soup_content = BeautifulSoup(html_content, "lxml").find("div")
 
     assert isinstance(soup_info, Tag)
     assert isinstance(soup_content, Tag)

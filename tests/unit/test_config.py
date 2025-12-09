@@ -10,6 +10,22 @@ from app import config
 from app.config import Config
 
 
+def test_config_validate_success(monkeypatch: MonkeyPatch) -> None:
+    """Ensure validation passes with valid configuration."""
+    monkeypatch.setenv("SECRET_KEY", "prod-secret-key")
+    monkeypatch.setenv("SAVE_PATH_BASE", "/data")
+    monkeypatch.setenv("DL_SCHEME", "https")
+    # Patch class attributes as well since they are loaded at import
+    monkeypatch.setattr(Config, "SECRET_KEY", "prod-secret-key")
+    monkeypatch.setattr(Config, "SAVE_PATH_BASE", "/data")
+    monkeypatch.setattr(Config, "DL_SCHEME", "https")
+    monkeypatch.setattr(Config, "TESTING", False)
+    monkeypatch.setattr(Config, "FLASK_DEBUG", False)
+
+    # Should not raise
+    Config.validate(logging.getLogger("test"))
+
+
 def test_config_validate_missing_save_path(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     """Ensure validation fails hard if SAVE_PATH_BASE is missing."""
     monkeypatch.setenv("SAVE_PATH_BASE", "")
@@ -60,6 +76,16 @@ def test_config_validate_invalid_log_level(monkeypatch: MonkeyPatch, caplog: Log
     Config.validate(logging.getLogger("test"))
 
     assert "Configuration Warning: Invalid LOG_LEVEL 'INVALID_LEVEL' provided" in caplog.text
+
+
+def test_config_validate_invalid_dl_scheme(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
+    """Ensure validation fails for invalid DL_SCHEME."""
+    monkeypatch.setattr(Config, "DL_SCHEME", "ftp")
+
+    with pytest.raises(ValueError, match="Invalid DL_SCHEME"):
+        Config.validate(logging.getLogger("test"))
+
+    assert "Invalid DL_SCHEME" in caplog.text
 
 
 def test_config_validate_page_limit_low(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
