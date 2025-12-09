@@ -10,7 +10,6 @@ from urllib.parse import quote, urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 from flask import current_app
-from requests.sessions import Session
 
 from app.extensions import executor
 from app.scraper.network import (
@@ -37,13 +36,13 @@ from app.scraper.parser import (
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int, user_agent: str) -> list[BookDict]:
+def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) -> list[BookDict]:
     """Fetch a single search result page and parse it into a list of books.
 
     Enforces a global semaphore to limit concurrent scraping requests.
+    Creates a dedicated session for thread safety.
 
     Args:
-        session: The active requests Session.
         hostname: The AudiobookBay mirror to scrape.
         query: The search term.
         page: The page number to fetch.
@@ -59,6 +58,9 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
     headers = get_headers(user_agent, referer)
 
     page_results: list[BookDict] = []
+
+    # Create a fresh session for this thread/task to ensure thread safety
+    session = get_session()
 
     try:
         # OPTIMIZATION: Sleep outside the semaphore.
@@ -119,6 +121,8 @@ def fetch_and_parse_page(session: Session, hostname: str, query: str, page: int,
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch page {page}. Reason: {e}")
         raise e
+    finally:
+        session.close()
 
     return page_results
 
@@ -138,9 +142,11 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
     Raises:
         ConnectionError: If no mirrors are reachable.
     """
-    if query in search_cache:
-        cached_result: list[BookDict] = search_cache[query]
-        return cached_result
+    # SAFETY: Wrap cache read in lock for thread safety
+    with CACHE_LOCK:
+        if query in search_cache:
+            cached_result: list[BookDict] = search_cache[query]
+            return cached_result
 
     # Load configuration dynamically
     if max_pages is None:
@@ -157,15 +163,13 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
     results: list[BookDict] = []
 
     session_user_agent = get_random_user_agent()
-    session = get_session()
+    # Note: We do NOT create a session here anymore to avoid sharing it across threads.
 
     try:
         # Use the global executor to avoid spinning up new threads per request
         futures: list[Future[list[BookDict]]] = []
         for page in range(1, max_pages + 1):
-            futures.append(
-                executor.submit(fetch_and_parse_page, session, active_hostname, query, page, session_user_agent)
-            )
+            futures.append(executor.submit(fetch_and_parse_page, active_hostname, query, page, session_user_agent))
 
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -176,8 +180,10 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
                 # This clears cache because the SPECIFIC mirror failed, not because we found none.
                 with CACHE_LOCK:
                     mirror_cache.clear()
+
     finally:
-        session.close()
+        # Session cleanup handled inside worker function
+        pass
 
     logger.info(f"Search for '{query}' completed. Found {len(results)} results.")
 
@@ -246,21 +252,12 @@ def get_book_details(details_url: str) -> BookDict:
 
         post_info = soup.select_one(".postInfo")
         content_div = soup.select_one(".postContent")
-        meta = parse_post_content(content_div, post_info)
 
-        author = "Unknown"
-        narrator = "Unknown"
+        # Extraction logic moved to parser.py
         author_tag = soup.select_one('span.author[itemprop="author"]')
-        if author_tag:
-            author = author_tag.get_text(strip=True)
         narrator_tag = soup.select_one('span.narrator[itemprop="author"]')
-        if narrator_tag:
-            narrator = narrator_tag.get_text(strip=True)
 
-        if author == "?":
-            author = "Unknown"
-        if narrator == "?":
-            narrator = "Unknown"
+        meta = parse_post_content(content_div, post_info, author_tag, narrator_tag)
 
         description = "No description available."
         desc_tag = soup.select_one("div.desc")
@@ -277,6 +274,7 @@ def get_book_details(details_url: str) -> BookDict:
             description = desc_tag.decode_contents()
 
         trackers = []
+        # Uses file_size from metadata as default, but allows overwrite from table
         file_size = meta.file_size
         info_hash = "Unknown"
 
@@ -307,9 +305,6 @@ def get_book_details(details_url: str) -> BookDict:
             if hash_match:
                 info_hash = hash_match.group(1)
 
-        if file_size == "?":
-            file_size = "Unknown"
-
         result: BookDict = {
             "title": title,
             "cover": cover,
@@ -323,8 +318,8 @@ def get_book_details(details_url: str) -> BookDict:
             "post_date": meta.post_date,
             "format": meta.format,
             "bitrate": meta.bitrate,
-            "author": author,
-            "narrator": narrator,
+            "author": meta.author,
+            "narrator": meta.narrator,
         }
         details_cache[details_url] = result
         return result

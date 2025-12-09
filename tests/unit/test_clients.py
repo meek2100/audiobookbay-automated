@@ -85,7 +85,8 @@ def test_init_deluge_success(app: Flask) -> None:
         client = manager._get_client()
 
         assert client is not None
-        assert manager._client == mock_instance
+        # THREAD SAFETY UPDATE: Check thread-local storage instead of _client
+        assert manager._local.client == mock_instance
         mock_instance.login.assert_called_once()
 
 
@@ -363,7 +364,8 @@ def test_remove_torrent_retry(app: Flask) -> None:
             mock_logic.side_effect = [Exception("Stale Connection"), None]
             manager.remove_torrent("hash123")
             assert mock_logic.call_count == 2
-            assert manager._client is None
+            # THREAD SAFETY UPDATE: Checked threaded local instead of _client
+            assert getattr(manager._local, "client", None) is None
 
 
 # --- Status & Info Tests ---
@@ -578,7 +580,8 @@ def test_get_status_reconnect(app: Flask) -> None:
             result = manager.get_status()
             assert mock_logic.call_count == 2
             assert result == []
-            assert manager._client is None
+            # THREAD SAFETY UPDATE: Checked threaded local instead of _client
+            assert getattr(manager._local, "client", None) is None
 
 
 # --- Error Handling & Retries ---
@@ -677,7 +680,8 @@ def test_add_magnet_reconnect_retry(app: Flask) -> None:
             mock_logic.side_effect = [Exception("Stale Connection"), None]
             manager.add_magnet("magnet:...", "/save")
             assert mock_logic.call_count == 2
-            assert manager._client is None
+            # THREAD SAFETY UPDATE: Checked threaded local instead of _client
+            assert getattr(manager._local, "client", None) is None
 
 
 def test_logic_methods_no_client(app: Flask) -> None:

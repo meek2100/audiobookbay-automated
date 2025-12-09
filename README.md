@@ -104,6 +104,7 @@ PAGE_LIMIT=3                   # Max pages to scrape per search. Default: 3.
 LISTEN_PORT=5078               # Internal port. Default: 5078.
 LISTEN_HOST=0.0.0.0            # Bind address. Default: 0.0.0.0 (or [::] if IPv6 detected).
 THREADS=8                      # Worker threads. Increase for higher concurrency. Default: 8.
+SCRAPER_THREADS=3              # Number of concurrent scraping requests. Default: 3.
 TIMEOUT=60                     # Request timeout in seconds. Default: 60.
 LOG_LEVEL=INFO                 # Logging verbosity: DEBUG, INFO, WARNING, ERROR. Default: INFO.
 TZ=UTC                         # Timezone for logs (e.g. America/Los_Angeles). Default: UTC.

@@ -1,4 +1,5 @@
 import logging
+import threading
 from enum import StrEnum
 from typing import Literal, Protocol, TypedDict, cast
 
@@ -41,7 +42,7 @@ class QbTorrentProtocol(Protocol):
 class TorrentManager:
     """
     Manages interactions with various torrent clients (qBittorrent, Transmission, Deluge).
-    Maintains a persistent client session for efficiency.
+    Uses thread-local storage to ensure thread safety for the underlying sessions.
     """
 
     def __init__(self) -> None:
@@ -54,7 +55,10 @@ class TorrentManager:
         self.category: str = "abb-automated"
         self.scheme: str = "http"
         self.dl_url: str | None = None
-        self._client: QbClient | TxClient | DelugeWebClient | None = None
+
+        # Thread-local storage for client instances
+        # This ensures that each thread gets its own independent connection
+        self._local = threading.local()
 
     def init_app(self, app: Flask) -> None:
         """
@@ -92,22 +96,23 @@ class TorrentManager:
                 self.dl_url = "http://localhost:8112"
 
         # RESET: Ensure clean state if re-initialized (e.g. testing)
-        self._client = None
+        self._local = threading.local()
 
     def _get_client(self) -> QbClient | TxClient | DelugeWebClient | None:
         """
-        Return the existing client instance or creates a new one if it doesn't exist.
+        Return the thread-local client instance or creates a new one if it doesn't exist.
 
         Returns:
             The active client instance or None if connection fails.
         """
-        if self._client:
-            return self._client
+        if hasattr(self._local, "client") and self._local.client:
+            return self._local.client
 
-        logger.debug(f"Initializing new {self.client_type} client connection...")
+        logger.debug(f"Initializing new {self.client_type} client connection for thread {threading.get_ident()}...")
 
         safe_host = self.host or "localhost"
         safe_port = int(self.port) if self.port else 8080
+        client = None
 
         try:
             if self.client_type == TorrentClientType.QBITTORRENT:
@@ -118,12 +123,12 @@ class TorrentManager:
                     password=self.password or "",
                 )
                 qb.auth_log_in()
-                self._client = qb
+                client = qb
 
             elif self.client_type == TorrentClientType.TRANSMISSION:
                 # Validated in Config.validate to be http/https
                 safe_scheme = cast(Literal["http", "https"], self.scheme)
-                self._client = TxClient(
+                client = TxClient(
                     host=safe_host,
                     port=safe_port,
                     protocol=safe_scheme,
@@ -135,16 +140,19 @@ class TorrentManager:
             elif self.client_type == TorrentClientType.DELUGE:
                 dw = DelugeWebClient(url=self.dl_url or "", password=self.password or "")
                 dw.login()
-                self._client = dw
+                client = dw
 
             else:
                 raise ValueError(f"Unsupported download client configured: {self.client_type}")
 
+            # Store in thread-local
+            self._local.client = client
+
         except Exception as e:
             logger.error(f"Error initializing torrent client: {e}", exc_info=True)
-            self._client = None
+            self._local.client = None
 
-        return self._client
+        return getattr(self._local, "client", None)
 
     def verify_credentials(self) -> bool:
         """
@@ -198,7 +206,7 @@ class TorrentManager:
             self._add_magnet_logic(magnet_link, save_path)
         except Exception as e:
             logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect and retry...", exc_info=True)
-            self._client = None
+            self._local.client = None  # Clear bad connection
             self._add_magnet_logic(magnet_link, save_path)
 
     def _add_magnet_logic(self, magnet_link: str, save_path: str) -> None:
@@ -261,7 +269,7 @@ class TorrentManager:
             self._remove_torrent_logic(torrent_id)
         except Exception as e:
             logger.warning(f"Failed to remove torrent ({e}). Attempting to reconnect and retry...", exc_info=True)
-            self._client = None
+            self._local.client = None
             self._remove_torrent_logic(torrent_id)
 
     def _remove_torrent_logic(self, torrent_id: str) -> None:
@@ -306,7 +314,7 @@ class TorrentManager:
             return self._get_status_logic()
         except Exception as e:
             logger.warning(f"Failed to get status ({e}). Reconnecting...", exc_info=True)
-            self._client = None
+            self._local.client = None
             return self._get_status_logic()
 
     def _get_status_logic(self) -> list[TorrentStatus]:

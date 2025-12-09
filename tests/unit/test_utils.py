@@ -131,19 +131,40 @@ def test_calculate_static_hash_empty_dir() -> None:
 
 
 def test_calculate_static_hash_permission_error() -> None:
-    """Test that unreadable files are skipped without crashing."""
+    """Test that unreadable files are skipped without crashing (PermissionError)."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         file_path = os.path.join(tmp_dir, "locked.txt")
         with open(file_path, "w") as f:
             f.write("secret")
 
-        # Mock open() to raise PermissionError specifically for this file
-        # We use a side_effect that checks the filename
         real_open = open
 
         def side_effect(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
             if str(file) == file_path and "rb" in mode:
                 raise PermissionError("Access denied")
+            return real_open(file, mode, *args, **kwargs)
+
+        with patch("builtins.open", side_effect=side_effect):
+            # Should not crash, just skip the file
+            hash_val = calculate_static_hash(tmp_dir)
+            assert len(hash_val) == 8
+
+
+def test_calculate_static_hash_os_error() -> None:
+    """Test that unreadable files are skipped without crashing (Generic OSError).
+
+    This specifically targets the requirement to Mock OSError.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        file_path = os.path.join(tmp_dir, "corrupt.txt")
+        with open(file_path, "w") as f:
+            f.write("data")
+
+        real_open = open
+
+        def side_effect(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+            if str(file) == file_path and "rb" in mode:
+                raise OSError("I/O Error")
             return real_open(file, mode, *args, **kwargs)
 
         with patch("builtins.open", side_effect=side_effect):

@@ -67,6 +67,14 @@ class Config:
     except ValueError:
         PAGE_LIMIT = 3
 
+    # Scraper Concurrency
+    # Defines the number of worker threads for the scraping executor.
+    SCRAPER_THREADS: int
+    try:
+        SCRAPER_THREADS = int(os.getenv("SCRAPER_THREADS", "3").strip())
+    except ValueError:
+        SCRAPER_THREADS = 3
+
     @classmethod
     def validate(cls, logger: logging.Logger) -> None:
         """Validate critical configuration at startup."""

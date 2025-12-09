@@ -61,6 +61,8 @@ class BookMetadata:
     format: str = "Unknown"
     bitrate: str = "Unknown"
     file_size: str = "Unknown"
+    author: str = "Unknown"
+    narrator: str = "Unknown"
 
 
 def get_text_after_label(container: Tag, label_pattern: re.Pattern[str], is_file_size: bool = False) -> str:
@@ -132,7 +134,12 @@ def normalize_cover_url(base_url: str, relative_url: str) -> str | None:
     return extracted_cover
 
 
-def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> BookMetadata:
+def parse_post_content(
+    content_div: Optional[Tag],
+    post_info: Optional[Tag],
+    author_tag: Optional[Tag] = None,
+    narrator_tag: Optional[Tag] = None,
+) -> BookMetadata:
     """Parse the post content and info sections to extract normalized metadata.
 
     Handles '?' to 'Unknown' conversion centrally.
@@ -140,6 +147,8 @@ def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> 
     Args:
         content_div: The div containing the main post content (p tags).
         post_info: The div containing the header info (Category, Language).
+        author_tag: Optional BeautifulSoup Tag containing author info.
+        narrator_tag: Optional BeautifulSoup Tag containing narrator info.
 
     Returns:
         BookMetadata: A dataclass containing the extracted and normalized fields.
@@ -169,6 +178,12 @@ def parse_post_content(content_div: Optional[Tag], post_info: Optional[Tag]) -> 
                 meta.bitrate = get_text_after_label(p, RE_LABEL_BITRATE)
             if RE_LABEL_SIZE.search(p_text):
                 meta.file_size = get_text_after_label(p, RE_LABEL_SIZE, is_file_size=True)
+
+    # Parse People (Author/Narrator)
+    if author_tag:
+        meta.author = author_tag.get_text(strip=True)
+    if narrator_tag:
+        meta.narrator = narrator_tag.get_text(strip=True)
 
     # Normalization Rule: Convert "?" or empty strings to "Unknown"
     # We iterate over the dataclass fields to ensure consistent normalization
