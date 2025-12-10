@@ -18,8 +18,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          # Use the absolute latest for linting to catch future syntax deprecations early
-          python-version: "3.14"
+          # Use 3.13 as the latest supported version
+          python-version: "3.13"
           cache: "pip"
 
       # Set up Node.js for frontend hooks (Prettier)
@@ -61,8 +61,7 @@ jobs:
         # 3.11: Debian 12 / Old Stable
         # 3.12: Ubuntu 24.04 / Current Stable
         # 3.13: Fedora 41 / New Stable
-        # 3.14: Bleeding Edge / Future Proofing
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v6
 
@@ -70,7 +69,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          allow-prereleases: true # Required for 3.14 (alpha/beta) support
           cache: "pip"
 
       - name: Install Dependencies
