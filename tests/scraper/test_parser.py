@@ -289,7 +289,8 @@ def test_fetch_and_parse_page_real_structure(real_world_html: str, mock_sleep: A
 
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=real_world_html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page(hostname, query, page, user_agent)
 
     assert mock_sleep.called
@@ -315,7 +316,8 @@ def test_fetch_and_parse_page_unknown_bitrate() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["bitrate"] == "Unknown"
 
@@ -326,7 +328,8 @@ def test_fetch_and_parse_page_malformed() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text="<html><body></body></html>", status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results == []
 
@@ -347,7 +350,8 @@ def test_fetch_and_parse_page_zero_results(mock_sleep: Any) -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=nonexistent", text=html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "nonexistent", 1, "ua")
     assert results == []
 
@@ -364,7 +368,8 @@ def test_fetch_and_parse_page_mixed_validity() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=mixed_html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua")
     assert len(results) == 1
     assert results[0]["title"] == "Valid Book"
@@ -382,7 +387,8 @@ def test_parsing_structure_change() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["format"] == "Unknown"
 
@@ -399,7 +405,8 @@ def test_fetch_and_parse_page_language_fallback() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["language"] == "Unknown"
 
@@ -417,7 +424,8 @@ def test_fetch_and_parse_page_missing_regex_matches() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["language"] == "Unknown"
     assert results[0]["category"] == "Unknown"
@@ -443,7 +451,8 @@ def test_fetch_and_parse_page_no_posted_date() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page(hostname, query, 1, "UA")
 
     assert len(results) == 1
@@ -464,7 +473,8 @@ def test_fetch_and_parse_page_missing_title() -> None:
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
-    with patch("app.scraper.core.get_session", return_value=mock_session):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page(hostname, query, 1, "UA")
     assert results == []
 
@@ -481,7 +491,8 @@ def test_fetch_page_post_exception(caplog: Any) -> None:
     with patch("app.scraper.core.BeautifulSoup") as mock_bs:
         mock_bs.return_value.select.return_value = [mock_post]
         with caplog.at_level(logging.ERROR):
-            with patch("app.scraper.core.get_session", return_value=mock_session):
+            # FIX: Patch get_thread_session as that is what core.py imports/uses
+            with patch("app.scraper.core.get_thread_session", return_value=mock_session):
                 results = fetch_and_parse_page("host", "q", 1, "ua")
             assert results == []
             assert "Could not process post" in caplog.text
@@ -494,7 +505,8 @@ def test_fetch_page_urljoin_exception(real_world_html: str) -> None:
 
     # Patch urljoin in app.scraper.core where it is imported
     with patch("app.scraper.core.urljoin", side_effect=Exception("Join Error")):
-        with patch("app.scraper.core.get_session", return_value=mock_session):
+        # FIX: Patch get_thread_session as that is what core.py imports/uses
+        with patch("app.scraper.core.get_thread_session", return_value=mock_session):
             results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results == []
 
@@ -509,7 +521,8 @@ def test_fetch_and_parse_page_missing_cover_image() -> None:
     with patch.object(mock_session, "get") as mock_get:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
-        with patch("app.scraper.core.get_session", return_value=mock_session):
+        # FIX: Patch get_thread_session as that is what core.py imports/uses
+        with patch("app.scraper.core.get_thread_session", return_value=mock_session):
             results = fetch_and_parse_page("host", "q", 1, "ua")
     # Expect None so UI handles versioning
     assert results[0]["cover"] is None
@@ -525,7 +538,8 @@ def test_fetch_and_parse_page_missing_post_info() -> None:
     with patch.object(mock_session, "get") as mock_get:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
-        with patch("app.scraper.core.get_session", return_value=mock_session):
+        # FIX: Patch get_thread_session as that is what core.py imports/uses
+        with patch("app.scraper.core.get_thread_session", return_value=mock_session):
             results = fetch_and_parse_page("host", "q", 1, "ua")
     assert results[0]["language"] == "Unknown"
 
@@ -544,7 +558,8 @@ def test_fetch_and_parse_page_remote_default_cover_optimization() -> None:
     with patch.object(mock_session, "get") as mock_get:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
-        with patch("app.scraper.core.get_session", return_value=mock_session):
+        # FIX: Patch get_thread_session as that is what core.py imports/uses
+        with patch("app.scraper.core.get_thread_session", return_value=mock_session):
             results = fetch_and_parse_page("host", "q", 1, "ua")
     # Assert it was converted to None
     assert results[0]["cover"] is None
@@ -567,12 +582,14 @@ def test_get_book_details_sanitization(mock_sleep: Any) -> None:
     </div>
     """
 
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
 
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/book")
 
         # Explicitly cast potentially None value to string for 'in' check
@@ -588,12 +605,14 @@ def test_get_book_details_sanitization(mock_sleep: Any) -> None:
 
 def test_get_book_details_success(details_html: str, mock_sleep: Any) -> None:
     # Cache cleared automatically by fixture
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = details_html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = details_html
+    mock_session.get.return_value = mock_response
 
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/valid-book")
 
         assert details["title"] == "A Game of Thrones"
@@ -614,18 +633,24 @@ def test_get_book_details_default_cover_skip(mock_sleep: Any) -> None:
         </div>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
 
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/def-cover")
         assert details["cover"] is None
 
 
 def test_get_book_details_failure(mock_sleep: Any) -> None:
-    with patch("requests.Session.get", side_effect=requests.exceptions.RequestException("Net Down")):
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    mock_session = MagicMock()
+    mock_session.get.side_effect = requests.exceptions.RequestException("Net Down")
+
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         with pytest.raises(requests.exceptions.RequestException):
             get_book_details("https://audiobookbay.lu/fail-book")
 
@@ -652,11 +677,14 @@ def test_get_book_details_url_parse_error(mock_sleep: Any) -> None:
 
 def test_get_book_details_missing_metadata(mock_sleep: Any) -> None:
     html = """<div class="post"><div class="postTitle"><h1>Empty Book</h1></div></div>"""
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
+
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/empty")
         assert details["language"] == "Unknown"
         assert details["format"] == "Unknown"
@@ -669,11 +697,14 @@ def test_get_book_details_unknown_bitrate_normalization(mock_sleep: Any) -> None
         <div class="postContent"><p>Bitrate: ?</p></div>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
+
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/unknown")
         assert details["bitrate"] == "Unknown"
 
@@ -685,11 +716,14 @@ def test_get_book_details_partial_bitrate(mock_sleep: Any) -> None:
         <div class="postContent"><p>Bitrate: 128 Kbps</p></div>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
+
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/partial_bitrate")
         assert details["format"] == "Unknown"
         assert details["bitrate"] == "128 Kbps"
@@ -702,11 +736,14 @@ def test_get_book_details_partial_format(mock_sleep: Any) -> None:
         <div class="postContent"><p>Format: MP3</p></div>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
+
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/partial")
         assert details["format"] == "MP3"
         assert details["bitrate"] == "Unknown"
@@ -719,11 +756,14 @@ def test_get_book_details_content_without_metadata_labels(mock_sleep: Any) -> No
         <div class="postContent"><p>Just text.</p></div>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
+
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/no_meta")
         assert details["format"] == "Unknown"
 
@@ -745,12 +785,14 @@ def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
         </table>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
 
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/mystery")
 
         assert details["language"] == "Unknown"
@@ -775,12 +817,14 @@ def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
         </table>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
 
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/strat2")
         assert details["info_hash"] == "1111111111222222222233333333334444444444"
 
@@ -795,11 +839,13 @@ def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
         </div>
     </div>
     """
-    with patch("requests.Session.get") as mock_get:
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = html
-        mock_get.return_value = mock_response
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
 
+    # FIX: Patch get_thread_session as that is what core.py imports/uses
+    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/strat3")
         assert details["info_hash"] == "5555555555666666666677777777778888888888"

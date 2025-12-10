@@ -182,6 +182,8 @@ ______________________________________________________________________
 ### Filesystem Safety
 
 - Must sanitize illegal characters and reserved Windows filenames.
+- Reserved Filename Handling: Checks must identify reserved names even with extensions or compound extensions (e.g.,
+  CON.txt and CON.tar.gz are both invalid).
 - Applies even when container runs on Linux.
 - **Collision Avoidance:** When using fallback directory names **OR** sanitized names that result in potential
   collisions (e.g., Windows reserved names like `CON` becoming `CON_Safe`), you **MUST** append a short UUID (e.g.,
@@ -202,7 +204,10 @@ ______________________________________________________________________
 ### Dependency Philosophy
 
 - Prefer curated static lists.
-- Avoid dynamic runtime dependencies (`fake_useragent` removed).
+- Avoid dynamic runtime dependencies (fake_useragent removed).
+- Zero Unused Production Deps: Development tools (e.g., python-dotenv, linters) must be strictly categorized in
+  [project.optional-dependencies] dev. If a library is not used in the production runtime (e.g., .env files are handled
+  by Docker/Compose), it must be removed.
 
 ### Error Handling
 
@@ -229,6 +234,15 @@ ______________________________________________________________________
 - All constants in `app/constants.py`.
 - **Thread Safety:** Shared resources (e.g., `mirror_cache`, `search_cache`) and their associated locks (e.g.,
   `CACHE_LOCK`) **MUST** be defined in the same module (`app/scraper/network.py`) to ensure atomic access.
+
+### Extension & Global Object Initialization
+
+- **Lazy Initialization Mandate:** All global extensions (e.g., `ScraperExecutor`, `TorrentManager`) **MUST** follow the
+  Flask `init_app()` pattern.
+- **No Import-Time Config:** Do not bind configuration values (e.g., `SCRAPER_THREADS`) to global objects at import
+  time. Values must be read strictly from `app.config` within `init_app()` or at runtime.
+- **Why:** This ensures tests can override configuration (e.g., setting threads to 1) without being blocked by values
+  read when the module was first imported.
 
 ### Security & SSRF
 

@@ -425,7 +425,10 @@ def test_get_status_transmission(app: Flask) -> None:
         mock_torrent.id = 1
         mock_torrent.name = "Test Book"
         mock_torrent.progress = 0.75
-        mock_torrent.status = "downloading"
+        # FIX: Mock status as an object with a 'name' attribute
+        mock_status = MagicMock()
+        mock_status.name = "downloading"
+        mock_torrent.status = mock_status
         mock_torrent.total_size = 1024
 
         mock_instance.get_torrents.return_value = [mock_torrent]
@@ -448,7 +451,10 @@ def test_get_status_transmission_robustness(app: Flask) -> None:
         mock_torrent_bad.name = "Bad Torrent"
         mock_torrent_bad.progress = None
         mock_torrent_bad.total_size = None
-        mock_torrent_bad.status = "error"
+        # FIX: Mock status as an object with a 'name' attribute
+        mock_status_bad = MagicMock()
+        mock_status_bad.name = "error"
+        mock_torrent_bad.status = mock_status_bad
 
         mock_instance.get_torrents.return_value = [mock_torrent_bad]
 

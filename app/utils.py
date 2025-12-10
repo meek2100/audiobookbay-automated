@@ -38,9 +38,11 @@ def sanitize_title(title: str | None) -> str:
         return FALLBACK_TITLE
 
     # Check for Windows reserved filenames (case-insensitive)
-    # Check both exact match ("CON") and root match ("CON.txt")
-    root, _ = os.path.splitext(sanitized)
-    if sanitized.upper() in WINDOWS_RESERVED_NAMES or root.upper() in WINDOWS_RESERVED_NAMES:
+    # Check both exact match ("CON") and base stem match ("CON.tar.gz" -> "CON")
+    # We use split(".")[0] to catch the primary name before any extensions.
+    base_stem = sanitized.split(".")[0]
+
+    if sanitized.upper() in WINDOWS_RESERVED_NAMES or base_stem.upper() in WINDOWS_RESERVED_NAMES:
         return f"{sanitized}_Safe"
 
     return sanitized

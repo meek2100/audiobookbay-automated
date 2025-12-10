@@ -157,7 +157,8 @@ def test_send_sanitization_warning(client: Any, caplog: Any) -> None:
     with patch("app.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
         with patch("app.routes.torrent_manager") as mock_tm:
             client.post("/send", json={"link": "http://example.com", "title": "..."})
-            assert f"Title '...' was sanitized to fallback '{FALLBACK_TITLE}'" in caplog.text
+            # FIX: Updated assert to match actual log message in routes.py
+            assert f"Title '...' required fallback handling ('{FALLBACK_TITLE}')" in caplog.text
             args, _ = mock_tm.add_magnet.call_args
             assert FALLBACK_TITLE in args[1]
 

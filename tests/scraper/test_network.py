@@ -1,12 +1,14 @@
 # tests/scraper/test_network.py
 import json
 import os
-from typing import Any, Generator
+from typing import Any, Generator, cast
 from unittest.mock import mock_open, patch
 
 import pytest
 import requests
 from flask import Flask
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from app.constants import DEFAULT_TRACKERS, USER_AGENTS
 from app.scraper import network
@@ -16,6 +18,20 @@ from app.scraper import network
 def mock_app_context(app: Flask) -> Generator[Flask, None, None]:
     """Fixture to provide app for network functions."""
     yield app
+
+
+def test_get_trackers_cache_hit(mock_app_context: Any) -> None:
+    """Test that get_trackers returns cached value if available."""
+    # Pre-populate cache
+    network.tracker_cache.clear()
+    cached_data = ["udp://cached.tracker:1337"]
+    network.tracker_cache["default"] = cached_data
+
+    # Ensure config would otherwise return something else to prove cache was used
+    mock_app_context.config["MAGNET_TRACKERS"] = ["udp://env.tracker:80"]
+
+    trackers = network.get_trackers()
+    assert trackers == cached_data
 
 
 def test_get_trackers_from_env(mock_app_context: Any) -> None:
@@ -97,6 +113,39 @@ def test_get_mirrors_logic(mock_app_context: Any) -> None:
     assert "audiobookbay.lu" in mirrors
     # Ensure primary only appears once despite being in extra list
     assert mirrors.count("primary.com") == 1
+
+
+def test_get_session_configuration() -> None:
+    """Test that get_session configures retries and adapters correctly."""
+    session = network.get_session()
+
+    # Verify adapters are mounted
+    assert "https://" in session.adapters
+    assert "http://" in session.adapters
+
+    adapter = cast(HTTPAdapter, session.adapters["https://"])
+    retry = adapter.max_retries
+
+    assert isinstance(retry, Retry)
+    assert retry.total == 5
+    assert retry.backoff_factor == 1
+    assert 429 in retry.status_forcelist
+    assert 503 in retry.status_forcelist
+
+
+def test_get_thread_session_initialization() -> None:
+    """Test that get_thread_session creates a session and reuses it."""
+    # Ensure we start with a clean state for this thread
+    if hasattr(network._thread_local, "session"):
+        del network._thread_local.session
+
+    # First call: Should create a new session
+    session1 = network.get_thread_session()
+    assert isinstance(session1, requests.Session)
+
+    # Second call: Should return the EXACT SAME session object (reuse)
+    session2 = network.get_thread_session()
+    assert session1 is session2
 
 
 def test_check_mirror_success_head() -> None:
