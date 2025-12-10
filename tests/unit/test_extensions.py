@@ -42,7 +42,8 @@ def test_executor_shutdown() -> None:
 
     # Mock the internal executor to verify shutdown call
     # We ignore the type error because we are strictly testing the proxy behavior here
-    executor._executor = MagicMock()  # type: ignore[assignment]
+    # Robust ignore pattern used to handle environments where MagicMock assignment isn't flagged
+    executor._executor = MagicMock()  # type: ignore[assignment, unused-ignore]
 
     executor.shutdown(wait=False)
 
