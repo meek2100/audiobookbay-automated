@@ -183,7 +183,9 @@ ______________________________________________________________________
 
 - Must sanitize illegal characters and reserved Windows filenames.
 - Applies even when container runs on Linux.
-- **Collision Avoidance:** When using fallback directory names **OR** sanitized names that result in potential collisions (e.g., Windows reserved names like `CON` becoming `CON_Safe`), you **MUST** append a short UUID (e.g., `uuid.uuid4().hex[:8]`) to guarantee uniqueness.
+- **Collision Avoidance:** When using fallback directory names **OR** sanitized names that result in potential
+  collisions (e.g., Windows reserved names like `CON` becoming `CON_Safe`), you **MUST** append a short UUID (e.g.,
+  `uuid.uuid4().hex[:8]`) to guarantee uniqueness.
 
 ### Resilience & Negative Caching
 
