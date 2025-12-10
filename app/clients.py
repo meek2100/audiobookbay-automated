@@ -112,7 +112,11 @@ class TorrentManager:
 
         safe_host = self.host or "localhost"
         safe_port = int(self.port) if self.port else 8080
-        client = None
+
+        # FIX: Explicitly annotate 'client' so MyPy knows it can be ANY of the supported clients.
+        # Without this, MyPy infers the type from the first assignment (e.g. QbClient) and
+        # errors out when a different type (e.g. TxClient) is assigned in an elif block.
+        client: QbClient | TxClient | DelugeWebClient | None = None
 
         try:
             if self.client_type == TorrentClientType.QBITTORRENT:
