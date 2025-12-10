@@ -1,0 +1,8 @@
+# .mdformat.toml
+wrap = 120         # UPDATED to 120 (to match Ruff/Prettier)
+number = true      # Core option
+end_of_line = "lf" # Core option
+
+# Options for an extension like mdformat-gfm
+[plugin.gfm]
+# plugin specific option here

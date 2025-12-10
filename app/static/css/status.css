@@ -8,7 +8,8 @@ table {
     overflow: hidden;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
-th, td {
+th,
+td {
     padding: 15px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
@@ -24,4 +25,52 @@ td {
 }
 tr:hover td {
     background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Error Message Styling */
+.error-message {
+    color: #ff5252;
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+    width: 90%;
+    max-width: 1000px;
+    margin: 20px auto;
+    border: 1px solid #ff5252;
+}
+
+/* Empty State Message */
+.empty-message {
+    text-align: center;
+    color: #ccc;
+}
+
+/* Action Buttons */
+.remove-button {
+    background-color: #d32f2f;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.remove-button:hover {
+    background-color: #b71c1c;
+}
+
+/* Screen Reader Only Utility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

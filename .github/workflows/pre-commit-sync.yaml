@@ -1,0 +1,61 @@
+name: Dependabot Pre-Commit Sync
+
+on:
+  # Trigger when a PR is opened or updated
+  pull_request:
+    types: [opened, synchronize]
+    # Filter to branches matching Dependabot's typical naming scheme
+    branches:
+      - "dependabot/**"
+    paths:
+      - "pyproject.toml"
+      - "package.json"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Dependabot's Branch
+        uses: actions/checkout@v6
+        with:
+          # IMPORTANT: Checkout the head of the branch, not the default merge commit
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }} # Needed to push back to the PR branch
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14" # Updated to match production baseline
+          cache: "pip"
+
+      - name: Install Python Development Dependencies
+        # This installs pre-commit and Python linters (Ruff, MyPy, etc.)
+        run: pip install -e ".[dev]"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24 # Use a stable Node version for CI
+          cache: "npm"
+
+      - name: Install Node Dependencies
+        # Required for JavaScript hooks like Prettier to run correctly
+        run: npm ci
+
+      - name: Run pre-commit autoupdate
+        # This command updates the 'rev' tags for *all* repositories
+        # (Python, JS, Docker, etc.) in .pre-commit-config.yaml to their latest version.
+        run: pre-commit autoupdate
+
+      - name: Commit and Push changes to the Dependabot branch
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore(deps): Synchronize pre-commit hooks with dependency update"
+          # Only commit the config file if it changed
+          files: ".pre-commit-config.yaml"
+          branch: ${{ github.event.pull_request.head.ref }}
+          # Use Dependabot's author so GitHub treats it as part of the Dependabot PR
+          commit_author: Dependabot <dependabot@users.noreply.github.com>

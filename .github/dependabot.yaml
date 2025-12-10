@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # 1. Python Dependencies (Existing)
+  - package-ecosystem: "pip"
+    # FIX: Point to root where pyproject.toml lives
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Los_Angeles"
+    groups:
+      production-dependencies:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 10
+
+  # 2. JavaScript/Node Dependencies (NEW)
+  - package-ecosystem: "npm"
+    # Point to root where package.json lives
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:10"
+      timezone: "America/Los_Angeles"
+    # Group production and development dependencies
+    groups:
+      js-dependencies:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
