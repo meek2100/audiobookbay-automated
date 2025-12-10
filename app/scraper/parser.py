@@ -231,8 +231,8 @@ def parse_book_details(soup: BeautifulSoup, url: str) -> BookDict:
     if desc_tag:
         # Strict HTML Sanitization
         allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
-        # Create a shallow copy or work directly? Work directly is fine as soup is transient.
-        for tag in desc_tag.find_all(True):
+        # SAFETY: Iterate over a list copy to safely modify the tree during iteration
+        for tag in list(desc_tag.find_all(True)):
             if tag.name not in allowed_tags:
                 tag.unwrap()
             else:

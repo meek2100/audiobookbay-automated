@@ -6,7 +6,6 @@ import logging
 import os
 import random
 import threading
-from functools import lru_cache
 from typing import cast
 
 import requests
@@ -41,6 +40,7 @@ failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
 
 search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
 details_cache: TTLCache[str, BookDict] = TTLCache(maxsize=100, ttl=300)
+tracker_cache: TTLCache[str, list[str]] = TTLCache(maxsize=1, ttl=300)
 
 
 def get_random_user_agent() -> str:
@@ -48,11 +48,10 @@ def get_random_user_agent() -> str:
     return random.choice(USER_AGENTS)  # nosec B311
 
 
-@lru_cache(maxsize=1)
 def get_trackers() -> list[str]:
     """Load trackers from configuration and optional local JSON file.
 
-    Lazy-loaded and cached to avoid repeated I/O.
+    Uses TTLCache to avoid repeated I/O while allowing config updates to propagate.
     Prioritizes:
     1. Environment Variable (via Config)
     2. trackers.json (Volume Mount)
@@ -61,11 +60,19 @@ def get_trackers() -> list[str]:
     Returns:
         list[str]: A list of tracker URLs.
     """
+    # Check Cache
+    with CACHE_LOCK:
+        if "default" in tracker_cache:
+            return tracker_cache["default"]
+
     # 1. Configured via Env/Config
     # We must access current_app inside the function (request time), not at module level
     env_trackers = current_app.config.get("MAGNET_TRACKERS", [])
     if env_trackers:
-        return cast(list[str], env_trackers)
+        result = cast(list[str], env_trackers)
+        with CACHE_LOCK:
+            tracker_cache["default"] = result
+        return result
 
     # 2. Volume Mount Override
     json_path = os.path.join(os.getcwd(), "trackers.json")
@@ -75,6 +82,8 @@ def get_trackers() -> list[str]:
                 data = json.load(f)
                 if isinstance(data, list):
                     logger.info("Loaded custom trackers from trackers.json")
+                    with CACHE_LOCK:
+                        tracker_cache["default"] = cast(list[str], data)
                     return cast(list[str], data)
                 else:
                     logger.warning("trackers.json contains invalid data (expected a list). Using defaults.")
@@ -82,6 +91,8 @@ def get_trackers() -> list[str]:
             logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 
     # 3. Defaults
+    with CACHE_LOCK:
+        tracker_cache["default"] = DEFAULT_TRACKERS
     return DEFAULT_TRACKERS
 
 

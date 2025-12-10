@@ -106,7 +106,7 @@ class TorrentManager:
             The active client instance or None if connection fails.
         """
         if hasattr(self._local, "client") and self._local.client:
-            return self._local.client
+            return cast(QbClient | TxClient | DelugeWebClient | None, self._local.client)
 
         logger.debug(f"Initializing new {self.client_type} client connection for thread {threading.get_ident()}...")
 
@@ -156,7 +156,7 @@ class TorrentManager:
             logger.error(f"Error initializing torrent client: {e}", exc_info=True)
             self._local.client = None
 
-        return getattr(self._local, "client", None)
+        return cast(QbClient | TxClient | DelugeWebClient | None, getattr(self._local, "client", None))
 
     def verify_credentials(self) -> bool:
         """
@@ -345,7 +345,8 @@ class TorrentManager:
                         "name": tx_torrent.name,
                         "progress": round(tx_torrent.progress * 100, 2) if tx_torrent.progress else 0.0,
                         # SAFETY: Explicitly cast to string to avoid Enum issues with older/newer versions
-                        "state": str(tx_torrent.status),
+                        # ENUM FIX: Use .name to get the string representation of the Enum member
+                        "state": tx_torrent.status.name,
                         "size": self._format_size(tx_torrent.total_size),
                     }
                 )
