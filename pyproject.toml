@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "audiobookbay-automated"
 version = "1.0.0"
 description = "Automated AudiobookBay downloader and torrent manager"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.15"
 authors = [
     { name = "meek2100", email = "meek2100@users.noreply.github.com" },
     { name = "jamesry96", email = "jamesry96@users.noreply.github.com" }
@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
