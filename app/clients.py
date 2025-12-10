@@ -2,6 +2,7 @@ import logging
 import threading
 from enum import StrEnum
 from typing import Literal, Protocol, TypedDict, cast
+from urllib.parse import urlparse
 
 from deluge_web_client import DelugeWebClient
 from flask import Flask
@@ -76,8 +77,22 @@ class TorrentManager:
         self.category = config.get("DL_CATEGORY", "abb-automated")
         self.scheme = config.get("DL_SCHEME", "http")
 
-        # Normalize connection URL for Deluge
+        # Normalize connection URL for Deluge and Transmission
         self.dl_url = config.get("DL_URL")
+
+        # If DL_URL is provided, we try to parse it to populate host/port
+        # This is critical for Transmission which requires host/port args
+        if self.dl_url:
+            try:
+                parsed = urlparse(self.dl_url)
+                if parsed.hostname:
+                    self.host = parsed.hostname
+                if parsed.port:
+                    self.port = str(parsed.port)
+                if parsed.scheme:
+                    self.scheme = parsed.scheme
+            except Exception as e:
+                logger.warning(f"Failed to parse DL_URL: {e}. Using raw config values.")
 
         if not self.dl_url:
             # Handle case where host is set but port is missing
@@ -114,17 +129,17 @@ class TorrentManager:
         safe_port = int(self.port) if self.port else 8080
 
         # FIX: Explicitly annotate 'client' so MyPy knows it can be ANY of the supported clients.
-        # Without this, MyPy infers the type from the first assignment (e.g. QbClient) and
-        # errors out when a different type (e.g. TxClient) is assigned in an elif block.
         client: QbClient | TxClient | DelugeWebClient | None = None
 
         try:
             if self.client_type == TorrentClientType.QBITTORRENT:
+                # ROBUSTNESS: Enforce timeout via REQUESTS_ARGS
                 qb = QbClient(
                     host=safe_host,
                     port=safe_port,
                     username=self.username or "",
                     password=self.password or "",
+                    REQUESTS_ARGS={"timeout": 30},
                 )
                 qb.auth_log_in()
                 client = qb
@@ -138,10 +153,11 @@ class TorrentManager:
                     protocol=safe_scheme,
                     username=self.username,
                     password=self.password,
-                    timeout=30,
+                    timeout=30,  # Explicit timeout
                 )
 
             elif self.client_type == TorrentClientType.DELUGE:
+                # DelugeWebClient is a thin wrapper.
                 dw = DelugeWebClient(url=self.dl_url or "", password=self.password or "")
                 dw.login()
                 client = dw
@@ -156,7 +172,7 @@ class TorrentManager:
             logger.error(f"Error initializing torrent client: {e}", exc_info=True)
             self._local.client = None
 
-        # Return the client (implicitly typed as Any by getattr, which satisfies the Union return)
+        # Return the client
         return getattr(self._local, "client", None)
 
     def verify_credentials(self) -> bool:

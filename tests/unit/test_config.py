@@ -116,3 +116,16 @@ def test_config_scraper_threads_parsing_error(monkeypatch: MonkeyPatch) -> None:
     importlib.reload(config)
 
     assert config.Config.SCRAPER_THREADS == 3
+
+
+def test_config_scraper_timeout_parsing_error(monkeypatch: MonkeyPatch) -> None:
+    """Ensure module-level parsing falls back to 30 on invalid SCRAPER_TIMEOUT.
+
+    Covers app/config.py lines 83-84 (ValueError block).
+    """
+    monkeypatch.setenv("SCRAPER_TIMEOUT", "invalid_int")
+
+    # Reload to re-trigger parsing
+    importlib.reload(config)
+
+    assert config.Config.SCRAPER_TIMEOUT == 30

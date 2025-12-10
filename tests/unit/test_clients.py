@@ -75,6 +75,22 @@ def test_init_dl_port_missing(app: Flask) -> None:
         assert manager_qb.dl_url == "http://qb-host:8080"
 
 
+def test_init_dl_url_parse_failure(app: Flask) -> None:
+    """Test that init_app handles URL parsing exceptions gracefully.
+
+    Covers the 'except Exception' block in init_app when parsing DL_URL.
+    """
+    with patch("app.clients.urlparse") as mock_parse, patch("app.clients.logger") as mock_logger:
+        mock_parse.side_effect = ValueError("Parsing boom")
+
+        # This triggers init_app
+        setup_manager(app, DL_URL="http://malformed")
+
+        mock_logger.warning.assert_called()
+        args, _ = mock_logger.warning.call_args
+        assert "Failed to parse DL_URL" in args[0]
+
+
 def test_init_deluge_success(app: Flask) -> None:
     """Test successful Deluge initialization."""
     with patch("app.clients.DelugeWebClient") as MockDeluge:
@@ -121,6 +137,7 @@ def test_qbittorrent_add_magnet(app: Flask) -> None:
             port=8080,
             username="admin",
             password="admin",
+            REQUESTS_ARGS={"timeout": 30},  # UPDATED: Now requires explicit timeout
         )
         mock_instance.auth_log_in.assert_called_once()
         mock_instance.torrents_add.assert_called_with(

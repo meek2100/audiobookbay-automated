@@ -18,7 +18,8 @@ from app.constants import DEFAULT_COVER_FILENAME
 # Why: AudioBookBay formats the info table unpredictably.
 # These regexes allow us to match table cells even if casing or whitespace changes slightly.
 RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
-RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40})\b")
+# FUTURE PROOF: Updated to support SHA-1 (40 hex) and BitTorrent v2 SHA-256 (64 hex)
+RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b")
 
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
 RE_LANGUAGE = re.compile(r"Language:\s*(\S+)", re.IGNORECASE)

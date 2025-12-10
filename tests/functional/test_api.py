@@ -163,6 +163,23 @@ def test_send_sanitization_warning(client: Any, caplog: Any) -> None:
             assert FALLBACK_TITLE in args[1]
 
 
+def test_send_windows_reserved_name(client: Any) -> None:
+    """Test that reserved names (e.g., CON) trigger the collision-safe UUID logic.
+
+    This ensures full coverage of the collision prevention logic in routes.py.
+    """
+    with patch("app.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+        with patch("app.routes.torrent_manager") as mock_tm:
+            # 'CON' -> sanitize_title returns 'CON_Safe' -> Triggers UUID logic in routes.py
+            client.post("/send", json={"link": "http://link", "title": "CON"})
+
+            # Verify that add_magnet was called with a path containing the _Safe suffix AND a UUID
+            assert mock_tm.add_magnet.called
+            args, _ = mock_tm.add_magnet.call_args
+            save_path = args[1]
+            assert "CON_Safe_" in save_path
+
+
 def test_delete_torrent(client: Any) -> None:
     with patch("app.routes.torrent_manager") as mock_tm:
         mock_tm.remove_torrent.return_value = None

@@ -75,6 +75,14 @@ class Config:
     except ValueError:
         SCRAPER_THREADS = 3
 
+    # Scraper Request Timeout (Default 30)
+    # Separated from Gunicorn timeout to ensure internal requests fail faster than the worker kill timer.
+    SCRAPER_TIMEOUT: int
+    try:
+        SCRAPER_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT", "30").strip())
+    except ValueError:
+        SCRAPER_TIMEOUT = 30
+
     @classmethod
     def validate(cls, logger: logging.Logger) -> None:
         """Validate critical configuration at startup."""

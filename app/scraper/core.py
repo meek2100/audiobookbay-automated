@@ -14,12 +14,12 @@ from flask import current_app
 from app.extensions import executor
 from app.scraper.network import (
     CACHE_LOCK,
-    GLOBAL_REQUEST_SEMAPHORE,
     details_cache,
     find_best_mirror,
     get_headers,
     get_mirrors,
     get_random_user_agent,
+    get_semaphore,
     get_thread_session,
     get_trackers,
     mirror_cache,
@@ -58,6 +58,9 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) 
 
     page_results: list[BookDict] = []
 
+    # Retrieve configured timeout or default to 30
+    timeout = current_app.config.get("SCRAPER_TIMEOUT", 30)
+
     # PERFORMANCE: Use thread-local session to reuse connections across pages
     session = get_thread_session()
 
@@ -68,9 +71,9 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) 
         sleep_time = random.uniform(0.5, 1.5)  # nosec B311
         time.sleep(sleep_time)
 
-        with GLOBAL_REQUEST_SEMAPHORE:
-            # 30s timeout for better resilience on slow connections/proxies.
-            response = session.get(url, params=params, headers=headers, timeout=30)
+        # Semaphore is now retrieved dynamically
+        with get_semaphore():
+            response = session.get(url, params=params, headers=headers, timeout=timeout)
 
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "lxml")
@@ -224,13 +227,16 @@ def get_book_details(details_url: str) -> BookDict:
     session = get_thread_session()
     headers = get_headers(referer=details_url)
 
+    # Retrieve configured timeout or default to 30
+    timeout = current_app.config.get("SCRAPER_TIMEOUT", 30)
+
     try:
         # OPTIMIZATION: Sleep outside the semaphore (same as in fetch_and_parse_page)
         time.sleep(random.uniform(0.5, 1.5))  # nosec B311
 
-        with GLOBAL_REQUEST_SEMAPHORE:
+        with get_semaphore():
             # 30s timeout for better resilience.
-            response = session.get(details_url, headers=headers, timeout=30)
+            response = session.get(details_url, headers=headers, timeout=timeout)
 
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "lxml")

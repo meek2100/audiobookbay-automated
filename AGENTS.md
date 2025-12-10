@@ -145,11 +145,12 @@ ______________________________________________________________________
 
 ### Global Request Semaphore
 
-- Caps concurrent scrapes at **3**
+- Caps concurrent scrapes to the configured limit (`SCRAPER_THREADS`).
 - Prevents anti-bot triggers.
-- Must not be modified or removed.
-- **Note:** The application may allow configuring the worker thread pool size (e.g., via `SCRAPER_THREADS`), but this
-  **MUST NOT** bypass the semaphore. The semaphore remains the absolute hard limit for concurrent external requests.
+- Must not be modified or removed without careful consideration of external rate limits.
+- **Note:** The application allows configuring the worker thread pool size (via `SCRAPER_THREADS`). The global semaphore
+  **MUST** be initialized to match this value at startup to ensures that the thread pool does not exceed the allowed
+  concurrency for external requests.
 
 ### The “Appliance” Philosophy
 
@@ -164,7 +165,7 @@ ______________________________________________________________________
 
 ### Global Concurrency Controls
 
-- **Global Request Semaphore:** Caps concurrent scrapes at **3**. Must not be modified.
+- **Global Request Semaphore:** Caps concurrent scrapes at `SCRAPER_THREADS`.
 - **Cache Locks:** Shared memory caches must be guarded by thread locks to prevent race conditions during concurrent
   reads/writes.
 

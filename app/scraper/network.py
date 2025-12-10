@@ -21,9 +21,10 @@ from app.scraper.parser import BookDict
 logger = logging.getLogger(__name__)
 
 # --- Concurrency Control ---
-# Caps concurrent scrapes at 3 to prevent anti-bot triggers.
-MAX_CONCURRENT_REQUESTS = 3
-GLOBAL_REQUEST_SEMAPHORE = threading.BoundedSemaphore(MAX_CONCURRENT_REQUESTS)
+# Default concurrency limit (overridden by init_semaphore via config)
+DEFAULT_CONCURRENT_REQUESTS = 3
+# Internal semaphore reference, initialized lazily or with default
+_semaphore: threading.BoundedSemaphore = threading.BoundedSemaphore(DEFAULT_CONCURRENT_REQUESTS)
 # Lock to ensure thread-safe operations on shared caches (search_cache, mirror_cache)
 CACHE_LOCK = threading.Lock()
 
@@ -41,6 +42,26 @@ failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
 search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
 details_cache: TTLCache[str, BookDict] = TTLCache(maxsize=100, ttl=300)
 tracker_cache: TTLCache[str, list[str]] = TTLCache(maxsize=1, ttl=300)
+
+
+def init_semaphore(max_requests: int) -> None:
+    """Initialize the global request semaphore with a specific limit.
+
+    Args:
+        max_requests: The maximum number of concurrent external requests allowed.
+    """
+    global _semaphore
+    logger.info(f"Initializing Global Request Semaphore with limit: {max_requests}")
+    _semaphore = threading.BoundedSemaphore(max_requests)
+
+
+def get_semaphore() -> threading.BoundedSemaphore:
+    """Retrieve the global request semaphore.
+
+    Returns:
+        threading.BoundedSemaphore: The active semaphore.
+    """
+    return _semaphore
 
 
 def get_random_user_agent() -> str:

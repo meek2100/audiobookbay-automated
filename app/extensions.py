@@ -39,12 +39,26 @@ class ScraperExecutor:
     def init_app(self, app: Flask) -> None:
         """Initialize the executor with the configured thread count.
 
+        Also initializes the network layer's concurrency semaphore to match
+        the thread count, ensuring consistent throughput behavior.
+
         Args:
             app: The Flask application instance.
         """
         # Defaults to 3 if not set (matching previous Config default)
         max_workers = app.config.get("SCRAPER_THREADS", 3)
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
+
+        # SYNCHRONIZATION: Initialize the global semaphore to match the thread pool.
+        # This closes the "hermeneutic circle" by ensuring the network layer
+        # respects the user's concurrency intent defined in config.
+        #
+        # CIRCULAR IMPORT FIX: We import network here (runtime) rather than at
+        # the top level to prevents a cycle:
+        # extensions -> scraper.network -> scraper.core -> extensions
+        from .scraper import network
+
+        network.init_semaphore(max_workers)
 
     def submit(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Future[Any]:
         """Submit a callable to be executed with the given arguments.

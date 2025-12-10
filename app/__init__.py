@@ -54,6 +54,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # the browser to cache static files for a year (31536000 seconds).
     @flask_app.after_request
     def add_header(response: Response) -> Response:
+        """Add Cache-Control headers to static files."""
         if request.path.startswith("/static"):
             response.headers["Cache-Control"] = "public, max-age=31536000"
         return response
