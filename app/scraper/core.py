@@ -26,10 +26,9 @@ from app.scraper.network import (
     search_cache,
 )
 from app.scraper.parser import (
-    RE_HASH_STRING,
-    RE_INFO_HASH,
     BookDict,
     normalize_cover_url,
+    parse_book_details,
     parse_post_content,
 )
 
@@ -236,93 +235,9 @@ def get_book_details(details_url: str) -> BookDict:
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "lxml")
 
-        title = "Unknown Title"
-        title_tag = soup.select_one(".postTitle h1")
-        if title_tag:
-            title = title_tag.get_text(strip=True)
+        # DELEGATION: Parsing logic moved to parser.py
+        result = parse_book_details(soup, details_url)
 
-        cover = None
-        cover_tag = soup.select_one('.postContent img[itemprop="image"]')
-        if cover_tag and cover_tag.has_attr("src"):
-            # Use centralized helper
-            cover = normalize_cover_url(details_url, str(cover_tag["src"]))
-
-        post_info = soup.select_one(".postInfo")
-        content_div = soup.select_one(".postContent")
-
-        # Extraction logic moved to parser.py
-        author_tag = soup.select_one('span.author[itemprop="author"]')
-        narrator_tag = soup.select_one('span.narrator[itemprop="author"]')
-
-        meta = parse_post_content(content_div, post_info, author_tag, narrator_tag)
-
-        description = "No description available."
-        desc_tag = soup.select_one("div.desc")
-        if desc_tag:
-            # Strict HTML Sanitization
-            allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
-
-            for tag in desc_tag.find_all(True):
-                if tag.name not in allowed_tags:
-                    tag.unwrap()
-                else:
-                    tag.attrs = {}
-
-            description = desc_tag.decode_contents()
-
-        trackers = []
-        # Uses file_size from metadata as default, but allows overwrite from table
-        file_size = meta.file_size
-        info_hash = "Unknown"
-
-        # --- INFO HASH & TRACKER EXTRACTION ---
-        info_table = soup.select_one("table.torrent_info")
-        if info_table:
-            for row in info_table.find_all("tr"):
-                cells = row.find_all("td")
-                if len(cells) >= 2:
-                    label = cells[0].get_text(strip=True)
-                    value = cells[1].get_text(strip=True)
-
-                    # Normalization: Ensure '?' or empty strings from table become 'Unknown'
-                    if value == "?" or not value:
-                        value = "Unknown"
-
-                    if "Tracker:" in label or "Announce URL:" in label:
-                        trackers.append(value)
-                    elif "File Size:" in label and file_size == "Unknown":
-                        file_size = value
-                    elif "Info Hash:" in label:
-                        info_hash = value
-
-        if info_hash == "Unknown":
-            info_hash_row = soup.find("td", string=RE_INFO_HASH)
-            if info_hash_row:
-                sibling = info_hash_row.find_next_sibling("td")
-                if sibling:
-                    info_hash = sibling.text.strip()
-
-        if info_hash == "Unknown":
-            hash_match = RE_HASH_STRING.search(response.text)
-            if hash_match:
-                info_hash = hash_match.group(1)
-
-        result: BookDict = {
-            "title": title,
-            "cover": cover,
-            "description": description,
-            "trackers": trackers,
-            "file_size": file_size,
-            "info_hash": info_hash,
-            "link": details_url,
-            "language": meta.language,
-            "category": meta.category,
-            "post_date": meta.post_date,
-            "format": meta.format,
-            "bitrate": meta.bitrate,
-            "author": meta.author,
-            "narrator": meta.narrator,
-        }
         details_cache[details_url] = result
         return result
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass, fields
 from typing import NotRequired, Optional, TypedDict
 from urllib.parse import urljoin
 
-from bs4 import Tag
+from bs4 import BeautifulSoup, Tag
 
 from app.constants import DEFAULT_COVER_FILENAME
 
@@ -193,3 +193,107 @@ def parse_post_content(
             setattr(meta, field.name, "Unknown")
 
     return meta
+
+
+def parse_book_details(soup: BeautifulSoup, url: str) -> BookDict:
+    """Extract full book details from the BeautifulSoup object of a details page.
+
+    Centralizes parsing logic for the details view, including sanitization
+    and hash extraction.
+
+    Args:
+        soup: The parsed HTML soup object.
+        url: The source URL (used for cover normalization and link attribution).
+
+    Returns:
+        BookDict: A dictionary containing the scraped data.
+    """
+    title = "Unknown Title"
+    title_tag = soup.select_one(".postTitle h1")
+    if title_tag:
+        title = title_tag.get_text(strip=True)
+
+    cover = None
+    cover_tag = soup.select_one('.postContent img[itemprop="image"]')
+    if cover_tag and cover_tag.has_attr("src"):
+        cover = normalize_cover_url(url, str(cover_tag["src"]))
+
+    post_info = soup.select_one(".postInfo")
+    content_div = soup.select_one(".postContent")
+    author_tag = soup.select_one('span.author[itemprop="author"]')
+    narrator_tag = soup.select_one('span.narrator[itemprop="author"]')
+
+    meta = parse_post_content(content_div, post_info, author_tag, narrator_tag)
+
+    # --- Description Extraction & Sanitization ---
+    description = "No description available."
+    desc_tag = soup.select_one("div.desc")
+    if desc_tag:
+        # Strict HTML Sanitization
+        allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
+        # Create a shallow copy or work directly? Work directly is fine as soup is transient.
+        for tag in desc_tag.find_all(True):
+            if tag.name not in allowed_tags:
+                tag.unwrap()
+            else:
+                tag.attrs = {}  # Strip attributes like onclick, style, etc.
+        description = desc_tag.decode_contents()
+
+    # --- Tracker & Hash Extraction ---
+    trackers = []
+    file_size = meta.file_size
+    info_hash = "Unknown"
+
+    info_table = soup.select_one("table.torrent_info")
+    if info_table:
+        for row in info_table.find_all("tr"):
+            cells = row.find_all("td")
+            if len(cells) >= 2:
+                label = cells[0].get_text(strip=True)
+                value = cells[1].get_text(strip=True)
+
+                if value == "?" or not value:
+                    value = "Unknown"
+
+                if "Tracker:" in label or "Announce URL:" in label:
+                    trackers.append(value)
+                elif "File Size:" in label and file_size == "Unknown":
+                    file_size = value
+                elif "Info Hash:" in label:
+                    info_hash = value
+
+    # Fallback 1: Footer Hash
+    if info_hash == "Unknown":
+        info_hash_row = soup.find("td", string=RE_INFO_HASH)
+        if info_hash_row:
+            sibling = info_hash_row.find_next_sibling("td")
+            if sibling:
+                info_hash = sibling.text.strip()
+
+    # Fallback 2: Regex on full text
+    if info_hash == "Unknown":
+        # Note: We don't have response.text here, but soup.text approximates it.
+        # Ideally, regex works better on raw HTML.
+        # However, passed `soup` implies we work on DOM.
+        # If regex is critical, we might miss it if split across tags.
+        # But RE_HASH_STRING usually finds the hex string in the text nodes.
+        hash_match = RE_HASH_STRING.search(str(soup))
+        if hash_match:
+            info_hash = hash_match.group(1)
+
+    return {
+        "title": title,
+        "cover": cover,
+        "description": description,
+        "trackers": trackers,
+        "file_size": file_size,
+        "info_hash": info_hash,
+        "link": url,
+        "language": meta.language,
+        "category": meta.category,
+        "post_date": meta.post_date,
+        "format": meta.format,
+        "bitrate": meta.bitrate,
+        "author": meta.author,
+        "narrator": meta.narrator,
+    }

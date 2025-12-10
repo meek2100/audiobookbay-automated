@@ -25,6 +25,9 @@ def inject_global_vars() -> dict[str, Any]:
     """Inject global variables into all templates.
 
     Uses current_app.config to access settings loaded in config.py.
+
+    Returns:
+        dict[str, Any]: A dictionary of context variables available to templates.
     """
     # Retrieve the pre-calculated hash from config to avoid disk I/O on every request.
     static_version = current_app.config.get("STATIC_VERSION", "v1")
@@ -43,14 +46,30 @@ def inject_global_vars() -> dict[str, Any]:
 
 @main_bp.route("/health")
 def health() -> Response:
-    """Perform a health check."""
+    """Perform a health check.
+
+    Returns:
+        Response: A JSON response with status "ok".
+    """
     return cast(Response, jsonify({"status": "ok"}))
 
 
 @main_bp.route("/", methods=["GET", "POST"])
 @limiter.limit("30 per minute")  # type: ignore[untyped-decorator, unused-ignore]
 def search() -> str | Response:
-    """Handle the search interface."""
+    """Handle the search interface.
+
+    Processes search queries and renders the search results page.
+
+    Args:
+        query (str): The search term passed via GET or POST.
+
+    Returns:
+        str | Response: Rendered HTML template or Response object.
+
+    Raises:
+        ConnectionError: Handled internally to display a user-friendly error message.
+    """
     books: list[BookDict] = []
     query = ""
     error_message = None
@@ -82,7 +101,17 @@ def search() -> str | Response:
 @main_bp.route("/details")
 @limiter.limit("30 per minute")  # type: ignore[untyped-decorator, unused-ignore]
 def details() -> str | Response:
-    """Fetch and render the details page internally via the server."""
+    """Fetch and render the details page internally via the server.
+
+    Acts as a proxy to fetch book details from AudiobookBay without exposing the
+    client's IP address to the external site.
+
+    Args:
+        link (str): The URL of the book details page (via query param).
+
+    Returns:
+        str | Response: Rendered HTML template or Redirect.
+    """
     link = request.args.get("link")
     if not link:
         # redirect() returns Response | str, but in this context it's a response
@@ -99,7 +128,18 @@ def details() -> str | Response:
 @main_bp.route("/send", methods=["POST"])
 @limiter.limit("60 per minute")  # type: ignore[untyped-decorator, unused-ignore]
 def send() -> Response | tuple[Response, int]:
-    """Initiate a download."""
+    """Initiate a download.
+
+    Generates a magnet link and sends it to the configured torrent client.
+
+    Args:
+        JSON Body:
+            link (str): The details URL of the book.
+            title (str): The title of the book.
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
     data = request.json
 
     if not isinstance(data, dict):
@@ -124,13 +164,14 @@ def send() -> Response | tuple[Response, int]:
             logger.error(f"Failed to extract magnet link for '{safe_title}': {error}")
             return cast(Response, jsonify({"message": f"Download failed: {error}"})), 500
 
-        if safe_title == FALLBACK_TITLE:
-            logger.warning(
-                f"Title '{title}' was sanitized to fallback '{FALLBACK_TITLE}'. Files will be saved in a generic folder."
-            )
-            # Collision Prevention: Append short UUID to ensure unique folder for fallbacks
+        # Collision Prevention:
+        # 1. Fallback Title (Sanitization completely emptied the string)
+        # 2. _Safe Suffix (Reserved Windows filename like "CON" -> "CON_Safe")
+        # In both cases, we append a UUID to ensure multiple books don't merge into one folder.
+        if safe_title == FALLBACK_TITLE or safe_title.endswith("_Safe"):
+            logger.warning(f"Title '{title}' required fallback handling ('{safe_title}'). Appending UUID for safety.")
             unique_id = uuid.uuid4().hex[:8]
-            safe_title = f"{FALLBACK_TITLE}_{unique_id}"
+            safe_title = f"{safe_title}_{unique_id}"
             logger.info(f"Using collision-safe directory name: {safe_title}")
 
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
@@ -166,7 +207,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
             id (str): The ID or Hash of the torrent to remove.
 
     Returns:
-        JSON Response indicating success or failure.
+        Response: JSON Response indicating success or failure.
     """
     data = request.json
 
@@ -188,7 +229,11 @@ def delete_torrent() -> Response | tuple[Response, int]:
 
 @main_bp.route("/reload_library", methods=["POST"])
 def reload_library() -> Response | tuple[Response, int]:
-    """Trigger an Audiobookshelf library scan."""
+    """Trigger an Audiobookshelf library scan.
+
+    Returns:
+        Response: JSON indicating success or failure of the trigger request.
+    """
     abs_url = current_app.config.get("ABS_URL")
     abs_key = current_app.config.get("ABS_KEY")
     abs_lib = current_app.config.get("ABS_LIB")
@@ -216,6 +261,12 @@ def status() -> str | Response | tuple[Response, int]:
     """Render the current status of downloads.
 
     Supports returning JSON for frontend polling via ?json=1.
+
+    Args:
+        json (str): Query parameter. If set, returns JSON instead of HTML.
+
+    Returns:
+        str | Response: Rendered HTML, JSON data, or Error Response.
     """
     is_json = request.args.get("json")
 

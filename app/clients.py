@@ -178,7 +178,7 @@ class TorrentManager:
         Format bytes into human-readable B, KB, MB, GB, TB, PB.
 
         Args:
-            size_bytes: The size in bytes.
+            size_bytes: The size in bytes (can be int, float, or valid numeric string).
 
         Returns:
             str: Human readable size string (e.g. "1.50 GB") or "Unknown".
