@@ -1,13 +1,14 @@
 """Extensions module initializing Flask extensions."""
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Any, Callable
 
+from flask import Flask
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 
 from .clients import TorrentManager
-from .config import Config
 
 # Initialize CSRF Protection
 csrf = CSRFProtect()
@@ -22,8 +23,47 @@ limiter = Limiter(
 # Initialize Torrent Manager
 torrent_manager = TorrentManager()
 
+
+class ScraperExecutor:
+    """Wrapper for ThreadPoolExecutor to allow lazy initialization with Flask config.
+
+    This ensures that the executor respects the 'SCRAPER_THREADS' config value
+    at the time the application starts (create_app), rather than locking in
+    an environment variable at import time.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the ScraperExecutor."""
+        self._executor: ThreadPoolExecutor | None = None
+
+    def init_app(self, app: Flask) -> None:
+        """Initialize the executor with the configured thread count.
+
+        Args:
+            app: The Flask application instance.
+        """
+        # Defaults to 3 if not set (matching previous Config default)
+        max_workers = app.config.get("SCRAPER_THREADS", 3)
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    def submit(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Future[Any]:
+        """Submit a callable to be executed with the given arguments.
+
+        Proxies the call to the underlying ThreadPoolExecutor.
+
+        Raises:
+            RuntimeError: If init_app() has not been called yet.
+        """
+        if not self._executor:
+            raise RuntimeError("Executor not initialized. Call init_app() first.")
+        return self._executor.submit(fn, *args, **kwargs)
+
+    def shutdown(self, wait: bool = True) -> None:
+        """Shutdown the executor."""
+        if self._executor:
+            self._executor.shutdown(wait=wait)
+
+
 # GLOBAL EXECUTOR: Shared thread pool for concurrent scraping.
-# Matches the PAGE_LIMIT (default 3) but allows scaling via SCRAPER_THREADS.
-# Prevents overhead of spawning new threads per request.
-# Uses Config directly since this is a module-level initialization.
-executor = ThreadPoolExecutor(max_workers=Config.SCRAPER_THREADS)
+# Initialized in create_app via init_app().
+executor = ScraperExecutor()

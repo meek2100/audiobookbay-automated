@@ -20,7 +20,7 @@ def mock_app_context(app: Flask) -> Generator[Flask, None, None]:
 
 def test_get_trackers_from_env(mock_app_context: Any) -> None:
     # Clear cache before test
-    network.get_trackers.cache_clear()
+    network.tracker_cache.clear()
 
     mock_app_context.config["MAGNET_TRACKERS"] = ["udp://env.tracker:1337"]
 
@@ -30,7 +30,7 @@ def test_get_trackers_from_env(mock_app_context: Any) -> None:
 
 
 def test_get_trackers_from_json(mock_app_context: Any) -> None:
-    network.get_trackers.cache_clear()
+    network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []  # Empty env
 
     with patch.dict(os.environ, {}, clear=True):
@@ -43,7 +43,7 @@ def test_get_trackers_from_json(mock_app_context: Any) -> None:
 
 def test_get_trackers_json_invalid_structure(mock_app_context: Any) -> None:
     """Test when trackers.json exists but contains a dict instead of a list."""
-    network.get_trackers.cache_clear()
+    network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
     with patch.dict(os.environ, {}, clear=True):
@@ -62,7 +62,7 @@ def test_get_trackers_json_invalid_structure(mock_app_context: Any) -> None:
 
 def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
     """Test when reading/parsing trackers.json raises an exception."""
-    network.get_trackers.cache_clear()
+    network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
     with patch("os.path.exists", return_value=True):
@@ -76,7 +76,7 @@ def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
 
 
 def test_get_trackers_defaults(mock_app_context: Any) -> None:
-    network.get_trackers.cache_clear()
+    network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
     with patch("os.path.exists", return_value=False):

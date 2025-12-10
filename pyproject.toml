@@ -26,7 +26,6 @@ dependencies = [
     "beautifulsoup4>=4.12.3",
     "lxml>=5.3.0",
     "qbittorrent-api>=2024.10.68",
-    "python-dotenv>=1.0.1",
     "transmission-rpc>=7.0.11",
     "deluge-web-client>=2.0.1",
     "cachetools>=5.5.0",

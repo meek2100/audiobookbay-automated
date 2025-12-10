@@ -233,12 +233,12 @@ def test_parse_standard_details() -> None:
     assert result["info_hash"] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     assert result["file_size"] == "1.2 GB"
     assert result["author"] == "Isaac Asimov"
-    assert "udp://tracker.opentrackr.org:1337" in result["trackers"]  # type: ignore[operator]
+    assert "udp://tracker.opentrackr.org:1337" in result["trackers"]
 
     # Check Description Sanitization
-    assert "<script>" not in result["description"]  # type: ignore[operator]
-    assert 'style="color:red"' not in result["description"]  # type: ignore[operator]
-    assert "<p>Description line 1.</p>" in result["description"]  # type: ignore[operator]
+    assert "<script>" not in result["description"]
+    assert 'style="color:red"' not in result["description"]
+    assert "<p>Description line 1.</p>" in result["description"]
 
 
 def test_parse_fallback_hash_footer() -> None:

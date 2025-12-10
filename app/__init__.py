@@ -5,7 +5,7 @@ import os
 from flask import Flask, Response, request
 
 from .config import Config
-from .extensions import csrf, limiter, torrent_manager
+from .extensions import csrf, executor, limiter, torrent_manager
 from .routes import main_bp
 from .utils import calculate_static_hash
 
@@ -42,6 +42,9 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(flask_app)
+
+    # Initialize Scraper Executor
+    executor.init_app(flask_app)
 
     # Register Blueprints
     flask_app.register_blueprint(main_bp)

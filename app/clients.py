@@ -156,7 +156,8 @@ class TorrentManager:
             logger.error(f"Error initializing torrent client: {e}", exc_info=True)
             self._local.client = None
 
-        return cast(QbClient | TxClient | DelugeWebClient | None, getattr(self._local, "client", None))
+        # Return the client (implicitly typed as Any by getattr, which satisfies the Union return)
+        return getattr(self._local, "client", None)
 
     def verify_credentials(self) -> bool:
         """
