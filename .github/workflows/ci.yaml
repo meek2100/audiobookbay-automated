@@ -18,7 +18,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          # Use the absolute latest for linting to catch future syntax deprecations early
+          python-version: "3.14"
           cache: "pip"
 
       # Set up Node.js for frontend hooks (Prettier)
@@ -50,16 +51,26 @@ jobs:
 
   # 2. Automated Python Tests
   test:
-    name: Pytest
+    name: Pytest (Python ${{ matrix.python-version }})
     needs: lint
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # PRODUCTION REQUIREMENT: Test ALL supported versions to ensure OS compatibility.
+        # 3.11: Debian 12 / Old Stable
+        # 3.12: Ubuntu 24.04 / Current Stable
+        # 3.13: Fedora 41 / New Stable
+        # 3.14: Bleeding Edge / Future Proofing
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true # Required for 3.14 (alpha/beta) support
           cache: "pip"
 
       - name: Install Dependencies
@@ -81,14 +92,14 @@ jobs:
           SAVE_PATH_BASE: /tmp/test
         run: |
           # Runs pytest with coverage as defined in your pyproject.toml
-          pytest --junitxml=test-results.xml
+          pytest --junitxml=test-results-${{ matrix.python-version }}.xml
 
       - name: Upload Test Results
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: pytest-results
-          path: test-results.xml
+          name: pytest-results-${{ matrix.python-version }}
+          path: test-results-${{ matrix.python-version }}.xml
 
   # 3. Automated JavaScript Tests
   js-test:
