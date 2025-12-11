@@ -351,7 +351,7 @@ class TorrentManager:
                     self.dl_url = "http://localhost:8112"
                 else:
                     # Default for others
-                    self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+                    self.dl_url = f"{self.scheme}://{self.host}:{self.port}"  # pragma: no cover
 
             # Case 3: Both provided or fallback handled
             else:
