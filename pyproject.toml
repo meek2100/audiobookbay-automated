@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "audiobookbay-automated"
+name = "audiobookbay_automated"
 version = "1.0.0"
 description = "Automated AudiobookBay downloader and torrent manager"
 requires-python = ">=3.11,<3.15"
