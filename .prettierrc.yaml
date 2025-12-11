@@ -24,7 +24,9 @@ overrides:
   - files: "*.yaml"
     options:
       tabWidth: 2
-  # Markdown files are excluded from Prettier and handled by mdformat/markdownlint for style consistency.
   - files: "*.json"
     options:
       tabWidth: 4
+  - files: "*.md"
+    options:
+      tabWidth: 2

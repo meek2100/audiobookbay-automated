@@ -1,6 +1,6 @@
 # .pre-commit-config.yaml
 # Exclude vendor files and minified assets from all hooks
-exclude: ^(app/static/vendor/|.*\.min\.(css|js))
+exclude: ^(audiobook_automated/static/vendor/|.*\.min\.(css|js))
 
 repos:
   # 1. Standard Cleanup
@@ -29,48 +29,23 @@ repos:
         args: ["--fix"]
       - id: ruff-format
 
-  # 3. Frontend (Prettier) - EXCLUDE MARKDOWN
+  # 3. Frontend (Prettier)
   - repo: https://github.com/rbubley/mirrors-prettier
     rev: "v3.7.4"
     hooks:
       - id: prettier
-        # Removed 'markdown' to avoid conflict with mdformat/markdownlint
-        types_or: [css, javascript, html, json, yaml]
+        types_or: [css, javascript, html, json, yaml, markdown]
         args: ["--config", ".prettierrc.yaml"]
 
-  # 4. Markdown Formatting (mdformat)
-  - repo: https://github.com/executablebooks/mdformat
-    rev: 1.0.0
-    hooks:
-      - id: mdformat
-        name: Format Markdown (mdformat)
-        entry: mdformat
-        language: python
-        types: [markdown]
-        additional_dependencies:
-          - mdformat-toc
-          - mdformat-config
-          - mdformat-gfm
-          - setuptools
-
-  # 4.1. Custom Fixer: Enforce Tilde Code Fences (~~~)
-  - repo: local
-    hooks:
-      - id: enforce-tilde-fences
-        name: Enforce Tilde (~~~) Code Fences
-        entry: python3 -c 'import sys; sys.stdout.write(sys.stdin.read().replace("```", "~~~"))'
-        language: system
-        files: \.md$
-
-  # 5. Markdown Linting (markdownlint-cli) - NEW
+  # 4. Markdown Linting (markdownlint-cli)
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.46.0
     hooks:
       - id: markdownlint
         name: Lint Markdown
-        args: ["--config", ".markdownlint.yaml"]
+        args: ["--config", ".markdownlint.yaml", "--fix"]
 
-  # 6. Infrastructure (Docker & Shell)
+  # 5. Infrastructure (Docker & Shell)
   - repo: https://github.com/IamTheFij/docker-pre-commit
     rev: v3.0.1
     hooks:
@@ -89,7 +64,7 @@ repos:
       - id: shellcheck
         args: ["--format=gcc"]
 
-  # 7. YAML Linting (yamllint) - NEW (Recommended Upgrade)
+  # 6. YAML Linting (yamllint)
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.37.1
     hooks:
@@ -97,7 +72,7 @@ repos:
         name: Lint YAML
         args: ["--config-file", ".yamllint.yaml"]
 
-  # 8. Type Checking & Docs (MyPy & pydocstyle) - Python Hooks
+  # 7. Type Checking & Docs (MyPy & pydocstyle) - Python Hooks
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.19.0"
     hooks:
@@ -120,7 +95,7 @@ repos:
       - id: pydocstyle
         exclude: "(tests/)"
 
-  # 9. Python Security Linter (Bandit)
+  # 8. Python Security Linter (Bandit)
   - repo: https://github.com/PyCQA/bandit
     rev: "1.9.2"
     hooks:
@@ -128,7 +103,7 @@ repos:
         args: ["-c", "pyproject.toml"]
         exclude: "(tests/)"
 
-  # 10. Spelling (codespell)
+  # 9. Spelling (codespell)
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:

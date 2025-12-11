@@ -43,8 +43,10 @@
 
     // MARKDOWN CONFIGURATION (Aligns to mdformat/markdownlint rules)
     "[markdown]": {
-        // Use the built-in formatter, relying on markdownlint for style consistency
-        "editor.defaultFormatter": "vscode.markdown-language-features"
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+            "source.fixAll.markdownlint": "explicit"
+        }
     },
     // Markdown All in One and other extension fixes:
     // These settings explicitly disable features that conflict with mdformat's strict formatting,
