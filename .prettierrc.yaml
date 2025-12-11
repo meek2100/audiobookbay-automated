@@ -16,6 +16,10 @@ bracketSpacing: true
 arrowParens: "always"
 endOfLine: "lf"
 
+# MANDATORY: Forces Prettier to wrap Markdown text at 'printWidth' (120)
+# Default is "preserve", which ignores line length in Markdown.
+proseWrap: "always"
+
 # Override for specific file types if necessary
 overrides:
   - files: "*.yml"
@@ -27,6 +31,8 @@ overrides:
   - files: "*.json"
     options:
       tabWidth: 4
+  # Markdown overrides to prevent conflict with markdownlint (MD007)
+  # Prettier defaults to the global tabWidth (4), but standard Markdown uses 2.
   - files: "*.md"
     options:
       tabWidth: 2

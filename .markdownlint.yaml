@@ -29,7 +29,7 @@ MD013:
 
 # MD035: Set horizontal rule style to the 70-character underscore string used by mdformat.
 MD035:
-  style: "______________________________________________________________________"
+  style: "---"
 
 # MD049: Set emphasis style to UNDERSCORE (to match Prettier/existing files)
 MD049:

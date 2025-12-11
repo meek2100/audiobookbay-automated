@@ -8,13 +8,11 @@ search [**AudioBook Bay**](https://audiobookbay.lu/) for audiobooks and send mag
 
 - **Search Results**: Users search for audiobooks. The app grabs results from AudioBook Bay and displays results with
   the **title** and **cover image**, along with two action links:
-
   1. **More Details**: Opens the audiobook's page on AudioBook Bay for additional information.
   2. **Download to Server**: Sends the audiobook to your configured torrent client for downloading.
 
 - **Magnet Link Generation**: When a user selects "Download to Server," the app generates a magnet link from the
   infohash displayed on AudioBook Bay and sends it to the torrent client. Along with the magnet link, the app assigns:
-
   - A **category label** for organizational purposes.
   - A **save location** for downloaded files.
 
@@ -42,7 +40,7 @@ search [**AudioBook Bay**](https://audiobookbay.lu/) for audiobooks and send mag
 AudiobookBay Automated provides a simple and user-friendly interface for users to download audiobooks without searching
 on their own and import them into your library.
 
-______________________________________________________________________
+---
 
 ## Installation
 
@@ -117,7 +115,6 @@ NAV_LINK_URL=http://...        # URL for the custom link.
 
 1. Use `docker-compose` for quick deployment. You can find ready-to-use templates in the [`examples/`](examples/)
    directory.
-
    - **Recommended:** [`examples/docker-compose.yaml`](examples/docker-compose.yaml) (Uses a `.env` file for security)
    - **Alternative:** [`examples/docker-compose.no-env.yaml`](examples/docker-compose.no-env.yaml) (Hardcoded
      configuration)
@@ -161,7 +158,7 @@ volumes:
 
 The application will automatically detect this file and prioritize it over the default tracker list.
 
-______________________________________________________________________
+---
 
 ## Notes
 
@@ -173,7 +170,7 @@ ______________________________________________________________________
   `SAVE_PATH_BASE` in your torrent client aligns with your audiobook library (e.g., for Audiobookshelf). Using a path
   relative to where this app is running, instead of the torrent client, will cause issues.
 
-______________________________________________________________________
+---
 
 ## Feedback and Contributions
 
@@ -183,7 +180,7 @@ submitting pull requests.
 **Developers:** Please review [`AGENTS.md`](AGENTS.md) for strict architectural rules and coding standards before
 contributing.
 
-______________________________________________________________________
+---
 
 ## Screenshots
 
@@ -199,4 +196,4 @@ ______________________________________________________________________
 
 ![Download status page showing active torrents](docs/images/status.png)
 
-______________________________________________________________________
+---
