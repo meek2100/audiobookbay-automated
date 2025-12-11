@@ -7,10 +7,10 @@ import pytest
 import requests
 import requests_mock
 
-from app.scraper import core as scraper_core
-from app.scraper import extract_magnet_link, get_book_details, search_audiobookbay
-from app.scraper.network import search_cache
-from app.scraper.parser import BookDict
+from audiobook_automated.scraper import core as scraper_core
+from audiobook_automated.scraper import extract_magnet_link, get_book_details, search_audiobookbay
+from audiobook_automated.scraper.network import search_cache
+from audiobook_automated.scraper.parser import BookDict
 
 # --- Search & Flow Tests ---
 
@@ -273,7 +273,7 @@ def test_get_book_details_caching(mock_sleep: Any) -> None:
     expected = cast(BookDict, {"title": "Cached Details"})
     # FIX: Use the new details_cache instead of search_cache (which stores lists)
     # The cache is imported from scraper.core (which gets it from network)
-    from app.scraper.network import details_cache
+    from audiobook_automated.scraper.network import details_cache
 
     details_cache[url] = expected
 

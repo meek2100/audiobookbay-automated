@@ -8,8 +8,8 @@ import requests
 import requests_mock
 from bs4 import BeautifulSoup, Tag
 
-from app.scraper import fetch_and_parse_page, get_book_details
-from app.scraper.parser import (
+from audiobook_automated.scraper import fetch_and_parse_page, get_book_details
+from audiobook_automated.scraper.parser import (
     get_text_after_label,
     normalize_cover_url,
     parse_book_details,

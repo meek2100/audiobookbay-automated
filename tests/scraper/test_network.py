@@ -10,8 +10,8 @@ from flask import Flask
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from app.constants import DEFAULT_TRACKERS, USER_AGENTS
-from app.scraper import network
+from audiobook_automated.constants import DEFAULT_TRACKERS, USER_AGENTS
+from audiobook_automated.scraper import network
 
 
 @pytest.fixture

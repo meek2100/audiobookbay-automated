@@ -2,8 +2,8 @@ from typing import Any
 
 import pytest
 
-from app.scraper import get_book_details
-from app.utils import sanitize_title
+from audiobook_automated.scraper import get_book_details
+from audiobook_automated.utils import sanitize_title
 
 
 def test_csrf_protection_enabled(app: Any) -> None:

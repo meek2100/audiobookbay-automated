@@ -7,7 +7,7 @@ import pytest
 from flask import Flask
 from qbittorrentapi import LoginFailed
 
-from app.clients import (
+from audiobook_automated.clients import (
     DelugeStrategy,
     QbittorrentStrategy,
     TorrentManager,
@@ -497,7 +497,7 @@ def test_logic_methods_no_client(app: Flask) -> None:
 
 def test_format_size_logic() -> None:
     """Verify that bytes are converted to human-readable strings correctly."""
-    from app.clients import TorrentClientStrategy
+    from audiobook_automated.clients import TorrentClientStrategy
 
     # Standard units
     assert TorrentClientStrategy._format_size(500) == "500.00 B"

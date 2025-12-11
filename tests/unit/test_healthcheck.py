@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.healthcheck import health_check
+from audiobook_automated.healthcheck import health_check
 
 
 def test_health_check_success() -> None:

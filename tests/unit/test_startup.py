@@ -8,9 +8,9 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-import app
-import app.app
-import app.config
+import audiobook_automated
+import audiobook_automated.app
+import audiobook_automated.config
 
 
 class MockConfig(dict[str, Any]):
@@ -51,8 +51,8 @@ def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
     # Reload modules to restore original state
     with patch.dict(os.environ, safe_env):
         # Do not use sys.modules.pop(), it causes ImportError on reload.
-        importlib.reload(app.config)
-        importlib.reload(app)
+        importlib.reload(audiobook_automated.config)
+        importlib.reload(audiobook_automated)
 
         if "app.app" in sys.modules:
             importlib.reload(sys.modules["app.app"])
@@ -69,8 +69,8 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
     monkeypatch.delenv("TESTING", raising=False)
 
     with pytest.raises(RuntimeError) as excinfo:
-        importlib.reload(app.config)
-        importlib.reload(app)
+        importlib.reload(audiobook_automated.config)
+        importlib.reload(audiobook_automated)
         if "app.app" in sys.modules:
             importlib.reload(sys.modules["app.app"])
         else:
@@ -91,8 +91,8 @@ def test_startup_insecure_secret_key_production(monkeypatch: Any, mock_flask_fac
     monkeypatch.delenv("TESTING", raising=False)
 
     with pytest.raises(ValueError) as excinfo:
-        importlib.reload(app.config)
-        importlib.reload(app)
+        importlib.reload(audiobook_automated.config)
+        importlib.reload(audiobook_automated)
         if "app.app" in sys.modules:
             importlib.reload(sys.modules["app.app"])
         else:
@@ -109,11 +109,11 @@ def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -
     monkeypatch.setenv("PAGE_LIMIT", "-5")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
 
-    importlib.reload(app.config)
+    importlib.reload(audiobook_automated.config)
     # Validate manually as we are testing config logic specifically
-    app.config.Config.validate(mock_logger)
+    audiobook_automated.config.Config.validate(mock_logger)
 
-    assert app.config.Config.PAGE_LIMIT == 3
+    assert audiobook_automated.config.Config.PAGE_LIMIT == 3
     args, _ = mock_logger.warning.call_args
     assert "Invalid PAGE_LIMIT" in args[0]
 
@@ -124,9 +124,9 @@ def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: A
     monkeypatch.setenv("PAGE_LIMIT", "invalid_string")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
 
-    importlib.reload(app.config)
+    importlib.reload(audiobook_automated.config)
     # The parsing logic happens at import time for PAGE_LIMIT.
-    assert app.config.Config.PAGE_LIMIT == 3
+    assert audiobook_automated.config.Config.PAGE_LIMIT == 3
 
 
 def test_startup_insecure_secret_key_development(monkeypatch: Any, mock_flask_factory: Any) -> None:
@@ -137,8 +137,8 @@ def test_startup_insecure_secret_key_development(monkeypatch: Any, mock_flask_fa
     monkeypatch.setenv("FLASK_DEBUG", "1")
     monkeypatch.delenv("TESTING", raising=False)
 
-    importlib.reload(app.config)
-    app.config.Config.validate(mock_logger)
+    importlib.reload(audiobook_automated.config)
+    audiobook_automated.config.Config.validate(mock_logger)
 
     args, _ = mock_logger.warning.call_args
     assert "WARNING: You are using the default insecure SECRET_KEY" in args[0]
@@ -150,8 +150,8 @@ def test_startup_invalid_log_level(monkeypatch: Any, mock_flask_factory: Any) ->
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
     monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL")
 
-    importlib.reload(app.config)
-    app.config.Config.validate(mock_logger)
+    importlib.reload(audiobook_automated.config)
+    audiobook_automated.config.Config.validate(mock_logger)
 
     args, _ = mock_logger.warning.call_args
     assert "Configuration Warning: Invalid LOG_LEVEL" in args[0]
@@ -163,7 +163,7 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
 
     # CRITICAL: Reload app module so it imports the patched Flask class from the fixture.
     # Without this, app.create_app() uses the real Flask class, causing the mock assertions to fail.
-    importlib.reload(app)
+    importlib.reload(audiobook_automated)
 
     mock_app = mock_class.return_value
     mock_app.root_path = "/mock/root"
@@ -182,7 +182,7 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
         mock_exists.side_effect = lambda p: p.endswith("version.txt")
 
         # Call create_app directly
-        app.create_app()
+        audiobook_automated.create_app()
 
         assert mock_app.config["STATIC_VERSION"] == expected_hash
 

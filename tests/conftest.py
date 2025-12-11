@@ -7,8 +7,8 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskClient, FlaskCliRunner
 
-from app import create_app
-from app.config import Config
+from audiobook_automated import create_app
+from audiobook_automated.config import Config
 
 
 class TestConfig(Config):

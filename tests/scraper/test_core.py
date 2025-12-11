@@ -3,8 +3,8 @@
 from typing import Any, cast
 from unittest.mock import patch
 
-from app.scraper import extract_magnet_link
-from app.scraper.parser import BookDict
+from audiobook_automated.scraper import extract_magnet_link
+from audiobook_automated.scraper.parser import BookDict
 
 
 def test_extract_magnet_deduplication(mock_sleep: Any) -> None:

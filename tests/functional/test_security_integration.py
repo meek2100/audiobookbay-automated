@@ -5,7 +5,7 @@ from typing import Generator
 import pytest
 from flask import Flask
 
-from app import create_app
+from audiobook_automated import create_app
 
 
 @pytest.fixture

@@ -5,8 +5,8 @@ import tempfile
 from typing import Any
 from unittest.mock import patch
 
-from app.constants import FALLBACK_TITLE
-from app.utils import calculate_static_hash, sanitize_title
+from audiobook_automated.constants import FALLBACK_TITLE
+from audiobook_automated.utils import calculate_static_hash, sanitize_title
 
 # --- Sanitize Title Tests ---
 

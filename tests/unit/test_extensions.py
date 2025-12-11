@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from flask import Flask
 
-from app.extensions import ScraperExecutor
+from audiobook_automated.extensions import ScraperExecutor
 
 
 def test_executor_submit_without_init_raises() -> None:

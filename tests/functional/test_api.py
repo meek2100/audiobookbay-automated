@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from app.constants import FALLBACK_TITLE
+from audiobook_automated.constants import FALLBACK_TITLE
 
 
 def test_healthcheck(client: Any) -> None:

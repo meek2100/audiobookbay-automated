@@ -6,8 +6,8 @@ import logging
 import pytest
 from pytest import LogCaptureFixture, MonkeyPatch
 
-from app import config
-from app.config import Config
+from audiobook_automated import config
+from audiobook_automated.config import Config
 
 
 def test_config_validate_success(monkeypatch: MonkeyPatch) -> None:

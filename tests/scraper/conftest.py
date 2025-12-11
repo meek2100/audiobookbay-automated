@@ -5,7 +5,7 @@ import pytest
 
 # FIX: Import caches directly from network where they are defined to avoid mypy export errors
 # Previously imported via scraper_core which caused "does not explicitly export" errors
-from app.scraper.network import details_cache, mirror_cache, search_cache
+from audiobook_automated.scraper.network import details_cache, mirror_cache, search_cache
 
 
 @pytest.fixture(autouse=True)
