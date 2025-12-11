@@ -35,7 +35,9 @@ from audiobook_automated.scraper.parser import (
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) -> list[BookDict]:
+def fetch_and_parse_page(
+    hostname: str, query: str, page: int, user_agent: str, timeout: int
+) -> list[BookDict]:
     """Fetch a single search result page and parse it into a list of books.
 
     Enforces a global semaphore to limit concurrent scraping requests.
@@ -46,6 +48,7 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) 
         query: The search term.
         page: The page number to fetch.
         user_agent: The User-Agent string to use for the request.
+        timeout: The request timeout in seconds.
 
     Returns:
         list[BookDict]: A list of dictionaries, each representing a book found on the page.
@@ -57,9 +60,6 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str) 
     headers = get_headers(user_agent, referer)
 
     page_results: list[BookDict] = []
-
-    # Retrieve configured timeout or default to 30
-    timeout = current_app.config.get("SCRAPER_TIMEOUT", 30)
 
     # PERFORMANCE: Use thread-local session to reuse connections across pages
     session = get_thread_session()
@@ -164,11 +164,24 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
 
     session_user_agent = get_random_user_agent()
 
+    # Retrieve configured timeout to pass to the worker threads
+    # (Threads cannot access current_app reliably)
+    timeout = current_app.config.get("SCRAPER_TIMEOUT", 30)
+
     try:
         # Use the global executor to avoid spinning up new threads per request
         futures: list[Future[list[BookDict]]] = []
         for page in range(1, max_pages + 1):
-            futures.append(executor.submit(fetch_and_parse_page, active_hostname, query, page, session_user_agent))
+            futures.append(
+                executor.submit(
+                    fetch_and_parse_page,
+                    active_hostname,
+                    query,
+                    page,
+                    session_user_agent,
+                    timeout,
+                )
+            )
 
         for future in concurrent.futures.as_completed(futures):
             try:

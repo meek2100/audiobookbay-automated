@@ -94,10 +94,12 @@ class QbittorrentStrategy(TorrentClientStrategy):
     """Strategy implementation for qBittorrent."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the qBittorrent strategy."""
         super().__init__(*args, **kwargs)
         self.client: QbClient | None = None
 
     def connect(self) -> None:
+        """Connect to the qBittorrent client."""
         self.client = QbClient(
             host=self.host,
             port=self.port,
@@ -108,6 +110,7 @@ class QbittorrentStrategy(TorrentClientStrategy):
         self.client.auth_log_in()
 
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
+        """Add a magnet link to qBittorrent."""
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
         result = self.client.torrents_add(urls=magnet_link, save_path=save_path, category=category)
@@ -115,11 +118,13 @@ class QbittorrentStrategy(TorrentClientStrategy):
             logger.warning(f"qBittorrent add returned unexpected response: {result}")
 
     def remove_torrent(self, torrent_id: str) -> None:
+        """Remove a torrent from qBittorrent."""
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
         self.client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)
 
     def get_status(self, category: str) -> list[TorrentStatus]:
+        """Get torrent status from qBittorrent."""
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
         results: list[TorrentStatus] = []
@@ -141,10 +146,12 @@ class TransmissionStrategy(TorrentClientStrategy):
     """Strategy implementation for Transmission."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initialize the Transmission strategy."""
         super().__init__(*args, **kwargs)
         self.client: TxClient | None = None
 
     def connect(self) -> None:
+        """Connect to the Transmission client."""
         safe_scheme = cast(Literal["http", "https"], self.scheme)
         self.client = TxClient(
             host=self.host,
@@ -156,6 +163,7 @@ class TransmissionStrategy(TorrentClientStrategy):
         )
 
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
+        """Add a magnet link to Transmission."""
         if not self.client:
             raise ConnectionError("Transmission client not connected")
         try:
@@ -165,6 +173,7 @@ class TransmissionStrategy(TorrentClientStrategy):
             self.client.add_torrent(magnet_link, download_dir=save_path)
 
     def remove_torrent(self, torrent_id: str) -> None:
+        """Remove a torrent from Transmission."""
         if not self.client:
             raise ConnectionError("Transmission client not connected")
         tid: int | str
@@ -176,6 +185,7 @@ class TransmissionStrategy(TorrentClientStrategy):
         self.client.remove_torrent(ids=[tid], delete_data=False)
 
     def get_status(self, category: str) -> list[TorrentStatus]:
+        """Get torrent status from Transmission."""
         if not self.client:
             raise ConnectionError("Transmission client not connected")
         results: list[TorrentStatus] = []
@@ -197,17 +207,20 @@ class DelugeStrategy(TorrentClientStrategy):
     """Strategy implementation for Deluge."""
 
     def __init__(self, dl_url: str | None, *args: Any, **kwargs: Any) -> None:
+        """Initialize the Deluge strategy."""
         super().__init__(*args, **kwargs)
         self.dl_url = dl_url
         self.client: DelugeWebClient | None = None
 
     def connect(self) -> None:
+        """Connect to the Deluge client."""
         # DelugeWebClient uses the full URL
         url = self.dl_url or f"{self.scheme}://{self.host}:{self.port}"
         self.client = DelugeWebClient(url=url, password=self.password or "")
         self.client.login()
 
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
+        """Add a magnet link to Deluge."""
         if not self.client:
             raise ConnectionError("Deluge client not connected")
         try:
@@ -227,11 +240,13 @@ class DelugeStrategy(TorrentClientStrategy):
                 raise e
 
     def remove_torrent(self, torrent_id: str) -> None:
+        """Remove a torrent from Deluge."""
         if not self.client:
             raise ConnectionError("Deluge client not connected")
         self.client.remove_torrent(torrent_id, remove_data=False)
 
     def get_status(self, category: str) -> list[TorrentStatus]:
+        """Get torrent status from Deluge."""
         if not self.client:
             raise ConnectionError("Deluge client not connected")
         results: list[TorrentStatus] = []
@@ -269,8 +284,8 @@ class DelugeStrategy(TorrentClientStrategy):
 
 
 class TorrentManager:
-    """
-    Manages interactions with various torrent clients using the Strategy pattern.
+    """Manages interactions with various torrent clients using the Strategy pattern.
+
     Uses thread-local storage to ensure thread safety for the underlying sessions.
     """
 
