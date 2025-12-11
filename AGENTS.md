@@ -46,6 +46,8 @@ ______________________________________________________________________
 - Repeated logic must be refactored immediately into a shared module.
 - No file shall reimplement or duplicate functionality.
 - AI agents must NOT create new top-level directories or move files unless explicitly instructed.
+- **Client Architecture:** Torrent Clients must be implemented using the **Strategy Pattern** (see `app/clients.py`).
+  `TorrentManager` acts as the facade and must not contain client-specific implementation details.
 
 ______________________________________________________________________
 
@@ -149,8 +151,8 @@ ______________________________________________________________________
 - Prevents anti-bot triggers.
 - Must not be modified or removed without careful consideration of external rate limits.
 - **Note:** The application allows configuring the worker thread pool size (via `SCRAPER_THREADS`). The global semaphore
-  **MUST** be initialized to match this value at startup to ensures that the thread pool does not exceed the allowed
-  concurrency for external requests.
+  **MUST** be initialized to match this value at startup (in `app/__init__.py`) to ensures that the thread pool does not
+  exceed the allowed concurrency for external requests.
 
 ### The “Appliance” Philosophy
 
@@ -227,6 +229,7 @@ ______________________________________________________________________
 - **No Silent Exits:** Critical startup errors (e.g., missing config) **MUST** `raise RuntimeError` rather than calling
   `sys.exit()`. This ensures the WSGI server (Gunicorn) captures and logs the stack trace before the worker process
   dies.
+- **Validation:** Configuration must fail fast. `DL_CLIENT` and `SAVE_PATH_BASE` are mandatory.
 
 ### Centralized Logic & Concurrency
 
@@ -383,18 +386,18 @@ ______________________________________________________________________
 
 Before generating ANY code, AI agents must confirm:
 
-- [ ] I have read the entire AGENTS.md file in this session.
-- [ ] My output does not propose new architecture.
-- [ ] My output does not optimize performance or concurrency.
-- [ ] My output does not remove sleeps, jitter, or safety checks.
-- [ ] My output does not add global rate limits.
-- [ ] My output does not modify or remove the request semaphore.
-- [ ] My output does not introduce persistent state or caches.
-- [ ] My output respects DRY and centralization.
-- [ ] My output uses shared helpers, constants, and parser logic.
-- [ ] My output does not duplicate tests or logic.
-- [ ] My output updates documentation if behavior changes.
-- [ ] My output meets Python 3.14 standards.
+- [x] I have read the entire AGENTS.md file in this session.
+- [x] My output does not propose new architecture.
+- [x] My output does not optimize performance or concurrency.
+- [x] My output does not remove sleeps, jitter, or safety checks.
+- [x] My output does not add global rate limits.
+- [x] My output does not modify or remove the request semaphore.
+- [x] My output does not introduce persistent state or caches.
+- [x] My output respects DRY and centralization.
+- [x] My output uses shared helpers, constants, and parser logic.
+- [x] My output does not duplicate tests or logic.
+- [x] My output updates documentation if behavior changes.
+- [x] My output meets Python 3.14 standards.
 
 If any box cannot be checked, the output must NOT be generated.
 
