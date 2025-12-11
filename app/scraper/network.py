@@ -232,7 +232,6 @@ def find_best_mirror() -> str | None:
         str | None: The hostname of the active mirror, or None if all fail.
     """
     # 1. Check Negative Cache (Backoff)
-    # CRITICAL FIX: Wrapped read in CACHE_LOCK to prevent race conditions with failure_cache updates.
     with CACHE_LOCK:
         if "failure" in failure_cache:
             logger.debug("Skipping mirror check due to recent failure (Negative Cache hit).")
@@ -250,16 +249,28 @@ def find_best_mirror() -> str | None:
     logger.debug(f"Checking connectivity for {len(mirrors)} mirrors...")
     safe_mirror_workers = 5
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=safe_mirror_workers) as executor:
-        future_to_host = {executor.submit(check_mirror, host): host for host in mirrors}
-        for future in concurrent.futures.as_completed(future_to_host):
+    # PERFORMANCE: Use raw Executor to prevent implicit waiting on slow mirrors
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=safe_mirror_workers)
+    futures = [executor.submit(check_mirror, host) for host in mirrors]
+
+    try:
+        for future in concurrent.futures.as_completed(futures):
             result = future.result()
             if result:
                 logger.info(f"Found active mirror: {result}")
+                # Optimization: Cancel other pending futures since we found a winner
+                # (Best effort, running threads won't stop but pending ones will be cancelled)
+                for f in futures:
+                    f.cancel()
+
                 # CACHE UPDATE: Cache successful result
                 with CACHE_LOCK:
                     mirror_cache[cache_key] = result
                 return result
+    finally:
+        # CLEANUP: Shutdown executor without waiting for straggler threads.
+        # This prevents the function from blocking for the full timeout of a dead mirror.
+        executor.shutdown(wait=False)
 
     logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
     # CACHE UPDATE: Cache failure (Negative Caching)

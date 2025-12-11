@@ -7,6 +7,7 @@ from flask import Flask, Response, request
 from .config import Config
 from .extensions import csrf, executor, limiter, torrent_manager
 from .routes import main_bp
+from .scraper import network
 from .utils import calculate_static_hash
 
 
@@ -45,6 +46,11 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Initialize Scraper Executor
     executor.init_app(flask_app)
+
+    # SYNCHRONIZATION: Initialize Global Request Semaphore
+    # This must be done here to avoid circular imports in extensions.py
+    max_workers = flask_app.config.get("SCRAPER_THREADS", 3)
+    network.init_semaphore(max_workers)
 
     # Register Blueprints
     flask_app.register_blueprint(main_bp)

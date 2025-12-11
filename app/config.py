@@ -119,6 +119,11 @@ class Config:
                 "not necessarily this application's container."
             )
 
+        # Validate DL_CLIENT
+        if not cls.DL_CLIENT:
+            logger.critical("Configuration Error: DL_CLIENT is missing.")
+            raise ValueError("DL_CLIENT must be set to one of: qbittorrent, transmission, deluge")
+
         # Validate PAGE_LIMIT
         if cls.PAGE_LIMIT < 1:
             logger.warning(f"Invalid PAGE_LIMIT '{cls.PAGE_LIMIT}'. Resetting to 3.")
