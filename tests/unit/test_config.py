@@ -19,6 +19,7 @@ def test_config_validate_success(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(Config, "SECRET_KEY", "prod-secret-key")
     monkeypatch.setattr(Config, "SAVE_PATH_BASE", "/data")
     monkeypatch.setattr(Config, "DL_SCHEME", "https")
+    monkeypatch.setattr(Config, "DL_CLIENT", "qbittorrent")  # NEW: Required now
     monkeypatch.setattr(Config, "TESTING", False)
     monkeypatch.setattr(Config, "FLASK_DEBUG", False)
 
@@ -37,6 +38,19 @@ def test_config_validate_missing_save_path(monkeypatch: MonkeyPatch, caplog: Log
         Config.validate(logging.getLogger("test"))
 
     assert "Configuration Error: SAVE_PATH_BASE is missing" in caplog.text
+
+
+def test_validate_dl_client_missing(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
+    """Test that Config.validate raises ValueError if DL_CLIENT is missing."""
+    monkeypatch.setattr(Config, "DL_CLIENT", None)
+    monkeypatch.setattr(Config, "SAVE_PATH_BASE", "/tmp")  # satisfy save path check
+    monkeypatch.setattr(Config, "TESTING", False)
+
+    with pytest.raises(ValueError) as exc:
+        Config.validate(logging.getLogger("test"))
+
+    assert "DL_CLIENT must be set" in str(exc.value)
+    assert "Configuration Error: DL_CLIENT is missing" in caplog.text
 
 
 def test_config_validate_insecure_secret_prod(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
@@ -81,6 +95,7 @@ def test_config_validate_invalid_log_level(monkeypatch: MonkeyPatch, caplog: Log
 def test_config_validate_invalid_dl_scheme(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     """Ensure validation fails for invalid DL_SCHEME."""
     monkeypatch.setattr(Config, "DL_SCHEME", "ftp")
+    monkeypatch.setattr(Config, "DL_CLIENT", "qbittorrent")  # Satisfy prerequisite
 
     with pytest.raises(ValueError, match="Invalid DL_SCHEME"):
         Config.validate(logging.getLogger("test"))
@@ -91,6 +106,7 @@ def test_config_validate_invalid_dl_scheme(monkeypatch: MonkeyPatch, caplog: Log
 def test_config_validate_page_limit_low(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     """Ensure validation resets PAGE_LIMIT if < 1."""
     monkeypatch.setattr(Config, "PAGE_LIMIT", 0)
+    monkeypatch.setattr(Config, "DL_CLIENT", "qbittorrent")  # Satisfy prerequisite
 
     Config.validate(logging.getLogger("test"))
 
