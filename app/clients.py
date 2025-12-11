@@ -57,22 +57,22 @@ class TorrentClientStrategy(ABC):
     @abstractmethod
     def connect(self) -> None:
         """Establish connection to the torrent client."""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to the client."""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent by ID."""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Retrieve status of torrents in the given category."""
-        pass
+        pass  # pragma: no cover
 
     @staticmethod
     def _format_size(size_bytes: int | float | str | None) -> str:
@@ -292,9 +292,12 @@ class TorrentManager:
         """Initialize the TorrentManager with configuration from the Flask app."""
         config = app.config
         self.client_type = config.get("DL_CLIENT")
-        self.host = config.get("DL_HOST") or "localhost"
-        # Type safety: port is int in strategy
-        self.port = int(config.get("DL_PORT") or 8080)
+
+        raw_host = config.get("DL_HOST")
+        raw_port = config.get("DL_PORT")
+
+        self.host = raw_host or "localhost"
+        self.port = int(raw_port or 8080)
         self.username = config.get("DL_USERNAME")
         self.password = config.get("DL_PASSWORD")
         self.category = config.get("DL_CATEGORY", "abb-automated")
@@ -315,20 +318,29 @@ class TorrentManager:
                 logger.warning(f"Failed to parse DL_URL: {e}. Using raw config values.")
 
         if not self.dl_url:
-            # Handle defaults if port missing
-            if config.get("DL_HOST") and not config.get("DL_PORT"):
+            # Case 1: Host provided, Port missing
+            if raw_host and not raw_port:
                 if self.client_type == TorrentClientType.DELUGE:
                     self.port = 8112
                 else:
                     self.port = 8080
                 logger.info(f"DL_PORT missing. Defaulting to {self.port} for {self.client_type}.")
-
-            if self.host and self.port:
                 self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
-            elif self.client_type == TorrentClientType.DELUGE:
-                logger.warning("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
-                self.dl_url = "http://localhost:8112"
-                self.port = 8112
+
+            # Case 2: Host missing (implies using localhost default)
+            elif not raw_host:
+                if self.client_type == TorrentClientType.DELUGE:
+                    logger.warning("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
+                    self.host = "localhost"
+                    self.port = 8112
+                    self.dl_url = "http://localhost:8112"
+                else:
+                    # Default for others
+                    self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+
+            # Case 3: Both provided or fallback handled
+            else:
+                self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
 
         # Reset thread local
         self._local = threading.local()

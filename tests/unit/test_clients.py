@@ -81,39 +81,30 @@ def test_init_dl_port_missing(app: Flask) -> None:
 
 
 def test_init_dl_url_parse_failure(app: Flask) -> None:
-    """Test that init_app handles URL parsing exceptions gracefully.
-
-    Covers the 'except Exception' block in init_app when parsing DL_URL.
-    """
+    """Test that init_app handles URL parsing exceptions gracefully."""
     with patch("app.clients.urlparse") as mock_parse, patch("app.clients.logger") as mock_logger:
         mock_parse.side_effect = ValueError("Parsing boom")
-
-        # This triggers init_app
         setup_manager(app, DL_URL="http://malformed")
-
         mock_logger.warning.assert_called()
         args, _ = mock_logger.warning.call_args
         assert "Failed to parse DL_URL" in args[0]
 
 
-def test_init_deluge_success(app: Flask) -> None:
-    """Test successful Deluge strategy creation and connection."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
-        mock_instance = MockDeluge.return_value
-        manager = setup_manager(app, DL_CLIENT="deluge", DL_URL="http://deluge:8112", DL_PASSWORD="pass")
-
-        # Explicitly call _get_strategy to trigger the initialization logic
+def test_unsupported_client(app: Flask) -> None:
+    """Test that unsupported clients return None and log error instead of crashing."""
+    manager = setup_manager(app, DL_CLIENT="fake_client")
+    with patch("app.clients.logger") as mock_logger:
         strategy = manager._get_strategy()
-
-        assert strategy is not None
-        assert isinstance(strategy, DelugeStrategy)
-        assert manager._local.strategy == strategy
-        mock_instance.login.assert_called_once()
+        assert strategy is None
+        assert mock_logger.error.called
+        args, _ = mock_logger.error.call_args
+        assert "Error initializing torrent client strategy" in args[0]
 
 
 def test_verify_credentials_success(app: Flask) -> None:
     """Targets verify_credentials success path (True)."""
     manager = setup_manager(app)
+    # Mock _get_strategy to return a mock object (truthy)
     with patch.object(manager, "_get_strategy", return_value=MagicMock()):
         assert manager.verify_credentials() is True
 
@@ -121,14 +112,15 @@ def test_verify_credentials_success(app: Flask) -> None:
 def test_verify_credentials_failure(app: Flask) -> None:
     """Targets verify_credentials failure path (False)."""
     manager = setup_manager(app)
+    # Mock _get_strategy to return None
     with patch.object(manager, "_get_strategy", return_value=None):
         assert manager.verify_credentials() is False
 
 
-# --- Qbittorrent Strategy Tests ---
+# --- Strategy Implementation Tests ---
 
 
-def test_qbittorrent_add_magnet(app: Flask) -> None:
+def test_qbittorrent_strategy_add_magnet(app: Flask) -> None:
     """Test that QbittorrentStrategy adds magnet correctly."""
     with patch("app.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
@@ -203,7 +195,7 @@ def test_remove_torrent_qbittorrent(app: Flask) -> None:
 
 
 def test_transmission_add_magnet(app: Flask) -> None:
-    """Test adding magnet for Transmission."""
+    """Test that TransmissionStrategy correctly calls the underlying client."""
     with patch("app.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
@@ -393,9 +385,6 @@ def test_deluge_fallback_failure(app: Flask) -> None:
     """Test that if the Deluge fallback also fails, it raises an error."""
     with patch("app.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
-        # Sequence:
-        # 1. Attempt 1 (With Label) -> Fails "Unknown parameter"
-        # 2. Attempt 1 (Fallback No Label) -> Fails "Critical Network Failure"
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),
             Exception("Critical Network Failure"),
@@ -761,3 +750,38 @@ def test_get_status_reconnect(app: Flask) -> None:
             assert result == []
             # THREAD SAFETY UPDATE: Checked threaded local instead of _client
             assert getattr(manager._local, "strategy", None) is None
+
+
+# --- Strategy Specific Safety Checks (Defensive coding coverage) ---
+
+
+def test_strategy_not_connected_error_handling() -> None:
+    """Ensure strategies raise ConnectionError if their client is None."""
+
+    # 1. qBittorrent
+    qb = QbittorrentStrategy("host", 80, "u", "p")
+    # Don't call connect()
+    with pytest.raises(ConnectionError, match="qBittorrent client not connected"):
+        qb.add_magnet("m", "p", "c")
+    with pytest.raises(ConnectionError, match="qBittorrent client not connected"):
+        qb.remove_torrent("123")
+    with pytest.raises(ConnectionError, match="qBittorrent client not connected"):
+        qb.get_status("c")
+
+    # 2. Transmission
+    tx = TransmissionStrategy("host", 80, "u", "p")
+    with pytest.raises(ConnectionError, match="Transmission client not connected"):
+        tx.add_magnet("m", "p", "c")
+    with pytest.raises(ConnectionError, match="Transmission client not connected"):
+        tx.remove_torrent("123")
+    with pytest.raises(ConnectionError, match="Transmission client not connected"):
+        tx.get_status("c")
+
+    # 3. Deluge
+    dg = DelugeStrategy(None, "host", 80, "u", "p")
+    with pytest.raises(ConnectionError, match="Deluge client not connected"):
+        dg.add_magnet("m", "p", "c")
+    with pytest.raises(ConnectionError, match="Deluge client not connected"):
+        dg.remove_torrent("123")
+    with pytest.raises(ConnectionError, match="Deluge client not connected"):
+        dg.get_status("c")
