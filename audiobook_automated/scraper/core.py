@@ -11,8 +11,8 @@ import requests
 from bs4 import BeautifulSoup
 from flask import current_app
 
-from app.extensions import executor
-from app.scraper.network import (
+from audiobook_automated.extensions import executor
+from audiobook_automated.scraper.network import (
     CACHE_LOCK,
     details_cache,
     find_best_mirror,
@@ -25,7 +25,7 @@ from app.scraper.network import (
     mirror_cache,
     search_cache,
 )
-from app.scraper.parser import (
+from audiobook_automated.scraper.parser import (
     BookDict,
     normalize_cover_url,
     parse_book_details,

@@ -4,7 +4,7 @@ import hashlib
 import os
 import re
 
-from app.constants import FALLBACK_TITLE, WINDOWS_RESERVED_NAMES
+from audiobook_automated.constants import FALLBACK_TITLE, WINDOWS_RESERVED_NAMES
 
 
 def sanitize_title(title: str | None) -> str:

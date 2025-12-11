@@ -15,8 +15,8 @@ from requests.adapters import HTTPAdapter
 from requests.sessions import Session
 from urllib3.util.retry import Retry
 
-from app.constants import DEFAULT_MIRRORS, DEFAULT_TRACKERS, USER_AGENTS
-from app.scraper.parser import BookDict
+from audiobook_automated.constants import DEFAULT_MIRRORS, DEFAULT_TRACKERS, USER_AGENTS
+from audiobook_automated.scraper.parser import BookDict
 
 logger = logging.getLogger(__name__)
 

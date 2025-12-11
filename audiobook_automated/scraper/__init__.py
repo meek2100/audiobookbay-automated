@@ -1,6 +1,6 @@
 """Scraper package for AudiobookBay content."""
 
-from app.constants import DEFAULT_TRACKERS, USER_AGENTS
+from audiobook_automated.constants import DEFAULT_TRACKERS, USER_AGENTS
 
 from .core import extract_magnet_link, fetch_and_parse_page, get_book_details, search_audiobookbay
 from .network import (

@@ -8,7 +8,7 @@ from typing import Any, cast
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
 
-from app.constants import DEFAULT_COVER_FILENAME, FALLBACK_TITLE
+from audiobook_automated.constants import DEFAULT_COVER_FILENAME, FALLBACK_TITLE
 
 from .extensions import limiter, torrent_manager
 from .scraper import BookDict, extract_magnet_link, get_book_details, search_audiobookbay

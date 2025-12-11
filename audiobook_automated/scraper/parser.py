@@ -12,7 +12,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 
-from app.constants import DEFAULT_COVER_FILENAME
+from audiobook_automated.constants import DEFAULT_COVER_FILENAME
 
 # --- Regex Patterns ---
 # Why: AudioBookBay formats the info table unpredictably.
