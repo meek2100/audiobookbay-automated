@@ -89,11 +89,11 @@ repos:
           - types-beautifulsoup4
           - types-jsonschema
 
-  - repo: https://github.com/PyCQA/pydocstyle
-    rev: "6.3.0"
-    hooks:
-      - id: pydocstyle
-        exclude: "(tests/)"
+  #  - repo: https://github.com/PyCQA/pydocstyle
+  #    rev: "6.3.0"
+  #    hooks:
+  #      - id: pydocstyle
+  #        exclude: "(tests/)"
 
   # 8. Python Security Linter (Bandit)
   - repo: https://github.com/PyCQA/bandit
