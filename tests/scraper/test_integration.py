@@ -113,7 +113,7 @@ def test_search_special_characters(real_world_html: str, mock_sleep: Any) -> Non
             mock_get.return_value.text = real_world_html
             mock_get.return_value.status_code = 200
 
-            scraper_core.fetch_and_parse_page(hostname, query, page, user_agent)
+            scraper_core.fetch_and_parse_page(hostname, query, page, user_agent, 30)
 
             # Verify the query was passed in the params dict
             mock_get.assert_called()
@@ -135,7 +135,7 @@ def test_fetch_page_timeout(mock_sleep: Any) -> None:
     # FIX: Patch get_thread_session as that is what core.py imports/uses
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
         with pytest.raises(requests.exceptions.Timeout):
-            scraper_core.fetch_and_parse_page(hostname, query, page, user_agent)
+            scraper_core.fetch_and_parse_page(hostname, query, page, user_agent, 30)
 
 
 def test_fetch_and_parse_page_missing_cover_image(mock_sleep: Any) -> None:
@@ -159,7 +159,7 @@ def test_fetch_and_parse_page_missing_cover_image(mock_sleep: Any) -> None:
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
-        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
+        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0", 30)
 
     assert len(results) == 1
     assert results[0]["cover"] is None
@@ -191,7 +191,7 @@ def test_fetch_and_parse_page_missing_post_info(mock_sleep: Any) -> None:
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
-        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
+        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0", 30)
 
     assert len(results) == 1
     assert results[0]["language"] == "Unknown"
@@ -222,7 +222,7 @@ def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
-        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
+        results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0", 30)
 
     assert len(results) == 1
     r = results[0]

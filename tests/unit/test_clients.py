@@ -94,17 +94,6 @@ def test_init_dl_url_parse_failure(app: Flask) -> None:
         assert "Failed to parse DL_URL" in args[0]
 
 
-def test_unsupported_client(app: Flask) -> None:
-    """Test that unsupported clients return None and log error instead of crashing."""
-    manager = setup_manager(app, DL_CLIENT="fake_client")
-    with patch("audiobook_automated.clients.logger") as mock_logger:
-        strategy = manager._get_strategy()
-        assert strategy is None
-        assert mock_logger.error.called
-        args, _ = mock_logger.error.call_args
-        assert "Error initializing torrent client strategy" in args[0]
-
-
 def test_verify_credentials_success(app: Flask) -> None:
     """Targets verify_credentials success path (True)."""
     manager = setup_manager(app)
@@ -790,7 +779,9 @@ def test_strategy_not_connected_error_handling() -> None:
     with pytest.raises(ConnectionError, match="Deluge client not connected"):
         dg.get_status("c")
 
+
 # --- Coverage Fixes ---
+
 
 def test_get_strategy_unsupported_coverage(app: Flask) -> None:
     """Test unsupported client raises ValueError internally."""
