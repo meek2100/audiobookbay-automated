@@ -63,7 +63,7 @@ The app uses environment variables to configure its behavior.
 
 #### 1. Torrent Client Connection (Required)
 
-```env
+~~~env
 DL_CLIENT=qbittorrent          # Options: qbittorrent, transmission, deluge
 DL_HOST=192.168.1.123          # IP/Hostname of your client
 DL_PORT=8080                   # WebUI Port
@@ -71,37 +71,37 @@ DL_USERNAME=admin              # WebUI Username
 DL_PASSWORD=password           # WebUI Password
 DL_SCHEME=http                 # Protocol (http or https). Default: http.
 DL_CATEGORY=abb-automated      # Category to assign to torrents. Default: abb-automated.
-```
+~~~
 
 #### 2. System Configuration (Required)
 
-```env
+~~~env
 SAVE_PATH_BASE=/audiobooks     # CRITICAL: The root save path *inside* the Torrent Client container.
 SECRET_KEY=change_me           # Flask Session Key. Change this for production security.
-```
+~~~
 
 #### 3. Audiobookshelf Integration (Optional)
 
 To enable the "Reload Library" button in the navigation bar:
 
-```env
+~~~env
 ABS_URL=http://192.168.1.123:13378 # URL to your Audiobookshelf instance
 ABS_KEY=your_api_token             # API Token (Settings -> Users)
 ABS_LIB=your_library_id            # Library ID (Found in the URL when viewing the library)
-```
+~~~
 
 #### 4. Search & Scraping (Optional)
 
-```env
+~~~env
 ABB_HOSTNAME=audiobookbay.lu   # Primary mirror. Default: audiobookbay.lu
 ABB_MIRRORS=audiobookbay.is,audiobookbay.se       # Comma-separated list of backup mirrors to try.
 MAGNET_TRACKERS=udp://...      # Comma-separated list of extra trackers to add to magnets.
 PAGE_LIMIT=3                   # Max pages to scrape per search. Default: 3.
-```
+~~~
 
 #### 5. Application Settings (Optional)
 
-```env
+~~~env
 LISTEN_PORT=5078               # Internal port. Default: 5078.
 LISTEN_HOST=0.0.0.0            # Bind address. Default: 0.0.0.0 (or [::] if IPv6 detected).
 THREADS=8                      # Worker threads. Increase for higher concurrency. Default: 8.
@@ -111,7 +111,7 @@ LOG_LEVEL=INFO                 # Logging verbosity: DEBUG, INFO, WARNING, ERROR.
 TZ=UTC                         # Timezone for logs (e.g. America/Los_Angeles). Default: UTC.
 NAV_LINK_NAME=Open Player      # Label for a custom link in the navbar.
 NAV_LINK_URL=http://...        # URL for the custom link.
-```
+~~~
 
 ### Using Docker
 
@@ -126,25 +126,25 @@ NAV_LINK_URL=http://...        # URL for the custom link.
 
 2. **Start the Application**:
 
-   ```bash
+   ~~~bash
    docker-compose up -d
-   ```
+   ~~~
 
 ### Running Locally
 
 1. **Install Dependencies**: Ensure you have **Python 3.11+** installed (3.14 recommended), then install the required
    dependencies:
 
-   ```bash
+   ~~~bash
    # Install from pyproject.toml
    pip install .
-   ```
+   ~~~
 
 2. **Configure Environment**: Copy the example environment file to `.env`:
 
-   ```bash
+   ~~~bash
    cp examples/.env.example .env
-   ```
+   ~~~
 
 ### Advanced: Custom Trackers
 
@@ -154,10 +154,10 @@ If you wish to supply a long list of trackers that exceeds environment variable 
 1. Create a `trackers.json` file. See [`examples/trackers.json`](examples/trackers.json) for the required format.
 2. Update your `docker-compose.yaml` to include the volume mount:
 
-```yaml
+~~~yaml
 volumes:
   - ./trackers.json:/app/trackers.json:ro
-```
+~~~
 
 The application will automatically detect this file and prioritize it over the default tracker list.
 

@@ -37,6 +37,14 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - Do NOT optimize for multi-user throughput.
 - Do NOT reorganize directories or create new top-level modules without explicit user instruction.
 
+### Markdown Formatting Rule (CRITICAL)
+
+- **Use Tildes for Code Blocks:** All code blocks in Markdown files (including this one) **MUST** use triple tildes
+  (`~~~`) instead of triple backticks.
+  - **Why:** This prevents rendering conflicts when AI agents generate Markdown files inside a chat interface (which
+    uses backticks for its own formatting).
+  - **Example:** Use ` ~~~python ` instead of ` ```python `.
+
 ______________________________________________________________________
 
 ## A. Architecture & File Structure
@@ -46,8 +54,9 @@ ______________________________________________________________________
 - Repeated logic must be refactored immediately into a shared module.
 - No file shall reimplement or duplicate functionality.
 - AI agents must NOT create new top-level directories or move files unless explicitly instructed.
-- **Client Architecture:** Torrent Clients must be implemented using the **Strategy Pattern** (see `app/clients.py`).
-  `TorrentManager` acts as the facade and must not contain client-specific implementation details.
+- **Client Architecture:** Torrent Clients must be implemented using the **Strategy Pattern** (see
+  `audiobook_automated/clients.py`). `TorrentManager` acts as the facade and must not contain client-specific
+  implementation details.
 
 ______________________________________________________________________
 
@@ -151,8 +160,8 @@ ______________________________________________________________________
 - Prevents anti-bot triggers.
 - Must not be modified or removed without careful consideration of external rate limits.
 - **Note:** The application allows configuring the worker thread pool size (via `SCRAPER_THREADS`). The global semaphore
-  **MUST** be initialized to match this value at startup (in `app/__init__.py`) to ensures that the thread pool does not
-  exceed the allowed concurrency for external requests.
+  **MUST** be initialized to match this value at startup (in `audiobook_automated/__init__.py`) to ensures that the
+  thread pool does not exceed the allowed concurrency for external requests.
 
 ### The “Appliance” Philosophy
 
@@ -233,11 +242,12 @@ ______________________________________________________________________
 
 ### Centralized Logic & Concurrency
 
-- All parsing lives in `app/scraper/parser.py`.
+- All parsing lives in `audiobook_automated/scraper/parser.py`.
 - **MANDATE:** Use `lxml` parser for all BeautifulSoup operations (performance & robustness).
-- All constants in `app/constants.py`.
+- All constants in `audiobook_automated/constants.py`.
 - **Thread Safety:** Shared resources (e.g., `mirror_cache`, `search_cache`) and their associated locks (e.g.,
-  `CACHE_LOCK`) **MUST** be defined in the same module (`app/scraper/network.py`) to ensure atomic access.
+  `CACHE_LOCK`) **MUST** be defined in the same module (`audiobook_automated/scraper/network.py`) to ensure atomic
+  access.
 
 ### Extension & Global Object Initialization
 
@@ -283,7 +293,7 @@ ______________________________________________________________________
 
 - Raw ES6+ browser JS.
 - No bundlers, Webpack, or TypeScript.
-- Vendor libraries checked into `app/static/vendor`.
+- Vendor libraries checked into `audiobook_automated/static/vendor`.
 
 ### Jest/JSDOM Testing
 
@@ -291,11 +301,11 @@ Load scripts via `eval()` in `jest.setup.js`.
 
 #### Required helper
 
-```javascript
+~~~javascript
 async function flushPromises() {
   return new Promise((resolve) => jest.requireActual("timers").setTimeout(resolve, 0));
 }
-```
+~~~
 
 ______________________________________________________________________
 
@@ -340,7 +350,7 @@ ______________________________________________________________________
 ## 7. Quick Reference
 
 - **Install:** `pip install .`
-- **Run Dev:** `python app/app.py`
+- **Run Dev:** `python audiobook_automated/app.py`
 - **Run Prod:** `entrypoint.sh`
 - **Lint/Test:** `pre-commit run --all-files`
 - **Python Tests:** `pytest`
@@ -386,18 +396,18 @@ ______________________________________________________________________
 
 Before generating ANY code, AI agents must confirm:
 
-- [x] I have read the entire AGENTS.md file in this session.
-- [x] My output does not propose new architecture.
-- [x] My output does not optimize performance or concurrency.
-- [x] My output does not remove sleeps, jitter, or safety checks.
-- [x] My output does not add global rate limits.
-- [x] My output does not modify or remove the request semaphore.
-- [x] My output does not introduce persistent state or caches.
-- [x] My output respects DRY and centralization.
-- [x] My output uses shared helpers, constants, and parser logic.
-- [x] My output does not duplicate tests or logic.
-- [x] My output updates documentation if behavior changes.
-- [x] My output meets Python 3.14 standards.
+- [ ] I have read the entire AGENTS.md file in this session.
+- [ ] My output does not propose new architecture.
+- [ ] My output does not optimize performance or concurrency.
+- [ ] My output does not remove sleeps, jitter, or safety checks.
+- [ ] My output does not add global rate limits.
+- [ ] My output does not modify or remove the request semaphore.
+- [ ] My output does not introduce persistent state or caches.
+- [ ] My output respects DRY and centralization.
+- [ ] My output uses shared helpers, constants, and parser logic.
+- [ ] My output does not duplicate tests or logic.
+- [ ] My output updates documentation if behavior changes.
+- [ ] My output meets Python 3.14 standards.
 
 If any box cannot be checked, the output must NOT be generated.
 
