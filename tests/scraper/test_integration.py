@@ -8,7 +8,7 @@ import requests
 import requests_mock
 
 from audiobook_automated.scraper import core as scraper_core
-from audiobook_automated.scraper import extract_magnet_link, get_book_details, search_audiobookbay
+from audiobook_automated.scraper import search_audiobookbay
 from audiobook_automated.scraper.network import search_cache
 from audiobook_automated.scraper.parser import BookDict
 

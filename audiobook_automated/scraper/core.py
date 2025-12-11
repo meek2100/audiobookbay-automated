@@ -35,9 +35,7 @@ from audiobook_automated.scraper.parser import (
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_parse_page(
-    hostname: str, query: str, page: int, user_agent: str, timeout: int
-) -> list[BookDict]:
+def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, timeout: int) -> list[BookDict]:
     """Fetch a single search result page and parse it into a list of books.
 
     Enforces a global semaphore to limit concurrent scraping requests.

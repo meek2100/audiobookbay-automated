@@ -10,12 +10,12 @@ from bs4 import BeautifulSoup, Tag
 
 from audiobook_automated.scraper import extract_magnet_link, fetch_and_parse_page, get_book_details
 from audiobook_automated.scraper.parser import (
+    BookDict,
     get_text_after_label,
     normalize_cover_url,
     parse_book_details,
     parse_post_content,
 )
-from audiobook_automated.scraper.parser import BookDict
 
 # --- Unit Tests: Helper Functions ---
 
