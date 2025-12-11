@@ -6,8 +6,8 @@ const fs = require("fs");
 const path = require("path");
 
 // Define paths to the actual vendor files
-const flatpickrPath = path.resolve(__dirname, "../../app/static/vendor/js/flatpickr.min.js");
-const noUiSliderPath = path.resolve(__dirname, "../../app/static/vendor/js/nouislider.min.js");
+const flatpickrPath = path.resolve(__dirname, "../../audiobook_automated/static/vendor/js/flatpickr.min.js");
+const noUiSliderPath = path.resolve(__dirname, "../../audiobook_automated/static/vendor/js/nouislider.min.js");
 
 describe("Vendor Library Integration", () => {
     // Ensure the DOM is clean
