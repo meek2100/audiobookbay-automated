@@ -28,11 +28,12 @@ RUN pip install --no-cache-dir . && \
     useradd -m appuser
 
 # 3. Copy the source code with correct ownership (Avoids huge chown layer)
-COPY --chown=appuser:appuser app app/
+COPY --chown=appuser:appuser audiobook_automated audiobook_automated/
 COPY --chown=appuser:appuser entrypoint.sh .
+
 # 4. Set permissions on scripts and verify utils
 RUN chmod +x entrypoint.sh && \
-    python3 -m app.utils
+    python3 -m audiobook_automated.utils
 
 # Switch to non-root user for security
 USER appuser
@@ -42,7 +43,7 @@ EXPOSE 5078
 
 # Use the bundled python script for health checks
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python3 /app/app/healthcheck.py
+    CMD python3 /app/audiobook_automated/healthcheck.py
 
 # Define the command to run the application
 CMD ["./entrypoint.sh"]

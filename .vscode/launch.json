@@ -7,7 +7,7 @@
             "request": "launch",
             "module": "flask",
             "env": {
-                "FLASK_APP": "app.app",
+                "FLASK_APP": "audiobook_automated.app",
                 "FLASK_DEBUG": "1",
                 "APP_ENV": "development",
                 "SAVE_PATH_BASE": "/tmp/audiobooks_dev", // Safe local dev path

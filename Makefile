@@ -1,5 +1,5 @@
 run:
-	.venv/bin/python -m app.app
+	.venv/bin/python -m audiobook_automated.app
 
 venv:
 	python3 -m venv .venv

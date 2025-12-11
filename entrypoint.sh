@@ -41,7 +41,7 @@ echo "Starting Gunicorn with 1 worker and $THREADS threads at log level $LOG_LEV
 # Run Gunicorn
 # OPTIMIZATION: Added --preload. fast-fails on syntax errors and saves RAM.
 # LOGGING: Explicitly route logs to stdout/stderr for Docker capture.
-# MODULE CHANGE: Updated to app.app:app to reflect removal of package-level export
+# MODULE CHANGE: Updated to audiobook_automated.app:app to reflect renaming of package
 exec gunicorn --preload \
     --log-level "$LOG_LEVEL" \
     --access-logfile - \
@@ -50,4 +50,4 @@ exec gunicorn --preload \
     --workers 1 \
     --threads "$THREADS" \
     --timeout "$TIMEOUT" \
-    app.app:app
+    audiobook_automated.app:app

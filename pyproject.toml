@@ -59,12 +59,12 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["app*"]
+include = ["audiobook_automated*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "--cov=app --cov-report=term-missing --cov-fail-under=100"
+addopts = "--cov=audiobook_automated --cov-report=term-missing --cov-fail-under=100"
 env = [
     "TESTING=1",
     "SAVE_PATH_BASE=/tmp/test_downloads",
