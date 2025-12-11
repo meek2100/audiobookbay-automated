@@ -37,14 +37,6 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - Do NOT optimize for multi-user throughput.
 - Do NOT reorganize directories or create new top-level modules without explicit user instruction.
 
-### Markdown Formatting Rule (CRITICAL)
-
-- **Use Tildes for Code Blocks:** All code blocks in Markdown files (including this one) **MUST** use triple tildes
-  (`~~~`) instead of triple backticks.
-  - **Why:** This prevents rendering conflicts when AI agents generate Markdown files inside a chat interface (which
-    uses backticks for its own formatting).
-  - **Example:** Use ` ~~~python ` instead of ` ```python `.
-
 ______________________________________________________________________
 
 ## A. Architecture & File Structure
