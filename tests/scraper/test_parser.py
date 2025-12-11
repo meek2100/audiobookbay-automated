@@ -611,7 +611,7 @@ def test_get_book_details_caching(mock_sleep: Any) -> None:
     expected = cast(BookDict, {"title": "Cached Details"})
     # FIX: Use the new details_cache instead of search_cache (which stores lists)
     # The cache is imported from scraper.core (which gets it from network)
-    from audiobook_automated.scraper.core import details_cache
+    from audiobook_automated.scraper.core import details_cache  # type: ignore[attr-defined]
 
     details_cache[url] = expected
 
