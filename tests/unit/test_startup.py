@@ -54,10 +54,10 @@ def mock_flask_factory() -> Generator[tuple[Any, Any], None, None]:
         importlib.reload(audiobook_automated.config)
         importlib.reload(audiobook_automated)
 
-        if "app.app" in sys.modules:
-            importlib.reload(sys.modules["app.app"])
+        if "audiobook_automated.app" in sys.modules:
+            importlib.reload(sys.modules["audiobook_automated.app"])
         else:
-            importlib.import_module("app.app")
+            importlib.import_module("audiobook_automated.app")
 
 
 def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) -> None:
@@ -71,10 +71,10 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
     with pytest.raises(RuntimeError) as excinfo:
         importlib.reload(audiobook_automated.config)
         importlib.reload(audiobook_automated)
-        if "app.app" in sys.modules:
-            importlib.reload(sys.modules["app.app"])
+        if "audiobook_automated.app" in sys.modules:
+            importlib.reload(sys.modules["audiobook_automated.app"])
         else:
-            importlib.import_module("app.app")
+            importlib.import_module("audiobook_automated.app")
 
     assert "Configuration Error: SAVE_PATH_BASE is missing" in str(excinfo.value)
     args, _ = mock_logger.critical.call_args
@@ -93,10 +93,10 @@ def test_startup_insecure_secret_key_production(monkeypatch: Any, mock_flask_fac
     with pytest.raises(ValueError) as excinfo:
         importlib.reload(audiobook_automated.config)
         importlib.reload(audiobook_automated)
-        if "app.app" in sys.modules:
-            importlib.reload(sys.modules["app.app"])
+        if "audiobook_automated.app" in sys.modules:
+            importlib.reload(sys.modules["audiobook_automated.app"])
         else:
-            importlib.import_module("app.app")
+            importlib.import_module("audiobook_automated.app")
 
     assert "Application refused to start" in str(excinfo.value)
     args, _ = mock_logger.critical.call_args
@@ -174,9 +174,9 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
     expected_hash = "production-hash-123"
 
     with (
-        patch("app.os.path.exists") as mock_exists,
+        patch("audiobook_automated.os.path.exists") as mock_exists,
         patch("builtins.open", mock_open(read_data=expected_hash)) as mock_file,
-        patch("app.calculate_static_hash") as mock_calc,
+        patch("audiobook_automated.calculate_static_hash") as mock_calc,
     ):
         # Configure exists to return True only if checking for version.txt
         mock_exists.side_effect = lambda p: p.endswith("version.txt")

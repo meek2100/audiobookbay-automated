@@ -24,7 +24,7 @@ def test_search_page_render(client: Any) -> None:
 def test_search_execution(client: Any) -> None:
     """Test that a search query triggers the scraper and renders results."""
     # Mock the scraper so we don't hit external sites
-    with patch("app.routes.search_audiobookbay") as mock_search:
+    with patch("audiobook_automated.routes.search_audiobookbay") as mock_search:
         mock_search.return_value = [
             {
                 "title": "Mock Book",
@@ -46,7 +46,7 @@ def test_search_execution(client: Any) -> None:
 
 def test_search_failure(client: Any) -> None:
     """Test search handling when the scraper raises an exception."""
-    with patch("app.routes.search_audiobookbay") as mock_search:
+    with patch("audiobook_automated.routes.search_audiobookbay") as mock_search:
         mock_search.side_effect = Exception("Scraping error")
         response = client.get("/?query=fail")
         assert response.status_code == 200  # Renders template with error
@@ -55,7 +55,7 @@ def test_search_failure(client: Any) -> None:
 
 def test_details_page_render(client: Any) -> None:
     """Test that the details page renders correctly with valid data."""
-    with patch("app.routes.get_book_details") as mock_details:
+    with patch("audiobook_automated.routes.get_book_details") as mock_details:
         mock_details.return_value = {
             "title": "Detailed Book",
             "description": "A great description",
@@ -88,7 +88,7 @@ def test_details_missing_link(client: Any) -> None:
 
 def test_details_fetch_failure(client: Any) -> None:
     """Test details page handling when fetching details fails."""
-    with patch("app.routes.get_book_details") as mock_details:
+    with patch("audiobook_automated.routes.get_book_details") as mock_details:
         mock_details.side_effect = Exception("Details fetch failed")
         response = client.get("/details?link=http://audiobookbay.lu/bad")
         assert response.status_code == 200
@@ -97,7 +97,10 @@ def test_details_fetch_failure(client: Any) -> None:
 
 
 def test_send_success(client: Any) -> None:
-    with patch("app.routes.extract_magnet_link") as mock_extract, patch("app.routes.torrent_manager") as mock_tm:
+    with (
+        patch("audiobook_automated.routes.extract_magnet_link") as mock_extract,
+        patch("audiobook_automated.routes.torrent_manager") as mock_tm,
+    ):
         mock_extract.return_value = ("magnet:?xt=urn:btih:123", None)
         response = client.post("/send", json={"link": "https://audiobookbay.lu/book-page", "title": "Test Book"})
         assert response.status_code == 200
@@ -127,7 +130,7 @@ def test_send_invalid_json_type(client: Any) -> None:
 
 
 def test_send_extraction_failure(client: Any) -> None:
-    with patch("app.routes.extract_magnet_link") as mock_extract:
+    with patch("audiobook_automated.routes.extract_magnet_link") as mock_extract:
         mock_extract.return_value = (None, "Page Not Found")
         response = client.post("/send", json={"link": "https://audiobookbay.lu/bad-page", "title": "Bad Book"})
         assert response.status_code == 500
@@ -135,7 +138,10 @@ def test_send_extraction_failure(client: Any) -> None:
 
 
 def test_send_torrent_client_failure(client: Any) -> None:
-    with patch("app.routes.extract_magnet_link") as mock_extract, patch("app.routes.torrent_manager") as mock_tm:
+    with (
+        patch("audiobook_automated.routes.extract_magnet_link") as mock_extract,
+        patch("audiobook_automated.routes.torrent_manager") as mock_tm,
+    ):
         mock_extract.return_value = ("magnet:?xt=urn:btih:123", None)
         mock_tm.add_magnet.side_effect = Exception("Connection Refused")
         response = client.post("/send", json={"link": "https://audiobookbay.lu/book-page", "title": "Test Book"})
@@ -146,16 +152,16 @@ def test_send_torrent_client_failure(client: Any) -> None:
 def test_send_route_no_save_path_base(client: Any) -> None:
     client.application.config["SAVE_PATH_BASE"] = None
 
-    with patch("app.routes.extract_magnet_link", return_value=("magnet:...", None)):
-        with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:...", None)):
+        with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
             response = client.post("/send", json={"link": "l", "title": "t"})
             assert response.status_code == 200
             mock_tm.add_magnet.assert_called_with("magnet:...", "t")
 
 
 def test_send_sanitization_warning(client: Any, caplog: Any) -> None:
-    with patch("app.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
-        with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+        with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
             client.post("/send", json={"link": "http://example.com", "title": "..."})
             # FIX: Updated assert to match actual log message in routes.py
             assert f"Title '...' required fallback handling ('{FALLBACK_TITLE}')" in caplog.text
@@ -168,8 +174,8 @@ def test_send_windows_reserved_name(client: Any) -> None:
 
     This ensures full coverage of the collision prevention logic in routes.py.
     """
-    with patch("app.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
-        with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+        with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
             # 'CON' -> sanitize_title returns 'CON_Safe' -> Triggers UUID logic in routes.py
             client.post("/send", json={"link": "http://link", "title": "CON"})
 
@@ -181,7 +187,7 @@ def test_send_windows_reserved_name(client: Any) -> None:
 
 
 def test_delete_torrent(client: Any) -> None:
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.remove_torrent.return_value = None
         response = client.post("/delete", json={"id": "hash123"})
         assert response.status_code == 200
@@ -205,7 +211,7 @@ def test_delete_invalid_json_type(client: Any) -> None:
 
 
 def test_delete_torrent_failure(client: Any) -> None:
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.remove_torrent.side_effect = Exception("Removal failed")
         response = client.post("/delete", json={"id": "hash123"})
         assert response.status_code == 500
@@ -217,7 +223,7 @@ def test_reload_library_success(client: Any) -> None:
     client.application.config["ABS_KEY"] = "token"
     client.application.config["ABS_LIB"] = "lib-id"
 
-    with patch("app.routes.requests.post") as mock_post:
+    with patch("audiobook_automated.routes.requests.post") as mock_post:
         mock_post.return_value.status_code = 200
         response = client.post("/reload_library")
         assert response.status_code == 200
@@ -236,7 +242,7 @@ def test_reload_library_detailed_error(client: Any) -> None:
     client.application.config["ABS_KEY"] = "k"
     client.application.config["ABS_LIB"] = "l"
 
-    with patch("app.routes.requests.post") as mock_post:
+    with patch("audiobook_automated.routes.requests.post") as mock_post:
         mock_resp = MagicMock()
         mock_resp.status_code = 503
         mock_resp.reason = "Service Unavailable"
@@ -252,7 +258,7 @@ def test_reload_library_detailed_error(client: Any) -> None:
 
 def test_status_page_html(client: Any) -> None:
     """Test the status page rendering via HTML."""
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [
             {"id": "1", "name": "Book A", "progress": 10.0, "state": "DL", "size": "100 MB"}
         ]
@@ -263,7 +269,7 @@ def test_status_page_html(client: Any) -> None:
 
 def test_status_page_json(client: Any) -> None:
     """Test the status page returning JSON (used by polling)."""
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [
             {"id": "2", "name": "Book B", "progress": 50.0, "state": "DL", "size": "1 GB"}
         ]
@@ -274,7 +280,7 @@ def test_status_page_json(client: Any) -> None:
 
 def test_status_page_failure_html(client: Any) -> None:
     """Test status page rendering error message on failure."""
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.side_effect = Exception("Client Error")
         response = client.get("/status")
         assert response.status_code == 200
@@ -283,7 +289,7 @@ def test_status_page_failure_html(client: Any) -> None:
 
 def test_status_page_failure_json(client: Any) -> None:
     """Test status page returning JSON error on failure."""
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.side_effect = Exception("Client Error")
         response = client.get("/status?json=1")
         # JSON errors typically return 500
@@ -294,8 +300,8 @@ def test_status_page_failure_json(client: Any) -> None:
 def test_rate_limit_enforced(client: Any) -> None:
     # Ensure limiter is enabled (TestConfig already sets it)
     with (
-        patch("app.routes.extract_magnet_link", return_value=("magnet:123", None)),
-        patch("app.routes.torrent_manager"),
+        patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:123", None)),
+        patch("audiobook_automated.routes.torrent_manager"),
     ):
         for _ in range(60):
             response = client.post("/send", json={"link": "l", "title": "t"})

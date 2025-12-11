@@ -59,7 +59,7 @@ def test_library_reload_injection(client: Any) -> None:
 
 def test_status_page(client: Any) -> None:
     # FIX: Patch where it is imported in routes.py
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [{"name": "Book 1", "progress": 50, "state": "Downloading", "size": "100 MB"}]
         response = client.get("/status")
         assert response.status_code == 200
@@ -67,7 +67,7 @@ def test_status_page(client: Any) -> None:
 
 
 def test_status_route_error(client: Any) -> None:
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.side_effect = Exception("Database Locked")
 
         response = client.get("/status")
@@ -81,7 +81,7 @@ def test_status_page_empty(client: Any) -> None:
 
     Ensures the empty state message matches the UI expectations.
     """
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = []
         response = client.get("/status")
         assert response.status_code == 200
@@ -94,7 +94,7 @@ def test_status_page_json_response(client: Any) -> None:
     This verifies the frontend polling mechanism works (fixes the hermeneutic gap
     between frontend expectations and backend delivery).
     """
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [
             {"id": "1", "name": "JSON Book", "progress": 99.9, "state": "Seeding", "size": "500 MB"}
         ]
@@ -111,7 +111,7 @@ def test_status_page_json_response(client: Any) -> None:
 
 def test_status_page_json_error(client: Any) -> None:
     """Test that status page returns JSON error structure on failure when polling."""
-    with patch("app.routes.torrent_manager") as mock_tm:
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.side_effect = Exception("Client unreachable")
 
         response = client.get("/status?json=1")

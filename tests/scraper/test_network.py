@@ -67,7 +67,7 @@ def test_get_trackers_json_invalid_structure(mock_app_context: Any) -> None:
         mock_data = '{"key": "value"}'
         with patch("builtins.open", mock_open(read_data=mock_data)):
             with patch("os.path.exists", return_value=True):
-                with patch("app.scraper.network.logger") as mock_logger:
+                with patch("audiobook_automated.scraper.network.logger") as mock_logger:
                     trackers = network.get_trackers()
                     # Should fallback to defaults
                     assert trackers == DEFAULT_TRACKERS
@@ -83,7 +83,7 @@ def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
 
     with patch("os.path.exists", return_value=True):
         with patch("builtins.open", side_effect=json.JSONDecodeError("Expecting value", "doc", 0)):
-            with patch("app.scraper.network.logger") as mock_logger:
+            with patch("audiobook_automated.scraper.network.logger") as mock_logger:
                 trackers = network.get_trackers()
                 assert trackers == DEFAULT_TRACKERS
                 # Verify exception logging
@@ -149,7 +149,7 @@ def test_get_thread_session_initialization() -> None:
 
 
 def test_check_mirror_success_head() -> None:
-    with patch("app.scraper.network.requests.head") as mock_head:
+    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
         mock_head.return_value.status_code = 200
         result = network.check_mirror("good.mirror")
         assert result == "good.mirror"
@@ -157,9 +157,9 @@ def test_check_mirror_success_head() -> None:
 
 def test_check_mirror_success_get_fallback() -> None:
     """Test fallback to GET if HEAD raises an exception."""
-    with patch("app.scraper.network.requests.head") as mock_head:
+    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
         mock_head.side_effect = requests.RequestException("Method Not Allowed")
-        with patch("app.scraper.network.requests.get") as mock_get:
+        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
             mock_get.return_value.status_code = 200
             result = network.check_mirror("fallback.mirror")
             assert result == "fallback.mirror"
@@ -167,9 +167,9 @@ def test_check_mirror_success_get_fallback() -> None:
 
 def test_check_mirror_head_500_fallback() -> None:
     """Test fallback to GET if HEAD returns a non-200 status."""
-    with patch("app.scraper.network.requests.head") as mock_head:
+    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
         mock_head.return_value.status_code = 500
-        with patch("app.scraper.network.requests.get") as mock_get:
+        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
             mock_get.return_value.status_code = 200
             result = network.check_mirror("flaky.mirror")
             assert result == "flaky.mirror"
@@ -177,9 +177,9 @@ def test_check_mirror_head_500_fallback() -> None:
 
 def test_check_mirror_get_exception() -> None:
     """Test check_mirror returns None if both HEAD and GET fail."""
-    with patch("app.scraper.network.requests.head") as mock_head:
+    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
         mock_head.side_effect = requests.RequestException("HEAD Failed")
-        with patch("app.scraper.network.requests.get") as mock_get:
+        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
             mock_get.side_effect = requests.RequestException("GET Failed")
             result = network.check_mirror("bad.mirror")
             assert result is None
@@ -187,9 +187,9 @@ def test_check_mirror_get_exception() -> None:
 
 def test_check_mirror_timeout() -> None:
     """Test specific handling of requests.Timeout which is critical for network resilience."""
-    with patch("app.scraper.network.requests.head") as mock_head:
+    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
         mock_head.side_effect = requests.Timeout("Connection Timed Out")
-        with patch("app.scraper.network.requests.get") as mock_get:
+        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
             # Also timeout on fallback
             mock_get.side_effect = requests.Timeout("Connection Timed Out")
             result = network.check_mirror("timeout.mirror")
@@ -201,7 +201,7 @@ def test_find_best_mirror_all_fail(mock_app_context: Any) -> None:
     network.mirror_cache.clear()
     network.failure_cache.clear()
 
-    with patch("app.scraper.network.check_mirror", return_value=None):
+    with patch("audiobook_automated.scraper.network.check_mirror", return_value=None):
         result = network.find_best_mirror()
         assert result is None
         # Verify negative cache was set
@@ -215,8 +215,8 @@ def test_find_best_mirror_success(mock_app_context: Any) -> None:
     network.failure_cache.clear()
 
     # Mock get_mirrors to return a controlled list
-    with patch("app.scraper.network.get_mirrors", return_value=["mirror1.com"]):
-        with patch("app.scraper.network.check_mirror", side_effect=["mirror1.com"]):
+    with patch("audiobook_automated.scraper.network.get_mirrors", return_value=["mirror1.com"]):
+        with patch("audiobook_automated.scraper.network.check_mirror", side_effect=["mirror1.com"]):
             result = network.find_best_mirror()
             assert result == "mirror1.com"
             # Verify it was added to the positive cache
@@ -253,9 +253,9 @@ def test_find_best_mirror_negative_cache_hit(mock_app_context: Any) -> None:
     # Inject failure into negative cache
     network.failure_cache["failure"] = True
 
-    with patch("app.scraper.network.logger") as mock_logger:
+    with patch("audiobook_automated.scraper.network.logger") as mock_logger:
         # Patch check_mirror to verify it is NOT called
-        with patch("app.scraper.network.check_mirror") as mock_check:
+        with patch("audiobook_automated.scraper.network.check_mirror") as mock_check:
             result = network.find_best_mirror()
 
             assert result is None

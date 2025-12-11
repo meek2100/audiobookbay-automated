@@ -14,10 +14,10 @@ def test_app_entry_point() -> None:
     # We assign the result to 'reloaded_module' to ensure we are asserting
     # on the module itself, not the 'app' variable inside the 'app' package.
     # Check if loaded, if not import it
-    if "app.app" not in sys.modules:
-        importlib.import_module("app.app")
+    if "audiobook_automated.app" not in sys.modules:
+        importlib.import_module("audiobook_automated.app")
 
-    reloaded_module = importlib.reload(sys.modules["app.app"])
+    reloaded_module = importlib.reload(sys.modules["audiobook_automated.app"])
 
     # Verify that the module contains the 'app' variable (the Flask instance)
     assert reloaded_module.app is not None

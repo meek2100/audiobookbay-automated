@@ -56,7 +56,7 @@ def test_init_dl_url_construction(app: Flask) -> None:
 
 def test_init_dl_url_deluge_default(app: Flask) -> None:
     """Test default DL_URL for Deluge when host/port missing."""
-    with patch("app.clients.logger") as mock_logger:
+    with patch("audiobook_automated.clients.logger") as mock_logger:
         manager = setup_manager(app, DL_CLIENT="deluge", DL_URL=None, DL_HOST=None, DL_PORT=None)
         assert manager.dl_url == "http://localhost:8112"
         mock_logger.warning.assert_called_with("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
@@ -67,7 +67,7 @@ def test_init_dl_port_missing(app: Flask) -> None:
 
     Covers app/clients.py logic for default port assignment.
     """
-    with patch("app.clients.logger") as mock_logger:
+    with patch("audiobook_automated.clients.logger") as mock_logger:
         # Case 1: Deluge -> 8112
         manager = setup_manager(app, DL_CLIENT="deluge", DL_HOST="deluge-host", DL_PORT=None)
         assert manager.port == 8112
@@ -82,7 +82,10 @@ def test_init_dl_port_missing(app: Flask) -> None:
 
 def test_init_dl_url_parse_failure(app: Flask) -> None:
     """Test that init_app handles URL parsing exceptions gracefully."""
-    with patch("app.clients.urlparse") as mock_parse, patch("app.clients.logger") as mock_logger:
+    with (
+        patch("audiobook_automated.clients.urlparse") as mock_parse,
+        patch("audiobook_automated.clients.logger") as mock_logger,
+    ):
         mock_parse.side_effect = ValueError("Parsing boom")
         setup_manager(app, DL_URL="http://malformed")
         mock_logger.warning.assert_called()
@@ -93,7 +96,7 @@ def test_init_dl_url_parse_failure(app: Flask) -> None:
 def test_unsupported_client(app: Flask) -> None:
     """Test that unsupported clients return None and log error instead of crashing."""
     manager = setup_manager(app, DL_CLIENT="fake_client")
-    with patch("app.clients.logger") as mock_logger:
+    with patch("audiobook_automated.clients.logger") as mock_logger:
         strategy = manager._get_strategy()
         assert strategy is None
         assert mock_logger.error.called
@@ -122,7 +125,7 @@ def test_verify_credentials_failure(app: Flask) -> None:
 
 def test_qbittorrent_strategy_add_magnet(app: Flask) -> None:
     """Test that QbittorrentStrategy adds magnet correctly."""
-    with patch("app.clients.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Ok."
 
@@ -146,14 +149,14 @@ def test_qbittorrent_strategy_add_magnet(app: Flask) -> None:
 
 def test_qbittorrent_add_magnet_failure_response(app: Flask) -> None:
     """Test logging when qBittorrent returns a failure string."""
-    with patch("app.clients.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Fails."
 
         strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             strategy.add_magnet("magnet:?xt=urn:btih:123", "/downloads/Book", "audiobooks")
             args, _ = mock_logger.warning.call_args
             assert "qBittorrent add returned unexpected response" in args[0]
@@ -162,7 +165,7 @@ def test_qbittorrent_add_magnet_failure_response(app: Flask) -> None:
 
 def test_add_magnet_invalid_path_logging(app: Flask) -> None:
     """Test logging when the Torrent Client returns an error related to an invalid save path."""
-    with patch("app.clients.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Invalid Save Path"
 
@@ -170,7 +173,7 @@ def test_add_magnet_invalid_path_logging(app: Flask) -> None:
         # Using manager to trigger strategy creation and delegation
         manager._get_strategy()
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             manager.add_magnet("magnet:?xt=urn:btih:123", "/root/protected")
             # Warning will come from strategy logging
             assert mock_logger.warning.called
@@ -181,7 +184,7 @@ def test_add_magnet_invalid_path_logging(app: Flask) -> None:
 
 def test_remove_torrent_qbittorrent(app: Flask) -> None:
     """Test removing torrent for qBittorrent."""
-    with patch("app.clients.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
 
         strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
@@ -196,7 +199,7 @@ def test_remove_torrent_qbittorrent(app: Flask) -> None:
 
 def test_transmission_add_magnet(app: Flask) -> None:
     """Test that TransmissionStrategy correctly calls the underlying client."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
@@ -209,14 +212,14 @@ def test_transmission_add_magnet(app: Flask) -> None:
 
 def test_transmission_add_magnet_fallback(app: Flask) -> None:
     """Test that transmission falls back to adding torrent without label if first attempt fails."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
         mock_instance.add_torrent.side_effect = [TypeError("unexpected keyword argument 'labels'"), None]
 
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             strategy.add_magnet("magnet:?xt=urn:btih:FALLBACK", "/downloads/Book", "audiobooks")
             assert mock_logger.warning.called
             args, _ = mock_logger.warning.call_args
@@ -227,14 +230,14 @@ def test_transmission_add_magnet_fallback(app: Flask) -> None:
 
 def test_transmission_add_magnet_generic_exception_fallback(app: Flask) -> None:
     """Test that Transmission falls back even on generic exceptions."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
         mock_instance.add_torrent.side_effect = [Exception("Generic Protocol Error"), None]
 
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             strategy.add_magnet("magnet:?xt=urn:btih:GENERIC", "/downloads/Book", "audiobooks")
             args, _ = mock_logger.warning.call_args
             assert "Transmission label assignment failed" in args[0]
@@ -244,7 +247,7 @@ def test_transmission_add_magnet_generic_exception_fallback(app: Flask) -> None:
 
 def test_init_transmission_failure(app: Flask) -> None:
     """Test handling of Transmission connection failure."""
-    with patch("app.clients.TxClient") as MockTx:
+    with patch("audiobook_automated.clients.TxClient") as MockTx:
         MockTx.side_effect = Exception("Connection refused")
         manager = setup_manager(app, DL_CLIENT="transmission")
         assert manager._get_strategy() is None
@@ -252,7 +255,7 @@ def test_init_transmission_failure(app: Flask) -> None:
 
 def test_remove_torrent_transmission_hash(app: Flask) -> None:
     """Test removing torrent for Transmission using a string hash."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
 
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
@@ -264,7 +267,7 @@ def test_remove_torrent_transmission_hash(app: Flask) -> None:
 
 def test_remove_torrent_transmission_numeric_id(app: Flask) -> None:
     """Test removing torrent for Transmission with a numeric ID."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
 
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
@@ -276,7 +279,7 @@ def test_remove_torrent_transmission_numeric_id(app: Flask) -> None:
 
 def test_remove_torrent_transmission_int_conversion_failure(app: Flask) -> None:
     """Test removing torrent for Transmission when ID is not an integer."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
 
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
@@ -291,7 +294,7 @@ def test_remove_torrent_transmission_int_conversion_failure(app: Flask) -> None:
 
 def test_deluge_add_magnet(app: Flask) -> None:
     """Test DelugeStrategy add_magnet."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
@@ -306,11 +309,11 @@ def test_deluge_add_magnet(app: Flask) -> None:
 
 def test_init_deluge_failure(app: Flask) -> None:
     """Test handling of Deluge login failure in manager."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         MockDeluge.return_value.login.side_effect = Exception("Login failed")
         manager = setup_manager(app, DL_CLIENT="deluge", DL_URL="http://deluge:8112")
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             assert manager._get_strategy() is None
             mock_logger.error.assert_called()
             args, _ = mock_logger.error.call_args
@@ -319,14 +322,14 @@ def test_init_deluge_failure(app: Flask) -> None:
 
 def test_init_deluge_constructor_failure(app: Flask) -> None:
     """Test handling of DelugeWebClient constructor failure."""
-    with patch("app.clients.DelugeWebClient", side_effect=Exception("Init Error")):
+    with patch("audiobook_automated.clients.DelugeWebClient", side_effect=Exception("Init Error")):
         manager = setup_manager(app, DL_CLIENT="deluge", DL_URL="http://deluge:8112")
         assert manager._get_strategy() is None
 
 
 def test_remove_torrent_deluge(app: Flask) -> None:
     """Test removing torrent for Deluge."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
@@ -338,7 +341,7 @@ def test_remove_torrent_deluge(app: Flask) -> None:
 
 def test_deluge_label_plugin_error(app: Flask) -> None:
     """Test that Deluge falls back to adding torrent without label if plugin is missing."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),
@@ -364,7 +367,7 @@ def test_deluge_fallback_robustness_strings(app: Flask) -> None:
         "Invalid argument: label",
     ]
 
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
 
         for error_msg in error_variations:
@@ -383,7 +386,7 @@ def test_deluge_fallback_robustness_strings(app: Flask) -> None:
 
 def test_deluge_fallback_failure(app: Flask) -> None:
     """Test that if the Deluge fallback also fails, it raises an error."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),
@@ -393,7 +396,7 @@ def test_deluge_fallback_failure(app: Flask) -> None:
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
         strategy.connect()
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             with pytest.raises(Exception) as exc:
                 strategy.add_magnet("magnet:?xt=urn:btih:FAIL", "/downloads/Book", "audiobooks")
 
@@ -404,7 +407,7 @@ def test_deluge_fallback_failure(app: Flask) -> None:
 
 def test_deluge_add_magnet_generic_error(app: Flask) -> None:
     """Test that a generic error in Deluge addition is raised."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.add_torrent_magnet.side_effect = Exception("Generic Failure")
 
@@ -423,7 +426,7 @@ def test_unsupported_client_strategy(app: Flask) -> None:
     """Test that unsupported clients return None and log error instead of crashing."""
     manager = setup_manager(app, DL_CLIENT="fake_client")
 
-    with patch("app.clients.logger") as mock_logger:
+    with patch("audiobook_automated.clients.logger") as mock_logger:
         strategy = manager._get_strategy()
         assert strategy is None
         assert mock_logger.error.called
@@ -433,7 +436,7 @@ def test_unsupported_client_strategy(app: Flask) -> None:
 
 def test_init_qbittorrent_login_failed(app: Flask) -> None:
     """Test handling of qBittorrent authentication failure."""
-    with patch("app.clients.QbClient") as MockQb:
+    with patch("audiobook_automated.clients.QbClient") as MockQb:
         MockQb.return_value.auth_log_in.side_effect = LoginFailed("Bad Auth")
         manager = setup_manager(app, DL_CLIENT="qbittorrent")
         assert manager._get_strategy() is None
@@ -442,7 +445,7 @@ def test_init_qbittorrent_login_failed(app: Flask) -> None:
 def test_verify_credentials_fail(app: Flask) -> None:
     """Test verify_credentials returns False when client fails to init."""
     manager = setup_manager(app, DL_CLIENT="qbittorrent")
-    with patch("app.clients.TorrentManager._get_strategy", return_value=None):
+    with patch("audiobook_automated.clients.TorrentManager._get_strategy", return_value=None):
         assert manager.verify_credentials() is False
 
 
@@ -457,7 +460,7 @@ def test_remove_torrent_no_client_raises(app: Flask) -> None:
 
 def test_remove_torrent_retry(app: Flask) -> None:
     """Test that remove_torrent attempts to reconnect if the first call fails."""
-    with patch("app.clients.QbClient"):
+    with patch("audiobook_automated.clients.QbClient"):
         manager = setup_manager(app)
         with patch.object(manager, "_remove_torrent_logic") as mock_logic:
             mock_logic.side_effect = [Exception("Stale Connection"), None]
@@ -469,7 +472,7 @@ def test_remove_torrent_retry(app: Flask) -> None:
 
 def test_add_magnet_reconnect_retry(app: Flask) -> None:
     """Test that add_magnet attempts to reconnect if the first call fails."""
-    with patch("app.clients.QbClient"):
+    with patch("audiobook_automated.clients.QbClient"):
         manager = setup_manager(app)
         # Patch the logic method to throw then succeed
         with patch.object(manager, "_add_magnet_logic") as mock_logic:
@@ -522,7 +525,7 @@ def test_format_size_logic() -> None:
 
 def test_get_status_qbittorrent(app: Flask) -> None:
     """Test fetching status from qBittorrent."""
-    with patch("app.clients.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
 
         mock_torrent = MagicMock()
@@ -546,7 +549,7 @@ def test_get_status_qbittorrent(app: Flask) -> None:
 
 def test_get_status_qbittorrent_robustness(app: Flask) -> None:
     """Test qBittorrent handling of None progress."""
-    with patch("app.clients.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
 
         mock_torrent = MagicMock()
@@ -569,7 +572,7 @@ def test_get_status_qbittorrent_robustness(app: Flask) -> None:
 
 def test_get_status_transmission(app: Flask) -> None:
     """Test fetching status from Transmission."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
 
         mock_torrent = MagicMock()
@@ -595,7 +598,7 @@ def test_get_status_transmission(app: Flask) -> None:
 
 def test_get_status_transmission_robustness(app: Flask) -> None:
     """Test fetching status from Transmission handles None values gracefully."""
-    with patch("app.clients.TxClient") as MockTxClient:
+    with patch("audiobook_automated.clients.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
 
         mock_torrent_bad = MagicMock()
@@ -622,7 +625,7 @@ def test_get_status_transmission_robustness(app: Flask) -> None:
 
 def test_get_status_deluge(app: Flask) -> None:
     """Test fetching status from Deluge."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_response = MagicMock()
         mock_response.result = {"hash123": {"name": "D Book", "state": "Dl", "progress": 45.5, "total_size": 100}}
@@ -638,7 +641,7 @@ def test_get_status_deluge(app: Flask) -> None:
 
 def test_get_status_deluge_empty_result(app: Flask) -> None:
     """Test handling of Deluge returning a None result payload."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_response = MagicMock()
         mock_response.result = None
@@ -647,7 +650,7 @@ def test_get_status_deluge_empty_result(app: Flask) -> None:
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
         strategy.connect()
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             results = strategy.get_status("cat")
 
         assert results == []
@@ -657,7 +660,7 @@ def test_get_status_deluge_empty_result(app: Flask) -> None:
 
 def test_get_status_deluge_unexpected_data_type(app: Flask) -> None:
     """Test handling of Deluge returning a result that is not a dict."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_response = MagicMock()
         mock_response.result = ["unexpected", "list"]
@@ -666,7 +669,7 @@ def test_get_status_deluge_unexpected_data_type(app: Flask) -> None:
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
         strategy.connect()
 
-        with patch("app.clients.logger") as mock_logger:
+        with patch("audiobook_automated.clients.logger") as mock_logger:
             results = strategy.get_status("cat")
 
         assert results == []
@@ -680,7 +683,7 @@ def test_get_status_deluge_invalid_item_type(app: Flask) -> None:
     Test Deluge handling of non-dict items in the response dict.
     Covers app/clients.py lines 356-357 (continue on invalid type).
     """
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_response = MagicMock()
         # Mix valid and invalid entries
@@ -701,7 +704,7 @@ def test_get_status_deluge_invalid_item_type(app: Flask) -> None:
 
 def test_get_status_deluge_robustness(app: Flask) -> None:
     """Test Deluge handling of None in individual torrent fields."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_response = MagicMock()
         mock_response.result = {
@@ -721,7 +724,7 @@ def test_get_status_deluge_robustness(app: Flask) -> None:
 
 def test_get_status_deluge_malformed_data(app: Flask) -> None:
     """Test Deluge handling of malformed progress data."""
-    with patch("app.clients.DelugeWebClient") as MockDeluge:
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_response = MagicMock()
         mock_response.result = {
@@ -741,7 +744,7 @@ def test_get_status_deluge_malformed_data(app: Flask) -> None:
 
 def test_get_status_reconnect(app: Flask) -> None:
     """Test that get_status attempts to reconnect if the first call fails."""
-    with patch("app.clients.QbClient"):
+    with patch("audiobook_automated.clients.QbClient"):
         manager = setup_manager(app)
         with patch.object(manager, "_get_status_logic") as mock_logic:
             mock_logic.side_effect = [Exception("Stale Connection"), []]

@@ -17,12 +17,12 @@ from audiobook_automated.scraper.parser import BookDict
 
 def test_search_audiobookbay_success(mock_sleep: Any) -> None:
     """Standard success test."""
-    with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
+    with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
         # FIX: Patch get_thread_session as that is what core.py imports/uses
-        with patch("app.scraper.core.get_thread_session"):
+        with patch("audiobook_automated.scraper.core.get_thread_session"):
             # FIX: Explicitly cast mock return value to list[BookDict]
             mock_results = cast(list[BookDict], [{"title": "Test Book"}])
-            with patch("app.scraper.core.fetch_and_parse_page", return_value=mock_results):
+            with patch("audiobook_automated.scraper.core.fetch_and_parse_page", return_value=mock_results):
                 results = search_audiobookbay("query", max_pages=1)
                 assert len(results) == 1
                 assert results[0]["title"] == "Test Book"
@@ -36,7 +36,7 @@ def test_search_caching(mock_sleep: Any) -> None:
     search_cache[query] = expected_result
 
     # Ensure no network calls are made
-    with patch("app.scraper.core.find_best_mirror") as mock_mirror:
+    with patch("audiobook_automated.scraper.core.find_best_mirror") as mock_mirror:
         results = search_audiobookbay(query)
         assert results == expected_result
         mock_mirror.assert_not_called()
@@ -48,48 +48,50 @@ def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
 
     mock_future.result.return_value = cast(list[BookDict], [{"title": "Sync Book"}])
 
-    with patch("app.scraper.core.executor") as mock_executor_instance:
+    with patch("audiobook_automated.scraper.core.executor") as mock_executor_instance:
         mock_executor_instance.submit.return_value = mock_future
 
-        with patch("app.scraper.core.concurrent.futures.as_completed", return_value=[mock_future]):
-            with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
+        with patch("audiobook_automated.scraper.core.concurrent.futures.as_completed", return_value=[mock_future]):
+            with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
                 # FIX: Patch get_thread_session as that is what core.py imports/uses
-                with patch("app.scraper.core.get_thread_session"):
+                with patch("audiobook_automated.scraper.core.get_thread_session"):
                     results = search_audiobookbay("query", max_pages=1)
                     assert len(results) == 1
                     assert results[0]["title"] == "Sync Book"
 
 
 def test_search_no_mirrors_raises_error(mock_sleep: Any) -> None:
-    with patch("app.scraper.core.find_best_mirror", return_value=None):
+    with patch("audiobook_automated.scraper.core.find_best_mirror", return_value=None):
         with pytest.raises(ConnectionError) as exc:
             search_audiobookbay("test")
         assert "No reachable AudiobookBay mirrors" in str(exc.value)
 
 
 def test_search_thread_failure(mock_sleep: Any) -> None:
-    with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
+    with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
         # FIX: Patch get_thread_session as that is what core.py imports/uses
-        with patch("app.scraper.core.get_thread_session"):
-            with patch("app.scraper.core.fetch_and_parse_page", side_effect=Exception("Scrape Fail")):
-                with patch("app.scraper.core.mirror_cache") as mock_cache:
+        with patch("audiobook_automated.scraper.core.get_thread_session"):
+            with patch("audiobook_automated.scraper.core.fetch_and_parse_page", side_effect=Exception("Scrape Fail")):
+                with patch("audiobook_automated.scraper.core.mirror_cache") as mock_cache:
                     results = search_audiobookbay("query", max_pages=1)
                     assert results == []
                     mock_cache.clear.assert_called()
 
 
 def test_search_audiobookbay_generic_exception_in_thread(mock_sleep: Any) -> None:
-    with patch("app.scraper.core.find_best_mirror", return_value="mirror.com"):
+    with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
         # FIX: Patch get_thread_session as that is what core.py imports/uses
-        with patch("app.scraper.core.get_thread_session"):
-            with patch("app.scraper.core.executor") as mock_executor_instance:
+        with patch("audiobook_automated.scraper.core.get_thread_session"):
+            with patch("audiobook_automated.scraper.core.executor") as mock_executor_instance:
                 mock_future = MagicMock()
                 mock_future.result.side_effect = ArithmeticError("Unexpected calculation error")
                 mock_executor_instance.submit.return_value = mock_future
 
-                with patch("app.scraper.core.concurrent.futures.as_completed", return_value=[mock_future]):
-                    with patch("app.scraper.core.mirror_cache") as mock_mirror_clear:
-                        with patch("app.scraper.core.logger") as mock_logger:
+                with patch(
+                    "audiobook_automated.scraper.core.concurrent.futures.as_completed", return_value=[mock_future]
+                ):
+                    with patch("audiobook_automated.scraper.core.mirror_cache") as mock_mirror_clear:
+                        with patch("audiobook_automated.scraper.core.logger") as mock_logger:
                             results = search_audiobookbay("query", max_pages=1)
                             assert results == []
                             args, _ = mock_logger.error.call_args
@@ -106,7 +108,7 @@ def test_search_special_characters(real_world_html: str, mock_sleep: Any) -> Non
 
     mock_session = requests.Session()
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         with patch.object(mock_session, "get") as mock_get:
             mock_get.return_value.text = real_world_html
             mock_get.return_value.status_code = 200
@@ -131,7 +133,7 @@ def test_fetch_page_timeout(mock_sleep: Any) -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", exc=requests.exceptions.Timeout)
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
         with pytest.raises(requests.exceptions.Timeout):
             scraper_core.fetch_and_parse_page(hostname, query, page, user_agent)
 
@@ -156,7 +158,7 @@ def test_fetch_and_parse_page_missing_cover_image(mock_sleep: Any) -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
         results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
@@ -188,7 +190,7 @@ def test_fetch_and_parse_page_missing_post_info(mock_sleep: Any) -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
         results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
@@ -219,7 +221,7 @@ def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
         results = scraper_core.fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0")
 
     assert len(results) == 1
@@ -254,7 +256,7 @@ def test_get_book_details_sanitization(mock_sleep: Any) -> None:
     mock_response.text = html
     mock_session.get.return_value = mock_response
 
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/book")
 
         description = str(details.get("description", ""))
@@ -278,7 +280,7 @@ def test_get_book_details_caching(mock_sleep: Any) -> None:
     details_cache[url] = expected
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session") as mock_session_getter:
+    with patch("audiobook_automated.scraper.core.get_thread_session") as mock_session_getter:
         result = get_book_details(url)
         assert result == expected
         mock_session_getter.assert_not_called()
@@ -293,7 +295,7 @@ def test_get_book_details_success(details_html: str, mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/valid-book")
 
         assert details["title"] == "A Game of Thrones"
@@ -317,7 +319,7 @@ def test_get_book_details_default_cover_skip(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/def-cover")
         assert details["cover"] is None
 
@@ -327,7 +329,7 @@ def test_get_book_details_failure(mock_sleep: Any) -> None:
     mock_session = MagicMock()
     mock_session.get.side_effect = requests.exceptions.RequestException("Net Down")
 
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         with pytest.raises(requests.exceptions.RequestException):
             get_book_details("https://audiobookbay.lu/fail-book")
 
@@ -345,7 +347,7 @@ def test_get_book_details_empty(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_url_parse_error(mock_sleep: Any) -> None:
-    with patch("app.scraper.core.urlparse", side_effect=Exception("Boom")):
+    with patch("audiobook_automated.scraper.core.urlparse", side_effect=Exception("Boom")):
         with pytest.raises(ValueError) as exc:
             get_book_details("http://anything")
     assert "Invalid URL format" in str(exc.value)
@@ -360,7 +362,7 @@ def test_get_book_details_missing_metadata(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/empty")
         assert details["language"] == "Unknown"
         assert details["format"] == "Unknown"
@@ -380,7 +382,7 @@ def test_get_book_details_unknown_bitrate_normalization(mock_sleep: Any) -> None
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/unknown")
         assert details["bitrate"] == "Unknown"
 
@@ -399,7 +401,7 @@ def test_get_book_details_partial_bitrate(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/partial_bitrate")
         assert details["format"] == "Unknown"
         assert details["bitrate"] == "128 Kbps"
@@ -419,7 +421,7 @@ def test_get_book_details_partial_format(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/partial")
         assert details["format"] == "MP3"
         assert details["bitrate"] == "Unknown"
@@ -439,7 +441,7 @@ def test_get_book_details_content_without_metadata_labels(mock_sleep: Any) -> No
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/no_meta")
         assert details["format"] == "Unknown"
 
@@ -467,7 +469,7 @@ def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/mystery")
         assert details["language"] == "Unknown"
         assert details["category"] == "Unknown"
@@ -498,7 +500,7 @@ def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/strat2")
         assert details["info_hash"] == "1111111111222222222233333333334444444444"
 
@@ -520,7 +522,7 @@ def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     # FIX: Patch get_thread_session as that is what core.py imports/uses
-    with patch("app.scraper.core.get_thread_session", return_value=mock_session):
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         details = get_book_details("https://audiobookbay.lu/strat3")
         assert details["info_hash"] == "5555555555666666666677777777778888888888"
 
@@ -533,9 +535,9 @@ def test_extract_magnet_success(mock_sleep: Any) -> None:
     # Mock return from get_book_details
     mock_details = cast(BookDict, {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]})
 
-    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+    with patch("audiobook_automated.scraper.core.get_book_details", return_value=mock_details):
         # FIX: Patch the get_trackers function instead of the removed global
-        with patch("app.scraper.core.get_trackers", return_value=[]):
+        with patch("audiobook_automated.scraper.core.get_trackers", return_value=[]):
             magnet, error = extract_magnet_link(url)
             assert error is None
             assert magnet is not None
@@ -548,7 +550,7 @@ def test_extract_magnet_missing_info_hash(mock_sleep: Any) -> None:
     url = "https://audiobookbay.lu/book"
     mock_details = cast(BookDict, {"info_hash": "Unknown", "trackers": []})
 
-    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+    with patch("audiobook_automated.scraper.core.get_book_details", return_value=mock_details):
         magnet, error = extract_magnet_link(url)
         assert magnet is None
         assert error is not None
@@ -559,7 +561,7 @@ def test_extract_magnet_ssrf_inherited(mock_sleep: Any) -> None:
     """Verifies that extract_magnet_link inherits the SSRF validation from get_book_details."""
     url = "https://google.com/evil"
     # Real logic: get_book_details raises ValueError for invalid domains
-    with patch("app.scraper.core.get_book_details", side_effect=ValueError("Invalid domain")):
+    with patch("audiobook_automated.scraper.core.get_book_details", side_effect=ValueError("Invalid domain")):
         magnet, error = extract_magnet_link(url)
         assert magnet is None
         assert error is not None
@@ -568,8 +570,8 @@ def test_extract_magnet_ssrf_inherited(mock_sleep: Any) -> None:
 
 def test_extract_magnet_generic_exception(mock_sleep: Any) -> None:
     url = "https://audiobookbay.lu/book"
-    with patch("app.scraper.core.get_book_details", side_effect=Exception("Database down")):
-        with patch("app.scraper.core.logger") as mock_logger:
+    with patch("audiobook_automated.scraper.core.get_book_details", side_effect=Exception("Database down")):
+        with patch("audiobook_automated.scraper.core.logger") as mock_logger:
             magnet, error = extract_magnet_link(url)
             assert magnet is None
             assert error is not None
@@ -584,9 +586,9 @@ def test_extract_magnet_none_trackers(mock_sleep: Any) -> None:
     # We cast to avoid MyPy errors, simulating runtime data that might violate TypedDict if not careful
     mock_details = cast(BookDict, {"info_hash": "abc123hash", "trackers": None})
 
-    with patch("app.scraper.core.get_book_details", return_value=mock_details):
+    with patch("audiobook_automated.scraper.core.get_book_details", return_value=mock_details):
         # Patch get_trackers to return empty list
-        with patch("app.scraper.core.get_trackers", return_value=[]):
+        with patch("audiobook_automated.scraper.core.get_trackers", return_value=[]):
             magnet, error = extract_magnet_link(url)
 
             assert error is None
