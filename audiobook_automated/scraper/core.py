@@ -52,7 +52,10 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
         list[BookDict]: A list of dictionaries, each representing a book found on the page.
     """
     base_url = f"https://{hostname}"
-    url = f"{base_url}/page/{page}/"
+    if page == 1:
+        url = f"{base_url}/"
+    else:
+        url = f"{base_url}/page/{page}/"
     params = {"s": query}
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
