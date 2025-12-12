@@ -20,6 +20,16 @@ def test_sanitize_special_chars() -> None:
     assert sanitize_title("Book: The Movie / Part 1") == "Book The Movie  Part 1"
 
 
+def test_sanitize_path_traversal() -> None:
+    """Test that path traversal attempts are neutralized."""
+    # Parent directory traversal
+    assert sanitize_title("../../../etc/passwd") == "etcpasswd"
+    # Root directory traversal
+    assert sanitize_title("/etc/shadow") == "etcshadow"
+    # Windows-style backslashes
+    assert sanitize_title("..\\Windows\\System32") == "WindowsSystem32"
+
+
 def test_sanitize_windows_reserved() -> None:
     # Trailing periods and spaces are bad in Windows
     assert sanitize_title("The End. ") == "The End"

@@ -265,7 +265,8 @@ def parse_book_details(soup: BeautifulSoup, url: str) -> BookDict:
 
     # Fallback 1: Footer Hash
     if info_hash == "Unknown":
-        info_hash_row = soup.find("td", string=RE_INFO_HASH)
+        # Robustness: Search for text content recursively to handle nested tags (e.g., <b>Info Hash:</b>)
+        info_hash_row = soup.find(lambda tag: tag.name == "td" and bool(RE_INFO_HASH.search(tag.get_text())))
         if info_hash_row:
             sibling = info_hash_row.find_next_sibling("td")
             if sibling:
