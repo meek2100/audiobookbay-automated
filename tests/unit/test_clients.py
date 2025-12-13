@@ -4,6 +4,9 @@ from typing import Any, Generator, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+# --- FIX: Import Schema Classes ---
+from deluge_web_client.schema import Response, TorrentOptions
 from flask import Flask
 from qbittorrentapi import LoginFailed
 
@@ -286,20 +289,24 @@ def test_deluge_add_magnet(app: Flask) -> None:
     """Test DelugeStrategy add_magnet."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        # FIX: login must return success for connect to pass
+        mock_instance.login.return_value = Response(result=True, error=None)
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
         strategy.connect()
         strategy.add_magnet("magnet:?xt=urn:btih:XYZ", "/downloads/Book", "audiobooks")
 
         mock_instance.login.assert_called_once()
-        mock_instance.add_torrent_magnet.assert_called_with(
-            "magnet:?xt=urn:btih:XYZ", save_directory="/downloads/Book", label="audiobooks"
-        )
+
+        # --- FIX: Assert called with TorrentOptions object ---
+        expected_options = TorrentOptions(download_location="/downloads/Book", label="audiobooks")
+        mock_instance.add_torrent_magnet.assert_called_with("magnet:?xt=urn:btih:XYZ", torrent_options=expected_options)
 
 
 def test_init_deluge_failure(app: Flask) -> None:
-    """Test handling of Deluge login failure in manager."""
+    """Test handling of Deluge login exception in manager."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
+        # Case: Exception raised during login call
         MockDeluge.return_value.login.side_effect = Exception("Login failed")
         manager = setup_manager(app, DL_CLIENT="deluge", DL_URL="http://deluge:8112")
 
@@ -308,6 +315,26 @@ def test_init_deluge_failure(app: Flask) -> None:
             mock_logger.error.assert_called()
             args, _ = mock_logger.error.call_args
             assert "Error initializing torrent client strategy" in args[0]
+
+
+def test_init_deluge_auth_failure(app: Flask) -> None:
+    """Test handling of Deluge login returning failure (False) result.
+
+    This ensures the 'if not response.result:' check in clients.py is covered.
+    """
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
+        # Case: Login returns Response(result=False)
+        mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=False, error="Bad Password")
+
+        manager = setup_manager(app, DL_CLIENT="deluge", DL_URL="http://deluge:8112")
+
+        with patch("audiobook_automated.clients.logger") as mock_logger:
+            assert manager._get_strategy() is None
+            mock_logger.error.assert_called()
+            args, _ = mock_logger.error.call_args
+            # Verify we caught the ConnectionError raised by our check
+            assert "Failed to login to Deluge" in str(args[0])
 
 
 def test_init_deluge_constructor_failure(app: Flask) -> None:
@@ -321,6 +348,7 @@ def test_remove_torrent_deluge(app: Flask) -> None:
     """Test removing torrent for Deluge."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
         strategy.connect()
@@ -333,6 +361,8 @@ def test_deluge_label_plugin_error(app: Flask) -> None:
     """Test that Deluge falls back to adding torrent without label if plugin is missing."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),
             None,
@@ -343,10 +373,15 @@ def test_deluge_label_plugin_error(app: Flask) -> None:
         strategy.add_magnet("magnet:?xt=urn:btih:FAIL", "/downloads/Book", "audiobooks")
 
         assert mock_instance.add_torrent_magnet.call_count == 2
-        mock_instance.add_torrent_magnet.assert_any_call(
-            "magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book", label="audiobooks"
-        )
-        mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", save_directory="/downloads/Book")
+
+        # --- FIX: Verify calls with TorrentOptions ---
+        # 1. First call has label
+        expected_full = TorrentOptions(download_location="/downloads/Book", label="audiobooks")
+        mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", torrent_options=expected_full)
+
+        # 2. Second call has NO label
+        expected_fallback = TorrentOptions(download_location="/downloads/Book")
+        mock_instance.add_torrent_magnet.assert_any_call("magnet:?xt=urn:btih:FAIL", torrent_options=expected_fallback)
 
 
 def test_deluge_fallback_robustness_strings(app: Flask) -> None:
@@ -359,6 +394,7 @@ def test_deluge_fallback_robustness_strings(app: Flask) -> None:
 
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
 
         for error_msg in error_variations:
             mock_instance.add_torrent_magnet.reset_mock()
@@ -378,6 +414,8 @@ def test_deluge_fallback_failure(app: Flask) -> None:
     """Test that if the Deluge fallback also fails, it raises an error."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),
             Exception("Critical Network Failure"),
@@ -399,6 +437,7 @@ def test_deluge_add_magnet_generic_error(app: Flask) -> None:
     """Test that a generic error in Deluge addition is raised."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
         mock_instance.add_torrent_magnet.side_effect = Exception("Generic Failure")
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
@@ -617,6 +656,8 @@ def test_get_status_deluge(app: Flask) -> None:
     """Test fetching status from Deluge."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_response = MagicMock()
         mock_response.result = {"hash123": {"name": "D Book", "state": "Dl", "progress": 45.5, "total_size": 100}}
         mock_instance.get_torrents_status.return_value = mock_response
@@ -633,6 +674,8 @@ def test_get_status_deluge_empty_result(app: Flask) -> None:
     """Test handling of Deluge returning a None result payload."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_response = MagicMock()
         mock_response.result = None
         mock_instance.get_torrents_status.return_value = mock_response
@@ -652,6 +695,8 @@ def test_get_status_deluge_unexpected_data_type(app: Flask) -> None:
     """Test handling of Deluge returning a result that is not a dict."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_response = MagicMock()
         mock_response.result = ["unexpected", "list"]
         mock_instance.get_torrents_status.return_value = mock_response
@@ -675,6 +720,8 @@ def test_get_status_deluge_invalid_item_type(app: Flask) -> None:
     """
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_response = MagicMock()
         # Mix valid and invalid entries
         mock_response.result = {
@@ -696,6 +743,8 @@ def test_get_status_deluge_robustness(app: Flask) -> None:
     """Test Deluge handling of None in individual torrent fields."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_response = MagicMock()
         mock_response.result = {
             "hash999": {"name": "Broken Book", "state": "Error", "progress": None, "total_size": None}
@@ -716,6 +765,8 @@ def test_get_status_deluge_malformed_data(app: Flask) -> None:
     """Test Deluge handling of malformed progress data."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
         mock_response = MagicMock()
         mock_response.result = {
             "hash_err": {"name": "Bad Data", "state": "Error", "progress": "Error", "total_size": 100}

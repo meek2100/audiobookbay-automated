@@ -8,6 +8,7 @@ from typing import Any, Literal, Protocol, TypedDict, cast
 from urllib.parse import urlparse
 
 from deluge_web_client import DelugeWebClient
+from deluge_web_client.schema import TorrentOptions
 from flask import Flask
 from qbittorrentapi import Client as QbClient
 from transmission_rpc import Client as TxClient
@@ -217,14 +218,23 @@ class DelugeStrategy(TorrentClientStrategy):
         # DelugeWebClient uses the full URL
         url = self.dl_url or f"{self.scheme}://{self.host}:{self.port}"
         self.client = DelugeWebClient(url=url, password=self.password or "")
-        self.client.login()
+
+        # --- FIX 2: Check login result ---
+        response = self.client.login()
+        if not response.result:
+            # Raise exception so TorrentManager knows connection failed and can retry/log
+            raise ConnectionError(f"Failed to login to Deluge: {response.error}")
 
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to Deluge."""
         if not self.client:
             raise ConnectionError("Deluge client not connected")
+
+        # --- FIX 3: Use TorrentOptions instead of kwargs ---
+        options = TorrentOptions(download_location=save_path, label=category)
+
         try:
-            self.client.add_torrent_magnet(magnet_link, save_directory=save_path, label=category)
+            self.client.add_torrent_magnet(magnet_link, torrent_options=options)
         except Exception as e:
             error_msg = str(e).lower()
             if "label" in error_msg or "unknown parameter" in error_msg:
@@ -232,7 +242,9 @@ class DelugeStrategy(TorrentClientStrategy):
                     f"Deluge Plugin Error ({e}). Adding torrent without category (Label plugin likely disabled)."
                 )
                 try:
-                    self.client.add_torrent_magnet(magnet_link, save_directory=save_path)
+                    # Retry with options excluding the label
+                    options_no_label = TorrentOptions(download_location=save_path)
+                    self.client.add_torrent_magnet(magnet_link, torrent_options=options_no_label)
                 except Exception as e2:
                     logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                     raise e2
@@ -250,6 +262,8 @@ class DelugeStrategy(TorrentClientStrategy):
         if not self.client:
             raise ConnectionError("Deluge client not connected")
         results: list[TorrentStatus] = []
+
+        # This call handles raising DelugeWebClientError if auth fails (handled by execute_call)
         deluge_torrents = self.client.get_torrents_status(
             filter_dict={"label": category},
             keys=["name", "state", "progress", "total_size"],
