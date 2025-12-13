@@ -1,137 +1,176 @@
 .details-container {
-    max-width: 1000px;
-    margin: 20px auto;
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 20px;
-    border-radius: 10px;
-    color: white;
+    background: var(--glass-bg);
+    border: var(--glass-border);
+    border-radius: var(--border-radius);
+    padding: 30px;
     display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.details-left {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.details-cover {
-    max-width: 300px;
-    width: 100%;
-    border-radius: 5px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-}
-
-.details-info {
-    flex: 1;
-    min-width: 300px;
-}
-
-.meta-info p {
-    margin: 5px 0;
-    font-size: 1rem;
-}
-
-.meta-info code {
-    background-color: rgba(0, 0, 0, 0.3);
-    padding: 2px 5px;
-    border-radius: 3px;
-    font-family: monospace;
-}
-
-.action-bar {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    gap: 40px;
+    box-shadow: var(--shadow-soft);
     align-items: flex-start;
 }
 
-/* Specific override for the download button on details page */
-.details-download-btn {
-    max-width: 200px;
-    width: 100%;
+/* Left Column (Cover) */
+.details-left {
+    flex: 0 0 300px; /* Fixed width for cover area on desktop */
 }
 
-/* Specific style for the external link button */
-.direct-link-btn {
-    max-width: 200px;
+.details-cover {
     width: 100%;
-    background-color: #455a64; /* Blue-grey for secondary/cautionary action */
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+    aspect-ratio: 1/1.5;
+    object-fit: cover;
+}
+
+/* Right Column (Info) */
+.details-info {
+    flex: 1;
+    min-width: 0; /* Prevents flex items from overflowing container */
+}
+
+.details-info h2 {
+    margin-top: 0;
+    color: var(--accent-color);
+    line-height: 1.3;
+}
+
+.meta-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 25px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.meta-info p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.meta-info strong {
+    color: var(--text-main);
+}
+
+.meta-info code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    word-break: break-all;
+}
+
+/* Buttons Area */
+.action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.details-download-btn,
+.direct-link-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+    transition:
+        transform 0.2s,
+        box-shadow 0.2s;
+    text-decoration: none;
+    text-align: center;
+}
+
+.details-download-btn {
+    background: linear-gradient(135deg, #00c853, #64dd17);
+    color: #003300;
+    box-shadow: 0 4px 15px rgba(0, 200, 83, 0.3);
+}
+
+.details-download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 200, 83, 0.4);
+}
+
+.direct-link-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .direct-link-btn:hover {
-    background-color: #607d8b;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .back-link {
-    color: #ffcc00;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 10px;
 }
-
 .back-link:hover {
+    color: white;
     text-decoration: underline;
 }
 
+/* Description Box */
 .details-description {
-    background-color: rgba(0, 0, 0, 0.2);
-    padding: 15px;
-    border-radius: 5px;
-    margin-top: 20px;
-    line-height: 1.6;
+    line-height: 1.8;
+    color: var(--text-main);
 }
-
 .details-description h3 {
-    margin-top: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding-bottom: 10px;
-    margin-bottom: 10px;
+    border-bottom: 1px solid var(--accent-color);
+    display: inline-block;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
 }
 
-/* Removed fixed height scrolling - now expands naturally */
+/* Trackers */
 .tracker-list {
-    font-size: 0.8em;
-    color: #ccc;
-    margin-top: 10px;
-    background: rgba(0, 0, 0, 0.3);
-    padding: 10px;
-    border-radius: 5px;
-    /* max-height: 150px; removed */
-    /* overflow-y: auto; removed */
+    margin-top: 20px;
+    font-size: 0.85rem;
+    color: #999;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 10px;
 }
-
 .tracker-list ul {
-    list-style-type: none;
-    padding-left: 0;
-    margin: 5px 0 0 0;
+    padding-left: 20px;
+    columns: 2;
 }
 
-.tracker-list li {
-    word-break: break-all;
-    padding: 2px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* Responsive adjustments */
-@media (max-width: 700px) {
+/* Responsive */
+@media (max-width: 850px) {
     .details-container {
         flex-direction: column;
+        align-items: center;
+        padding: 20px;
     }
 
-    .details-left,
-    .details-cover {
-        max-width: 100%;
+    .details-left {
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .action-bar {
+        flex-direction: column;
         width: 100%;
     }
 
     .details-download-btn,
-    .direct-link-btn {
-        max-width: 100%;
+    .direct-link-btn,
+    .back-link {
+        width: 100%;
+    }
+
+    .tracker-list ul {
+        columns: 1;
     }
 }

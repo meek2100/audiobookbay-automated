@@ -11,9 +11,17 @@
 <div class="title-container">
     <h1>Search AudiobookBay</h1>
 </div>
+
 <div class="search-container" id="search-container">
     <form method="get" class="search-form" onsubmit="showLoadingSpinner()">
-        <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required />
+        <input
+            type="text"
+            name="query"
+            placeholder="Enter book title, author, or narrator..."
+            class="search-bar"
+            value="{{ query }}"
+            required
+        />
         <button type="submit" class="search-button">
             <span class="button-text">Search</span>
             <div class="button-spinner" id="button-spinner" style="display: none">
@@ -22,7 +30,8 @@
         </button>
     </form>
 </div>
-<div class="message-scroller" id="message-scroller">
+
+<div class="message-scroller" id="message-scroller" style="text-align: center; margin-bottom: 20px">
     <p id="scrolling-message"></p>
 </div>
 
@@ -44,18 +53,16 @@
             <select id="format-filter">
                 <option value="">All Formats</option>
             </select>
-            <input type="text" id="date-range-filter" placeholder="Select Date Range" />
+            <input type="text" id="date-range-filter" placeholder="Date Range" />
         </div>
         <div class="filter-buttons">
             <button id="filter-button">Filter</button>
         </div>
     </div>
     <div class="filter-row">
-        <div class="filter-controls">
-            <div class="file-size-filter-wrapper">
-                <label>File Size:</label>
-                <div id="file-size-slider"></div>
-            </div>
+        <div class="file-size-filter-wrapper">
+            <label>Size:</label>
+            <div id="file-size-slider"></div>
         </div>
         <div class="filter-buttons">
             <button id="clear-button">Clear</button>
@@ -67,8 +74,8 @@
 <div class="table-wrapper">
     <table>
         <tbody id="results-table-body">
-            {% if books %} {% for book in books %} {# Generate versioned default URL once #} {% set default_cover_url =
-            url_for('static', filename='images/' + default_cover_filename, v=static_version) %}
+            {% if books %} {% for book in books %} {% set default_cover_url = url_for('static', filename='images/' +
+            default_cover_filename, v=static_version) %}
             <tr
                 class="result-row"
                 data-category="{{ book.category }}"
@@ -81,10 +88,9 @@
                 <td>
                     <img
                         src="{{ book.cover if book.cover else default_cover_url }}"
-                        alt="Cover Art"
+                        alt="Cover"
                         class="cover"
-                        width="100"
-                        data-default-cover="{{ url_for('static', filename='images/' + default_cover_filename, v=static_version) }}"
+                        data-default-cover="{{ default_cover_url }}"
                         onerror="
                             this.onerror = null;
                             this.src = this.dataset.defaultCover;
@@ -95,30 +101,30 @@
                     <p class="book-title">{{ book.title }}</p>
                     <div class="property-results-container">
                         <span class="book-category">{{ book.category }}</span>
-                        <span class="book-language">Language: {{ book.language }}</span>
-                        <span class="book-bitrate">Bitrate: {{ book.bitrate }}</span>
-                        <span class="book-format">Format: {{ book.format }}</span>
-                        <span class="book-file_size">File Size: {{ book.file_size }}</span>
-                        <span class="book-post_date">Posted: {{ book.post_date }}</span>
+                        <span>Language: {{ book.language }}</span>
+                        <span>Format: {{ book.format }} / {{ book.bitrate }}</span>
+                        <span>Size: {{ book.file_size }}</span>
+                        <span>Posted: {{ book.post_date }}</span>
                     </div>
                 </td>
                 <td>
                     <a href="{{ url_for('main.details', link=book.link) }}" class="details-button">Details</a>
                     <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">
-                        Download to Server
+                        Download
                     </button>
                 </td>
             </tr>
             {% endfor %} {% else %} {% if query %}
             <tr>
-                <td colspan="3" class="empty-message">
-                    No audiobooks found for "<strong>{{ query }}</strong>". <br />
-                    <small>Try a different keyword or check spelling.</small>
+                <td colspan="3">
+                    <div class="empty-message" style="text-align: center; padding: 40px; color: var(--text-muted)">
+                        No audiobooks found for "<strong>{{ query }}</strong>". <br />
+                        <small>Try a different keyword or check spelling.</small>
+                    </div>
                 </td>
             </tr>
             {% endif %} {% endif %}
         </tbody>
     </table>
 </div>
-
 {% endblock %}

@@ -1,134 +1,333 @@
-form {
-    margin: 20px 0;
-    display: flex;
-    justify-content: center; /* Center the form content */
-    align-items: center;
-}
-
-button {
-    padding: 10px 20px;
-    width: 100%;
-    background-color: #512da8;
-    border: none;
-    border-radius: 5px;
-    color: white;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    margin-bottom: 10px;
-}
-button:hover {
-    background-color: #673ab7;
-}
-
-/* New class for the Details anchor button */
-.details-button {
-    text-decoration: none;
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: #512da8;
-    color: white;
-    border-radius: 5px;
-    margin-right: 5px;
-    font-size: 1rem;
-    transition: background-color 0.3s;
-    cursor: pointer;
-    border: none;
-}
-
-.details-button:hover {
-    background-color: #673ab7;
-}
-
-/* OPTIMIZATION: Scrollable table wrapper for mobile devices */
-.table-wrapper {
-    width: 90%;
-    max-width: 1000px;
-    margin: 20px auto 0;
-    overflow-x: auto; /* Allows horizontal scroll if table is too wide */
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* Move shadow to wrapper so it doesn't scroll with table */
-    background-color: rgba(255, 255, 255, 0.1); /* Background on wrapper */
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    /* Remove background/radius/margin from table, handled by wrapper now */
-    background-color: transparent;
-    margin: 0;
-    border-radius: 0;
-    box-shadow: none;
-}
-
-td {
-    padding: 15px;
-    text-align: left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-img.cover {
-    border-radius: 5px;
-    max-width: 100px;
-    width: 15vw;
+/* --- Search Form --- */
+.search-container {
+    max-width: 800px;
+    margin: 0 auto 30px;
 }
 
 .search-form {
     display: flex;
-    align-items: center;
-    justify-content: center;
     gap: 10px;
+    position: relative;
 }
 
 .search-bar {
-    width: 100%; /* Make the search bar full width */
-    padding: 10px; /* Adjust padding as needed */
-    box-sizing: border-box; /* Ensure padding is included in the width */
-    margin-bottom: 10px; /* Add some space between the input and button */
+    width: 100%;
+    padding: 15px 20px;
+    font-size: 1.1rem;
     border: none;
-    border-radius: 5px;
-    width: 300px;
+    border-radius: 50px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+}
+
+.search-bar:focus {
+    outline: none;
+    transform: scale(1.01);
 }
 
 .search-button {
-    width: auto; /* Set the button width to auto */
-    padding: 10px 20px; /* Add padding to the button */
-    background-color: #512da8;
-    border: none;
-    border-radius: 5px;
+    padding: 0 30px;
+    background-color: #6200ea; /* Vivid Purple */
     color: white;
+    border: none;
+    border-radius: 50px;
+    font-weight: bold;
     font-size: 1rem;
     cursor: pointer;
-    transition: background-color 0.3s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition:
+        background-color 0.3s,
+        transform 0.2s;
+    white-space: nowrap;
 }
 
-/* Button Spinner (Used inside the Search Button) */
-.button-spinner {
-    display: inline-block;
+.search-button:hover {
+    background-color: #7c4dff;
+    transform: translateY(-2px);
+}
+
+/* --- Filter Container (Grid Layout) --- */
+#filter-container {
+    background: var(--glass-bg);
+    border: var(--glass-border);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+}
+
+.filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex: 1;
+}
+
+/* Make selects and inputs uniform */
+#filter-container select,
+#filter-container input[type="text"] {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.9rem;
+    flex: 1 1 150px; /* Grow to fill, minimum 150px */
+}
+
+#filter-container select:focus,
+#filter-container input:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+#filter-container select option {
+    background-color: #2e003e;
+    color: white;
+}
+
+/* Slider Area */
+.file-size-filter-wrapper {
+    flex: 1 1 300px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 0 10px;
+}
+.file-size-filter-wrapper label {
+    white-space: nowrap;
+    color: var(--text-muted);
+}
+#file-size-slider {
+    flex-grow: 1;
+}
+
+/* Filter Buttons */
+.filter-buttons button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+#filter-button {
+    background-color: var(--accent-color);
+    color: #333;
+}
+#clear-button {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* --- Results Table --- */
+.table-wrapper {
+    width: 100%;
+    overflow-x: visible; /* Let cards handle overflow */
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 15px; /* Spacing between rows */
+}
+
+/* Table Row (Card Style) */
+tbody tr.result-row {
+    background: var(--glass-bg);
+    box-shadow: var(--shadow-soft);
+    border-radius: var(--border-radius);
+    transition: transform 0.2s;
+}
+tbody tr.result-row:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+td {
+    padding: 15px;
+    vertical-align: top;
+    color: var(--text-muted);
+}
+
+/* First and Last cells rounded corners */
+tr td:first-child {
+    border-top-left-radius: var(--border-radius);
+    border-bottom-left-radius: var(--border-radius);
+}
+tr td:last-child {
+    border-top-right-radius: var(--border-radius);
+    border-bottom-right-radius: var(--border-radius);
+}
+
+/* Cover Image */
+img.cover {
+    width: 80px;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    object-fit: cover;
+}
+
+/* Book Info */
+.book-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0 0 8px 0;
+}
+
+.property-results-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 15px;
+    font-size: 0.85rem;
+}
+
+.property-results-container span {
+    display: inline-flex;
+    align-items: center;
+}
+
+.book-category {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* Action Buttons */
+td:last-child {
+    text-align: right;
+    white-space: nowrap;
     vertical-align: middle;
+}
+
+.details-button,
+button {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+    text-decoration: none;
     margin-left: 5px;
 }
 
+.details-button {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+.details-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+button {
+    background-color: #6200ea;
+    color: white;
+}
+button:hover {
+    background-color: #7c4dff;
+}
+
+/* --- Responsive Mobile View (Cards) --- */
+@media (max-width: 850px) {
+    /* Hide Table Header */
+    thead {
+        display: none;
+    }
+
+    /* Make Row a Block Card */
+    table,
+    tbody,
+    tr,
+    td {
+        display: block;
+        width: 100%;
+        border-radius: 0;
+    }
+
+    tr.result-row {
+        margin-bottom: 20px;
+        position: relative;
+        padding: 15px;
+        border-radius: var(--border-radius) !important;
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        grid-template-areas:
+            "img info"
+            "actions actions";
+        gap: 15px;
+        border-spacing: 0;
+    }
+
+    /* Reset Cell Styling */
+    td {
+        padding: 0;
+        text-align: left;
+    }
+
+    /* Assign Grid Areas */
+    td:nth-child(1) {
+        grid-area: img;
+    }
+    td:nth-child(2) {
+        grid-area: info;
+    }
+    td:nth-child(3) {
+        grid-area: actions;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    /* Adjust Image */
+    img.cover {
+        width: 100%;
+        max-width: 80px;
+    }
+
+    /* Adjust Buttons for Mobile */
+    .details-button,
+    button {
+        width: 100%;
+        text-align: center;
+        margin: 0;
+        padding: 12px;
+    }
+
+    /* Stack Filter Controls */
+    .search-form {
+        flex-direction: column;
+    }
+    .search-button {
+        width: 100%;
+    }
+}
+
+/* Spinner */
 .button-spinner .spinner {
     width: 16px;
     height: 16px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid #fff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
-
-.message-scroller {
-    display: none;
-    text-align: center;
-    margin: 0 auto;
-    width: fit-content;
-}
-
-.error-message {
-    color: red;
-}
-
-/* Spinner animation */
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -138,182 +337,26 @@ img.cover {
     }
 }
 
-/* Default styles for small screens (vertical layout) */
-.property-results-container {
-    display: flex;
-    flex-direction: column; /* Stack items vertically */
-    font-size: 0.6em;
-}
-
-.property-results-container span:not(:last-child)::after {
-    /* Hide the separator by default on small screens */
-    content: none;
-}
-
-/* Category Highlight */
-.book-category {
-    color: #ffcc00;
-    font-weight: bold;
-    display: block; /* Make it stand out on its own line on mobile */
-    margin-bottom: 2px;
-}
-
-/* New Filter Styles */
-#filter-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin: 0 auto 30px;
-    width: 90%;
-    max-width: 1000px;
-    padding: 0 15px;
-    box-sizing: border-box;
-}
-
-.filter-row {
-    display: flex;
-    justify-content: center; /* Center the content within the row */
-    align-items: center;
-    width: 100%;
-    gap: 15px; /* Add gap between controls and buttons */
-}
-
-.filter-controls {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
-    width: 563px;
-    max-width: 70vw;
-}
-
-.filter-buttons {
-    display: flex;
-    gap: 10px;
-    flex-shrink: 0; /* Prevent buttons from shrinking */
-}
-
-#filter-container select,
-#filter-container input {
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    background-color: #fff;
-    color: #333;
-}
-
-#filter-container button {
-    padding: 8px 15px;
-    border-radius: 5px;
-    border: none;
-    background-color: #512da8;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    margin-bottom: 0;
-}
-
-#filter-container button:hover {
-    background-color: #673ab7;
-}
-
-/* --- File Size Slider Styles --- */
-.file-size-filter-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 563px; /* Give the wrapper a specific width */
-    max-width: 70vw; /* Helps with responsiveness on smaller screens */
-}
-
-#file-size-slider {
-    flex-grow: 1; /* Allow the slider to take up the remaining space */
-}
-
-/* noUiSlider Customization */
+/* NoUiSlider Custom overrides */
 .noUi-target {
-    background: #e0e0e0;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    box-shadow: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    height: 6px;
 }
-
 .noUi-connect {
-    background: #8e24aa;
+    background: var(--accent-color);
 }
-
-.noUi-horizontal {
-    height: 10px;
-}
-
-.noUi-horizontal .noUi-handle {
-    width: 20px;
-    height: 20px;
-    right: -11px;
-    top: -6px;
-}
-
-.noUi-horizontal .noUi-tooltip {
-    bottom: -180%;
-}
-
 .noUi-handle {
-    border: 1px solid #d9d9d9;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: #fff;
-    box-shadow: none;
-    outline: none;
-}
-
-.noUi-handle:after,
-.noUi-handle:before {
-    display: none; /* Hide default pseudo-elements */
-}
-
-.noUi-tooltip {
-    background: #512da8;
-    color: white;
     border: none;
-    border-radius: 5px;
-    padding: 4px 8px;
-    font-size: 0.8em;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    right: -9px;
+    top: -6px;
 }
-
-/* Styles for large screens (horizontal layout) */
-@media (min-width: 905px) {
-    .property-results-container {
-        flex-direction: row; /* Arrange items horizontally */
-        justify-content: left; /* Distribute items evenly */
-        align-items: center; /* Vertically align items in the middle */
-    }
-
-    .property-results-container span:not(:last-child)::after {
-        /* Add and style the separator on large screens */
-        content: "|";
-        padding: 0 10px; /* Adjust spacing around the separator */
-        color: #ccc; /* A subtle color for the separator */
-    }
-
-    /* Reset block display for desktop to flow inline */
-    .book-category {
-        display: inline;
-        margin-bottom: 0;
-    }
-}
-
-p.book-title {
-    font-size: 0.9em;
-}
-
-/* Empty State Message */
-.empty-message {
-    text-align: center;
-    padding: 40px;
-    color: #ccc;
-}
-
-@media (max-width: 500px) {
-    .search-bar {
-        width: 200px;
-    }
+.noUi-handle:before,
+.noUi-handle:after {
+    display: none;
 }

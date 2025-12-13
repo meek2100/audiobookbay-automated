@@ -4,7 +4,7 @@
 <script src="{{ url_for('static', filename='js/status.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
 <div class="title-container">
-    <h1>Torrent Status</h1>
+    <h1>Active Downloads</h1>
 </div>
 
 {% if error %}
@@ -29,17 +29,19 @@
     <tbody id="status-table-body">
         {% if torrents %} {% for torrent in torrents %}
         <tr>
-            <td>{{ torrent.name }}</td>
-            <td>{{ torrent.progress }}%</td>
-            <td>{{ torrent.state }}</td>
-            <td>{{ torrent.size }}</td>
-            <td>
+            <td data-label="Title">{{ torrent.name }}</td>
+            <td data-label="Progress">{{ torrent.progress }}%</td>
+            <td data-label="State">{{ torrent.state }}</td>
+            <td data-label="Size">{{ torrent.size }}</td>
+            <td data-label="Action">
                 <button class="remove-button" onclick="deleteTorrent('{{ torrent.id }}')">Remove</button>
             </td>
         </tr>
         {% endfor %} {% else %} {% if not error %}
         <tr>
-            <td colspan="5" class="empty-message">No active downloads found in category.</td>
+            <td colspan="5" class="empty-message" style="text-align: center; color: var(--text-muted)">
+                No active downloads found.
+            </td>
         </tr>
         {% endif %} {% endif %}
     </tbody>
