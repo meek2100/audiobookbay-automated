@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block title %}Details - {{ book.title if book else 'Error' }}{% endblock %} {% block
 extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/details.css', v=static_version) }}" />
-{% endblock %} {% block extra_js %}{% endblock %} {% block content %} {% if error %}
+{% endblock %} {% block content %} {% if error %}
 <div class="error-message">
     <p>{{ error }}</p>
     <p><a href="javascript:history.back()" style="color: inherit; font-weight: bold">← Back to Search</a></p>
@@ -20,30 +20,52 @@ extra_css %}
     </div>
 
     <div class="details-info">
-        <a href="javascript:history.back()" class="back-link" style="margin-bottom: 10px; display: inline-block"
-            >← Back to results</a
-        >
+        <a href="javascript:history.back()" class="back-link">← Back to results</a>
+
         <h2>{{ book.title }}</h2>
 
-        <div class="meta-info">
-            <p><strong>Author:</strong> {{ book.author }}</p>
-            <p><strong>Narrator:</strong> {{ book.narrator }}</p>
-            <p><strong>Language:</strong> {{ book.language }}</p>
-            <p><strong>Category:</strong> {{ book.category if book.category else 'Unknown' }}</p>
-            <p><strong>Format:</strong> {{ book.format }} @ {{ book.bitrate }}</p>
-            <p><strong>Size:</strong> {{ book.file_size }}</p>
-            <p style="grid-column: 1 / -1"><strong>Hash:</strong> <code>{{ book.info_hash }}</code></p>
+        <div class="details-meta-wrapper">
+            <div class="metadata-grid">
+                <div class="meta-item">
+                    <span class="meta-label">Author</span>
+                    <span class="meta-value accent">{{ book.author }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Narrator</span>
+                    <span class="meta-value">{{ book.narrator }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Language</span>
+                    <span class="meta-value">{{ book.language }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Format</span>
+                    <span class="meta-value">{{ book.format }} / {{ book.bitrate }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Size</span>
+                    <span class="meta-value">{{ book.file_size }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Category</span>
+                    <span class="category-tag">{{ book.category if book.category else 'Unknown' }}</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.4)">
+                <strong>Info Hash:</strong> <code style="color: var(--accent-color)">{{ book.info_hash }}</code>
+            </div>
         </div>
 
         <div class="action-bar">
             <button
-                class="details-download-btn"
+                class="btn-primary details-download-btn"
                 onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)"
             >
-                Download to Server
+                Download
             </button>
 
-            <button class="direct-link-btn" onclick="openExternalLink('{{ book.link|escape }}')">
+            <button class="btn-glass direct-link-btn" onclick="openExternalLink('{{ book.link|escape }}')">
                 Open External Page
             </button>
         </div>
@@ -54,11 +76,11 @@ extra_css %}
         </div>
 
         {% if book.trackers %}
-        <div class="tracker-list">
-            <strong>Trackers:</strong>
-            <ul>
+        <div class="tracker-container">
+            <span class="tracker-title">Active Trackers</span>
+            <ul class="tracker-list">
                 {% for tracker in book.trackers %}
-                <li>{{ tracker }}</li>
+                <li class="tracker-item">{{ tracker }}</li>
                 {% endfor %}
             </ul>
         </div>

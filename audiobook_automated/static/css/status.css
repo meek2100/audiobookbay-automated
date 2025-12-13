@@ -8,23 +8,22 @@
 table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0 15px; /* Spacing between rows */
-    table-layout: fixed; /* CRITICAL: Keeps columns strictly aligned */
+    border-spacing: 0 15px;
+    table-layout: fixed;
 }
 
-/* --- Desktop Headers --- */
 thead th {
     text-align: left;
     padding: 15px 20px;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.5);
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    font-weight: 600;
+    font-weight: 700;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Column Widths (Desktop) */
+/* Column Widths */
 th.col-title {
     width: 45%;
 }
@@ -42,7 +41,7 @@ th.col-action {
     text-align: right;
 }
 
-/* --- Row Styles --- */
+/* Row Styles */
 tbody tr {
     background: var(--glass-bg);
     box-shadow: var(--shadow-soft);
@@ -62,14 +61,11 @@ tbody td {
     color: var(--text-muted);
     vertical-align: middle;
     border: none;
-
-    /* Text Handling */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Rounded Corners for Desktop Rows */
 tbody tr td:first-child {
     border-top-left-radius: 12px;
     border-bottom-left-radius: 12px;
@@ -79,15 +75,14 @@ tbody tr td:last-child {
     border-bottom-right-radius: 12px;
 }
 
-/* Specific Column Styling */
+/* Cell Content */
 .cell-title {
     color: var(--text-main);
     font-weight: 600;
     font-size: 1rem;
-    /* Allow title to wrap slightly if needed, or truncate */
     white-space: normal;
     line-height: 1.4;
-    word-break: break-word; /* Prevents long filenames from breaking layout */
+    word-break: break-word;
 }
 
 .cell-progress {
@@ -98,23 +93,25 @@ tbody tr td:last-child {
 .cell-state {
     display: inline-block;
     padding: 4px 10px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
     font-size: 0.85rem;
+    color: white;
 }
 
 .cell-action {
     text-align: right;
 }
 
+/* Standardized Remove Button */
 .remove-button {
-    background-color: rgba(239, 83, 80, 0.15); /* Soft Red */
+    background-color: rgba(239, 83, 80, 0.1);
     color: #ff8a80;
-    border: 1px solid rgba(239, 83, 80, 0.5);
+    border: 1px solid rgba(239, 83, 80, 0.3);
     padding: 8px 16px;
     font-size: 0.85rem;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 8px; /* Consistent with other small elements */
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -126,14 +123,12 @@ tbody tr td:last-child {
     box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);
 }
 
-/* --- Mobile Card View --- */
+/* Mobile Card View */
 @media (max-width: 850px) {
-    /* Hide standard headers */
     thead {
         display: none;
     }
 
-    /* Reset Table to Block */
     table,
     tbody,
     tr,
@@ -141,61 +136,59 @@ tbody tr td:last-child {
         display: block;
         width: 100%;
         text-align: left;
-        white-space: normal; /* Allow wrapping */
+        white-space: normal;
     }
 
     tbody tr {
         margin-bottom: 20px;
         padding: 20px;
-        border-radius: 16px !important; /* Force radius on all corners */
-        position: relative;
+        border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    /* 1. Title is now the Header of the Card */
     td.cell-title {
-        font-size: 1.1rem;
+        font-size: 1.15rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         padding: 0 0 15px 0;
         margin-bottom: 15px;
-        color: var(--text-main);
     }
 
-    /* 2. Other cells become Grid Items */
     td.cell-progress,
     td.cell-state,
     td.cell-size {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 0;
+        padding: 10px 0;
         font-size: 0.95rem;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    /* Add Labels via pseudo-elements */
     td.cell-progress::before {
         content: "Progress";
         color: rgba(255, 255, 255, 0.5);
+        font-weight: 600;
     }
     td.cell-state::before {
         content: "State";
         color: rgba(255, 255, 255, 0.5);
+        font-weight: 600;
     }
     td.cell-size::before {
         content: "Size";
         color: rgba(255, 255, 255, 0.5);
+        font-weight: 600;
     }
 
-    /* 3. Action Button full width at bottom */
     td.cell-action {
-        padding: 20px 0 0 0;
+        padding: 25px 0 0 0;
         text-align: center;
-        border: none;
     }
 
     .remove-button {
         width: 100%;
         padding: 12px;
         font-size: 1rem;
+        border-radius: 50px; /* Match Mobile Actions */
     }
 }

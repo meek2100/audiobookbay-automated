@@ -22,28 +22,34 @@
     <body>
         <div class="navbar">
             <div class="nav-container">
-                <a
-                    href="{{ url_for('main.search') }}"
-                    class="{% if request.endpoint == 'main.search' %}active{% endif %}"
-                    >Search</a
-                >
-                <a
-                    href="{{ url_for('main.status') }}"
-                    class="{% if request.endpoint == 'main.status' %}active{% endif %}"
-                    >Status</a
-                >
-                {% if nav_link_name and nav_link_url %}
-                <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
-                {% endif %} {% if library_reload_enabled %}
-                <a
-                    href="#"
-                    onclick="
-                        reloadLibrary();
-                        return false;
-                    "
-                    >Reload Library</a
-                >
-                {% endif %}
+                <a href="{{ url_for('main.search') }}" class="nav-logo">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="AudiobookBay Automated" />
+                </a>
+
+                <div class="nav-links">
+                    <a
+                        href="{{ url_for('main.search') }}"
+                        class="{% if request.endpoint == 'main.search' %}active{% endif %}"
+                        >Search</a
+                    >
+                    <a
+                        href="{{ url_for('main.status') }}"
+                        class="{% if request.endpoint == 'main.status' %}active{% endif %}"
+                        >Status</a
+                    >
+                    {% if nav_link_name and nav_link_url %}
+                    <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
+                    {% endif %} {% if library_reload_enabled %}
+                    <a
+                        href="#"
+                        onclick="
+                            reloadLibrary();
+                            return false;
+                        "
+                        >Reload Library</a
+                    >
+                    {% endif %}
+                </div>
             </div>
         </div>
 
