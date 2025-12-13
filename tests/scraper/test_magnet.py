@@ -1,4 +1,4 @@
-"""Tests for the core scraper logic, focusing on flow and extraction."""
+"""Tests for magnet link extraction logic."""
 
 from typing import Any, cast
 from unittest.mock import patch

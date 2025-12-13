@@ -133,6 +133,17 @@ def test_get_session_configuration() -> None:
     assert 503 in retry.status_forcelist
 
 
+def test_get_ping_session_configuration() -> None:
+    """Test that get_ping_session configures ZERO retries."""
+    session = network.get_ping_session()
+    adapter = cast(HTTPAdapter, session.adapters["https://"])
+    retry = adapter.max_retries
+
+    assert isinstance(retry, Retry)
+    assert retry.total == 0
+    assert retry.backoff_factor == 0
+
+
 def test_get_thread_session_initialization() -> None:
     """Test that get_thread_session creates a session and reuses it."""
     # Ensure we start with a clean state for this thread
@@ -149,51 +160,55 @@ def test_get_thread_session_initialization() -> None:
 
 
 def test_check_mirror_success_head() -> None:
-    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
-        mock_head.return_value.status_code = 200
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        mock_session.head.return_value.status_code = 200
         result = network.check_mirror("good.mirror")
         assert result == "good.mirror"
 
 
 def test_check_mirror_success_get_fallback() -> None:
     """Test fallback to GET if HEAD raises an exception."""
-    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
-        mock_head.side_effect = requests.RequestException("Method Not Allowed")
-        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
-            mock_get.return_value.status_code = 200
-            result = network.check_mirror("fallback.mirror")
-            assert result == "fallback.mirror"
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        mock_session.head.side_effect = requests.RequestException("Method Not Allowed")
+        mock_session.get.return_value.status_code = 200
+
+        result = network.check_mirror("fallback.mirror")
+        assert result == "fallback.mirror"
 
 
 def test_check_mirror_head_500_fallback() -> None:
     """Test fallback to GET if HEAD returns a non-200 status."""
-    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
-        mock_head.return_value.status_code = 500
-        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
-            mock_get.return_value.status_code = 200
-            result = network.check_mirror("flaky.mirror")
-            assert result == "flaky.mirror"
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        mock_session.head.return_value.status_code = 500
+        mock_session.get.return_value.status_code = 200
+
+        result = network.check_mirror("flaky.mirror")
+        assert result == "flaky.mirror"
 
 
 def test_check_mirror_get_exception() -> None:
     """Test check_mirror returns None if both HEAD and GET fail."""
-    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
-        mock_head.side_effect = requests.RequestException("HEAD Failed")
-        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
-            mock_get.side_effect = requests.RequestException("GET Failed")
-            result = network.check_mirror("bad.mirror")
-            assert result is None
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        mock_session.head.side_effect = requests.RequestException("HEAD Failed")
+        mock_session.get.side_effect = requests.RequestException("GET Failed")
+
+        result = network.check_mirror("bad.mirror")
+        assert result is None
 
 
 def test_check_mirror_timeout() -> None:
     """Test specific handling of requests.Timeout which is critical for network resilience."""
-    with patch("audiobook_automated.scraper.network.requests.head") as mock_head:
-        mock_head.side_effect = requests.Timeout("Connection Timed Out")
-        with patch("audiobook_automated.scraper.network.requests.get") as mock_get:
-            # Also timeout on fallback
-            mock_get.side_effect = requests.Timeout("Connection Timed Out")
-            result = network.check_mirror("timeout.mirror")
-            assert result is None
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        mock_session.head.side_effect = requests.Timeout("Connection Timed Out")
+        mock_session.get.side_effect = requests.Timeout("Connection Timed Out")
+
+        result = network.check_mirror("timeout.mirror")
+        assert result is None
 
 
 def test_find_best_mirror_all_fail(mock_app_context: Any) -> None:

@@ -151,6 +151,28 @@ def get_session() -> Session:
     return session
 
 
+def get_ping_session() -> Session:
+    """Configure and return a requests Session with ZERO retries for availability checks.
+
+    This prevents 'retry storms' where a dead mirror holds up a thread for 25+ seconds.
+    We want the check to fail fast (5s timeout, 0 retries).
+
+    Returns:
+        Session: A configured requests Session object with 0 retries.
+    """
+    session = requests.Session()
+    retry_strategy = Retry(
+        total=0,
+        backoff_factor=0,
+        status_forcelist=[],
+        allowed_methods=["HEAD", "GET"],
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
 def get_thread_session() -> Session:
     """Retrieve or create a thread-local Session.
 
@@ -195,6 +217,8 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 def check_mirror(hostname: str) -> str | None:
     """Check if a mirror is reachable via HEAD or GET request.
 
+    Uses a zero-retry session to fail fast.
+
     Args:
         hostname: The domain name to check (e.g., "audiobookbay.lu").
 
@@ -203,16 +227,17 @@ def check_mirror(hostname: str) -> str | None:
     """
     url = f"https://{hostname}/"
     headers = get_headers()
+    session = get_ping_session()
 
     try:
-        response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
+        response = session.head(url, headers=headers, timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
     except (requests.Timeout, requests.RequestException):
         pass
 
     try:
-        response = requests.get(url, headers=headers, timeout=5, stream=True)
+        response = session.get(url, headers=headers, timeout=5, stream=True)
         response.close()
         if response.status_code == 200:
             return hostname

@@ -61,14 +61,11 @@ def search() -> str | Response:
 
     Processes search queries and renders the search results page.
 
-    Args:
+    Query Params:
         query (str): The search term passed via GET or POST.
 
     Returns:
         str | Response: Rendered HTML template or Response object.
-
-    Raises:
-        ConnectionError: Handled internally to display a user-friendly error message.
     """
     books: list[BookDict] = []
     query = ""
@@ -106,15 +103,14 @@ def details() -> str | Response:
     Acts as a proxy to fetch book details from AudiobookBay without exposing the
     client's IP address to the external site.
 
-    Args:
-        link (str): The URL of the book details page (via query param).
+    Query Params:
+        link (str): The URL of the book details page.
 
     Returns:
         str | Response: Rendered HTML template or Redirect.
     """
     link = request.args.get("link")
     if not link:
-        # redirect() returns Response | str, but in this context it's a response
         return cast(Response, redirect(url_for("main.search")))
 
     try:
@@ -132,10 +128,9 @@ def send() -> Response | tuple[Response, int]:
 
     Generates a magnet link and sends it to the configured torrent client.
 
-    Args:
-        JSON Body:
-            link (str): The details URL of the book.
-            title (str): The title of the book.
+    JSON Body:
+        link (str): The details URL of the book.
+        title (str): The title of the book.
 
     Returns:
         Response: JSON indicating success or failure.
@@ -202,9 +197,8 @@ def delete_torrent() -> Response | tuple[Response, int]:
 
     Requires a JSON payload with the torrent ID.
 
-    Args:
-        JSON Payload:
-            id (str): The ID or Hash of the torrent to remove.
+    JSON Payload:
+        id (str): The ID or Hash of the torrent to remove.
 
     Returns:
         Response: JSON Response indicating success or failure.
@@ -262,8 +256,8 @@ def status() -> str | Response | tuple[Response, int]:
 
     Supports returning JSON for frontend polling via ?json=1.
 
-    Args:
-        json (str): Query parameter. If set, returns JSON instead of HTML.
+    Query Params:
+        json (str): If set, returns JSON instead of HTML.
 
     Returns:
         str | Response: Rendered HTML, JSON data, or Error Response.

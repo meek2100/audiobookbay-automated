@@ -169,6 +169,23 @@ def test_send_sanitization_warning(client: Any, caplog: Any) -> None:
             assert FALLBACK_TITLE in args[1]
 
 
+def test_send_fallback_title_uuid(client: Any) -> None:
+    """Test that a title sanitizing to empty triggers UUID generation."""
+    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+        with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+            # "..." sanitizes to "" which falls back to FALLBACK_TITLE
+            client.post("/send", json={"link": "http://link", "title": "..."})
+
+            assert mock_tm.add_magnet.called
+            args, _ = mock_tm.add_magnet.call_args
+            save_path = args[1]
+            # Expect FALLBACK_TITLE + "_" (from UUID append)
+            assert FALLBACK_TITLE in save_path
+            assert "_" in save_path
+            # It should be longer than just FALLBACK_TITLE due to UUID
+            assert len(save_path) > len(FALLBACK_TITLE)
+
+
 def test_send_windows_reserved_name(client: Any) -> None:
     """Test that reserved names (e.g., CON) trigger the collision-safe UUID logic.
 
