@@ -17,7 +17,7 @@
         <input
             type="text"
             name="query"
-            placeholder="Enter book title, author, or narrator..."
+            placeholder="Enter title, author, or narrator..."
             class="search-bar"
             value="{{ query }}"
             required
@@ -39,32 +39,29 @@
 <p class="error-message">{{ error }}</p>
 {% endif %} {% if books %}
 <div id="filter-container">
-    <div class="filter-row">
-        <div class="filter-controls">
-            <select id="category-filter">
-                <option value="">All Categories</option>
-            </select>
-            <select id="language-filter">
-                <option value="">All Languages</option>
-            </select>
-            <select id="bitrate-filter">
-                <option value="">All Bitrates</option>
-            </select>
-            <select id="format-filter">
-                <option value="">All Formats</option>
-            </select>
-            <input type="text" id="date-range-filter" placeholder="Date Range" />
-        </div>
-        <div class="filter-buttons">
-            <button id="filter-button">Filter</button>
-        </div>
+    <div class="filter-row-inputs">
+        <select id="category-filter">
+            <option value="">All Categories</option>
+        </select>
+        <select id="language-filter">
+            <option value="">All Languages</option>
+        </select>
+        <select id="bitrate-filter">
+            <option value="">All Bitrates</option>
+        </select>
+        <select id="format-filter">
+            <option value="">All Formats</option>
+        </select>
+        <input type="text" id="date-range-filter" placeholder="Date Range" />
     </div>
-    <div class="filter-row">
+
+    <div class="filter-row-bottom">
         <div class="file-size-filter-wrapper">
             <label>Size:</label>
             <div id="file-size-slider"></div>
         </div>
-        <div class="filter-buttons">
+        <div class="filter-actions">
+            <button id="filter-button">Apply Filter</button>
             <button id="clear-button">Clear</button>
         </div>
     </div>
@@ -85,7 +82,7 @@
                 data-file-size="{{ book.file_size }}"
                 data-post-date="{{ book.post_date }}"
             >
-                <td>
+                <td class="col-cover">
                     <img
                         src="{{ book.cover if book.cover else default_cover_url }}"
                         alt="Cover"
@@ -97,21 +94,50 @@
                         "
                     />
                 </td>
-                <td>
-                    <p class="book-title">{{ book.title }}</p>
-                    <div class="property-results-container">
-                        <span class="book-category">{{ book.category }}</span>
-                        <span>Language: {{ book.language }}</span>
-                        <span>Format: {{ book.format }} / {{ book.bitrate }}</span>
-                        <span>Size: {{ book.file_size }}</span>
-                        <span>Posted: {{ book.post_date }}</span>
+
+                <td class="col-info">
+                    <div class="book-title">{{ book.title }}</div>
+
+                    <div class="metadata-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Language</span>
+                            <span class="meta-value accent">{{ book.language }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Size</span>
+                            <span class="meta-value">{{ book.file_size }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Format</span>
+                            <span class="meta-value">{{ book.format }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Bitrate</span>
+                            <span class="meta-value">{{ book.bitrate }}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Posted</span>
+                            <span class="meta-value">{{ book.post_date }}</span>
+                        </div>
+                    </div>
+
+                    <div class="categories-container">
+                        <span class="category-tag">{{ book.category }}</span>
                     </div>
                 </td>
-                <td>
-                    <a href="{{ url_for('main.details', link=book.link) }}" class="details-button">Details</a>
-                    <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">
-                        Download
-                    </button>
+
+                <td class="col-actions">
+                    <div class="action-stack">
+                        <button
+                            class="action-btn btn-download"
+                            onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)"
+                        >
+                            Download
+                        </button>
+                        <a href="{{ url_for('main.details', link=book.link) }}" class="action-btn btn-details"
+                            >Details</a
+                        >
+                    </div>
                 </td>
             </tr>
             {% endfor %} {% else %} {% if query %}

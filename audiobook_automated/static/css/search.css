@@ -1,95 +1,107 @@
 /* --- Search Form --- */
 .search-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto 30px;
 }
 
 .search-form {
     display: flex;
-    gap: 10px;
+    gap: 15px;
     position: relative;
+    align-items: stretch; /* Ensures button matches input height */
 }
 
 .search-bar {
     width: 100%;
-    padding: 15px 20px;
-    font-size: 1.1rem;
-    border: none;
+    padding: 18px 25px;
+    font-size: 1.15rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #333;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s;
+    background: rgba(255, 255, 255, 0.95);
+    color: #1a0025; /* Dark text for contrast */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
 }
 
 .search-bar:focus {
     outline: none;
-    transform: scale(1.01);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
 
 .search-button {
-    padding: 0 30px;
-    background-color: #6200ea; /* Vivid Purple */
+    padding: 0 40px;
+    background: linear-gradient(135deg, #6200ea, #7c4dff);
     color: white;
     border: none;
     border-radius: 50px;
-    font-weight: bold;
-    font-size: 1rem;
+    font-weight: 700;
+    font-size: 1.1rem;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    transition:
-        background-color 0.3s,
-        transform 0.2s;
+    box-shadow: 0 4px 15px rgba(98, 0, 234, 0.4);
+    transition: all 0.3s ease;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .search-button:hover {
-    background-color: #7c4dff;
     transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(98, 0, 234, 0.6);
 }
 
-/* --- Filter Container (Grid Layout) --- */
+/* --- Filter Container --- */
 #filter-container {
     background: var(--glass-bg);
     border: var(--glass-border);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    margin-bottom: 30px;
+    border-radius: 16px; /* Slightly more rounded */
+    padding: 25px;
+    margin-bottom: 40px;
     box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 25px;
 }
 
-.filter-row {
-    display: flex;
-    flex-wrap: wrap;
+/* Row 1: Dropdowns */
+.filter-row-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 15px;
-    align-items: center;
 }
 
-.filter-controls {
+/* Row 2: Slider & Actions */
+.filter-row-bottom {
     display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    flex: 1;
+    align-items: center;
+    gap: 30px;
+    padding-top: 10px; /* Space for slider tooltips if needed */
 }
 
-/* Make selects and inputs uniform */
+/* Selects & Inputs */
 #filter-container select,
 #filter-container input[type="text"] {
-    padding: 10px;
+    width: 100%;
+    padding: 12px 15px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(0, 0, 0, 0.25);
     color: white;
-    font-size: 0.9rem;
-    flex: 1 1 150px; /* Grow to fill, minimum 150px */
+    font-size: 0.95rem;
+    transition:
+        border-color 0.2s,
+        background-color 0.2s;
+    appearance: none; /* Removes default OS styling */
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e1bee7%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px top 50%;
+    background-size: 10px auto;
 }
 
 #filter-container select:focus,
 #filter-container input:focus {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(0, 0, 0, 0.4);
     outline: none;
     border-color: var(--accent-color);
 }
@@ -101,70 +113,92 @@
 
 /* Slider Area */
 .file-size-filter-wrapper {
-    flex: 1 1 300px;
+    flex-grow: 1; /* Takes remaining space */
     display: flex;
     align-items: center;
-    gap: 15px;
-    padding: 0 10px;
+    gap: 20px;
+    padding-right: 15px;
 }
 .file-size-filter-wrapper label {
     white-space: nowrap;
+    font-weight: 600;
     color: var(--text-muted);
+    min-width: 60px;
 }
 #file-size-slider {
     flex-grow: 1;
+    margin-bottom: 5px; /* Visual balance */
 }
 
-/* Filter Buttons */
-.filter-buttons button {
-    padding: 10px 20px;
+/* Filter Actions Group */
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0; /* Prevents buttons from shrinking */
+}
+
+.filter-actions button {
+    padding: 10px 24px;
     border-radius: 8px;
     border: none;
     font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.2s;
+    font-size: 0.95rem;
 }
 
 #filter-button {
     background-color: var(--accent-color);
     color: #333;
 }
+#filter-button:hover {
+    background-color: var(--accent-hover);
+}
+
 #clear-button {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
 }
+#clear-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
 
-/* --- Results Table --- */
+/* --- Results Table / Cards --- */
 .table-wrapper {
     width: 100%;
-    overflow-x: visible; /* Let cards handle overflow */
 }
 
 table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0 15px; /* Spacing between rows */
+    border-spacing: 0 20px;
 }
 
-/* Table Row (Card Style) */
+/* Row Card Style */
 tbody tr.result-row {
     background: var(--glass-bg);
     box-shadow: var(--shadow-soft);
     border-radius: var(--border-radius);
-    transition: transform 0.2s;
+    transition:
+        transform 0.2s ease,
+        background 0.2s;
+    position: relative;
 }
+
 tbody tr.result-row:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     background: rgba(255, 255, 255, 0.12);
 }
 
+/* Layout Cells */
 td {
-    padding: 15px;
+    padding: 20px;
     vertical-align: top;
     color: var(--text-muted);
+    border: none;
 }
 
-/* First and Last cells rounded corners */
+/* Fix corners */
 tr td:first-child {
     border-top-left-radius: var(--border-radius);
     border-bottom-left-radius: var(--border-radius);
@@ -174,84 +208,144 @@ tr td:last-child {
     border-bottom-right-radius: var(--border-radius);
 }
 
-/* Cover Image */
+/* --- 1. Left: Cover Art --- */
+td.col-cover {
+    width: 110px; /* Fixed width */
+}
 img.cover {
-    width: 80px;
+    width: 100%;
     height: auto;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    aspect-ratio: 1/1.5; /* Enforce book ratio */
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
     object-fit: cover;
 }
 
-/* Book Info */
-.book-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-main);
-    margin: 0 0 8px 0;
+/* --- 2. Middle: Info & Metadata Grid --- */
+td.col-info {
+    width: auto;
 }
 
-.property-results-container {
+.book-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0 0 15px 0;
+    line-height: 1.3;
+}
+
+/* The Metadata Grid */
+.metadata-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
+    gap: 8px 25px;
+    margin-bottom: 15px;
+}
+
+.meta-item {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px 15px;
+    flex-direction: column;
     font-size: 0.85rem;
 }
 
-.property-results-container span {
-    display: inline-flex;
-    align-items: center;
+.meta-label {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 2px;
 }
 
-.book-category {
-    color: var(--accent-color);
+.meta-value {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.meta-value.accent {
+    color: var(--text-main);
     font-weight: 600;
 }
 
-/* Action Buttons */
-td:last-child {
+/* Categories Area */
+.categories-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.category-tag {
+    font-size: 0.75rem;
+    background: rgba(255, 215, 64, 0.15); /* Tint of accent */
+    color: var(--accent-color);
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 64, 0.3);
+}
+
+/* --- 3. Right: Actions --- */
+td.col-actions {
+    width: 180px;
     text-align: right;
-    white-space: nowrap;
     vertical-align: middle;
 }
 
-.details-button,
-button {
-    display: inline-block;
-    padding: 8px 16px;
-    border-radius: 6px;
+.action-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch; /* Make buttons same width */
+}
+
+.action-btn {
+    padding: 10px 15px;
+    border-radius: 8px;
     font-size: 0.9rem;
     cursor: pointer;
     border: none;
-    transition: background 0.2s;
+    text-align: center;
     text-decoration: none;
-    margin-left: 5px;
+    font-weight: 600;
+    transition: all 0.2s;
 }
 
-.details-button {
+.btn-details {
     background-color: rgba(255, 255, 255, 0.1);
     color: white;
 }
-.details-button:hover {
+.btn-details:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-button {
+.btn-download {
     background-color: #6200ea;
     color: white;
 }
-button:hover {
+.btn-download:hover {
     background-color: #7c4dff;
 }
 
-/* --- Responsive Mobile View (Cards) --- */
-@media (max-width: 850px) {
-    /* Hide Table Header */
+/* --- Responsive Adjustments --- */
+
+/* Tablet & Mobile Breakpoint */
+@media (max-width: 900px) {
+    /* Filters: Stack the bottom row */
+    .filter-row-bottom {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 25px;
+    }
+
+    .filter-actions {
+        justify-content: flex-end;
+    }
+
+    /* Hide table header, Switch to Block layout */
     thead {
         display: none;
     }
-
-    /* Make Row a Block Card */
     table,
     tbody,
     tr,
@@ -262,69 +356,107 @@ button:hover {
     }
 
     tr.result-row {
-        margin-bottom: 20px;
-        position: relative;
-        padding: 15px;
-        border-radius: var(--border-radius) !important;
+        margin-bottom: 25px;
+        padding: 20px;
+        border-radius: 12px !important;
         display: grid;
-        grid-template-columns: 80px 1fr;
+        grid-template-columns: 100px 1fr; /* Cover | Content */
         grid-template-areas:
-            "img info"
+            "cover title"
+            "cover meta"
+            "tags tags"
             "actions actions";
         gap: 15px;
-        border-spacing: 0;
     }
 
-    /* Reset Cell Styling */
+    /* Reset padding/borders for grid cells */
     td {
         padding: 0;
-        text-align: left;
+        border: none;
     }
 
-    /* Assign Grid Areas */
-    td:nth-child(1) {
-        grid-area: img;
+    /* Assign Areas */
+    td.col-cover {
+        grid-area: cover;
+        width: auto;
     }
-    td:nth-child(2) {
-        grid-area: info;
+    td.col-info {
+        grid-area: title;
+        display: contents;
+    } /* Use sub-elements for placement */
+
+    /* We need to use CSS display:contents or targeted selection to split col-info content */
+    /* Since we can't easily split the TD content without changing HTML structure,
+       we will handle the internal layout of col-info here */
+
+    /* Rewrite Mobile Grid logic slightly to accommodate HTML structure */
+    tr.result-row {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        grid-template-rows: auto auto auto;
+        column-gap: 20px;
+        row-gap: 15px;
     }
-    td:nth-child(3) {
-        grid-area: actions;
-        display: flex;
-        flex-direction: column;
+
+    td.col-cover {
+        grid-row: 1 / 3; /* Spans top two rows */
+    }
+
+    td.col-info {
+        grid-column: 2 / 3;
+        grid-row: 1 / 2;
+    }
+
+    td.col-actions {
+        grid-column: 1 / -1; /* Full width bottom */
+        grid-row: 3 / 4;
+        margin-top: 5px;
+    }
+
+    .action-stack {
+        flex-direction: row; /* Side by side on mobile */
+    }
+    .action-btn {
+        flex: 1;
+    }
+
+    /* Force Metadata grid to 2 columns on mobile */
+    .metadata-grid {
+        grid-template-columns: 1fr 1fr;
         gap: 10px;
-    }
-
-    /* Adjust Image */
-    img.cover {
-        width: 100%;
-        max-width: 80px;
-    }
-
-    /* Adjust Buttons for Mobile */
-    .details-button,
-    button {
-        width: 100%;
-        text-align: center;
-        margin: 0;
-        padding: 12px;
-    }
-
-    /* Stack Filter Controls */
-    .search-form {
-        flex-direction: column;
-    }
-    .search-button {
-        width: 100%;
+        margin-top: 5px;
     }
 }
 
-/* Spinner */
+/* Small Mobile Breakpoint */
+@media (max-width: 600px) {
+    /* Search Bar Stack */
+    .search-form {
+        flex-direction: column;
+    }
+
+    .search-button {
+        width: 100%;
+        height: 50px; /* Explicit height to prevent squishing */
+        margin-top: 5px;
+    }
+
+    /* Adjust Card Layout for very small screens */
+    tr.result-row {
+        grid-template-columns: 80px 1fr; /* Smaller cover */
+    }
+
+    .book-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* --- Spinner --- */
 .button-spinner .spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top: 2px solid #fff;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #fff;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -337,26 +469,42 @@ button:hover {
     }
 }
 
-/* NoUiSlider Custom overrides */
+/* --- NoUiSlider Custom overrides --- */
 .noUi-target {
     background: rgba(255, 255, 255, 0.1);
     border: none;
     height: 6px;
+    margin-bottom: 25px; /* Add margin bottom for the tooltips */
 }
 .noUi-connect {
     background: var(--accent-color);
 }
 .noUi-handle {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: #fff;
     border: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
-    right: -9px;
-    top: -6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    right: -10px;
+    top: -7px;
+    cursor: grab;
+}
+.noUi-handle:active {
+    cursor: grabbing;
 }
 .noUi-handle:before,
 .noUi-handle:after {
     display: none;
+}
+
+/* Move Tooltips BELOW the slider */
+.noUi-tooltip {
+    bottom: -38px; /* Push below */
+    top: auto; /* Unset default top */
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 0;
 }
