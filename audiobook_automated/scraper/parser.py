@@ -200,10 +200,11 @@ def parse_post_content(
             if not value:
                 setattr(meta, f.name, ["Unknown"])
             else:
-                # Fix: Iterate and normalize individual items in the list
+                # Iterate and normalize individual items in the list
                 normalized_list = []
                 for item in value:
-                    if item == "?" or not item.strip():
+                    # Convert '?' or empty strings to 'Unknown'
+                    if item == "?" or not item or not item.strip():
                         normalized_list.append("Unknown")
                     else:
                         normalized_list.append(item)
