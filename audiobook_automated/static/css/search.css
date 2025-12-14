@@ -8,7 +8,7 @@
     display: flex;
     gap: 15px;
     position: relative;
-    align-items: stretch; /* Ensures button matches input height */
+    align-items: stretch;
 }
 
 .search-bar {
@@ -18,7 +18,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 50px;
     background: rgba(255, 255, 255, 0.95);
-    color: #1a0025; /* Dark text for contrast */
+    color: #1a0025;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
 }
@@ -55,7 +55,7 @@
 #filter-container {
     background: var(--glass-bg);
     border: var(--glass-border);
-    border-radius: 16px; /* Slightly more rounded */
+    border-radius: 16px;
     padding: 25px;
     margin-bottom: 40px;
     box-shadow: var(--shadow-soft);
@@ -64,22 +64,19 @@
     gap: 25px;
 }
 
-/* Row 1: Dropdowns */
 .filter-row-inputs {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 15px;
 }
 
-/* Row 2: Slider & Actions */
 .filter-row-bottom {
     display: flex;
     align-items: center;
     gap: 30px;
-    padding-top: 10px; /* Space for slider tooltips if needed */
+    padding-top: 10px;
 }
 
-/* Selects & Inputs */
 #filter-container select,
 #filter-container input[type="text"] {
     width: 100%;
@@ -92,7 +89,7 @@
     transition:
         border-color 0.2s,
         background-color 0.2s;
-    appearance: none; /* Removes default OS styling */
+    appearance: none;
     background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e1bee7%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
     background-repeat: no-repeat;
     background-position: right 12px top 50%;
@@ -111,9 +108,8 @@
     color: white;
 }
 
-/* Slider Area */
 .file-size-filter-wrapper {
-    flex-grow: 1; /* Takes remaining space */
+    flex-grow: 1;
     display: flex;
     align-items: center;
     gap: 20px;
@@ -127,14 +123,13 @@
 }
 #file-size-slider {
     flex-grow: 1;
-    margin-bottom: 5px; /* Visual balance */
+    margin-bottom: 5px;
 }
 
-/* Filter Actions Group */
 .filter-actions {
     display: flex;
     gap: 10px;
-    flex-shrink: 0; /* Prevents buttons from shrinking */
+    flex-shrink: 0;
 }
 
 .filter-actions button {
@@ -174,7 +169,6 @@ table {
     border-spacing: 0 20px;
 }
 
-/* Row Card Style */
 tbody tr.result-row {
     background: var(--glass-bg);
     box-shadow: var(--shadow-soft);
@@ -190,7 +184,6 @@ tbody tr.result-row:hover {
     background: rgba(255, 255, 255, 0.12);
 }
 
-/* Layout Cells */
 td {
     padding: 20px;
     vertical-align: top;
@@ -198,7 +191,6 @@ td {
     border: none;
 }
 
-/* Fix corners */
 tr td:first-child {
     border-top-left-radius: var(--border-radius);
     border-bottom-left-radius: var(--border-radius);
@@ -208,20 +200,18 @@ tr td:last-child {
     border-bottom-right-radius: var(--border-radius);
 }
 
-/* --- 1. Left: Cover Art --- */
 td.col-cover {
-    width: 110px; /* Fixed width */
+    width: 110px;
 }
 img.cover {
     width: 100%;
     height: auto;
-    aspect-ratio: 1/1.5; /* Enforce book ratio */
+    aspect-ratio: 1/1.5;
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
     object-fit: cover;
 }
 
-/* --- 2. Middle: Info & Metadata Grid --- */
 td.col-info {
     width: auto;
 }
@@ -230,16 +220,34 @@ td.col-info {
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-main);
-    margin: 0 0 15px 0;
+    margin: 0 0 10px 0;
     line-height: 1.3;
 }
 
-/* The Metadata Grid */
+/* Categories Area */
+.categories-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 15px; /* Space between tags and metadata */
+    /* REMOVED: border-top and large margins that caused layout issues */
+}
+
+.category-tag {
+    font-size: 0.75rem;
+    background: rgba(255, 215, 64, 0.15);
+    color: var(--accent-color);
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 215, 64, 0.3);
+    white-space: nowrap;
+}
+
+/* Metadata Grid */
 .metadata-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, max-content));
     gap: 8px 25px;
-    margin-bottom: 15px;
 }
 
 .meta-item {
@@ -266,26 +274,7 @@ td.col-info {
     font-weight: 600;
 }
 
-/* Categories Area */
-.categories-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 10px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.category-tag {
-    font-size: 0.75rem;
-    background: rgba(255, 215, 64, 0.15); /* Tint of accent */
-    color: var(--accent-color);
-    padding: 3px 10px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 215, 64, 0.3);
-}
-
-/* --- 3. Right: Actions --- */
+/* Actions */
 td.col-actions {
     width: 180px;
     text-align: right;
@@ -296,7 +285,7 @@ td.col-actions {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    align-items: stretch; /* Make buttons same width */
+    align-items: stretch;
 }
 
 .action-btn {
@@ -327,22 +316,16 @@ td.col-actions {
     background-color: #7c4dff;
 }
 
-/* --- Responsive Adjustments --- */
-
-/* Tablet & Mobile Breakpoint */
+/* Responsive */
 @media (max-width: 900px) {
-    /* Filters: Stack the bottom row */
     .filter-row-bottom {
         flex-direction: column;
         align-items: stretch;
         gap: 25px;
     }
-
     .filter-actions {
         justify-content: flex-end;
     }
-
-    /* Hide table header, Switch to Block layout */
     thead {
         display: none;
     }
@@ -354,104 +337,62 @@ td.col-actions {
         width: 100%;
         border-radius: 0;
     }
-
     tr.result-row {
         margin-bottom: 25px;
         padding: 20px;
         border-radius: 12px !important;
-        display: grid;
-        grid-template-columns: 100px 1fr; /* Cover | Content */
-        grid-template-areas:
-            "cover title"
-            "cover meta"
-            "tags tags"
-            "actions actions";
-        gap: 15px;
-    }
-
-    /* Reset padding/borders for grid cells */
-    td {
-        padding: 0;
-        border: none;
-    }
-
-    /* Assign Areas */
-    td.col-cover {
-        grid-area: cover;
-        width: auto;
-    }
-    td.col-info {
-        grid-area: title;
-        display: contents;
-    } /* Use sub-elements for placement */
-
-    /* We need to use CSS display:contents or targeted selection to split col-info content */
-    /* Since we can't easily split the TD content without changing HTML structure,
-       we will handle the internal layout of col-info here */
-
-    /* Rewrite Mobile Grid logic slightly to accommodate HTML structure */
-    tr.result-row {
         display: grid;
         grid-template-columns: 100px 1fr;
         grid-template-rows: auto auto auto;
         column-gap: 20px;
         row-gap: 15px;
     }
-
-    td.col-cover {
-        grid-row: 1 / 3; /* Spans top two rows */
+    td {
+        padding: 0;
+        border: none;
     }
-
+    td.col-cover {
+        grid-row: 1 / 3;
+    }
     td.col-info {
         grid-column: 2 / 3;
         grid-row: 1 / 2;
     }
-
     td.col-actions {
-        grid-column: 1 / -1; /* Full width bottom */
+        grid-column: 1 / -1;
         grid-row: 3 / 4;
         margin-top: 5px;
     }
-
     .action-stack {
-        flex-direction: row; /* Side by side on mobile */
+        flex-direction: row;
     }
     .action-btn {
         flex: 1;
     }
-
-    /* Force Metadata grid to 2 columns on mobile */
     .metadata-grid {
         grid-template-columns: 1fr 1fr;
         gap: 10px;
-        margin-top: 5px;
     }
 }
 
-/* Small Mobile Breakpoint */
 @media (max-width: 600px) {
-    /* Search Bar Stack */
     .search-form {
         flex-direction: column;
     }
-
     .search-button {
         width: 100%;
-        height: 50px; /* Explicit height to prevent squishing */
+        height: 50px;
         margin-top: 5px;
     }
-
-    /* Adjust Card Layout for very small screens */
     tr.result-row {
-        grid-template-columns: 80px 1fr; /* Smaller cover */
+        grid-template-columns: 80px 1fr;
     }
-
     .book-title {
         font-size: 1.1rem;
     }
 }
 
-/* --- Spinner --- */
+/* Spinner */
 .button-spinner .spinner {
     width: 20px;
     height: 20px;
@@ -469,12 +410,12 @@ td.col-actions {
     }
 }
 
-/* --- NoUiSlider Custom overrides --- */
+/* NoUiSlider */
 .noUi-target {
     background: rgba(255, 255, 255, 0.1);
     border: none;
     height: 6px;
-    margin-bottom: 25px; /* Add margin bottom for the tooltips */
+    margin-bottom: 25px;
 }
 .noUi-connect {
     background: var(--accent-color);
@@ -497,11 +438,9 @@ td.col-actions {
 .noUi-handle:after {
     display: none;
 }
-
-/* Move Tooltips BELOW the slider */
 .noUi-tooltip {
-    bottom: -38px; /* Push below */
-    top: auto; /* Unset default top */
+    bottom: -38px;
+    top: auto;
     background: transparent;
     border: none;
     color: var(--text-muted);

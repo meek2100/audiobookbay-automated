@@ -195,7 +195,7 @@ def parse_post_content(
     for f in fields(meta):
         value = getattr(meta, f.name)
 
-        # Special handling for category list
+        # 1. Normalize Categories (List)
         if f.name == "category":
             if not value:
                 setattr(meta, f.name, ["Unknown"])
@@ -203,17 +203,19 @@ def parse_post_content(
                 # Iterate and normalize individual items in the list
                 normalized_list = []
                 for item in value:
-                    # Convert '?' or empty strings to 'Unknown'
-                    if item == "?" or not item or not item.strip():
+                    # Check for '?', empty strings, or strings that are just whitespace/punctuation
+                    if not item or item.strip() in ["?", ""]:
                         normalized_list.append("Unknown")
                     else:
                         normalized_list.append(item)
                 setattr(meta, f.name, normalized_list)
             continue
 
-        # Standard handling for strings
+        # 2. Normalize Strings (File Size, Bitrate, etc.)
         if isinstance(value, str):
-            if value == "?" or not value or not value.strip():
+            # Strip whitespace and check against invalid values
+            clean_val = value.strip()
+            if not clean_val or clean_val == "?" or clean_val.startswith("? "):
                 setattr(meta, f.name, "Unknown")
 
     return meta
