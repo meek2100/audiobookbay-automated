@@ -19,6 +19,10 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Validate critical configuration
     config_class.validate(app.logger)
 
+    # PRODUCTION FIX: Explicitly apply the configured log level to the Flask logger.
+    # Flask does not automatically apply the 'LOG_LEVEL' config value to its logger.
+    app.logger.setLevel(app.config.get("LOG_LEVEL", "INFO"))
+
     # OPTIMIZATION: Load pre-calculated static asset hash.
     # If the file exists (production build), use it to avoid disk I/O.
     # Otherwise, calculate it dynamically (local development).

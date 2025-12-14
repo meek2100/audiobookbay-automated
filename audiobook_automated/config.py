@@ -60,27 +60,27 @@ class Config:
 
     # Page Limit (Default 3)
     # Handles parsing of the environment variable for page scraping limits.
-    # Falls back to 3 if the value is invalid or less than 1.
+    # Uses int(float(...)) to handle cases where env vars come in as "3.0".
     PAGE_LIMIT: int
     try:
-        PAGE_LIMIT = int(os.getenv("PAGE_LIMIT", "3").strip())
-    except ValueError:
+        PAGE_LIMIT = int(float(os.getenv("PAGE_LIMIT", "3").strip()))
+    except (ValueError, TypeError):
         PAGE_LIMIT = 3
 
     # Scraper Concurrency
     # Defines the number of worker threads for the scraping executor.
     SCRAPER_THREADS: int
     try:
-        SCRAPER_THREADS = int(os.getenv("SCRAPER_THREADS", "3").strip())
-    except ValueError:
+        SCRAPER_THREADS = int(float(os.getenv("SCRAPER_THREADS", "3").strip()))
+    except (ValueError, TypeError):
         SCRAPER_THREADS = 3
 
     # Scraper Request Timeout (Default 30)
     # Separated from Gunicorn timeout to ensure internal requests fail faster than the worker kill timer.
     SCRAPER_TIMEOUT: int
     try:
-        SCRAPER_TIMEOUT = int(os.getenv("SCRAPER_TIMEOUT", "30").strip())
-    except ValueError:
+        SCRAPER_TIMEOUT = int(float(os.getenv("SCRAPER_TIMEOUT", "30").strip()))
+    except (ValueError, TypeError):
         SCRAPER_TIMEOUT = 30
 
     @classmethod

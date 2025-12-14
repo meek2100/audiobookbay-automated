@@ -52,7 +52,6 @@ def health() -> Response:
     Returns:
         Response: A JSON response with status "ok".
     """
-    # FIX: Explicitly cast to Response and ignore type mismatch with flask.wrappers.Response
     return cast(Response, jsonify({"status": "ok"}))
 
 
@@ -62,6 +61,7 @@ def search() -> str | Response:
     """Handle the search interface.
 
     Processes search queries and renders the search results page.
+    Enforces a minimum query length of 2 characters.
 
     Query Params:
         query (str): The search term passed via GET or POST.
@@ -78,6 +78,11 @@ def search() -> str | Response:
         query = query.strip()
 
         if query:
+            # SAFETY: Minimum length check to prevent scraping spam
+            if len(query) < 2:
+                error_message = "Search query must be at least 2 characters long."
+                return render_template("search.html", books=[], error=error_message, query=query)
+
             # AudiobookBay requires lowercase search terms
             search_query = query.lower()
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
