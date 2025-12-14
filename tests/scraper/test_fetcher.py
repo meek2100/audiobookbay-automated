@@ -155,7 +155,7 @@ def test_fetch_and_parse_page_missing_regex_matches() -> None:
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["language"] == "Unknown"
-    assert results[0]["category"] == "Unknown"
+    assert results[0]["category"] == ["Unknown"]
 
 
 def test_fetch_and_parse_page_no_posted_date() -> None:
@@ -347,7 +347,7 @@ def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
     assert len(results) == 1
     r = results[0]
     assert r["language"] == "Unknown"
-    assert r["category"] == "Unknown"
+    assert r["category"] == ["Unknown"]
     assert r["post_date"] == "Unknown"
     assert r["format"] == "Unknown"
     assert r["bitrate"] == "Unknown"

@@ -252,7 +252,7 @@ def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
         details = get_book_details("https://audiobookbay.lu/mystery")
 
         assert details["language"] == "Unknown"
-        assert details["category"] == "Unknown"
+        assert details["category"] == ["Unknown"]
         assert details["post_date"] == "Unknown"
         assert details["format"] == "Unknown"
         assert details["author"] == "Unknown"

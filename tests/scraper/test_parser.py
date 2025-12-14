@@ -126,7 +126,7 @@ def test_parse_post_content_full_validity() -> None:
 
     meta = parse_post_content(soup_content, soup_info)
 
-    assert meta.category == "Fantasy"
+    assert meta.category == ["Fantasy"]
     assert meta.language == "English"
     assert meta.format == "MP3"
     assert meta.bitrate == "128 Kbps"
@@ -148,7 +148,7 @@ def test_parse_post_content_missing_elements() -> None:
     meta = parse_post_content(soup_content, None)
 
     assert meta.format == "M4B"
-    assert meta.category == "Unknown"
+    assert meta.category == ["Unknown"]
 
 
 def test_parse_post_content_normalization() -> None:
@@ -167,10 +167,30 @@ def test_parse_post_content_normalization() -> None:
 
     meta = parse_post_content(soup_content, soup_info)
 
-    assert meta.category == "Unknown"
+    assert meta.category == ["Unknown"]
     assert meta.language == "Unknown"  # Was empty/whitespace
     assert meta.format == "Unknown"  # Was ?
     assert meta.bitrate == "Unknown"  # Was empty
+
+
+def test_parse_post_content_empty_category_results_in_unknown() -> None:
+    """Test that a category string resulting in an empty list falls back to ['Unknown'].
+
+    This covers the 'if not value: setattr(meta, f.name, ["Unknown"])' branch
+    in parser.py which is hit when split() produces an empty list.
+    """
+    # "Category: ," results in raw_cat="," -> split(",") -> ["", ""] -> filtered to []
+    html_info = """<div class="postInfo">Category: , Language: English</div>"""
+    soup_info = BeautifulSoup(html_info, "lxml").find("div")
+    soup_content = MagicMock(spec=Tag)
+
+    assert isinstance(soup_info, Tag)
+
+    meta = parse_post_content(soup_content, soup_info)
+
+    # Should reset to Unknown, not empty list
+    assert meta.category == ["Unknown"]
+    assert meta.language == "English"
 
 
 # --- Unit Tests: parse_book_details (Centralized Logic) ---

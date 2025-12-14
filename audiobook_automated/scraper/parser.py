@@ -195,10 +195,19 @@ def parse_post_content(
     for f in fields(meta):
         value = getattr(meta, f.name)
 
-        # Special handling for category list (prevent ["Unknown"] overwritten by empty check)
+        # Special handling for category list
         if f.name == "category":
             if not value:
                 setattr(meta, f.name, ["Unknown"])
+            else:
+                # Fix: Iterate and normalize individual items in the list
+                normalized_list = []
+                for item in value:
+                    if item == "?" or not item.strip():
+                        normalized_list.append("Unknown")
+                    else:
+                        normalized_list.append(item)
+                setattr(meta, f.name, normalized_list)
             continue
 
         # Standard handling for strings
