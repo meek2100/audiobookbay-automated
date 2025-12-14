@@ -744,6 +744,34 @@ def test_get_status_deluge(app: Flask) -> None:
         assert results[0]["name"] == "D Book"
 
 
+def test_get_status_deluge_with_label_plugin(app: Flask) -> None:
+    """Test fetching status from Deluge when Label plugin is enabled.
+
+    Ensures the 'label' filter is applied.
+    """
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+        # Enable Label plugin
+        mock_instance.get_plugins.return_value = Response(result=["Label"], error=None)
+
+        mock_response = MagicMock()
+        mock_response.result = {"hash123": {"name": "D Book", "state": "Dl", "progress": 45.5, "total_size": 100}}
+        mock_instance.get_torrents_status.return_value = mock_response
+
+        strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
+        strategy.connect()
+        results = strategy.get_status("my_category")
+
+        # Verify filter_dict includes label
+        mock_instance.get_torrents_status.assert_called_with(
+            filter_dict={"label": "my_category"},
+            keys=["name", "state", "progress", "total_size"],
+        )
+
+        assert len(results) == 1
+
+
 def test_get_status_deluge_empty_result(app: Flask) -> None:
     """Test handling of Deluge returning a None result payload."""
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:

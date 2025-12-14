@@ -16,6 +16,15 @@ def test_search_via_get(client: Any) -> None:
         mock_search.assert_called_with("test")
 
 
+def test_search_short_query(client: Any) -> None:
+    """Test that a search query shorter than 2 characters triggers an error."""
+    with patch("audiobook_automated.routes.search_audiobookbay") as mock_search:
+        response = client.get("/?query=a")
+        assert response.status_code == 200
+        assert b"Search query must be at least 2 characters long." in response.data
+        mock_search.assert_not_called()
+
+
 def test_search_whitespace_query(client: Any) -> None:
     with patch("audiobook_automated.routes.search_audiobookbay") as mock_search:
         response = client.get("/?query=%20%20%20")
