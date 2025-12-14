@@ -286,7 +286,7 @@ class DelugeStrategy(TorrentClientStrategy):
                     logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                     raise e2
             else:
-                raise e  # pragma: no cover
+                raise  # pragma: no cover
 
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Deluge."""
