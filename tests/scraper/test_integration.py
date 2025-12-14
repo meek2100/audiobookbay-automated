@@ -7,7 +7,7 @@ import pytest
 
 from audiobook_automated.scraper import search_audiobookbay
 from audiobook_automated.scraper.network import search_cache
-from audiobook_automated.scraper.parser import BookDict
+from audiobook_automated.scraper.parser import BookSummary
 
 # --- Search & Flow Tests ---
 
@@ -17,8 +17,8 @@ def test_search_audiobookbay_success(mock_sleep: Any) -> None:
     with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
         # FIX: Patch get_thread_session as that is what core.py imports/uses
         with patch("audiobook_automated.scraper.core.get_thread_session"):
-            # FIX: Explicitly cast mock return value to list[BookDict]
-            mock_results = cast(list[BookDict], [{"title": "Test Book"}])
+            # FIX: Explicitly cast mock return value to list[BookSummary]
+            mock_results = cast(list[BookSummary], [{"title": "Test Book"}])
             with patch("audiobook_automated.scraper.core.fetch_and_parse_page", return_value=mock_results):
                 results = search_audiobookbay("query", max_pages=1)
                 assert len(results) == 1
@@ -28,8 +28,8 @@ def test_search_audiobookbay_success(mock_sleep: Any) -> None:
 def test_search_caching(mock_sleep: Any) -> None:
     """Test that search results are returned from cache if available."""
     query = "cached_query"
-    # FIX: Explicitly typed list of BookDict
-    expected_result = cast(list[BookDict], [{"title": "Cached Book"}])
+    # FIX: Explicitly typed list of BookSummary
+    expected_result = cast(list[BookSummary], [{"title": "Cached Book"}])
     search_cache[query] = expected_result
 
     # Ensure no network calls are made
@@ -43,7 +43,7 @@ def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
     """Mock ThreadPoolExecutor to run synchronously for coverage."""
     mock_future = MagicMock()
 
-    mock_future.result.return_value = cast(list[BookDict], [{"title": "Sync Book"}])
+    mock_future.result.return_value = cast(list[BookSummary], [{"title": "Sync Book"}])
 
     with patch("audiobook_automated.scraper.core.executor") as mock_executor_instance:
         mock_executor_instance.submit.return_value = mock_future

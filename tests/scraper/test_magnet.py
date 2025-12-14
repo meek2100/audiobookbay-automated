@@ -4,7 +4,7 @@ from typing import Any, cast
 from unittest.mock import patch
 
 from audiobook_automated.scraper import extract_magnet_link
-from audiobook_automated.scraper.parser import BookDict
+from audiobook_automated.scraper.parser import BookDetails
 
 
 def test_extract_magnet_deduplication(mock_sleep: Any) -> None:
@@ -15,7 +15,7 @@ def test_extract_magnet_deduplication(mock_sleep: Any) -> None:
     url = "https://audiobookbay.lu/book"
     # Mock details containing duplicate trackers
     mock_details = cast(
-        BookDict,
+        BookDetails,
         {
             "info_hash": "abc123hash456",
             "trackers": ["http://tracker.com/announce", "http://tracker.com/announce"],
@@ -43,7 +43,7 @@ def test_extract_magnet_success(mock_sleep: Any) -> None:
     """Test successful magnet link extraction."""
     url = "https://audiobookbay.lu/book"
     mock_details = cast(
-        BookDict,
+        BookDetails,
         {"info_hash": "abc123hash456", "trackers": ["http://tracker.com/announce"]},
     )
 
@@ -60,7 +60,7 @@ def test_extract_magnet_success(mock_sleep: Any) -> None:
 def test_extract_magnet_missing_info_hash(mock_sleep: Any) -> None:
     """Test behavior when get_book_details returns Unknown hash."""
     url = "https://audiobookbay.lu/book"
-    mock_details = cast(BookDict, {"info_hash": "Unknown", "trackers": []})
+    mock_details = cast(BookDetails, {"info_hash": "Unknown", "trackers": []})
 
     with patch("audiobook_automated.scraper.core.get_book_details", return_value=mock_details):
         magnet, error = extract_magnet_link(url)
@@ -95,7 +95,7 @@ def test_extract_magnet_generic_exception(mock_sleep: Any) -> None:
 def test_extract_magnet_none_trackers(mock_sleep: Any) -> None:
     """Test extract_magnet_link handling when trackers is explicitly None."""
     url = "https://audiobookbay.lu/book"
-    mock_details = cast(BookDict, {"info_hash": "abc123hash", "trackers": None})
+    mock_details = cast(BookDetails, {"info_hash": "abc123hash", "trackers": None})
 
     with patch("audiobook_automated.scraper.core.get_book_details", return_value=mock_details):
         with patch("audiobook_automated.scraper.core.get_trackers", return_value=[]):

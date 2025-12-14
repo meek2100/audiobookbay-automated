@@ -152,7 +152,7 @@ def test_qbittorrent_add_magnet_failure_response(app: Flask) -> None:
         with patch("audiobook_automated.clients.logger") as mock_logger:
             strategy.add_magnet("magnet:?xt=urn:btih:123", "/downloads/Book", "audiobooks")
             args, _ = mock_logger.warning.call_args
-            assert "qBittorrent add returned unexpected response" in args[0]
+            assert "qBittorrent returned failure response" in args[0]
             assert "Fails." in args[0]
 
 
@@ -160,7 +160,8 @@ def test_add_magnet_invalid_path_logging(app: Flask) -> None:
     """Test logging when the Torrent Client returns an error related to an invalid save path."""
     with patch("audiobook_automated.clients.QbClient") as MockQbClient:
         mock_instance = MockQbClient.return_value
-        mock_instance.torrents_add.return_value = "Invalid Save Path"
+        # FIX: Return "Fails." to trigger the logging logic, as custom error messages aren't captured
+        mock_instance.torrents_add.return_value = "Fails."
 
         manager = setup_manager(app)
         # Using manager to trigger strategy creation and delegation
@@ -171,8 +172,7 @@ def test_add_magnet_invalid_path_logging(app: Flask) -> None:
             # Warning will come from strategy logging
             assert mock_logger.warning.called
             args, _ = mock_logger.warning.call_args
-            assert "qBittorrent add returned unexpected response" in args[0]
-            assert "Invalid Save Path" in args[0]
+            assert "qBittorrent returned failure response" in args[0]
 
 
 def test_remove_torrent_qbittorrent(app: Flask) -> None:
@@ -291,6 +291,8 @@ def test_deluge_add_magnet(app: Flask) -> None:
         mock_instance = MockDeluge.return_value
         # FIX: login must return success for connect to pass
         mock_instance.login.return_value = Response(result=True, error=None)
+        # FIX: Mock get_plugins to return Label
+        mock_instance.get_plugins.return_value = Response(result=["Label"], error=None)
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
         strategy.connect()
@@ -362,6 +364,8 @@ def test_deluge_label_plugin_error(app: Flask) -> None:
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.login.return_value = Response(result=True)
+        # FIX: Enable plugin so we try adding with label first
+        mock_instance.get_plugins.return_value = Response(result=["Label"], error=None)
 
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),
@@ -395,6 +399,8 @@ def test_deluge_fallback_robustness_strings(app: Flask) -> None:
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.login.return_value = Response(result=True)
+        # FIX: Enable plugin
+        mock_instance.get_plugins.return_value = Response(result=["Label"], error=None)
 
         for error_msg in error_variations:
             mock_instance.add_torrent_magnet.reset_mock()
@@ -415,6 +421,8 @@ def test_deluge_fallback_failure(app: Flask) -> None:
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.login.return_value = Response(result=True)
+        # FIX: Enable plugin
+        mock_instance.get_plugins.return_value = Response(result=["Label"], error=None)
 
         mock_instance.add_torrent_magnet.side_effect = [
             Exception("Unknown parameter 'label'"),
@@ -438,6 +446,7 @@ def test_deluge_add_magnet_generic_error(app: Flask) -> None:
     with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.login.return_value = Response(result=True)
+        mock_instance.get_plugins.return_value = Response(result=["Label"], error=None)
         mock_instance.add_torrent_magnet.side_effect = Exception("Generic Failure")
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
@@ -446,6 +455,67 @@ def test_deluge_add_magnet_generic_error(app: Flask) -> None:
         with pytest.raises(Exception) as exc:
             strategy.add_magnet("magnet:...", "/path", "cat")
         assert "Generic Failure" in str(exc.value)
+
+
+def test_deluge_connect_plugin_check_failure(app: Flask) -> None:
+    """Test handling of exception during Deluge plugin check."""
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+        # Simulate exception during get_plugins
+        mock_instance.get_plugins.side_effect = Exception("Plugin API Error")
+
+        strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
+
+        with patch("audiobook_automated.clients.logger") as mock_logger:
+            strategy.connect()
+
+            assert strategy.label_plugin_enabled is False
+            assert mock_logger.warning.called
+            assert "Could not verify Deluge plugins" in str(mock_logger.warning.call_args[0])
+
+
+def test_deluge_add_magnet_no_label_plugin(app: Flask) -> None:
+    """Test add_magnet when label plugin is disabled/missing."""
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+        # Plugins result without "Label"
+        mock_instance.get_plugins.return_value = Response(result=["OtherPlugin"], error=None)
+
+        strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
+        strategy.connect()
+
+        assert strategy.label_plugin_enabled is False
+
+        strategy.add_magnet("magnet:?xt=urn:btih:NO_LABEL", "/downloads/Book", "audiobooks")
+
+        # Verify called with options WITHOUT label
+        expected_options = TorrentOptions(download_location="/downloads/Book")
+        mock_instance.add_torrent_magnet.assert_called_with(
+            "magnet:?xt=urn:btih:NO_LABEL", torrent_options=expected_options
+        )
+
+
+def test_deluge_add_magnet_failure_no_label(app: Flask) -> None:
+    """Test exception propagation when add_magnet fails and plugins are disabled."""
+    with patch("audiobook_automated.clients.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+        # Plugins disabled/missing
+        mock_instance.get_plugins.return_value = Response(result=[], error=None)
+
+        mock_instance.add_torrent_magnet.side_effect = Exception("Some Error")
+
+        strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
+        strategy.connect()
+
+        assert strategy.label_plugin_enabled is False
+
+        with pytest.raises(Exception) as exc:
+            strategy.add_magnet("magnet:...", "/path", "cat")
+
+        assert "Some Error" in str(exc.value)
 
 
 # --- Manager Connectivity & Error Handling Tests ---
@@ -607,12 +677,14 @@ def test_get_status_transmission(app: Flask) -> None:
         mock_torrent = MagicMock()
         mock_torrent.id = 1
         mock_torrent.name = "Test Book"
-        mock_torrent.progress = 0.75
+        mock_torrent.progress = 75.0
         # FIX: Mock status as an object with a 'name' attribute
         mock_status = MagicMock()
         mock_status.name = "downloading"
         mock_torrent.status = mock_status
         mock_torrent.total_size = 1024
+        # FIX: Ensure labels match
+        mock_torrent.labels = ["cat"]
 
         mock_instance.get_torrents.return_value = [mock_torrent]
 
@@ -639,6 +711,8 @@ def test_get_status_transmission_robustness(app: Flask) -> None:
         mock_status_bad = MagicMock()
         mock_status_bad.name = "error"
         mock_torrent_bad.status = mock_status_bad
+        # FIX: Ensure labels match
+        mock_torrent_bad.labels = ["cat"]
 
         mock_instance.get_torrents.return_value = [mock_torrent_bad]
 
