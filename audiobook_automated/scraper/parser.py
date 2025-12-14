@@ -6,7 +6,7 @@ It encapsulates parsing strategies to keep core.py focused on networking and flo
 """
 
 import re
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 from typing import NotRequired, Optional, TypedDict
 from urllib.parse import urljoin
 
@@ -43,7 +43,7 @@ class BookDict(TypedDict):
     trackers: NotRequired[list[str]]
     info_hash: NotRequired[str]
     language: str
-    category: str
+    category: list[str]  # Changed to list to support multiple tags
     post_date: str
     format: str
     bitrate: str
@@ -57,7 +57,8 @@ class BookMetadata:
     """Data class representing standard audiobook metadata extracted from the page."""
 
     language: str = "Unknown"
-    category: str = "Unknown"
+    # Use default_factory for mutable defaults (list)
+    category: list[str] = field(default_factory=lambda: ["Unknown"])
     post_date: str = "Unknown"
     format: str = "Unknown"
     bitrate: str = "Unknown"
@@ -165,7 +166,10 @@ def parse_post_content(
 
         cat_match = RE_CATEGORY.search(info_text)
         if cat_match:
-            meta.category = cat_match.group(1).strip()
+            raw_cat = cat_match.group(1).strip()
+            # Split comma-separated categories into a list
+            if raw_cat:
+                meta.category = [c.strip() for c in raw_cat.split(",") if c.strip()]
 
     # Parse Body Paragraphs
     if content_div:
@@ -188,10 +192,19 @@ def parse_post_content(
 
     # Normalization Rule: Convert "?" or empty strings to "Unknown"
     # We iterate over the dataclass fields to ensure consistent normalization
-    for field in fields(meta):
-        value = getattr(meta, field.name)
-        if value == "?" or not value or not value.strip():
-            setattr(meta, field.name, "Unknown")
+    for f in fields(meta):
+        value = getattr(meta, f.name)
+
+        # Special handling for category list (prevent ["Unknown"] overwritten by empty check)
+        if f.name == "category":
+            if not value:
+                setattr(meta, f.name, ["Unknown"])
+            continue
+
+        # Standard handling for strings
+        if isinstance(value, str):
+            if value == "?" or not value or not value.strip():
+                setattr(meta, f.name, "Unknown")
 
     return meta
 

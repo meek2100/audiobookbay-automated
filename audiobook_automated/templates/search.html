@@ -11,7 +11,6 @@
 <div class="title-container">
     <h1>Search AudiobookBay</h1>
 </div>
-
 <div class="search-container" id="search-container">
     <form method="get" class="search-form" onsubmit="showLoadingSpinner()">
         <input
@@ -30,8 +29,7 @@
         </button>
     </form>
 </div>
-
-<div class="message-scroller" id="message-scroller" style="text-align: center; margin-bottom: 20px">
+<div class="message-scroller" id="message-scroller">
     <p id="scrolling-message"></p>
 </div>
 
@@ -52,16 +50,15 @@
         <select id="format-filter">
             <option value="">All Formats</option>
         </select>
-        <input type="text" id="date-range-filter" placeholder="Date Range" />
+        <input type="text" id="date-range-filter" placeholder="Select Date Range" />
     </div>
-
     <div class="filter-row-bottom">
         <div class="file-size-filter-wrapper">
             <label>Size:</label>
             <div id="file-size-slider"></div>
         </div>
         <div class="filter-actions">
-            <button id="filter-button">Apply Filter</button>
+            <button id="filter-button">Filter</button>
             <button id="clear-button">Clear</button>
         </div>
     </div>
@@ -75,7 +72,7 @@
             default_cover_filename, v=static_version) %}
             <tr
                 class="result-row"
-                data-category="{{ book.category }}"
+                data-category="{{ book.category|join(', ') }}"
                 data-language="{{ book.language }}"
                 data-bitrate="{{ book.bitrate }}"
                 data-format="{{ book.format }}"
@@ -94,7 +91,6 @@
                         "
                     />
                 </td>
-
                 <td class="col-info">
                     <div class="book-title">{{ book.title }}</div>
 
@@ -122,10 +118,11 @@
                     </div>
 
                     <div class="categories-container">
-                        <span class="category-tag">{{ book.category }}</span>
+                        {% for cat in book.category %}
+                        <span class="category-tag">{{ cat }}</span>
+                        {% endfor %}
                     </div>
                 </td>
-
                 <td class="col-actions">
                     <div class="action-stack">
                         <button

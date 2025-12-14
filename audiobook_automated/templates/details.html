@@ -48,7 +48,11 @@ extra_css %}
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Category</span>
-                    <span class="category-tag">{{ book.category if book.category else 'Unknown' }}</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 5px">
+                        {% for cat in book.category %}
+                        <span class="category-tag">{{ cat }}</span>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
 
