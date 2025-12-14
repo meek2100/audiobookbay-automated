@@ -282,11 +282,12 @@ class DelugeStrategy(TorrentClientStrategy):
                 try:
                     fallback_options = TorrentOptions(download_location=save_path)
                     self.client.add_torrent_magnet(magnet_link, torrent_options=fallback_options)
+                    return
                 except Exception as e2:
                     logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                     raise e2
-            else:
-                raise  # pragma: no cover
+
+            raise  # pragma: no cover
 
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Deluge."""
