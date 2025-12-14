@@ -266,6 +266,29 @@ AI agents must follow the strictest, safest interpretation of these rules.
 
 - All scraped URLs must match allowed hostnames.
 
+### Torrent Client Strategy Rules
+
+All Torrent Client implementations (`clients.py`) must normalize data to the **Appliance Standard** immediately upon
+fetching. Future implementations must respect these specific library constraints:
+
+- **Progress Normalization:**
+  - **qBittorrent:** Returns float `0.0 - 1.0`. Must multiply by 100.
+  - **Transmission:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
+  - **Deluge:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
+  - **Result:** All strategies must return a standard `0.0 - 100.0` float rounded to 2 decimal places.
+
+- **Category/Label Filtering:**
+  - **qBittorrent:** Supports efficient server-side filtering (`torrents_info(category=...)`). Use it.
+  - **Transmission:** Does **NOT** support server-side label filtering. You **MUST** fetch all torrents and filter by
+    label client-side (in Python).
+  - **Deluge:** Support is conditional. You **MUST** detect if the "Label" plugin is enabled at connection time. If
+    missing, fetch all torrents to ensure they are visible, even if uncategorized.
+
+- **Add Magnet Logic:**
+  - **qBittorrent:** API v2 returns JSON metadata; older versions return string "Ok."/"Fails.". Logic must handle both.
+  - **Transmission:** Must handle `http` vs `https` protocols explicitly in the client constructor.
+  - **Deluge:** Must handle potential "Unknown Parameter" errors if the Label plugin is missing during add.
+
 ### Naming Conventions
 
 - Use consistent prefixes: `DL_*`, `ABS_*`, `ABB_*`.

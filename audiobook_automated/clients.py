@@ -114,9 +114,13 @@ class QbittorrentStrategy(TorrentClientStrategy):
         """Add a magnet link to qBittorrent."""
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
+
+        # qBittorrent API v2.14+ returns JSON metadata, older versions return 'Ok.' or 'Fails.'
         result = self.client.torrents_add(urls=magnet_link, save_path=save_path, category=category)
-        if isinstance(result, str) and result.lower() != "ok.":
-            logger.warning(f"qBittorrent add returned unexpected response: {result}")
+
+        # Check for legacy string failure response
+        if isinstance(result, str) and result.lower() == "fails.":
+            logger.warning(f"qBittorrent returned failure response: {result}")
 
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from qBittorrent."""
@@ -129,12 +133,14 @@ class QbittorrentStrategy(TorrentClientStrategy):
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
         results: list[TorrentStatus] = []
+        # qBittorrent supports server-side filtering by category
         qb_torrents = cast(list[QbTorrentProtocol], self.client.torrents_info(category=category))
         for qb_torrent in qb_torrents:
             results.append(
                 {
                     "id": qb_torrent.hash,
                     "name": qb_torrent.name,
+                    # qB API returns progress as 0.0-1.0 float
                     "progress": round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
                     "state": qb_torrent.state,
                     "size": self._format_size(qb_torrent.total_size),
@@ -153,6 +159,7 @@ class TransmissionStrategy(TorrentClientStrategy):
 
     def connect(self) -> None:
         """Connect to the Transmission client."""
+        # transmission-rpc expects 'http' or 'https' specifically
         safe_scheme = cast(Literal["http", "https"], self.scheme)
         self.client = TxClient(
             host=self.host,
@@ -168,9 +175,11 @@ class TransmissionStrategy(TorrentClientStrategy):
         if not self.client:
             raise ConnectionError("Transmission client not connected")
         try:
+            # Transmission uses 'labels' (plural list)
             self.client.add_torrent(magnet_link, download_dir=save_path, labels=[category])
         except Exception as e:
-            logger.warning(f"Transmission label assignment failed: {e}. Retrying without labels.")
+            # Fallback for older Transmission versions (< RPC 15) that don't support labels
+            logger.warning(f"Transmission label assignment failed (server may be old): {e}. Retrying without labels.")
             self.client.add_torrent(magnet_link, download_dir=save_path)
 
     def remove_torrent(self, torrent_id: str) -> None:
@@ -190,17 +199,29 @@ class TransmissionStrategy(TorrentClientStrategy):
         if not self.client:
             raise ConnectionError("Transmission client not connected")
         results: list[TorrentStatus] = []
+
+        # Transmission RPC does not support server-side filtering by label in get_torrents.
+        # We must fetch all and filter client-side.
         tx_torrents = self.client.get_torrents()
+
         for tx_torrent in tx_torrents:
-            results.append(
-                {
-                    "id": str(tx_torrent.id),
-                    "name": tx_torrent.name,
-                    "progress": round(tx_torrent.progress * 100, 2) if tx_torrent.progress else 0.0,
-                    "state": tx_torrent.status.name,
-                    "size": self._format_size(tx_torrent.total_size),
-                }
-            )
+            # Safely get labels, ensuring it's a list
+            labels = getattr(tx_torrent, "labels", []) or []
+
+            if category in labels:
+                # transmission-rpc 'progress' property returns percentage (0.0-100.0)
+                # NOT 0.0-1.0 like qBittorrent.
+                progress = tx_torrent.progress
+
+                results.append(
+                    {
+                        "id": str(tx_torrent.id),
+                        "name": tx_torrent.name,
+                        "progress": progress,
+                        "state": tx_torrent.status.name,
+                        "size": self._format_size(tx_torrent.total_size),
+                    }
+                )
         return results
 
 
@@ -212,6 +233,7 @@ class DelugeStrategy(TorrentClientStrategy):
         super().__init__(*args, **kwargs)
         self.dl_url = dl_url
         self.client: DelugeWebClient | None = None
+        self.label_plugin_enabled: bool = False
 
     def connect(self) -> None:
         """Connect to the Deluge client."""
@@ -219,32 +241,45 @@ class DelugeStrategy(TorrentClientStrategy):
         url = self.dl_url or f"{self.scheme}://{self.host}:{self.port}"
         self.client = DelugeWebClient(url=url, password=self.password or "")
 
-        # --- FIX 2: Check login result ---
+        # Check login result
         response = self.client.login()
         if not response.result:
             # Raise exception so TorrentManager knows connection failed and can retry/log
             raise ConnectionError(f"Failed to login to Deluge: {response.error}")
+
+        # Detect Plugins (Specifically 'Label')
+        try:
+            plugins_resp = self.client.get_plugins()
+            if plugins_resp.result and "Label" in plugins_resp.result:
+                self.label_plugin_enabled = True
+                logger.info("Deluge 'Label' plugin detected.")
+            else:
+                self.label_plugin_enabled = False
+                logger.info("Deluge 'Label' plugin NOT detected. Categorization will be disabled.")
+        except Exception as e:
+            logger.warning(f"Could not verify Deluge plugins: {e}. Defaulting to no labels.")
+            self.label_plugin_enabled = False
 
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to Deluge."""
         if not self.client:
             raise ConnectionError("Deluge client not connected")
 
-        # --- FIX 3: Use TorrentOptions instead of kwargs ---
-        options = TorrentOptions(download_location=save_path, label=category)
+        # Configure options based on plugin availability
+        options = TorrentOptions(download_location=save_path)
+        if self.label_plugin_enabled:
+            options.label = category
 
         try:
             self.client.add_torrent_magnet(magnet_link, torrent_options=options)
         except Exception as e:
-            error_msg = str(e).lower()
-            if "label" in error_msg or "unknown parameter" in error_msg:
-                logger.warning(
-                    f"Deluge Plugin Error ({e}). Adding torrent without category (Label plugin likely disabled)."
-                )
+            # Fallback: If we tried with a label and it failed, retry without it
+            # This handles cases where detection gave a false positive or transient error
+            if self.label_plugin_enabled and ("label" in str(e).lower() or "unknown parameter" in str(e).lower()):
+                logger.warning(f"Deluge Label error despite plugin detection ({e}). Retrying without category.")
                 try:
-                    # Retry with options excluding the label
-                    options_no_label = TorrentOptions(download_location=save_path)
-                    self.client.add_torrent_magnet(magnet_link, torrent_options=options_no_label)
+                    options.label = None
+                    self.client.add_torrent_magnet(magnet_link, torrent_options=options)
                 except Exception as e2:
                     logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                     raise e2
@@ -263,9 +298,16 @@ class DelugeStrategy(TorrentClientStrategy):
             raise ConnectionError("Deluge client not connected")
         results: list[TorrentStatus] = []
 
+        # If Label plugin is enabled, filter by our category.
+        # If NOT enabled, we must fetch ALL torrents to ensure the user can see their downloads.
+        # (Filtering by label is impossible without the plugin).
+        filter_dict: dict[str, Any] = {}
+        if self.label_plugin_enabled:
+            filter_dict["label"] = category
+
         # This call handles raising DelugeWebClientError if auth fails (handled by execute_call)
         deluge_torrents = self.client.get_torrents_status(
-            filter_dict={"label": category},
+            filter_dict=filter_dict,
             keys=["name", "state", "progress", "total_size"],
         )
 
@@ -277,6 +319,7 @@ class DelugeStrategy(TorrentClientStrategy):
                         continue
                     progress_val = deluge_data.get("progress")
                     try:
+                        # Deluge returns progress as 0-100 float
                         progress = round(float(progress_val), 2) if progress_val is not None else 0.0
                     except (ValueError, TypeError):
                         progress = 0.0
