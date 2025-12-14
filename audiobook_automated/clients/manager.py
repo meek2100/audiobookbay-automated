@@ -1,0 +1,203 @@
+"""TorrentManager implementation using dynamic strategy loading."""
+
+import importlib
+import logging
+import threading
+from typing import cast
+from urllib.parse import urlparse
+
+from flask import Flask
+
+from .base import TorrentClientStrategy, TorrentStatus
+
+logger = logging.getLogger(__name__)
+
+
+class TorrentManager:
+    """Manages interactions with various torrent clients using the Strategy pattern.
+
+    Uses thread-local storage to ensure thread safety for the underlying sessions.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the TorrentManager state."""
+        self.client_type: str | None = None
+        self.host: str = "localhost"
+        self.port: int = 8080
+        self.username: str | None = None
+        self.password: str | None = None
+        self.category: str = "abb-automated"
+        self.scheme: str = "http"
+        self.dl_url: str | None = None
+
+        # Thread-local storage for client instances
+        self._local = threading.local()
+
+    def init_app(self, app: Flask) -> None:
+        """Initialize the TorrentManager with configuration from the Flask app."""
+        config = app.config
+
+        dl_client = config.get("DL_CLIENT")
+        # Normalize to lowercase to match module filenames
+        self.client_type = dl_client.lower() if dl_client else None
+
+        raw_host = config.get("DL_HOST")
+        raw_port = config.get("DL_PORT")
+
+        self.host = raw_host or "localhost"
+        self.port = int(raw_port or 8080)
+        self.username = config.get("DL_USERNAME")
+        self.password = config.get("DL_PASSWORD")
+        self.category = config.get("DL_CATEGORY", "abb-automated")
+        self.scheme = config.get("DL_SCHEME", "http")
+        self.dl_url = config.get("DL_URL")
+
+        # URL Parsing
+        if self.dl_url:
+            try:
+                parsed = urlparse(self.dl_url)
+                if parsed.hostname:
+                    self.host = parsed.hostname
+                if parsed.port:
+                    self.port = parsed.port
+                if parsed.scheme:
+                    self.scheme = parsed.scheme
+            except Exception as e:
+                logger.warning(f"Failed to parse DL_URL: {e}. Using raw config values.")
+
+        self._configure_defaults(raw_host, raw_port)
+
+        # Reset thread local
+        self._local = threading.local()
+
+    def _configure_defaults(self, raw_host: str | None, raw_port: str | None) -> None:
+        """Configure default ports and URLs based on client type."""
+        # Note: We rely on string comparison here for legacy defaults.
+        # This assumes client_type is normalized to lowercase.
+
+        if not self.dl_url:
+            # Case 1: Host provided, Port missing
+            if raw_host and not raw_port:
+                if self.client_type == "deluge":
+                    self.port = 8112
+                else:
+                    self.port = 8080
+                logger.info(f"DL_PORT missing. Defaulting to {self.port} for {self.client_type}.")
+                self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+
+            # Case 2: Host missing (implies using localhost default)
+            elif not raw_host:
+                if self.client_type == "deluge":
+                    logger.warning("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
+                    self.host = "localhost"
+                    self.port = 8112
+                    self.dl_url = "http://localhost:8112"
+                else:
+                    # Default for others
+                    self.dl_url = f"{self.scheme}://{self.host}:{self.port}"  # pragma: no cover
+
+            # Case 3: Both provided or fallback handled
+            else:
+                self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+
+    def _get_strategy(self) -> TorrentClientStrategy | None:
+        """Return the thread-local strategy instance or create/connect if needed."""
+        if hasattr(self._local, "strategy") and self._local.strategy:
+            return cast(TorrentClientStrategy | None, self._local.strategy)
+
+        if not self.client_type:
+            # Should be caught by init check but robust just in case
+            logger.error("DL_CLIENT not configured.")
+            return None
+
+        logger.debug(f"Initializing new {self.client_type} strategy for thread {threading.get_ident()}...")
+
+        strategy: TorrentClientStrategy | None = None
+
+        try:
+            # Dynamic Loading
+            # This relies on the file audiobook_automated/clients/{self.client_type}.py existing
+            module = importlib.import_module(f".{self.client_type}", package="audiobook_automated.clients")
+
+            # Expecting a class named 'Strategy'
+            strategy_class = getattr(module, "Strategy")
+
+            # Instantiate with standard args + kwargs for flexibility
+            strategy = strategy_class(
+                host=self.host,
+                port=self.port,
+                username=self.username,
+                password=self.password,
+                scheme=self.scheme,
+                dl_url=self.dl_url,
+            )
+
+            strategy.connect()
+            self._local.strategy = strategy
+
+        except (ImportError, ModuleNotFoundError):
+            logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
+            self._local.strategy = None
+        except AttributeError:
+            logger.error(f"Client plugin {self.client_type} does not export a 'Strategy' class.", exc_info=True)
+            self._local.strategy = None
+        except Exception as e:
+            logger.error(f"Error initializing torrent client strategy: {e}", exc_info=True)
+            self._local.strategy = None
+
+        return getattr(self._local, "strategy", None)
+
+    def verify_credentials(self) -> bool:
+        """Verify if the client can connect."""
+        if self._get_strategy():
+            logger.info(f"Successfully connected to {self.client_type}")
+            return True
+        logger.warning(f"Could not connect to {self.client_type} at startup.")
+        return False
+
+    def add_magnet(self, magnet_link: str, save_path: str) -> None:
+        """Add a magnet link to the configured torrent client."""
+        try:
+            self._add_magnet_logic(magnet_link, save_path)
+        except Exception as e:
+            logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect...", exc_info=True)
+            self._local.strategy = None
+            self._add_magnet_logic(magnet_link, save_path)
+
+    def _add_magnet_logic(self, magnet_link: str, save_path: str) -> None:
+        strategy = self._get_strategy()
+        if not strategy:
+            raise ConnectionError("Torrent client is not connected.")
+        logger.info(f"Adding torrent to {self.client_type} at {save_path}")
+        strategy.add_magnet(magnet_link, save_path, self.category)
+
+    def remove_torrent(self, torrent_id: str) -> None:
+        """Remove a torrent by ID."""
+        try:
+            self._remove_torrent_logic(torrent_id)
+        except Exception as e:
+            logger.warning(f"Failed to remove torrent ({e}). Attempting to reconnect...", exc_info=True)
+            self._local.strategy = None
+            self._remove_torrent_logic(torrent_id)
+
+    def _remove_torrent_logic(self, torrent_id: str) -> None:
+        strategy = self._get_strategy()
+        if not strategy:
+            raise ConnectionError("Torrent client is not connected.")
+        logger.info(f"Removing torrent {torrent_id} from {self.client_type}")
+        strategy.remove_torrent(torrent_id)
+
+    def get_status(self) -> list[TorrentStatus]:
+        """Retrieve the status of current downloads."""
+        try:
+            return self._get_status_logic()
+        except Exception as e:
+            logger.warning(f"Failed to get status ({e}). Reconnecting...", exc_info=True)
+            self._local.strategy = None
+            return self._get_status_logic()
+
+    def _get_status_logic(self) -> list[TorrentStatus]:
+        strategy = self._get_strategy()
+        if not strategy:
+            raise ConnectionError("Torrent client is not connected.")
+        return strategy.get_status(self.category)
