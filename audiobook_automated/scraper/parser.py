@@ -268,6 +268,9 @@ def parse_book_details(soup: BeautifulSoup, url: str) -> BookDetails:
         # SAFETY: Iterate over a list copy to safely modify the tree during iteration
         for tag in list(desc_tag.find_all(True)):
             if tag.name not in allowed_tags:
+                # IMPROVEMENT: Insert a space before unwrapping to prevent block-level elements
+                # from merging their text contents (e.g. "<div>A</div><div>B</div>" -> "AB").
+                tag.insert_after(" ")
                 tag.unwrap()
             else:
                 tag.attrs = {}  # Strip attributes like onclick, style, etc.

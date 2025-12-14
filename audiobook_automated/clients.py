@@ -140,7 +140,7 @@ class QbittorrentStrategy(TorrentClientStrategy):
                 {
                     "id": qb_torrent.hash,
                     "name": qb_torrent.name,
-                    # qB API returns progress as 0.0-1.0 float
+                    # qB API returns progress as 0.0-1.0 float, normalize to 0.0-100.0
                     "progress": round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
                     "state": qb_torrent.state,
                     "size": self._format_size(qb_torrent.total_size),
@@ -244,7 +244,8 @@ class DelugeStrategy(TorrentClientStrategy):
 
         # Check login result
         response = self.client.login()
-        if not response.result:
+        # FIX: Check for error explicitly rather than result boolean to be safe against false negatives
+        if response.error:
             # Raise exception so TorrentManager knows connection failed and can retry/log
             raise ConnectionError(f"Failed to login to Deluge: {response.error}")
 

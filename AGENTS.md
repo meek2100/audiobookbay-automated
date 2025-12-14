@@ -194,6 +194,8 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - **Fail Fast:** Mirror checks must return `None` immediately upon `Timeout` or `ConnectionError`. Do NOT retry with
   `GET` in these cases, as it exacerbates latency.
 - All queries normalized to lowercase.
+- **Search Query Safety:** All search endpoints must enforce a minimum query length (e.g., 2 characters) to prevent
+  spamming the scraper with broad queries.
 
 ### Filesystem Safety
 
@@ -243,6 +245,8 @@ AI agents must follow the strictest, safest interpretation of these rules.
   `sys.exit()`. This ensures the WSGI server (Gunicorn) captures and logs the stack trace before the worker process
   dies.
 - **Validation:** Configuration must fail fast. `DL_CLIENT` and `SAVE_PATH_BASE` are mandatory.
+- **Logging Level:** The application logger must explicitly apply the configured `LOG_LEVEL` in `__init__.py`. Flask
+  does not do this automatically.
 
 ### Centralized Logic & Concurrency
 
@@ -303,6 +307,8 @@ fetching. Future implementations must respect these specific library constraints
 - When a MyPy error appears in one environment but not another (causing 'unused type ignore' errors), use the robust
   ignore pattern: `# type: ignore[error-code, unused-ignore]`. This suppresses both the original error and the warning
   about the ignore being unused.
+  - **Integer Parsing:** When parsing integer environment variables (e.g., `PAGE_LIMIT`, `SCRAPER_THREADS`), always use
+    `int(float(value))` to handle float-string values (e.g. "3.0") commonly injected by container orchestrators.
 
 ### Testing Style Guide
 
