@@ -97,6 +97,8 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Modern Python idioms.
 - Avoid deprecated patterns.
 - Code must be Pylance/MyPy-friendly.
+- **Type Separation:** Use `BookSummary` for search results and `BookDetails` for full book info. Do not mix them.
+  `BookDetails` must enforce fields like `description`, `trackers`, and `info_hash`.
 
 ---
 
@@ -189,6 +191,8 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - Safety > speed.
 - Random jitter (0.5-1.5 seconds) required before all external requests.
 - Mirror checks use `requests.head` with zero retries.
+- **Fail Fast:** Mirror checks must return `None` immediately upon `Timeout` or `ConnectionError`. Do NOT retry with
+  `GET` in these cases, as it exacerbates latency.
 - All queries normalized to lowercase.
 
 ### Filesystem Safety

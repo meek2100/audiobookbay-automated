@@ -16,7 +16,7 @@ from requests.sessions import Session
 from urllib3.util.retry import Retry
 
 from audiobook_automated.constants import DEFAULT_MIRRORS, DEFAULT_TRACKERS, USER_AGENTS
-from audiobook_automated.scraper.parser import BookDict
+from audiobook_automated.scraper.parser import BookDetails, BookSummary
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +39,8 @@ mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
 # Short-lived cache for connection failures (Negative Caching) to prevent retry storms
 failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
 
-search_cache: TTLCache[str, list[BookDict]] = TTLCache(maxsize=100, ttl=300)
-details_cache: TTLCache[str, BookDict] = TTLCache(maxsize=100, ttl=300)
+search_cache: TTLCache[str, list[BookSummary]] = TTLCache(maxsize=100, ttl=300)
+details_cache: TTLCache[str, BookDetails] = TTLCache(maxsize=100, ttl=300)
 tracker_cache: TTLCache[str, list[str]] = TTLCache(maxsize=1, ttl=300)
 
 
@@ -75,7 +75,7 @@ def get_trackers() -> list[str]:
     Uses TTLCache to avoid repeated I/O while allowing config updates to propagate.
     Prioritizes:
     1. Environment Variable (via Config)
-    2. trackers.json (Volume Mount)
+    2. trackers.json (Project Root)
     3. Internal Defaults
 
     Returns:
@@ -95,8 +95,12 @@ def get_trackers() -> list[str]:
             tracker_cache["default"] = result
         return result
 
-    # 2. Volume Mount Override
-    json_path = os.path.join(os.getcwd(), "trackers.json")
+    # 2. File Override (Relative to project root)
+    # Calculated relative to this file: .../audiobook_automated/scraper/network.py
+    # We want to go up 3 levels to reach the repo root/app root.
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    json_path = os.path.join(base_dir, "trackers.json")
+
     if os.path.exists(json_path):
         try:
             with open(json_path, "r") as f:
@@ -233,7 +237,12 @@ def check_mirror(hostname: str) -> str | None:
         response = session.head(url, headers=headers, timeout=5, allow_redirects=True)
         if response.status_code == 200:
             return hostname
-    except (requests.Timeout, requests.RequestException):
+    except (requests.Timeout, requests.ConnectionError):
+        # FAIL FAST: If HEAD times out or connection fails, do NOT try GET.
+        # It is highly likely GET will also fail/timeout, wasting another 5s.
+        return None
+    except requests.RequestException:
+        # Fallthrough for other errors (e.g. 405 Method Not Allowed) where GET might still work.
         pass
 
     try:

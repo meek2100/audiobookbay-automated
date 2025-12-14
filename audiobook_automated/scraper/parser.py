@@ -7,7 +7,7 @@ It encapsulates parsing strategies to keep core.py focused on networking and flo
 
 import re
 from dataclasses import dataclass, field, fields
-from typing import NotRequired, Optional, TypedDict
+from typing import Optional, TypedDict
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
@@ -33,23 +33,31 @@ RE_LABEL_BITRATE = re.compile(r"Bitrate:", re.IGNORECASE)
 RE_LABEL_SIZE = re.compile(r"File\s*Size:", re.IGNORECASE)
 
 
-class BookDict(TypedDict):
-    """TypedDict representing the structure of a parsed book dictionary."""
+class BookSummary(TypedDict):
+    """TypedDict representing the structure of a search result (summary)."""
 
     title: str
     link: str
     cover: str | None
-    description: NotRequired[str]
-    trackers: NotRequired[list[str]]
-    info_hash: NotRequired[str]
     language: str
-    category: list[str]  # Changed to list to support multiple tags
+    category: list[str]
     post_date: str
     format: str
     bitrate: str
     file_size: str
-    author: NotRequired[str]
-    narrator: NotRequired[str]
+
+
+class BookDetails(BookSummary):
+    """TypedDict representing the full details of a book.
+
+    Inherits from BookSummary and adds fields available only on the details page.
+    """
+
+    description: str
+    trackers: list[str]
+    info_hash: str
+    author: str
+    narrator: str
 
 
 @dataclass
@@ -91,7 +99,7 @@ def get_text_after_label(container: Tag, label_pattern: re.Pattern[str], is_file
 
         # Strategy 1: The value is in the next sibling element (e.g., <span>MP3</span>)
         next_elem = label_node.find_next_sibling()
-        # COMPLIANCE: Python 3.13 / Pylance strict type check
+        # COMPLIANCE: Python 3.13+ / Pylance strict type check
         if next_elem and isinstance(next_elem, Tag) and next_elem.name == "span":
             val = next_elem.get_text(strip=True)
             # Special handling for File Size which might have unit in next text node
@@ -103,7 +111,7 @@ def get_text_after_label(container: Tag, label_pattern: re.Pattern[str], is_file
 
         # Strategy 2: The value is in the same text node (e.g., "Posted: 30 Nov 2025")
         # Split by the label and take the rest
-        # Explicit cast to str for Pylance/Python 3.13 safety
+        # Explicit cast to str for Pylance safety
         label_str = str(label_node)
         if ":" in label_str:
             parts = label_str.split(":", 1)
@@ -221,7 +229,7 @@ def parse_post_content(
     return meta
 
 
-def parse_book_details(soup: BeautifulSoup, url: str) -> BookDict:
+def parse_book_details(soup: BeautifulSoup, url: str) -> BookDetails:
     """Extract full book details from the BeautifulSoup object of a details page.
 
     Centralizes parsing logic for the details view, including sanitization
@@ -232,7 +240,7 @@ def parse_book_details(soup: BeautifulSoup, url: str) -> BookDict:
         url: The source URL (used for cover normalization and link attribution).
 
     Returns:
-        BookDict: A dictionary containing the scraped data.
+        BookDetails: A typed dictionary containing the complete scraped data.
     """
     title = "Unknown Title"
     title_tag = soup.select_one(".postTitle h1")
@@ -299,11 +307,8 @@ def parse_book_details(soup: BeautifulSoup, url: str) -> BookDict:
 
     # Fallback 2: Regex on full text
     if info_hash == "Unknown":
-        # Note: We don't have response.text here, but soup.text approximates it.
-        # Ideally, regex works better on raw HTML.
-        # However, passed `soup` implies we work on DOM.
-        # If regex is critical, we might miss it if split across tags.
-        # But RE_HASH_STRING usually finds the hex string in the text nodes.
+        # Note: soup.text approximates the raw text content.
+        # RE_HASH_STRING usually finds the hex string in the text nodes.
         hash_match = RE_HASH_STRING.search(str(soup))
         if hash_match:
             info_hash = hash_match.group(1)

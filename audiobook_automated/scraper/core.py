@@ -26,7 +26,8 @@ from audiobook_automated.scraper.network import (
     search_cache,
 )
 from audiobook_automated.scraper.parser import (
-    BookDict,
+    BookDetails,
+    BookSummary,
     normalize_cover_url,
     parse_book_details,
     parse_post_content,
@@ -35,7 +36,7 @@ from audiobook_automated.scraper.parser import (
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, timeout: int) -> list[BookDict]:
+def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, timeout: int) -> list[BookSummary]:
     """Fetch a single search result page and parse it into a list of books.
 
     Enforces a global semaphore to limit concurrent scraping requests.
@@ -49,7 +50,7 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
         timeout: The request timeout in seconds.
 
     Returns:
-        list[BookDict]: A list of dictionaries, each representing a book found on the page.
+        list[BookSummary]: A list of dictionaries, each representing a book found on the page.
     """
     base_url = f"https://{hostname}"
     if page == 1:
@@ -60,7 +61,7 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
 
-    page_results: list[BookDict] = []
+    page_results: list[BookSummary] = []
 
     # PERFORMANCE: Use thread-local session to reuse connections across pages
     session = get_thread_session()
@@ -129,7 +130,7 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
     return page_results
 
 
-def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDict]:
+def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSummary]:
     """Search AudiobookBay for the given query using cached search results if available.
 
     Uses a shared global thread pool for parallel page fetching to reduce overhead.
@@ -139,7 +140,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
         max_pages: Maximum number of pages to scrape. If None, uses configured limit.
 
     Returns:
-        list[BookDict]: A list of book dictionaries found across all pages.
+        list[BookSummary]: A list of book dictionaries found across all pages.
 
     Raises:
         ConnectionError: If no mirrors are reachable.
@@ -147,7 +148,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
     # SAFETY: Wrap cache read in lock for thread safety
     with CACHE_LOCK:
         if query in search_cache:
-            cached_result: list[BookDict] = search_cache[query]
+            cached_result: list[BookSummary] = search_cache[query]
             return cached_result
 
     # Load configuration dynamically
@@ -161,7 +162,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
         raise ConnectionError("No reachable AudiobookBay mirrors found (or system is in backoff cooldown).")
 
     logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
-    results: list[BookDict] = []
+    results: list[BookSummary] = []
 
     session_user_agent = get_random_user_agent()
 
@@ -171,7 +172,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
 
     try:
         # Use the global executor to avoid spinning up new threads per request
-        futures: list[Future[list[BookDict]]] = []
+        futures: list[Future[list[BookSummary]]] = []
         for page in range(1, max_pages + 1):
             futures.append(
                 executor.submit(
@@ -205,7 +206,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookDi
     return results
 
 
-def get_book_details(details_url: str) -> BookDict:
+def get_book_details(details_url: str) -> BookDetails:
     """Scrape the specific book details page to retrieve metadata, description, and hash.
 
     Validates the URL to prevent SSRF.
@@ -214,13 +215,13 @@ def get_book_details(details_url: str) -> BookDict:
         details_url: The full URL of the book page on AudiobookBay.
 
     Returns:
-        BookDict: A dictionary containing detailed book metadata.
+        BookDetails: A dictionary containing detailed book metadata.
 
     Raises:
         ValueError: If the URL is invalid or not from an allowed domain.
     """
     if details_url in details_cache:
-        cached_result: BookDict = details_cache[details_url]
+        cached_result: BookDetails = details_cache[details_url]
         return cached_result
 
     if not details_url:

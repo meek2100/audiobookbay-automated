@@ -49,6 +49,7 @@ def test_get_trackers_from_json(mock_app_context: Any) -> None:
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []  # Empty env
 
+    # Mocking os.path.dirname logic to look for a specific file
     with patch.dict(os.environ, {}, clear=True):
         mock_data = '["udp://json.tracker:80"]'
         with patch("builtins.open", mock_open(read_data=mock_data)):
@@ -201,14 +202,17 @@ def test_check_mirror_get_exception() -> None:
 
 
 def test_check_mirror_timeout() -> None:
-    """Test specific handling of requests.Timeout which is critical for network resilience."""
+    """Test Fail-Fast: check_mirror should return None immediately on HEAD timeout."""
     with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
         mock_session = mock_get_session.return_value
+        # HEAD times out
         mock_session.head.side_effect = requests.Timeout("Connection Timed Out")
-        mock_session.get.side_effect = requests.Timeout("Connection Timed Out")
 
         result = network.check_mirror("timeout.mirror")
+
         assert result is None
+        # CRITICAL ASSERTION: GET should NOT be called if HEAD timed out
+        mock_session.get.assert_not_called()
 
 
 def test_find_best_mirror_all_fail(mock_app_context: Any) -> None:
