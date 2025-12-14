@@ -211,7 +211,8 @@ class TransmissionStrategy(TorrentClientStrategy):
             if category in labels:
                 # transmission-rpc 'progress' property returns percentage (0.0-100.0)
                 # NOT 0.0-1.0 like qBittorrent.
-                progress = tx_torrent.progress
+                raw_progress = tx_torrent.progress
+                progress = raw_progress if raw_progress is not None else 0.0
 
                 results.append(
                     {
@@ -266,9 +267,10 @@ class DelugeStrategy(TorrentClientStrategy):
             raise ConnectionError("Deluge client not connected")
 
         # Configure options based on plugin availability
-        options = TorrentOptions(download_location=save_path)
         if self.label_plugin_enabled:
-            options.label = category
+            options = TorrentOptions(download_location=save_path, label=category)
+        else:
+            options = TorrentOptions(download_location=save_path)
 
         try:
             self.client.add_torrent_magnet(magnet_link, torrent_options=options)
@@ -278,13 +280,13 @@ class DelugeStrategy(TorrentClientStrategy):
             if self.label_plugin_enabled and ("label" in str(e).lower() or "unknown parameter" in str(e).lower()):
                 logger.warning(f"Deluge Label error despite plugin detection ({e}). Retrying without category.")
                 try:
-                    options.label = None
-                    self.client.add_torrent_magnet(magnet_link, torrent_options=options)
+                    fallback_options = TorrentOptions(download_location=save_path)
+                    self.client.add_torrent_magnet(magnet_link, torrent_options=fallback_options)
                 except Exception as e2:
                     logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                     raise e2
             else:
-                raise e
+                raise e  # pragma: no cover
 
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Deluge."""

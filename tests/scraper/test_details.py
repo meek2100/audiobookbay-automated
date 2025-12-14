@@ -7,7 +7,7 @@ import pytest
 import requests
 
 from audiobook_automated.scraper import get_book_details
-from audiobook_automated.scraper.parser import BookDict
+from audiobook_automated.scraper.parser import BookDetails
 
 
 def test_get_book_details_sanitization(mock_sleep: Any) -> None:
@@ -49,7 +49,7 @@ def test_get_book_details_caching(mock_sleep: Any) -> None:
     """Test that details are returned from cache."""
     url = "https://audiobookbay.lu/cached_details"
     # FIX: Explicit cast for mock cache entry
-    expected = cast(BookDict, {"title": "Cached Details"})
+    expected = cast(BookDetails, {"title": "Cached Details"})
     # Use core import to ensure identity match
     from audiobook_automated.scraper.core import details_cache  # type: ignore[attr-defined]
 

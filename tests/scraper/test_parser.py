@@ -84,21 +84,21 @@ def test_get_text_after_label_not_found() -> None:
 
 def test_normalize_cover_url_valid() -> None:
     """Test valid cover URL normalization."""
-    base = "[https://audiobookbay.lu/page/1](https://audiobookbay.lu/page/1)"
+    base = "https://audiobookbay.lu/page/1"
     url = normalize_cover_url(base, "/images/book.jpg")
-    assert url == "[https://audiobookbay.lu/images/book.jpg](https://audiobookbay.lu/images/book.jpg)"
+    assert url == "https://audiobookbay.lu/images/book.jpg"
 
 
 def test_normalize_cover_url_default() -> None:
     """Test that default cover image returns None (optimization)."""
-    base = "[https://audiobookbay.lu/page/1](https://audiobookbay.lu/page/1)"
+    base = "https://audiobookbay.lu/page/1"
     url = normalize_cover_url(base, "/images/default_cover.jpg")
     assert url is None
 
 
 def test_normalize_cover_url_empty() -> None:
     """Test that empty relative_url returns None (Lines 116-117 coverage)."""
-    assert normalize_cover_url("[http://base.com](http://base.com)", "") is None
+    assert normalize_cover_url("http://base.com", "") is None
 
 
 # --- Unit Tests: parse_post_content (Centralized Logic) ---
@@ -244,7 +244,7 @@ HTML_REGEX_FALLBACK = """
 def test_parse_standard_details() -> None:
     """Test standard details page parsing including trackers and sanitization."""
     soup = BeautifulSoup(HTML_STANDARD_DETAILS, "lxml")
-    result: BookDetails = parse_book_details(soup, "[http://test.com/book](http://test.com/book)")
+    result: BookDetails = parse_book_details(soup, "http://test.com/book")
 
     assert result["title"] == "Valid Book Title"
     assert result["info_hash"] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -261,29 +261,29 @@ def test_parse_standard_details() -> None:
 def test_parse_fallback_hash_footer() -> None:
     """Test info hash extraction from footer when missing from table."""
     soup = BeautifulSoup(HTML_MISSING_HASH_TABLE, "lxml")
-    result: BookDetails = parse_book_details(soup, "[http://test.com/book](http://test.com/book)")
+    result: BookDetails = parse_book_details(soup, "http://test.com/book")
     assert result["info_hash"] == "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 
 def test_parse_fallback_hash_regex() -> None:
     """Test info hash extraction via regex when missing from DOM."""
     soup = BeautifulSoup(HTML_REGEX_FALLBACK, "lxml")
-    result: BookDetails = parse_book_details(soup, "[http://test.com/book](http://test.com/book)")
+    result: BookDetails = parse_book_details(soup, "http://test.com/book")
     assert result["info_hash"] == "cccccccccccccccccccccccccccccccccccccccc"
 
 
 def test_parse_book_details_cover_normalization() -> None:
     """Test cover URL normalization integration within parse_book_details."""
     soup = BeautifulSoup(HTML_STANDARD_DETAILS, "lxml")
-    result: BookDetails = parse_book_details(soup, "[http://base.com/page/](http://base.com/page/)")
-    assert result["cover"] == "[http://base.com/images/cover.jpg](http://base.com/images/cover.jpg)"
+    result: BookDetails = parse_book_details(soup, "http://base.com/page/")
+    assert result["cover"] == "http://base.com/images/cover.jpg"
 
 
 def test_parse_book_details_robustness() -> None:
     """Test robustness against missing elements (title, content, etc)."""
     minimal_html = "<html><body>Nothing here</body></html>"
     soup = BeautifulSoup(minimal_html, "lxml")
-    result: BookDetails = parse_book_details(soup, "[http://test.com](http://test.com)")
+    result: BookDetails = parse_book_details(soup, "http://test.com")
 
     assert result["title"] == "Unknown Title"
     assert result["info_hash"] == "Unknown"

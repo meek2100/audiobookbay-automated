@@ -13,8 +13,8 @@ from .network import (
     search_cache,
 )
 
-# FIX: Import the public name 'get_text_after_label' and 'BookDict' directly
-from .parser import BookDict, get_text_after_label
+# FIX: Import the public name 'get_text_after_label' directly
+from .parser import get_text_after_label
 
 # Expose public API
 __all__ = [
@@ -32,5 +32,4 @@ __all__ = [
     "mirror_cache",
     "search_cache",
     "get_text_after_label",
-    "BookDict",
 ]
