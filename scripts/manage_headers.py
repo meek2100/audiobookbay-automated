@@ -81,6 +81,7 @@ def process_file(filepath: str, fix_mode: bool) -> bool:
     if len(lines) > insert_idx:
         current_line = lines[insert_idx]
         # Loose check: if the path is in the line, we assume it's correct enough
+        # to avoid fighting with manual edits (spaces, formatting)
         if expected_header.strip() in current_line:
             header_missing = False
 
@@ -102,7 +103,7 @@ def process_file(filepath: str, fix_mode: bool) -> bool:
 
 
 def main() -> None:
-    """Main entry point."""
+    """Execute the file header enforcement logic."""
     parser = argparse.ArgumentParser(description="Enforce file path headers.")
     parser.add_argument("--fix", action="store_true", help="Automatically add missing headers.")
     parser.add_argument("filenames", nargs="*", help="Files to check.")
