@@ -146,12 +146,12 @@ def test_get_status_transmission_robustness() -> None:
 
 def test_transmission_close() -> None:
     """Test closing the Transmission session."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
-        # Note: We don't need the return value here, just the class patch to succeed
+    # Fix: Removed unused 'as MockTxClient' variable
+    with patch("audiobook_automated.clients.transmission.TxClient"):
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
 
-        # Manually ensure client is set (it should be via connect, but we assert it)
+        # Manually ensure client is set
         assert strategy.client is not None
 
         # Execute close
