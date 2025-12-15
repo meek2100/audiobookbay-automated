@@ -61,7 +61,7 @@ def health() -> Response:
 
 
 @main_bp.route("/", methods=["GET", "POST"])
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def search() -> str | Response:
     """Handle the search interface.
 
@@ -108,7 +108,7 @@ def search() -> str | Response:
 
 
 @main_bp.route("/details")
-@limiter.limit("30 per minute")
+@limiter.limit("30 per minute")  # type: ignore[untyped-decorator]
 def details() -> str | Response:
     """Fetch and render the details page internally via the server.
 
@@ -134,7 +134,7 @@ def details() -> str | Response:
 
 
 @main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")
+@limiter.limit("60 per minute")  # type: ignore[untyped-decorator]
 def send() -> Response | tuple[Response, int]:
     """Initiate a download.
 
