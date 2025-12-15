@@ -2,6 +2,7 @@
 """Unit tests for core scraping logic."""
 
 import concurrent.futures
+from typing import Any
 from unittest.mock import patch
 
 from audiobook_automated.scraper.core import search_audiobookbay
@@ -28,10 +29,11 @@ def test_search_partial_failure() -> None:
     ]
 
     # Create futures: one succeeds, one raises an exception
-    future_success = concurrent.futures.Future()
+    # FIX: Explicit type annotation required for strict mypy
+    future_success: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
     future_success.set_result(success_result)
 
-    future_failure = concurrent.futures.Future()
+    future_failure: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
     future_failure.set_exception(ValueError("Parsing failed for page 2"))
 
     # We mock executor.submit to return our prepared futures
