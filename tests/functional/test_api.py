@@ -1,3 +1,5 @@
+"""Functional tests for API endpoints."""
+
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -97,6 +99,7 @@ def test_details_fetch_failure(client: Any) -> None:
 
 
 def test_send_success(client: Any) -> None:
+    """Test successful torrent submission."""
     with (
         patch("audiobook_automated.routes.extract_magnet_link") as mock_extract,
         patch("audiobook_automated.routes.torrent_manager") as mock_tm,
@@ -114,12 +117,14 @@ def test_send_success(client: Any) -> None:
 
 
 def test_send_missing_data(client: Any) -> None:
+    """Test submission with missing parameters."""
     response = client.post("/send", json={"link": "http://example.com"})
     assert response.status_code == 400
     assert b"Invalid request" in response.data
 
 
 def test_send_malformed_json(client: Any) -> None:
+    """Test submission with malformed JSON body."""
     response = client.post("/send", data="not json", content_type="application/json")
     assert response.status_code == 400
 
@@ -136,17 +141,19 @@ def test_send_invalid_json_type(client: Any) -> None:
 
 
 def test_send_extraction_failure(client: Any) -> None:
+    """Test handling of magnet extraction failures."""
     with patch("audiobook_automated.routes.extract_magnet_link") as mock_extract:
         mock_extract.return_value = (None, "Page Not Found")
         response = client.post(
             "/send",
-            json={"link": "[https://audiobookbay.lu/bad-page](https://audiobookbay.lu/bad-page)", "title": "Bad Book"},
+            json={"link": "https://audiobookbay.lu/bad-page", "title": "Bad Book"},
         )
         assert response.status_code == 500
         assert b"Download failed: Page Not Found" in response.data
 
 
 def test_send_torrent_client_failure(client: Any) -> None:
+    """Test handling of torrent client connection errors."""
     with (
         patch("audiobook_automated.routes.extract_magnet_link") as mock_extract,
         patch("audiobook_automated.routes.torrent_manager") as mock_tm,
@@ -180,6 +187,7 @@ def test_send_upstream_connection_failure(client: Any) -> None:
 
 
 def test_send_route_no_save_path_base(client: Any) -> None:
+    """Test behavior when SAVE_PATH_BASE is not set."""
     client.application.config["SAVE_PATH_BASE"] = None
 
     with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:...", None)):
@@ -190,6 +198,7 @@ def test_send_route_no_save_path_base(client: Any) -> None:
 
 
 def test_send_sanitization_warning(client: Any, caplog: Any) -> None:
+    """Test logging warning for titles requiring sanitization fallback."""
     with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
         with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
             client.post("/send", json={"link": "http://example.com", "title": "..."})
@@ -234,6 +243,7 @@ def test_send_windows_reserved_name(client: Any) -> None:
 
 
 def test_delete_torrent(client: Any) -> None:
+    """Test successful torrent removal."""
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.remove_torrent.return_value = None
         response = client.post("/delete", json={"id": "hash123"})
@@ -242,6 +252,7 @@ def test_delete_torrent(client: Any) -> None:
 
 
 def test_delete_torrent_missing_id(client: Any) -> None:
+    """Test deletion failure when ID is missing."""
     response = client.post("/delete", json={})
     assert response.status_code == 400
     assert b"Torrent ID is required" in response.data
@@ -258,6 +269,7 @@ def test_delete_invalid_json_type(client: Any) -> None:
 
 
 def test_delete_torrent_failure(client: Any) -> None:
+    """Test handling of client errors during removal."""
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.remove_torrent.side_effect = Exception("Removal failed")
         response = client.post("/delete", json={"id": "hash123"})
@@ -266,6 +278,7 @@ def test_delete_torrent_failure(client: Any) -> None:
 
 
 def test_reload_library_success(client: Any) -> None:
+    """Test successful Audiobookshelf library reload trigger."""
     client.application.config["ABS_URL"] = "http://abs"
     client.application.config["ABS_KEY"] = "token"
     client.application.config["ABS_LIB"] = "lib-id"
@@ -278,6 +291,7 @@ def test_reload_library_success(client: Any) -> None:
 
 
 def test_reload_library_not_configured(client: Any) -> None:
+    """Test reload failure when configuration is missing."""
     client.application.config["ABS_URL"] = None
     response = client.post("/reload_library")
     assert response.status_code == 400
@@ -285,6 +299,7 @@ def test_reload_library_not_configured(client: Any) -> None:
 
 
 def test_reload_library_detailed_error(client: Any) -> None:
+    """Test error handling when upstream returns failure status."""
     client.application.config["ABS_URL"] = "http://abs"
     client.application.config["ABS_KEY"] = "k"
     client.application.config["ABS_LIB"] = "l"
@@ -345,6 +360,7 @@ def test_status_page_failure_json(client: Any) -> None:
 
 
 def test_rate_limit_enforced(client: Any) -> None:
+    """Test that rate limits are enforced."""
     # Ensure limiter is enabled (TestConfig already sets it)
     with (
         patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:123", None)),

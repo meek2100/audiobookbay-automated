@@ -1,1 +1,1 @@
-# tests/functional package
+"""Functional tests package."""

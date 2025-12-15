@@ -1,1 +1,1 @@
-# tests/scraper package
+"""Scraper module tests."""

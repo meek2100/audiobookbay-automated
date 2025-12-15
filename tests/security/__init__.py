@@ -1,1 +1,1 @@
-# tests/security package
+"""Security tests package."""

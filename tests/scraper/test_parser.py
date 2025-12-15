@@ -1,3 +1,5 @@
+"""Unit tests for the HTML parser module."""
+
 import re
 from typing import Any
 from unittest.mock import MagicMock
@@ -17,6 +19,7 @@ from audiobook_automated.scraper.parser import (
 
 
 def test_get_text_after_label_valid() -> None:
+    """Test extracting text when label matches correctly."""
     html = "<div><p>Format: <span>MP3</span></p></div>"
     soup = BeautifulSoup(html, "lxml")
     p_tag = soup.find("p")
@@ -27,6 +30,7 @@ def test_get_text_after_label_valid() -> None:
 
 
 def test_get_text_after_label_inline() -> None:
+    """Test extracting text when label and value are in the same node."""
     html = "<div><p>Posted: 10 Jan 2020</p></div>"
     soup = BeautifulSoup(html, "lxml")
     p_tag = soup.find("p")
@@ -176,7 +180,7 @@ def test_parse_post_content_normalization() -> None:
 
 
 def test_parse_post_content_malformed_category() -> None:
-    """Test parsing when 'Language' label is missing or structure is abnormal.
+    r"""Test parsing when 'Language' label is missing or structure is abnormal.
 
     This ensures the regex `r"Category:\s*(.+?)(?:\s+Language:|\s*$)"` handles
     edge cases where the expected terminator isn't present.
