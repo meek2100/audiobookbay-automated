@@ -17,7 +17,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - **One source of truth always.**
 - **Safety over speed** — jitter sleeps, rate limiting, and scraping protections are mandatory.
 - **Accurate documentation** — no stale or mismatched comments/docstrings.
-- **Python 3.14 code quality** — full type hints, modern idioms, clean structure.
+- **Python 3.14 code quality** — full type hints, modern idioms (e.g., `pathlib`), clean structure.
 - **100% test coverage** — but tests must not be redundant.
 - **Frontend must stay simple** — no bundlers, no frameworks, no unnecessary complexity.
 
@@ -94,7 +94,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 ## D. Python 3.14 Standards
 
 - Full type hints everywhere. **Type safety is strictly enforced using MyPy.**
-- Modern Python idioms.
+- Modern Python idioms. **Use `pathlib` instead of `os.path` for filesystem operations.**
 - Avoid deprecated patterns.
 - Code must be Pylance/MyPy-friendly.
 - **Type Separation:** Use `BookSummary` for search results and `BookDetails` for full book info. Do not mix them.

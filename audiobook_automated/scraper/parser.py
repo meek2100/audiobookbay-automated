@@ -220,6 +220,7 @@ def parse_post_content(
             continue
 
         # 2. Normalize Strings (File Size, Bitrate, etc.)
+        # TYPE SAFETY: Explicitly guard against 'category' list leaking here
         if isinstance(value, str):
             # Strip whitespace and check against invalid values
             clean_val = value.strip()
