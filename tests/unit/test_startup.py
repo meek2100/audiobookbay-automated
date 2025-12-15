@@ -1,3 +1,4 @@
+# tests/unit/test_startup.py
 """Unit tests for startup configuration and verification logic."""
 
 import importlib

@@ -1,3 +1,4 @@
+# .yamllint.yaml
 ---
 # .yamllint.yaml
 # Configuration file for yamllint to enforce consistency on YAML files.

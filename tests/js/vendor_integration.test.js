@@ -1,3 +1,4 @@
+// tests/js/vendor_integration.test.js
 /**
  * @jest-environment jsdom
  */

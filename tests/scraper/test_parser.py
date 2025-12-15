@@ -1,3 +1,4 @@
+# tests/scraper/test_parser.py
 """Unit tests for the HTML parser module."""
 
 import re

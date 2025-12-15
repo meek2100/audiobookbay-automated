@@ -1,4 +1,5 @@
 #!/bin/sh
+# entrypoint.sh
 set -e
 
 # Intelligent Bind Logic for Gunicorn

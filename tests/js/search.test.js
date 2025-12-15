@@ -1,3 +1,4 @@
+// tests/js/search.test.js
 /**
  * @jest-environment jsdom
  */

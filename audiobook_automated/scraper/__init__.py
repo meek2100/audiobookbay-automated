@@ -1,3 +1,4 @@
+# audiobook_automated/scraper/__init__.py
 """Scraper package for AudiobookBay content."""
 
 from audiobook_automated.constants import DEFAULT_TRACKERS, USER_AGENTS

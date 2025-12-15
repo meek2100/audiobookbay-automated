@@ -88,6 +88,11 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Documentation must be updated when code changes.
 - No stale, inaccurate, or mismatched comments/docstrings.
 - **MANDATE:** Docstrings must follow the **Google Style Convention**, strictly enforced by `pydocstyle`.
+- **File Headers:** The first line of every source file MUST be a comment containing the file path relative to the
+  project root (e.g., `# audiobook_automated/app.py` or `// static/js/search.js`).
+  - **Exception:** If the file requires a Shebang (e.g., `#!/bin/bash`), the file path comment must be on the second
+    line.
+  - **Exception:** Strictly formatted JSON files (e.g., `package.json`) must NOT include comments.
 
 ---
 

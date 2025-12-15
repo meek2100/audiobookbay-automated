@@ -1,3 +1,4 @@
+# tests/functional/test_security_integration.py
 """Integration tests for security features (CSRF, Headers)."""
 
 from collections.abc import Generator

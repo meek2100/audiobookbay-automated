@@ -1,3 +1,4 @@
+# audiobook_automated/extensions.py
 """Extensions module initializing Flask extensions."""
 
 from collections.abc import Callable

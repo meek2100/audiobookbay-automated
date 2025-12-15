@@ -1,3 +1,4 @@
+// audiobook_automated/static/js/actions.js
 /**
  * Global application actions (Reload ABS, Delete Torrent, Send Torrent, Open External)
  */

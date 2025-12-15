@@ -1,3 +1,4 @@
+# audiobook_automated/scraper/network.py
 """Network module handling HTTP sessions, proxies, and mirrors."""
 
 import concurrent.futures

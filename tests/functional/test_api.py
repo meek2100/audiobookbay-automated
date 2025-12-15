@@ -1,3 +1,4 @@
+# tests/functional/test_api.py
 """Functional tests for API endpoints."""
 
 from typing import Any
