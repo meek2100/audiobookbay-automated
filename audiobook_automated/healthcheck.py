@@ -35,8 +35,7 @@ def health_check(timeout: int = 3) -> None:
     try:
         # TIMEOUT ADDED: Prevents the healthcheck from hanging indefinitely
         # nosec B310: URL is constructed from trusted local env vars (localhost/loopback)
-        # noqa: S310  # Ruff flag for URL open
-        with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310  # noqa: S310
             if response.status == 200:  # noqa: PLR2004
                 sys.exit(0)  # Success
             else:

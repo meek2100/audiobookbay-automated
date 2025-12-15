@@ -283,14 +283,12 @@ fetching. Future implementations must respect these specific library constraints
 
 - **Resource Cleanup:** All strategies must implement a `close()` method to release sockets/sessions explicitly.
 - **Progress Normalization:**
-
   - **qBittorrent:** Returns float `0.0 - 1.0`. Must multiply by 100.
   - **Transmission:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
   - **Deluge:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
   - **Result:** All strategies must return a standard `0.0 - 100.0` float rounded to 2 decimal places.
 
 - **Category/Label Filtering:**
-
   - **qBittorrent:** Supports efficient server-side filtering (`torrents_info(category=...)`). Use it.
   - **Transmission:** Does **NOT** support server-side label filtering. You **MUST** fetch all torrents and filter by
     label client-side (in Python).
