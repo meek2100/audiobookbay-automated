@@ -1,8 +1,11 @@
+"""Functional tests for system-level routes and static assets."""
+
 from typing import Any
 from unittest.mock import patch
 
 
 def test_health_check_route(client: Any) -> None:
+    """Test the /health endpoint returns a 200 OK JSON response."""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json == {"status": "ok"}
@@ -10,6 +13,7 @@ def test_health_check_route(client: Any) -> None:
 
 
 def test_home_page_static_versioning(client: Any) -> None:
+    """Test that static assets in the home page include version query parameters."""
     response = client.get("/")
     assert response.status_code == 200
     assert b"?v=" in response.data
@@ -17,6 +21,7 @@ def test_home_page_static_versioning(client: Any) -> None:
 
 
 def test_static_assets_cache_control(client: Any) -> None:
+    """Test that static assets are served with long-term caching headers."""
     response = client.get("/static/images/favicon.ico")
     if response.status_code == 200:
         cache_control = response.headers.get("Cache-Control", "")
@@ -58,6 +63,7 @@ def test_library_reload_injection(client: Any) -> None:
 
 
 def test_status_page(client: Any) -> None:
+    """Test that the status page renders active downloads correctly."""
     # FIX: Patch where it is imported in routes.py
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [{"name": "Book 1", "progress": 50, "state": "Downloading", "size": "100 MB"}]
@@ -67,6 +73,7 @@ def test_status_page(client: Any) -> None:
 
 
 def test_status_route_error(client: Any) -> None:
+    """Test that the status page displays errors when the torrent manager fails."""
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.side_effect = Exception("Database Locked")
 

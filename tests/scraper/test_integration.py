@@ -58,6 +58,7 @@ def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
 
 
 def test_search_no_mirrors_raises_error(mock_sleep: Any) -> None:
+    """Test that a ConnectionError is raised if no mirrors are reachable."""
     with patch("audiobook_automated.scraper.core.find_best_mirror", return_value=None):
         with pytest.raises(ConnectionError) as exc:
             search_audiobookbay("test")
@@ -65,6 +66,7 @@ def test_search_no_mirrors_raises_error(mock_sleep: Any) -> None:
 
 
 def test_search_thread_failure(mock_sleep: Any) -> None:
+    """Test that exceptions within search threads result in empty results and cache clearing."""
     with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
         # FIX: Patch get_thread_session as that is what core.py imports/uses
         with patch("audiobook_automated.scraper.core.get_thread_session"):
@@ -76,6 +78,7 @@ def test_search_thread_failure(mock_sleep: Any) -> None:
 
 
 def test_search_audiobookbay_generic_exception_in_thread(mock_sleep: Any) -> None:
+    """Test handling of unexpected exceptions (like ArithmeticError) inside threads."""
     with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
         # FIX: Patch get_thread_session as that is what core.py imports/uses
         with patch("audiobook_automated.scraper.core.get_thread_session"):

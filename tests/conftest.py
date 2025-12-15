@@ -1,4 +1,11 @@
 # tests/conftest.py
+"""Global pytest fixtures and configuration for the test suite.
+
+This module defines the 'World' in which tests run, including the Flask application
+instance, test clients, and global configuration overrides (like disabling CSRF
+for API tests).
+"""
+
 from __future__ import annotations
 
 from collections.abc import Generator

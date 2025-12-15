@@ -1,4 +1,6 @@
 # tests/scraper/test_network.py
+"""Tests for the network module, covering mirror management and tracker retrieval."""
+
 import json
 from collections.abc import Generator
 from typing import Any, cast
@@ -35,6 +37,7 @@ def test_get_trackers_cache_hit(mock_app_context: Any) -> None:
 
 
 def test_get_trackers_from_env(mock_app_context: Any) -> None:
+    """Test retrieving trackers solely from environment configuration."""
     # Clear cache before test
     network.tracker_cache.clear()
 
@@ -92,6 +95,7 @@ def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
 
 
 def test_get_trackers_defaults(mock_app_context: Any) -> None:
+    """Test fallback to default trackers when config is empty and no JSON file exists."""
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
@@ -160,6 +164,7 @@ def test_get_thread_session_initialization() -> None:
 
 
 def test_check_mirror_success_head() -> None:
+    """Test verifying a mirror via a successful HEAD request."""
     with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
         mock_session = mock_get_session.return_value
         mock_session.head.return_value.status_code = 200
@@ -273,6 +278,7 @@ def test_find_best_mirror_negative_cache_hit(mock_app_context: Any) -> None:
 
 
 def test_get_random_user_agent_returns_string() -> None:
+    """Test that the user agent generator returns a string from the known list."""
     ua = network.get_random_user_agent()
     assert isinstance(ua, str)
     assert len(ua) > 10

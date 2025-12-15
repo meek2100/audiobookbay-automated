@@ -1,3 +1,5 @@
+"""Tests for core security features like CSRF, SSRF, and input sanitization."""
+
 from typing import Any
 
 import pytest

@@ -12,10 +12,12 @@ from audiobook_automated.utils import calculate_static_hash, sanitize_title
 
 
 def test_sanitize_simple_title() -> None:
+    """Test that a simple alphanumeric title requires no changes."""
     assert sanitize_title("Harry Potter") == "Harry Potter"
 
 
 def test_sanitize_special_chars() -> None:
+    """Test that filesystem-unsafe characters (colons, slashes) are removed."""
     # Colons and slashes should be removed
     assert sanitize_title("Book: The Movie / Part 1") == "Book The Movie  Part 1"
 

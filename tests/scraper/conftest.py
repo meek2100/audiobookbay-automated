@@ -1,3 +1,10 @@
+# tests/scraper/conftest.py
+"""Fixtures specifically for the scraper test package.
+
+Includes mocks for time.sleep to speed up tests and cache clearing
+mechanisms to ensure test isolation.
+"""
+
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import patch

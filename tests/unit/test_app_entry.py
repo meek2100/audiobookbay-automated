@@ -1,3 +1,5 @@
+"""Unit tests for the application entry point and module initialization."""
+
 import importlib
 import sys
 
