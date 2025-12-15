@@ -26,10 +26,12 @@ def app() -> Generator[Flask, None, None]:
 @pytest.fixture
 def setup_manager() -> Any:
     """Fixture that returns a setup_manager helper function."""
+
     def _setup(app: Flask, **kwargs: Any) -> TorrentManager:
         for k, v in kwargs.items():
             app.config[k] = v
         manager = TorrentManager()
         manager.init_app(app)
         return manager
+
     return _setup
