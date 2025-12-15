@@ -89,6 +89,28 @@ def test_deluge_fallback_failure() -> None:
             assert found
 
 
+def test_add_magnet_non_label_error_raises() -> None:
+    """Test that a non-label error (e.g., specific RPC failure) is re-raised immediately."""
+    with patch("audiobook_automated.clients.deluge.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+        # Enable plugin
+        mock_instance.get_plugins.return_value = Response(result=["Label"], error=None)
+
+        # Simulate a critical error that is NOT about 'label' or 'unknown parameter'
+        mock_instance.add_torrent_magnet.side_effect = Exception("Critical RPC Failure")
+
+        strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
+        strategy.connect()
+
+        with pytest.raises(Exception) as exc:
+            strategy.add_magnet("magnet:...", "/save", "cat")
+
+        assert "Critical RPC Failure" in str(exc.value)
+        # Ensure we did NOT try to call it again (fallback logic skipped)
+        assert mock_instance.add_torrent_magnet.call_count == 1
+
+
 def test_deluge_connect_plugin_check_failure() -> None:
     """Test handling of exception during Deluge plugin check."""
     with patch("audiobook_automated.clients.deluge.DelugeWebClient") as MockDeluge:

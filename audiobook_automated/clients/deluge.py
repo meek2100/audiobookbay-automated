@@ -79,7 +79,7 @@ class Strategy(TorrentClientStrategy):
                     logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                     raise e2
 
-            raise  # pragma: no cover
+            raise
 
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Deluge."""
@@ -110,7 +110,8 @@ class Strategy(TorrentClientStrategy):
             if isinstance(deluge_torrents.result, dict):
                 results_dict = deluge_torrents.result
                 for key, deluge_data in results_dict.items():
-                    if not isinstance(deluge_data, dict):
+                    # Robust check for None or invalid type to please type checkers
+                    if deluge_data is None or not isinstance(deluge_data, dict):
                         continue
                     progress_val = deluge_data.get("progress")
                     try:

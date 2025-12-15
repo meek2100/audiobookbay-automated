@@ -3,9 +3,9 @@
 import concurrent.futures
 import json
 import logging
-import os
 import random
 import threading
+from pathlib import Path
 from typing import cast
 
 import requests
@@ -97,13 +97,13 @@ def get_trackers() -> list[str]:
 
     # 2. File Override (Relative to project root)
     # Calculated relative to this file: .../audiobook_automated/scraper/network.py
-    # We want to go up 3 levels to reach the repo root/app root.
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    json_path = os.path.join(base_dir, "trackers.json")
+    # We go up 3 levels: scraper -> audiobook_automated -> repo_root
+    try:
+        base_dir = Path(__file__).resolve().parents[2]
+        json_path = base_dir / "trackers.json"
 
-    if os.path.exists(json_path):
-        try:
-            with open(json_path, "r") as f:
+        if json_path.exists():
+            with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     logger.info("Loaded custom trackers from trackers.json")
@@ -112,8 +112,8 @@ def get_trackers() -> list[str]:
                     return cast(list[str], data)
                 else:
                     logger.warning("trackers.json contains invalid data (expected a list). Using defaults.")
-        except Exception as e:
-            logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
+    except Exception as e:
+        logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 
     # 3. Defaults
     with CACHE_LOCK:

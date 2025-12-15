@@ -173,7 +173,8 @@ def send() -> Response | tuple[Response, int]:
         if safe_title == FALLBACK_TITLE or safe_title.endswith("_Safe"):
             logger.warning(f"Title '{title}' required fallback handling ('{safe_title}'). Appending UUID for safety.")
             unique_id = uuid.uuid4().hex[:8]
-            safe_title = f"{safe_title}_{unique_id}"
+            # Truncate title to ~240 chars to leave room for ID and ensure filesystem safety
+            safe_title = f"{safe_title[:240]}_{unique_id}"
             logger.info(f"Using collision-safe directory name: {safe_title}")
 
         save_path_base = current_app.config.get("SAVE_PATH_BASE")

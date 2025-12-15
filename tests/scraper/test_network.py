@@ -1,6 +1,5 @@
 # tests/scraper/test_network.py
 import json
-import os
 from typing import Any, Generator, cast
 from unittest.mock import mock_open, patch
 
@@ -45,17 +44,17 @@ def test_get_trackers_from_env(mock_app_context: Any) -> None:
     assert trackers[0] == "udp://env.tracker:1337"
 
 
-def test_get_trackers_from_json(mock_app_context: Any) -> None:
+def test_get_trackers_from_json_file(mock_app_context: Any) -> None:
+    """Test loading trackers from the optional JSON file."""
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []  # Empty env
 
-    # Mocking os.path.dirname logic to look for a specific file
-    with patch.dict(os.environ, {}, clear=True):
+    # Mock pathlib.Path.exists and open
+    with patch("pathlib.Path.exists", return_value=True):
         mock_data = '["udp://json.tracker:80"]'
         with patch("builtins.open", mock_open(read_data=mock_data)):
-            with patch("os.path.exists", return_value=True):
-                trackers = network.get_trackers()
-                assert trackers == ["udp://json.tracker:80"]
+            trackers = network.get_trackers()
+            assert trackers == ["udp://json.tracker:80"]
 
 
 def test_get_trackers_json_invalid_structure(mock_app_context: Any) -> None:
@@ -63,18 +62,17 @@ def test_get_trackers_json_invalid_structure(mock_app_context: Any) -> None:
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
-    with patch.dict(os.environ, {}, clear=True):
+    with patch("pathlib.Path.exists", return_value=True):
         # Mock data as a JSON object/dict, not a list
         mock_data = '{"key": "value"}'
         with patch("builtins.open", mock_open(read_data=mock_data)):
-            with patch("os.path.exists", return_value=True):
-                with patch("audiobook_automated.scraper.network.logger") as mock_logger:
-                    trackers = network.get_trackers()
-                    # Should fallback to defaults
-                    assert trackers == DEFAULT_TRACKERS
-                    # Verify the specific warning was logged
-                    args, _ = mock_logger.warning.call_args
-                    assert "trackers.json contains invalid data" in args[0]
+            with patch("audiobook_automated.scraper.network.logger") as mock_logger:
+                trackers = network.get_trackers()
+                # Should fallback to defaults
+                assert trackers == DEFAULT_TRACKERS
+                # Verify the specific warning was logged
+                args, _ = mock_logger.warning.call_args
+                assert "trackers.json contains invalid data" in args[0]
 
 
 def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
@@ -82,7 +80,7 @@ def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
-    with patch("os.path.exists", return_value=True):
+    with patch("pathlib.Path.exists", return_value=True):
         with patch("builtins.open", side_effect=json.JSONDecodeError("Expecting value", "doc", 0)):
             with patch("audiobook_automated.scraper.network.logger") as mock_logger:
                 trackers = network.get_trackers()
@@ -96,7 +94,7 @@ def test_get_trackers_defaults(mock_app_context: Any) -> None:
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
-    with patch("os.path.exists", return_value=False):
+    with patch("pathlib.Path.exists", return_value=False):
         trackers = network.get_trackers()
         assert trackers == DEFAULT_TRACKERS
 
@@ -261,28 +259,16 @@ def test_find_best_mirror_cached(mock_app_context: Any) -> None:
 
 
 def test_find_best_mirror_negative_cache_hit(mock_app_context: Any) -> None:
-    """Test that find_best_mirror returns None immediately if negative cache is set.
+    """Test that the function returns None immediately if negative cache is active."""
+    # Inject failure into cache
+    with network.CACHE_LOCK:
+        network.failure_cache["failure"] = True
 
-    Covers app/scraper/network.py lines 184-185 (Negative Cache hit).
-    """
-    # Clear caches
-    network.mirror_cache.clear()
-    network.failure_cache.clear()
-
-    # Inject failure into negative cache
-    network.failure_cache["failure"] = True
-
-    with patch("audiobook_automated.scraper.network.logger") as mock_logger:
-        # Patch check_mirror to verify it is NOT called
-        with patch("audiobook_automated.scraper.network.check_mirror") as mock_check:
-            result = network.find_best_mirror()
-
-            assert result is None
-            mock_check.assert_not_called()
-
-            # Verify the debug log was triggered
-            args, _ = mock_logger.debug.call_args
-            assert "Negative Cache hit" in args[0]
+    # Attempt to find mirror (should skip all network calls)
+    with patch("audiobook_automated.scraper.network.get_mirrors") as mock_get:
+        result = network.find_best_mirror()
+        assert result is None
+        mock_get.assert_not_called()
 
 
 def test_get_random_user_agent_returns_string() -> None:

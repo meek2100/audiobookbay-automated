@@ -18,7 +18,14 @@ def test_init_with_dl_url(app: Flask, setup_manager: Any) -> None:
 
 def test_init_dl_url_construction(app: Flask, setup_manager: Any) -> None:
     """Test construction of DL_URL from host and port."""
-    manager = setup_manager(app, DL_CLIENT="deluge", DL_URL=None, DL_HOST="myhost", DL_PORT=9999, DL_SCHEME="https")
+    manager = setup_manager(
+        app,
+        DL_CLIENT="deluge",
+        DL_URL=None,
+        DL_HOST="myhost",
+        DL_PORT=9999,
+        DL_SCHEME="https",
+    )
     assert manager.dl_url == "https://myhost:9999"
 
 
@@ -141,6 +148,41 @@ def test_get_strategy_missing_class(app: Flask, setup_manager: Any) -> None:
             assert "does not export a 'Strategy' class" in args[0]
 
 
+def test_get_strategy_caching_and_success(app: Flask, setup_manager: Any) -> None:
+    """Test that strategy is initialized, cached, and reused.
+
+    Covers:
+      - Line 136: self._local.strategy = strategy
+      - Line 106: return cast(..., self._local.strategy)
+    """
+    manager = setup_manager(app, DL_CLIENT="mock_client")
+
+    # Mock the dynamic import to return a valid Strategy class
+    mock_strategy_instance = MagicMock()
+    mock_strategy_class = MagicMock(return_value=mock_strategy_instance)
+    mock_module = MagicMock()
+    mock_module.Strategy = mock_strategy_class
+
+    with patch("importlib.import_module", return_value=mock_module) as mock_import:
+        # 1. First Call: Should Initialize
+        strategy1 = manager._get_strategy()
+
+        assert strategy1 is mock_strategy_instance
+        mock_import.assert_called_once()
+        mock_strategy_instance.connect.assert_called_once()
+
+        # 2. Second Call: Should use Cache (Lines 105-106)
+        # Reset mocks to prove they aren't called again
+        mock_import.reset_mock()
+        mock_strategy_instance.connect.reset_mock()
+
+        strategy2 = manager._get_strategy()
+
+        assert strategy2 is strategy1
+        mock_import.assert_not_called()
+        mock_strategy_instance.connect.assert_not_called()
+
+
 def test_remove_torrent_no_client_raises(app: Flask, setup_manager: Any) -> None:
     """Test that an error is raised if no client can be connected during removal."""
     manager = setup_manager(app)
@@ -175,6 +217,32 @@ def test_add_magnet_reconnect_retry(app: Flask, setup_manager: Any) -> None:
         assert getattr(manager._local, "strategy", None) is None
 
 
+def test_add_magnet_success_logic(app: Flask, setup_manager: Any) -> None:
+    """Test the happy path of add_magnet logic execution.
+
+    Covers:
+      - Line 171: logger.info(...)
+      - Line 172: strategy.add_magnet(...)
+    """
+    # Explicitly set category to match the assertion below
+    manager = setup_manager(app, DL_CATEGORY="abb-automated")
+    mock_strategy = MagicMock()
+
+    # We do NOT patch _add_magnet_logic here; we want it to run.
+    # We patch _get_strategy to return a valid mock.
+    with patch.object(manager, "_get_strategy", return_value=mock_strategy):
+        with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+            manager.add_magnet("magnet:?xt=urn:btih:123", "/downloads")
+
+            # Verify Logger (Line 171)
+            assert mock_logger.info.called
+            args, _ = mock_logger.info.call_args
+            assert "Adding torrent to" in args[0]
+
+            # Verify Strategy Call (Line 172)
+            mock_strategy.add_magnet.assert_called_with("magnet:?xt=urn:btih:123", "/downloads", "abb-automated")
+
+
 def test_logic_methods_no_client(app: Flask, setup_manager: Any) -> None:
     """Test that logic methods raise ConnectionError when strategy is None."""
     manager = setup_manager(app)
@@ -191,12 +259,7 @@ def test_remove_torrent_retry_coverage(app: Flask, setup_manager: Any) -> None:
     """Test retry logic in remove_torrent via mocked strategy."""
     manager = setup_manager(app)
 
-    # Mock _get_strategy to fail first time (return None -> raises ConnectionError in logic)
-    # Wait, remove_torrent calls _remove_torrent_logic.
-    # _remove_torrent_logic calls _get_strategy.
-    # If _remove_torrent_logic raises, remove_torrent sets strategy=None and retries.
-
-    # So we patch _get_strategy to return S1 (fails), then S2 (succeeds).
+    # Mock _get_strategy to return S1 (fails), then S2 (succeeds).
     strategy_fail = MagicMock()
     strategy_fail.remove_torrent.side_effect = Exception("Fail")
 
