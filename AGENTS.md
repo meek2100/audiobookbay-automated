@@ -154,6 +154,8 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - **Stateful objects must be thread-local or isolated.**
 - `requests.Session` and Torrent Client instances must **never** be shared across threads.
 - Use `threading.local()` or instantiate per-task/per-request.
+- **MANDATE:** Subclass `threading.local` for typed thread-local storage (e.g., `class ClientLocal(threading.local)`) to
+  ensure MyPy compliance.
 - **Why:** Shared sessions cause race conditions, connection resets, and data corruption in threaded environments.
 
 ### Global Request Semaphore
@@ -196,6 +198,8 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - All queries normalized to lowercase.
 - **Search Query Safety:** All search endpoints must enforce a minimum query length (e.g., 2 characters) to prevent
   spamming the scraper with broad queries.
+- **Session Reuse:** `requests.Session` objects for high-frequency operations (like ping checks) must be cached or
+  thread-local to avoid expensive SSL handshake overhead.
 
 ### Filesystem Safety
 
@@ -247,6 +251,8 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - **Validation:** Configuration must fail fast. `DL_CLIENT` and `SAVE_PATH_BASE` are mandatory.
 - **Logging Level:** The application logger must explicitly apply the configured `LOG_LEVEL` in `__init__.py`. Flask
   does not do this automatically.
+- **Docker Permissions:** The application must start as `root` (PID 1) in the entrypoint to fix volume permissions via
+  `chown` and `usermod`, then drop privileges to `appuser` using `gosu`.
 
 ### Centralized Logic & Concurrency
 
@@ -275,6 +281,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
 All Torrent Client implementations (`clients.py`) must normalize data to the **Appliance Standard** immediately upon
 fetching. Future implementations must respect these specific library constraints:
 
+- **Resource Cleanup:** All strategies must implement a `close()` method to release sockets/sessions explicitly.
 - **Progress Normalization:**
   - **qBittorrent:** Returns float `0.0 - 1.0`. Must multiply by 100.
   - **Transmission:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
@@ -349,6 +356,7 @@ async function flushPromises() {
 - Multi-stage builds.
 - Gunicorn `--preload`.
 - Timezone support via `tzdata`.
+- **Permissions:** Usage of `gosu` is mandatory for dropping privileges from root to appuser.
 
 ### Frontend Dependencies
 

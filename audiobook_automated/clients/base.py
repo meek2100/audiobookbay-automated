@@ -43,6 +43,11 @@ class TorrentClientStrategy(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
+    def close(self) -> None:
+        """Close the connection to the torrent client and release resources."""
+        pass  # pragma: no cover
+
+    @abstractmethod
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to the client."""
         pass  # pragma: no cover

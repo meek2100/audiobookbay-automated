@@ -1,6 +1,7 @@
 """Shared fixtures for client tests."""
 
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 import pytest
 from flask import Flask

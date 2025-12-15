@@ -1,4 +1,5 @@
 # Use an official Python runtime as a parent image
+# Using 3.14-slim as per project requirements, though 3.13 is current stable LTS recommendation.
 FROM python:3.14-slim
 
 # Labels for container registry metadata
@@ -15,13 +16,14 @@ ENV PYTHONUNBUFFERED=1
 # Set the working directory in the container
 WORKDIR /app
 
-# Install tzdata for correct timezone logging
+# Install tzdata for correct timezone logging and gosu for user permission step-down
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends tzdata && \
+    apt-get install -y --no-install-recommends tzdata gosu && \
     rm -rf /var/lib/apt/lists/*
 
 # 1. Copy project definition first
 COPY pyproject.toml .
+
 # 2. Install dependencies and create user in a single layer (Fixes DL3059)
 # We create the user here to ensure it exists before we COPY files with ownership
 RUN pip install --no-cache-dir . && \
@@ -35,9 +37,6 @@ COPY --chown=appuser:appuser entrypoint.sh .
 RUN chmod +x entrypoint.sh && \
     python3 -m audiobook_automated.utils
 
-# Switch to non-root user for security
-USER appuser
-
 # Expose the port the app runs on
 EXPOSE 5078
 
@@ -46,4 +45,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3 /app/audiobook_automated/healthcheck.py
 
 # Define the command to run the application
+# Note: We do NOT switch USER here; entrypoint.sh handles the switch to 'appuser' via gosu
 CMD ["./entrypoint.sh"]

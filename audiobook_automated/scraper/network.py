@@ -21,24 +21,21 @@ from audiobook_automated.scraper.parser import BookDetails, BookSummary
 logger = logging.getLogger(__name__)
 
 # --- Concurrency Control ---
-# Default concurrency limit (overridden by init_semaphore via config)
 DEFAULT_CONCURRENT_REQUESTS = 3
-# Internal semaphore reference, initialized lazily or with default
 _semaphore: threading.BoundedSemaphore = threading.BoundedSemaphore(DEFAULT_CONCURRENT_REQUESTS)
-# Lock to ensure thread-safe operations on shared caches (search_cache, mirror_cache)
 CACHE_LOCK = threading.Lock()
 
 # --- Thread-Local Storage ---
-# Stores objects that are not thread-safe (e.g. requests.Session) to ensure
-# unique instances per thread while allowing reuse across multiple requests within that thread.
 _thread_local = threading.local()
 
-# --- Caches ---
-# Explicit type parameters for TTLCache to satisfy strict MyPy
-mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
-# Short-lived cache for connection failures (Negative Caching) to prevent retry storms
-failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
+# --- Persistent Session Storage ---
+# Cached session for low-overhead ping/availability checks
+_ping_session: Session | None = None
+_ping_session_lock = threading.Lock()
 
+# --- Caches ---
+mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
+failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
 search_cache: TTLCache[str, list[BookSummary]] = TTLCache(maxsize=100, ttl=300)
 details_cache: TTLCache[str, BookDetails] = TTLCache(maxsize=100, ttl=300)
 tracker_cache: TTLCache[str, list[str]] = TTLCache(maxsize=1, ttl=300)
@@ -73,21 +70,11 @@ def get_trackers() -> list[str]:
     """Load trackers from configuration and optional local JSON file.
 
     Uses TTLCache to avoid repeated I/O while allowing config updates to propagate.
-    Prioritizes:
-    1. Environment Variable (via Config)
-    2. trackers.json (Project Root)
-    3. Internal Defaults
-
-    Returns:
-        list[str]: A list of tracker URLs.
     """
-    # Check Cache
     with CACHE_LOCK:
         if "default" in tracker_cache:
             return tracker_cache["default"]
 
-    # 1. Configured via Env/Config
-    # We must access current_app inside the function (request time), not at module level
     env_trackers = current_app.config.get("MAGNET_TRACKERS", [])
     if env_trackers:
         result = cast(list[str], env_trackers)
@@ -95,15 +82,12 @@ def get_trackers() -> list[str]:
             tracker_cache["default"] = result
         return result
 
-    # 2. File Override (Relative to project root)
-    # Calculated relative to this file: .../audiobook_automated/scraper/network.py
-    # We go up 3 levels: scraper -> audiobook_automated -> repo_root
     try:
         base_dir = Path(__file__).resolve().parents[2]
         json_path = base_dir / "trackers.json"
 
         if json_path.exists():
-            with open(json_path, "r", encoding="utf-8") as f:
+            with open(json_path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     logger.info("Loaded custom trackers from trackers.json")
@@ -115,33 +99,21 @@ def get_trackers() -> list[str]:
     except Exception as e:
         logger.warning(f"Failed to load trackers.json: {e}", exc_info=True)
 
-    # 3. Defaults
     with CACHE_LOCK:
         tracker_cache["default"] = DEFAULT_TRACKERS
     return DEFAULT_TRACKERS
 
 
 def get_mirrors() -> list[str]:
-    """Retrieve the list of mirrors to attempt, in priority order.
-
-    Combines the primary hostname, user-defined mirrors, and default mirrors.
-    """
+    """Retrieve the list of mirrors to attempt, in priority order."""
     primary = current_app.config.get("ABB_HOSTNAME", "audiobookbay.lu")
     extra = current_app.config.get("ABB_MIRRORS", [])
-
-    # Start with user preference
     candidates = [primary] + extra + DEFAULT_MIRRORS
-
-    # Deduplicate while preserving order
     return list(dict.fromkeys(candidates))
 
 
 def get_session() -> Session:
-    """Configure and return a requests Session with retry logic.
-
-    Returns:
-        Session: A configured requests Session object.
-    """
+    """Configure and return a requests Session with retry logic."""
     session = requests.Session()
     retry_strategy = Retry(
         total=5,
@@ -156,52 +128,42 @@ def get_session() -> Session:
 
 
 def get_ping_session() -> Session:
-    """Configure and return a requests Session with ZERO retries for availability checks.
+    """Configure and return a reusable requests Session with ZERO retries for availability checks.
 
-    This prevents 'retry storms' where a dead mirror holds up a thread for 25+ seconds.
-    We want the check to fail fast (5s timeout, 0 retries).
+    Reuses a single session instance to prevent expensive SSL context recreation overhead
+    during high-concurrency mirror checks.
 
     Returns:
         Session: A configured requests Session object with 0 retries.
     """
-    session = requests.Session()
-    retry_strategy = Retry(
-        total=0,
-        backoff_factor=0,
-        status_forcelist=[],
-        allowed_methods=["HEAD", "GET"],
-    )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
+    global _ping_session
+    if _ping_session is None:
+        with _ping_session_lock:
+            if _ping_session is None:
+                session = requests.Session()
+                retry_strategy = Retry(
+                    total=0,
+                    backoff_factor=0,
+                    status_forcelist=[],
+                    allowed_methods=["HEAD", "GET"],
+                )
+                adapter = HTTPAdapter(max_retries=retry_strategy)
+                session.mount("https://", adapter)
+                session.mount("http://", adapter)
+                _ping_session = session
+
+    return _ping_session
 
 
 def get_thread_session() -> Session:
-    """Retrieve or create a thread-local Session.
-
-    This optimizes performance by reusing the TCP/TLS connection for multiple
-    requests made by the same thread (e.g. during pagination or search),
-    while ensuring thread safety.
-
-    Returns:
-        Session: The active thread-local session.
-    """
+    """Retrieve or create a thread-local Session."""
     if not hasattr(_thread_local, "session"):
         _thread_local.session = get_session()
     return cast(Session, _thread_local.session)
 
 
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
-    """Generate standard HTTP headers for scraping requests.
-
-    Args:
-        user_agent: Optional custom User-Agent string.
-        referer: Optional Referer header string.
-
-    Returns:
-        dict[str, str]: A dictionary of HTTP headers.
-    """
+    """Generate standard HTTP headers for scraping requests."""
     if not user_agent:
         user_agent = get_random_user_agent()
     headers = {
@@ -221,13 +183,7 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 def check_mirror(hostname: str) -> str | None:
     """Check if a mirror is reachable via HEAD or GET request.
 
-    Uses a zero-retry session to fail fast.
-
-    Args:
-        hostname: The domain name to check (e.g., "audiobookbay.lu").
-
-    Returns:
-        str | None: The hostname if reachable, otherwise None.
+    Uses a zero-retry reusable session to fail fast.
     """
     url = f"https://{hostname}/"
     headers = get_headers()
@@ -238,11 +194,9 @@ def check_mirror(hostname: str) -> str | None:
         if response.status_code == 200:
             return hostname
     except (requests.Timeout, requests.ConnectionError):
-        # FAIL FAST: If HEAD times out or connection fails, do NOT try GET.
-        # It is highly likely GET will also fail/timeout, wasting another 5s.
+        # FAIL FAST: If HEAD times out, do NOT try GET.
         return None
     except requests.RequestException:
-        # Fallthrough for other errors (e.g. 405 Method Not Allowed) where GET might still work.
         pass
 
     try:
@@ -257,14 +211,7 @@ def check_mirror(hostname: str) -> str | None:
 
 
 def find_best_mirror() -> str | None:
-    """Find the first reachable AudiobookBay mirror from the configured list.
-
-    Uses threaded checks for speed.
-    Implements Negative Caching: If no mirrors work, backs off for 30s.
-
-    Returns:
-        str | None: The hostname of the active mirror, or None if all fail.
-    """
+    """Find the first reachable AudiobookBay mirror using concurrent checks."""
     # 1. Check Negative Cache (Backoff)
     with CACHE_LOCK:
         if "failure" in failure_cache:
@@ -277,13 +224,10 @@ def find_best_mirror() -> str | None:
         if cache_key in mirror_cache:
             return mirror_cache[cache_key]
 
-    # Dynamic retrieval of mirrors list
     mirrors = get_mirrors()
-
     logger.debug(f"Checking connectivity for {len(mirrors)} mirrors...")
     safe_mirror_workers = 5
 
-    # PERFORMANCE: Use raw Executor to prevent implicit waiting on slow mirrors
     executor = concurrent.futures.ThreadPoolExecutor(max_workers=safe_mirror_workers)
     futures = [executor.submit(check_mirror, host) for host in mirrors]
 
@@ -292,22 +236,15 @@ def find_best_mirror() -> str | None:
             result = future.result()
             if result:
                 logger.info(f"Found active mirror: {result}")
-                # Optimization: Cancel other pending futures since we found a winner
-                # (Best effort, running threads won't stop but pending ones will be cancelled)
                 for f in futures:
                     f.cancel()
-
-                # CACHE UPDATE: Cache successful result
                 with CACHE_LOCK:
                     mirror_cache[cache_key] = result
                 return result
     finally:
-        # CLEANUP: Shutdown executor without waiting for straggler threads.
-        # This prevents the function from blocking for the full timeout of a dead mirror.
         executor.shutdown(wait=False)
 
     logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
-    # CACHE UPDATE: Cache failure (Negative Caching)
     with CACHE_LOCK:
         failure_cache["failure"] = True
     return None

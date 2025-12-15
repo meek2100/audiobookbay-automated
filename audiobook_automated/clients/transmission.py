@@ -31,6 +31,12 @@ class Strategy(TorrentClientStrategy):
             timeout=30,
         )
 
+    def close(self) -> None:
+        """Close the Transmission client session."""
+        # transmission-rpc Client manages its own session, but doesn't expose a clear close.
+        # Dropping the reference is sufficient.
+        self.client = None
+
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to Transmission."""
         if not self.client:

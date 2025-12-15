@@ -81,7 +81,7 @@ def calculate_static_hash(static_folder: str) -> str:
                     # Read in chunks to handle large files efficiently
                     for chunk in iter(lambda: f.read(4096), b""):
                         hash_md5.update(chunk)
-            except (IOError, OSError):
+            except OSError:
                 # If we can't read a file (permissions?), ignore it for the hash
                 pass
 

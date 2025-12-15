@@ -39,6 +39,16 @@ class Strategy(TorrentClientStrategy):
         )
         self.client.auth_log_in()
 
+    def close(self) -> None:
+        """Close the qBittorrent client session."""
+        if self.client:
+            try:
+                # qBittorrentAPI doesn't strictly require logout, but it's good practice
+                self.client.auth_log_out()
+            except Exception as e:
+                logger.debug(f"Error closing qBittorrent connection: {e}")
+            self.client = None
+
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to qBittorrent."""
         if not self.client:

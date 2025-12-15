@@ -7,7 +7,7 @@ It encapsulates parsing strategies to keep core.py focused on networking and flo
 
 import re
 from dataclasses import dataclass, field, fields
-from typing import Optional, TypedDict
+from typing import TypedDict
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
@@ -145,10 +145,10 @@ def normalize_cover_url(base_url: str, relative_url: str) -> str | None:
 
 
 def parse_post_content(
-    content_div: Optional[Tag],
-    post_info: Optional[Tag],
-    author_tag: Optional[Tag] = None,
-    narrator_tag: Optional[Tag] = None,
+    content_div: Tag | None,
+    post_info: Tag | None,
+    author_tag: Tag | None = None,
+    narrator_tag: Tag | None = None,
 ) -> BookMetadata:
     """Parse the post content and info sections to extract normalized metadata.
 

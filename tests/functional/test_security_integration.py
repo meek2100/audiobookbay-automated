@@ -1,6 +1,6 @@
 """Integration tests for security features (CSRF, Headers)."""
 
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 from flask import Flask

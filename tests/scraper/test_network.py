@@ -1,6 +1,7 @@
 # tests/scraper/test_network.py
 import json
-from typing import Any, Generator, cast
+from collections.abc import Generator
+from typing import Any, cast
 from unittest.mock import mock_open, patch
 
 import pytest

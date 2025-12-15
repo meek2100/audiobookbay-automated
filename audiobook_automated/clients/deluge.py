@@ -53,6 +53,11 @@ class Strategy(TorrentClientStrategy):
             logger.warning(f"Could not verify Deluge plugins: {e}. Defaulting to no labels.")
             self.label_plugin_enabled = False
 
+    def close(self) -> None:
+        """Close the Deluge client session."""
+        # DelugeWebClient doesn't hold a persistent socket, just release the object
+        self.client = None
+
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to Deluge."""
         if not self.client:

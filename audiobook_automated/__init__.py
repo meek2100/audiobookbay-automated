@@ -28,7 +28,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Otherwise, calculate it dynamically (local development).
     version_file = os.path.join(app.root_path, "version.txt")
     if os.path.exists(version_file):
-        with open(version_file, "r", encoding="utf-8") as f:
+        with open(version_file, encoding="utf-8") as f:
             app.config["STATIC_VERSION"] = f.read().strip()
     else:
         static_folder = os.path.join(app.root_path, "static")

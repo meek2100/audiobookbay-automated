@@ -50,6 +50,7 @@ dev = [
     "types-flask",
     "types-beautifulsoup4",
     "types-jsonschema",
+    "types-gunicorn",
     "bandit>=1.7.9",
     "pydocstyle>=6.3.0",
 ]
@@ -82,7 +83,7 @@ line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B"]
+select = ["E", "F", "I", "B", "S", "UP", "PL"]
 ignore = ["E501"]
 
 [tool.mypy]
