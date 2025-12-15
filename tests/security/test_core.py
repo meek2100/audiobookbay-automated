@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 
+from audiobook_automated.constants import FALLBACK_TITLE
 from audiobook_automated.scraper import get_book_details
 from audiobook_automated.utils import sanitize_title
 
@@ -55,5 +56,6 @@ def test_sanitize_windows_reserved() -> None:
 
 def test_sanitize_strips_to_empty() -> None:
     """Test that a title composed only of illegal chars falls back safely."""
-    assert sanitize_title("...") == "Unknown_Title"
-    assert sanitize_title("???") == "Unknown_Title"
+    # Ensure we test against the Single Source of Truth
+    assert sanitize_title("...") == FALLBACK_TITLE
+    assert sanitize_title("???") == FALLBACK_TITLE

@@ -190,6 +190,25 @@ def test_get_status_deluge_empty_result() -> None:
         assert "Deluge returned empty or invalid" in args[0]
 
 
+def test_deluge_close() -> None:
+    """Test closing the Deluge strategy."""
+    with patch("audiobook_automated.clients.deluge.DelugeWebClient") as MockDeluge:
+        mock_instance = MockDeluge.return_value
+        mock_instance.login.return_value = Response(result=True)
+
+        strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
+        strategy.connect()
+
+        # Ensure client is set
+        assert strategy.client is not None
+
+        # Perform close
+        strategy.close()
+
+        # Verify client is cleared
+        assert strategy.client is None
+
+
 def test_strategy_not_connected_error_handling() -> None:
     """Ensure strategies raise ConnectionError if their client is None."""
     dg = DelugeStrategy(None, "host", 80, "u", "p")

@@ -106,6 +106,44 @@ def test_get_status_qbittorrent_robustness() -> None:
         assert results[0]["size"] == "Unknown"
 
 
+def test_qbittorrent_close() -> None:
+    """Test closing the qBittorrent session."""
+    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+        mock_instance = MockQbClient.return_value
+        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+        strategy.connect()
+
+        # Ensure client is set
+        assert strategy.client is not None
+
+        # Perform close
+        strategy.close()
+
+        # Verify logout called and client cleared
+        mock_instance.auth_log_out.assert_called_once()
+        assert strategy.client is None
+
+
+def test_qbittorrent_close_exception() -> None:
+    """Test exception handling during close."""
+    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+        mock_instance = MockQbClient.return_value
+        # Simulate error on logout
+        mock_instance.auth_log_out.side_effect = Exception("Logout Error")
+
+        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+        strategy.connect()
+
+        with patch("audiobook_automated.clients.qbittorrent.logger") as mock_logger:
+            strategy.close()
+            # Should log debug but not raise
+            mock_logger.debug.assert_called()
+            assert "Error closing qBittorrent connection" in str(mock_logger.debug.call_args)
+
+        # Client should still be cleared
+        assert strategy.client is None
+
+
 def test_strategy_not_connected_error_handling() -> None:
     """Ensure strategies raise ConnectionError if their client is None."""
     qb = QbittorrentStrategy("host", 80, "u", "p")
