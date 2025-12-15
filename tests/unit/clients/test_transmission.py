@@ -144,6 +144,23 @@ def test_get_status_transmission_robustness() -> None:
         assert results[0]["size"] == "Unknown"
 
 
+def test_transmission_close() -> None:
+    """Test closing the Transmission session."""
+    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+        # Note: We don't need the return value here, just the class patch to succeed
+        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
+        strategy.connect()
+
+        # Manually ensure client is set (it should be via connect, but we assert it)
+        assert strategy.client is not None
+
+        # Execute close
+        strategy.close()
+
+        # Assertion for coverage: The line 'self.client = None' must have run
+        assert strategy.client is None
+
+
 def test_strategy_not_connected_error_handling() -> None:
     """Ensure strategies raise ConnectionError if their client is None."""
     tx = TransmissionStrategy("host", 80, "u", "p")

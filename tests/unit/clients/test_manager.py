@@ -194,14 +194,19 @@ def test_remove_torrent_no_client_raises(app: Flask, setup_manager: Any) -> None
 
 def test_remove_torrent_retry(app: Flask, setup_manager: Any) -> None:
     """Test that remove_torrent attempts to reconnect if the first call fails."""
-    # We mock _get_strategy to return a strategy first, then None or a strategy that fails?
-    # Actually, the test patches `_remove_torrent_logic`.
     manager = setup_manager(app)
+
+    # We patch the logic method directly to force the retry loop
+    # The first call raises, the second call succeeds (returns None)
     with patch.object(manager, "_remove_torrent_logic") as mock_logic:
         mock_logic.side_effect = [Exception("Stale Connection"), None]
+
+        # Call the public method
         manager.remove_torrent("hash123")
+
+        # Verify retry behavior
         assert mock_logic.call_count == 2
-        # THREAD SAFETY UPDATE: Checked threaded local instead of _client
+        # Ensure force_disconnect was called (strategy cleared)
         assert getattr(manager._local, "strategy", None) is None
 
 
