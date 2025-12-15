@@ -110,6 +110,8 @@ Any lower-priority source conflicting with a higher one must be updated or remov
   - **Ruff (Security):** Mandatory scanning for common security vulnerabilities (replacing Bandit).
   - **pydocstyle:** Mandatory enforcement of the Google Docstring Convention.
   - **Ruff (Lint/Format):** Mandatory linting and formatting.
+- **Mandatory Docstrings:** All test functions and classes MUST include a docstring explaining the test case. Do not
+  exclude tests from `pydocstyle` checks.
 - Tests must be meaningful and not redundant.
 - Avoid testing the same happy/unhappy path twice unless essential.
 - Remove or consolidate redundant tests.
@@ -190,8 +192,9 @@ AI agents must follow the strictest, safest interpretation of these rules.
 
 ### Production Hardening (New)
 
-- **Strict Dependency Pinning:** All production dependencies in `pyproject.toml` MUST be pinned to exact versions (e.g.,
-  `requests==2.32.3`, not `>=`) to prevent transitive dependency breakage in production builds.
+- **Strict Dependency Pinning:** All dependencies (production AND development) in `pyproject.toml` MUST be pinned to
+  exact versions (e.g., `requests==2.32.3`, not `>=`) to prevent transitive dependency breakage and ensure reproducible
+  CI builds.
 - **Explicit Timeouts:** All blocking I/O calls (requests, socket operations) MUST have an explicit constant defined in
   `constants.py` (e.g., `ABS_TIMEOUT_SECONDS`). Magic number timeouts are prohibited.
 
