@@ -1,3 +1,4 @@
+# pyproject.toml
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
@@ -108,11 +109,11 @@ python_version = "3.11"
 warn_unused_configs = true
 ignore_missing_imports = true
 strict = true
+mypy_path = "stubs"
 
 [[tool.mypy.overrides]]
 module = [
     "flask_wtf.csrf",
-    "deluge_web_client",
     "transmission_rpc",
     "bs4.*",
     "urllib3.*",

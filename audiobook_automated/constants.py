@@ -6,6 +6,7 @@ from typing import Final
 # --- Application Constants ---
 FALLBACK_TITLE: Final[str] = "Unknown_Title_Fallback"
 DEFAULT_COVER_FILENAME: Final[str] = "default_cover.jpg"
+SAFE_SUFFIX: Final[str] = "_Safe"
 
 # --- Search Configuration ---
 MIN_SEARCH_QUERY_LENGTH: Final[int] = 2

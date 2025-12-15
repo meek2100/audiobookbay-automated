@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
-from audiobook_automated.constants import FALLBACK_TITLE
+from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX
 
 
 def test_healthcheck(client: Any) -> None:
@@ -236,11 +236,11 @@ def test_send_windows_reserved_name(client: Any) -> None:
             # 'CON' -> sanitize_title returns 'CON_Safe' -> Triggers UUID logic in routes.py
             client.post("/send", json={"link": "http://link", "title": "CON"})
 
-            # Verify that add_magnet was called with a path containing the _Safe suffix AND a UUID
-            assert mock_tm.add_magnet.called
-            args, _ = mock_tm.add_magnet.call_args
-            save_path = args[1]
-            assert "CON_Safe_" in save_path
+        # Verify that add_magnet was called with a path containing the SAFE_SUFFIX AND a UUID
+        assert mock_tm.add_magnet.called
+        args, _ = mock_tm.add_magnet.call_args
+        save_path = args[1]
+        assert f"CON{SAFE_SUFFIX}_" in save_path  # Updated to use constant
 
 
 def test_delete_torrent(client: Any) -> None:

@@ -24,16 +24,20 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Flask does not automatically apply the 'LOG_LEVEL' config value to its logger.
     app.logger.setLevel(app.config.get("LOG_LEVEL", "INFO"))
 
-    # OPTIMIZATION: Load pre-calculated static asset hash.
-    # If the file exists (production build), use it to avoid disk I/O.
-    # Otherwise, calculate it dynamically (local development).
-    version_file = os.path.join(app.root_path, "version.txt")
-    if os.path.exists(version_file):
-        with open(version_file, encoding="utf-8") as f:
-            app.config["STATIC_VERSION"] = f.read().strip()
-    else:
-        static_folder = os.path.join(app.root_path, "static")
-        app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
+    # OPTIMIZATION: Static Asset Versioning Strategy
+    # Priority:
+    # 1. Config/Env Var (Developer Override)
+    # 2. version.txt (Docker Build Artifact)
+    # 3. Dynamic Calculation (Local Development Fallback)
+
+    if not app.config.get("STATIC_VERSION"):
+        version_file = os.path.join(app.root_path, "version.txt")
+        if os.path.exists(version_file):
+            with open(version_file, encoding="utf-8") as f:
+                app.config["STATIC_VERSION"] = f.read().strip()
+        else:
+            static_folder = os.path.join(app.root_path, "static")
+            app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
 
     # OPTIMIZATION: Calculate enabled status once at startup to avoid per-request logic
     abs_url = app.config.get("ABS_URL")

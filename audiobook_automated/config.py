@@ -21,6 +21,10 @@ class Config:
     # Static Asset Caching (1 Year)
     SEND_FILE_MAX_AGE_DEFAULT: int = 31536000
 
+    # Static Version Override (Optional)
+    # Allows developers to force a version string via .env, overriding the Docker build hash.
+    STATIC_VERSION: str | None = os.getenv("STATIC_VERSION")
+
     # File System
     SAVE_PATH_BASE: str | None = os.getenv("SAVE_PATH_BASE")
 

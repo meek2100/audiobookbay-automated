@@ -5,7 +5,7 @@ import hashlib
 import os
 import re
 
-from audiobook_automated.constants import FALLBACK_TITLE, WINDOWS_RESERVED_NAMES
+from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX, WINDOWS_RESERVED_NAMES
 
 
 def sanitize_title(title: str | None) -> str:
@@ -44,7 +44,7 @@ def sanitize_title(title: str | None) -> str:
     base_stem = sanitized.split(".")[0]
 
     if sanitized.upper() in WINDOWS_RESERVED_NAMES or base_stem.upper() in WINDOWS_RESERVED_NAMES:
-        return f"{sanitized}_Safe"
+        return f"{sanitized}{SAFE_SUFFIX}"
 
     return sanitized
 
