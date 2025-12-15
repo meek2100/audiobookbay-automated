@@ -21,37 +21,33 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "flask==3.0.3",
-    "requests==2.32.3",
-    "beautifulsoup4==4.12.3",
-    "lxml==5.3.0",
-    "qbittorrent-api==2024.10.68",
+    "Flask==3.1.2",
+    "requests==2.32.5",
+    "beautifulsoup4==4.14.3",
+    "lxml==6.0.2",
+    "qbittorrent-api==2025.11.1",
     "transmission-rpc==7.0.11",
-    "deluge-web-client==2.0.1",
-    "cachetools==5.5.0",
+    "deluge-web-client==2.0.2",
+    "cachetools==6.2.4",
     "gunicorn==23.0.0",
-    "Flask-WTF==1.2.1",
-    "Flask-Limiter==3.8.0",
+    "Flask-WTF==1.2.2",
+    "Flask-Limiter==4.1.1",
 ]
-
 [project.optional-dependencies]
 dev = [
-    "pytest==8.3.2",
+    "pytest==9.0.2",
     "pytest-flask==1.3.0",
-    "pytest-env==1.1.3",
-    "pytest-cov==5.0.0",
+    "pytest-env==1.2.0",
+    "pytest-cov==7.0.0",
     "requests-mock==1.12.1",
-    "ruff==0.6.2",
-    "pre-commit==3.8.0",
-    "mypy==1.11.1",
-    "types-requests==2.32.0.20240712",
-    "types-cachetools==5.5.0.20240820",
-    "types-setuptools==74.0.0.20240831",
-    "types-flask==1.1.6",
-    "types-beautifulsoup4==4.12.0.20240511",
-    "types-jsonschema==4.23.0.20240813",
-    "types-gunicorn==22.0.0.20240506",
-    "pydocstyle==6.3.0",
+    "ruff==0.14.9",
+    "pre-commit==4.5.0",
+    "mypy==1.19.1",
+    "types-requests==2.32.4.20250913",
+    "types-cachetools==6.2.0.20251022",
+    "types-setuptools==80.9.0.20250822",
+    "types-jsonschema==4.25.1.20251009",
+    "types-gunicorn==23.0.0.20251031",
 ]
 
 [project.urls]
@@ -82,8 +78,11 @@ line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "S", "UP", "PL"]
+select = ["B", "D", "E", "F", "I", "S", "UP", "PL"]
 ignore = ["E501"]
+
+[tool.ruff.lint.docstring-convention]
+convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 # Tests are allowed to use asserts, magic values, hardcoded passwords, and weak crypto
@@ -113,10 +112,8 @@ strict = true
 [[tool.mypy.overrides]]
 module = [
     "flask_wtf.csrf",
-    "flask_limiter.*",
     "deluge_web_client",
     "transmission_rpc",
-    "qbittorrentapi",
     "bs4.*",
     "urllib3.*",
     "requests_mock.*",
@@ -124,6 +121,3 @@ module = [
 ]
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
-
-[tool.pydocstyle]
-convention = "google"
