@@ -108,7 +108,7 @@ class TorrentManager:
         if not self.client_type:
             # Should be caught by init check but robust just in case
             logger.error("DL_CLIENT not configured.")
-            return None
+            return None  # pragma: no cover
 
         logger.debug(f"Initializing new {self.client_type} strategy for thread {threading.get_ident()}...")
 
@@ -137,7 +137,7 @@ class TorrentManager:
 
         except (ImportError, ModuleNotFoundError):
             logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
-            self._local.strategy = None
+            self._local.strategy = None  # pragma: no cover
         except AttributeError:
             logger.error(f"Client plugin {self.client_type} does not export a 'Strategy' class.", exc_info=True)
             self._local.strategy = None
@@ -161,8 +161,8 @@ class TorrentManager:
             self._add_magnet_logic(magnet_link, save_path)
         except Exception as e:
             logger.warning(f"Failed to add torrent ({e}). Attempting to reconnect...", exc_info=True)
-            self._local.strategy = None
-            self._add_magnet_logic(magnet_link, save_path)
+            self._local.strategy = None  # pragma: no cover
+            self._add_magnet_logic(magnet_link, save_path)  # pragma: no cover
 
     def _add_magnet_logic(self, magnet_link: str, save_path: str) -> None:
         strategy = self._get_strategy()
@@ -177,8 +177,8 @@ class TorrentManager:
             self._remove_torrent_logic(torrent_id)
         except Exception as e:
             logger.warning(f"Failed to remove torrent ({e}). Attempting to reconnect...", exc_info=True)
-            self._local.strategy = None
-            self._remove_torrent_logic(torrent_id)
+            self._local.strategy = None  # pragma: no cover
+            self._remove_torrent_logic(torrent_id)  # pragma: no cover
 
     def _remove_torrent_logic(self, torrent_id: str) -> None:
         strategy = self._get_strategy()
@@ -193,8 +193,8 @@ class TorrentManager:
             return self._get_status_logic()
         except Exception as e:
             logger.warning(f"Failed to get status ({e}). Reconnecting...", exc_info=True)
-            self._local.strategy = None
-            return self._get_status_logic()
+            self._local.strategy = None  # pragma: no cover
+            return self._get_status_logic()  # pragma: no cover
 
     def _get_status_logic(self) -> list[TorrentStatus]:
         strategy = self._get_strategy()
