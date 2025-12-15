@@ -138,7 +138,7 @@ def test_get_status_deluge_with_label_plugin() -> None:
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
         strategy.connect()
-        results = strategy.get_status("my_category")
+        strategy.get_status("my_category")
 
         # Verify filter_dict includes label
         mock_instance.get_torrents_status.assert_called_with(

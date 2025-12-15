@@ -120,7 +120,7 @@ class TorrentManager:
             module = importlib.import_module(f".{self.client_type}", package="audiobook_automated.clients")
 
             # Expecting a class named 'Strategy'
-            strategy_class = getattr(module, "Strategy")
+            strategy_class = module.Strategy
 
             # Instantiate with standard args + kwargs for flexibility
             strategy = strategy_class(

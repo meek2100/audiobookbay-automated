@@ -1,11 +1,8 @@
 """Unit tests for QbittorrentStrategy."""
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
-from qbittorrentapi import LoginFailed
 
 from audiobook_automated.clients.qbittorrent import Strategy as QbittorrentStrategy
 
