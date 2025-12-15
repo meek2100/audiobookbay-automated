@@ -143,7 +143,7 @@ class TorrentManager:
 
         except (ImportError, ModuleNotFoundError):
             logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
-            self._local.strategy = None  # pragma: no cover
+            self._local.strategy = None
         except AttributeError:
             logger.error(f"Client plugin {self.client_type} does not export a 'Strategy' class.", exc_info=True)
             self._local.strategy = None
