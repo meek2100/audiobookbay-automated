@@ -230,10 +230,7 @@ def test_logic_methods_no_client(app: Flask, setup_manager: Any) -> None:
 
 
 def test_remove_torrent_retry_coverage(app: Flask, setup_manager: Any) -> None:
-    """Test retry logic in remove_torrent via mocked strategy.
-
-    Covers lines 176-179 in manager.py.
-    """
+    """Test retry logic in remove_torrent via mocked strategy."""
     manager = setup_manager(app)
 
     # Mock _get_strategy to return S1 (fails), then S2 (succeeds).
@@ -243,9 +240,6 @@ def test_remove_torrent_retry_coverage(app: Flask, setup_manager: Any) -> None:
     strategy_ok = MagicMock()
 
     # We must patch _get_strategy because _remove_torrent_logic calls it internally.
-    # This ensures that when the first call fails, the exception handlers run,
-    # force_disconnect runs (which does nothing to our mock but that's fine),
-    # and then the retry logic calls _get_strategy again (getting S2).
     with patch.object(manager, "_get_strategy", side_effect=[strategy_fail, strategy_ok]) as mock_get_strat:
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
             manager.remove_torrent("123")
@@ -253,7 +247,7 @@ def test_remove_torrent_retry_coverage(app: Flask, setup_manager: Any) -> None:
             # Verify we tried twice
             assert mock_get_strat.call_count == 2
 
-            # Verify retry log (Line 177)
+            # Verify retry log
             assert mock_logger.warning.called
             assert "Attempting to reconnect" in str(mock_logger.warning.call_args[0][0])
 
@@ -264,10 +258,7 @@ def test_remove_torrent_retry_coverage(app: Flask, setup_manager: Any) -> None:
 
 
 def test_add_magnet_retry_coverage(app: Flask, setup_manager: Any) -> None:
-    """Test retry logic in add_magnet via mocked strategy.
-
-    Explicit coverage for add_magnet retry block.
-    """
+    """Test retry logic in add_magnet via mocked strategy."""
     manager = setup_manager(app)
 
     strategy_fail = MagicMock()
@@ -289,14 +280,10 @@ def test_get_status_retry_coverage(app: Flask, setup_manager: Any) -> None:
     manager = setup_manager(app)
 
     strategy_mock = MagicMock()
-    # Return a dict that matches TorrentStatus structure partially or cast it
     mock_status = cast(list[TorrentStatus], [{"name": "test"}])
     strategy_mock.get_status.return_value = mock_status
 
     with patch.object(manager, "_get_strategy") as mock_get_strat:
-        # First call returns None (simulating disconnect), triggering exception in _get_status_logic
-        # Wait, _get_status_logic raises ConnectionError if None.
-        # So we need to simulate _get_strategy returning a strategy that raises an exception.
         strategy_fail = MagicMock()
         strategy_fail.get_status.side_effect = Exception("Conn Error")
 
@@ -313,3 +300,30 @@ def test_get_status_retry_coverage(app: Flask, setup_manager: Any) -> None:
             assert "Reconnecting" in str(mock_logger.warning.call_args[0][0])
 
             assert mock_get_strat.call_count == 2
+
+
+def test_force_disconnect_exception_handling(app: Flask, setup_manager: Any) -> None:
+    """Test that exceptions during close() in _force_disconnect are caught and logged.
+
+    Targets lines 176-179 in manager.py:
+        except Exception as e:
+            logger.warning(f"Error closing strategy during reconnect: {e}")
+    """
+    manager = setup_manager(app)
+
+    # Setup a strategy that raises an error on close()
+    mock_strategy = MagicMock()
+    mock_strategy.close.side_effect = Exception("Close Error")
+    manager._local.strategy = mock_strategy
+
+    with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+        manager._force_disconnect()
+
+        # Verify the exception was logged
+        mock_logger.warning.assert_called()
+        args, _ = mock_logger.warning.call_args
+        assert "Error closing strategy during reconnect" in args[0]
+        assert "Close Error" in str(args[0])
+
+    # Verify strategy was still cleared
+    assert manager._local.strategy is None
