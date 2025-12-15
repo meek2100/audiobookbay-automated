@@ -12,6 +12,7 @@ from audiobook_automated.scraper import fetch_and_parse_page
 
 
 def test_fetch_and_parse_page_real_structure(real_world_html: str, mock_sleep: Any) -> None:
+    """Test the end-to-end fetching and parsing logic using a real HTML snippet."""
     hostname = "audiobookbay.lu"
     query = "test"
     page = 1
@@ -37,6 +38,7 @@ def test_fetch_and_parse_page_real_structure(real_world_html: str, mock_sleep: A
 
 
 def test_fetch_and_parse_page_unknown_bitrate() -> None:
+    """Test that '?' bitrates are correctly parsed as 'Unknown'."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">Test</a></h2></div>
@@ -56,6 +58,7 @@ def test_fetch_and_parse_page_unknown_bitrate() -> None:
 
 
 def test_fetch_and_parse_page_malformed() -> None:
+    """Test that malformed HTML (no posts) returns an empty list."""
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
@@ -88,6 +91,7 @@ def test_fetch_and_parse_page_zero_results(mock_sleep: Any) -> None:
 
 
 def test_fetch_and_parse_page_mixed_validity() -> None:
+    """Test that the parser skips broken posts while retaining valid ones."""
     mixed_html = """
     <div class="post"><div>Broken Info</div></div>
     <div class="post">
@@ -106,6 +110,7 @@ def test_fetch_and_parse_page_mixed_validity() -> None:
 
 
 def test_parsing_structure_change() -> None:
+    """Test resilience against HTML structure changes (missing recognized tags)."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
@@ -123,6 +128,7 @@ def test_parsing_structure_change() -> None:
 
 
 def test_fetch_and_parse_page_language_fallback() -> None:
+    """Test fallback when language regex fails to match."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
@@ -187,6 +193,7 @@ def test_fetch_and_parse_page_no_posted_date() -> None:
 
 
 def test_fetch_and_parse_page_missing_title() -> None:
+    """Test that posts missing a title header are skipped."""
     hostname = "audiobookbay.lu"
     query = "no_title"
     html = """
@@ -205,6 +212,7 @@ def test_fetch_and_parse_page_missing_title() -> None:
 
 
 def test_fetch_page_post_exception(caplog: Any) -> None:
+    """Test that exceptions raised during individual post parsing are logged and skipped."""
     mock_session = MagicMock()
     mock_session.get.return_value.text = "<html></html>"
     mock_session.get.return_value.status_code = 200
@@ -222,6 +230,7 @@ def test_fetch_page_post_exception(caplog: Any) -> None:
 
 
 def test_fetch_page_urljoin_exception(real_world_html: str) -> None:
+    """Test that exceptions during URL joining return an empty list."""
     mock_session = MagicMock()
     mock_session.get.return_value.text = real_world_html
     mock_session.get.return_value.status_code = 200
@@ -233,6 +242,7 @@ def test_fetch_page_urljoin_exception(real_world_html: str) -> None:
 
 
 def test_fetch_and_parse_page_missing_cover_image() -> None:
+    """Test that a missing cover image results in a None cover field."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">No Cover</a></h2></div>
@@ -249,6 +259,7 @@ def test_fetch_and_parse_page_missing_cover_image() -> None:
 
 
 def test_fetch_and_parse_page_missing_post_info() -> None:
+    """Test parsing logic when the 'postInfo' div is entirely missing."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">No Info</a></h2></div>
@@ -264,6 +275,7 @@ def test_fetch_and_parse_page_missing_post_info() -> None:
 
 
 def test_fetch_and_parse_page_remote_default_cover_optimization() -> None:
+    """Test that the known 'default_cover.jpg' URL is converted to None."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">Remote Default</a></h2></div>
@@ -308,6 +320,7 @@ def test_fetch_page_special_characters(real_world_html: str, mock_sleep: Any) ->
 
 
 def test_fetch_page_timeout(mock_sleep: Any) -> None:
+    """Test that timeouts propagate correctly."""
     hostname = "audiobookbay.lu"
     query = "timeout"
     page = 1

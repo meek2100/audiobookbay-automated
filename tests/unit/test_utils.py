@@ -33,6 +33,7 @@ def test_sanitize_path_traversal() -> None:
 
 
 def test_sanitize_windows_reserved() -> None:
+    """Test that trailing periods and spaces (unfriendly to Windows) are removed."""
     # Trailing periods and spaces are bad in Windows
     assert sanitize_title("The End. ") == "The End"
 

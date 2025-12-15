@@ -63,6 +63,7 @@ def test_get_book_details_caching(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_success(details_html: str, mock_sleep: Any) -> None:
+    """Test successful parsing of book details from a valid HTML page."""
     # Cache cleared automatically by fixture
     mock_session = MagicMock()
     mock_response = MagicMock()
@@ -102,6 +103,7 @@ def test_get_book_details_default_cover_skip(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_failure(mock_sleep: Any) -> None:
+    """Test that RequestExceptions are propagated up from the session."""
     # FIX: Patch get_thread_session as that is what core.py imports/uses
     mock_session = MagicMock()
     mock_session.get.side_effect = requests.exceptions.RequestException("Net Down")
@@ -119,12 +121,14 @@ def test_get_book_details_ssrf_protection() -> None:
 
 
 def test_get_book_details_empty(mock_sleep: Any) -> None:
+    """Test that providing an empty URL string raises a ValueError."""
     with pytest.raises(ValueError) as exc:
         get_book_details("")
     assert "No URL provided" in str(exc.value)
 
 
 def test_get_book_details_url_parse_error(mock_sleep: Any) -> None:
+    """Test that malformed URLs trigger a ValueError."""
     with patch("audiobook_automated.scraper.core.urlparse", side_effect=Exception("Boom")):
         with pytest.raises(ValueError) as exc:
             get_book_details("http://anything")
@@ -132,6 +136,7 @@ def test_get_book_details_url_parse_error(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_missing_metadata(mock_sleep: Any) -> None:
+    """Test fallback to 'Unknown' when metadata fields are missing from HTML."""
     html = """<div class="post"><div class="postTitle"><h1>Empty Book</h1></div></div>"""
     mock_session = MagicMock()
     mock_response = MagicMock()
@@ -147,6 +152,7 @@ def test_get_book_details_missing_metadata(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_unknown_bitrate_normalization(mock_sleep: Any) -> None:
+    """Test that a bitrate of '?' is normalized to 'Unknown'."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Unknown Bitrate</h1></div>
@@ -166,6 +172,7 @@ def test_get_book_details_unknown_bitrate_normalization(mock_sleep: Any) -> None
 
 
 def test_get_book_details_partial_bitrate(mock_sleep: Any) -> None:
+    """Test parsing when only the bitrate is present in the format line."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -186,6 +193,7 @@ def test_get_book_details_partial_bitrate(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_partial_format(mock_sleep: Any) -> None:
+    """Test parsing when only the format (e.g., MP3) is present."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Partial Info</h1></div>
@@ -206,6 +214,7 @@ def test_get_book_details_partial_format(mock_sleep: Any) -> None:
 
 
 def test_get_book_details_content_without_metadata_labels(mock_sleep: Any) -> None:
+    """Test behavior when the content div exists but contains no recognizable labels."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>No Metadata</h1></div>
