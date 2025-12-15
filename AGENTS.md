@@ -188,6 +188,11 @@ AI agents must follow the strictest, safest interpretation of these rules.
 
 ## 2. Robustness Over Raw Speed
 
+### Production Hardening (New)
+
+- **Explicit Timeouts:** All blocking I/O calls (requests, socket operations) MUST have an explicit constant defined in
+  `constants.py` (e.g., `ABS_TIMEOUT_SECONDS`). Magic number timeouts are prohibited.
+
 ### Rate Limiting & Scraping
 
 - Safety > speed.

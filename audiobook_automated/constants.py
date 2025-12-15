@@ -38,6 +38,9 @@ WINDOWS_RESERVED_NAMES: Final[set[str]] = {
 }
 
 # --- Network Constants ---
+# Timeout for Audiobookshelf API integration calls (Seconds)
+ABS_TIMEOUT_SECONDS: Final[int] = 10
+
 # A curated list of diverse, modern User-Agents to rotate through to avoid bot detection.
 USER_AGENTS: Final[list[str]] = [
     # Desktop Chrome (Windows, Mac, Linux)

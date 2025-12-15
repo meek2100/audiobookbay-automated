@@ -8,7 +8,12 @@ from typing import Any, cast
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
 
-from audiobook_automated.constants import DEFAULT_COVER_FILENAME, FALLBACK_TITLE, MIN_SEARCH_QUERY_LENGTH
+from audiobook_automated.constants import (
+    ABS_TIMEOUT_SECONDS,
+    DEFAULT_COVER_FILENAME,
+    FALLBACK_TITLE,
+    MIN_SEARCH_QUERY_LENGTH,
+)
 
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
@@ -151,12 +156,14 @@ def send() -> Response | tuple[Response, int]:
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
 
-    if not details_url or not title:
-        logger.warning("Invalid send request received: missing link or title")
-        return cast(Response, jsonify({"message": "Invalid request"})), 400
+    # Check raw title existence. We must allow titles that sanitize to FALLBACK_TITLE (e.g. "...")
+    # to proceed to the collision handler, rather than blocking them as "Invalid".
+    if not details_url or not title or not title.strip():
+        logger.warning("Invalid send request received: missing link or valid title")
+        return cast(Response, jsonify({"message": "Invalid request: Title or Link missing"})), 400
 
-    # Sanitize title immediately for safe logging
     safe_title = sanitize_title(title)
+
     logger.info(f"Received download request for '{safe_title}'")
 
     try:
@@ -167,9 +174,10 @@ def send() -> Response | tuple[Response, int]:
             return cast(Response, jsonify({"message": f"Download failed: {error}"})), 500
 
         # Collision Prevention:
-        # 1. Fallback Title (Sanitization completely emptied the string)
+        # 1. Fallback Title (Sanitization completely emptied the string, e.g. "...")
         # 2. _Safe Suffix (Reserved Windows filename like "CON" -> "CON_Safe")
         # In both cases, we append a UUID to ensure multiple books don't merge into one folder.
+        # This is a critical data integrity check.
         if safe_title == FALLBACK_TITLE or safe_title.endswith("_Safe"):
             logger.warning(f"Title '{title}' required fallback handling ('{safe_title}'). Appending UUID for safety.")
             unique_id = uuid.uuid4().hex[:8]
@@ -194,6 +202,13 @@ def send() -> Response | tuple[Response, int]:
                 }
             ),
         )
+    except ConnectionError as ce:
+        # Upstream service unavailable (mirrors down)
+        logger.error(f"Upstream connection failed during send: {ce}")
+        return cast(
+            Response,
+            jsonify({"message": "Upstream service unavailable. Please try again later."}),
+        ), 503
     except Exception as e:
         logger.error(f"Send failed: {e}", exc_info=True)
         return cast(Response, jsonify({"message": str(e)})), 500
@@ -249,7 +264,8 @@ def reload_library() -> Response | tuple[Response, int]:
     try:
         url = f"{abs_url}/api/libraries/{abs_lib}/scan"
         headers = {"Authorization": f"Bearer {abs_key}"}
-        response = requests.post(url, headers=headers, timeout=10)
+        # TIMEOUT: Explicit timeout constant used to prevent hanging
+        response = requests.post(url, headers=headers, timeout=ABS_TIMEOUT_SECONDS)
         response.raise_for_status()
         logger.info("Audiobookshelf library scan initiated successfully.")
         return cast(Response, jsonify({"message": "Audiobookshelf library scan initiated."}))

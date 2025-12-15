@@ -13,9 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 class ClientLocal(threading.local):
-    """Thread-local storage for client strategies with strict typing."""
+    """Thread-local storage for client strategies with strict typing.
 
-    strategy: TorrentClientStrategy | None = None
+    Ensures that attributes are initialized for every new thread context.
+    """
+
+    def __init__(self) -> None:
+        """Initialize thread-local attributes."""
+        super().__init__()
+        self.strategy: TorrentClientStrategy | None = None
 
 
 class TorrentManager:
@@ -124,6 +130,11 @@ class TorrentManager:
             # This relies on the file audiobook_automated/clients/{self.client_type}.py existing
             module = importlib.import_module(f".{self.client_type}", package="audiobook_automated.clients")
 
+            # Validate that the module actually has the Strategy class
+            if not hasattr(module, "Strategy"):
+                logger.error(f"Client plugin '{self.client_type}' found, but it does not export a 'Strategy' class.")
+                return None
+
             # Expecting a class named 'Strategy'
             strategy_class = module.Strategy
 
@@ -143,9 +154,6 @@ class TorrentManager:
 
         except (ImportError, ModuleNotFoundError):
             logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
-            self._local.strategy = None
-        except AttributeError:
-            logger.error(f"Client plugin {self.client_type} does not export a 'Strategy' class.", exc_info=True)
             self._local.strategy = None
         except Exception as e:
             logger.error(f"Error initializing torrent client strategy: {e}", exc_info=True)

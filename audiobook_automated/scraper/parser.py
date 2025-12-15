@@ -23,7 +23,9 @@ RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b")
 
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
 RE_LANGUAGE = re.compile(r"Language:\s*(\S+)", re.IGNORECASE)
-RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|$)")
+# Robustness: Allow for end of string or 'Language:' as terminator for Category capture.
+# This prevents failure if the layout changes and 'Language:' is missing.
+RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|\s*$)", re.IGNORECASE)
 
 # Pre-compiled label patterns for parsing content
 # Robustness: Use IGNORECASE and allow optional whitespace for reliability

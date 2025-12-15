@@ -175,6 +175,30 @@ def test_parse_post_content_normalization() -> None:
     assert meta.bitrate == "Unknown"  # Was empty
 
 
+def test_parse_post_content_malformed_category() -> None:
+    """Test parsing when 'Language' label is missing or structure is abnormal.
+
+    This ensures the regex `r"Category:\s*(.+?)(?:\s+Language:|\s*$)"` handles
+    edge cases where the expected terminator isn't present.
+    """
+    # Case 1: End of string, no Language
+    html_info = """<div class="postInfo">Category: Horror</div>"""
+    soup_info = BeautifulSoup(html_info, "lxml").find("div")
+    soup_content = MagicMock(spec=Tag)
+
+    assert isinstance(soup_info, Tag)
+    meta = parse_post_content(soup_content, soup_info)
+
+    assert meta.category == ["Horror"]
+
+    # Case 2: Extra whitespace at end
+    html_info_2 = """<div class="postInfo">Category: Thriller   </div>"""
+    soup_info_2 = BeautifulSoup(html_info_2, "lxml").find("div")
+    assert isinstance(soup_info_2, Tag)
+    meta_2 = parse_post_content(soup_content, soup_info_2)
+    assert meta_2.category == ["Thriller"]
+
+
 def test_parse_post_content_empty_category_results_in_unknown() -> None:
     """Test that a category string resulting in an empty list falls back to ['Unknown'].
 

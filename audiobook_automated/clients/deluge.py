@@ -74,8 +74,12 @@ class Strategy(TorrentClientStrategy):
         except Exception as e:
             # Fallback: If we tried with a label and it failed, retry without it
             # This handles cases where detection gave a false positive or transient error
-            if self.label_plugin_enabled and ("label" in str(e).lower() or "unknown parameter" in str(e).lower()):
-                logger.warning(f"Deluge Label error despite plugin detection ({e}). Retrying without category.")
+            error_msg = str(e).lower()
+            if self.label_plugin_enabled and ("label" in error_msg or "unknown parameter" in error_msg):
+                logger.warning(
+                    f"Deluge Label error despite plugin detection ({e}). "
+                    "Downgrading to label-less download for this torrent."
+                )
                 try:
                     fallback_options = TorrentOptions(download_location=save_path)
                     self.client.add_torrent_magnet(magnet_link, torrent_options=fallback_options)
