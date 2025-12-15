@@ -86,6 +86,9 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "S", "UP", "PL"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["S101"]
+
 [tool.mypy]
 python_version = "3.11"
 warn_unused_configs = true
@@ -108,7 +111,6 @@ ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 
 [tool.bandit]
-skips = ["B101"]
 exclude = ["tests/"]
 
 [tool.pydocstyle]
