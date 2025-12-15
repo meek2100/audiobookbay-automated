@@ -102,3 +102,17 @@ repos:
       - id: codespell
         exclude: ^(poetry\.lock|package-lock\.json)$
         args: ["--ignore-words-list", "afterAll"]
+
+  # 9. Local Custom Policy: File Headers
+  - repo: local
+    hooks:
+      - id: enforce-file-headers
+        name: Enforce File Headers
+        # We use --fix so developers get auto-fixes.
+        # Remove --fix if you only want it to complain without editing.
+        entry: python3 scripts/manage_headers.py --fix
+        language: python
+        # Only run on specific text types
+        types_or: [python, javascript, css, html, yaml, shell]
+        # CRITICAL: Exclude vendor, migrations, and lock files
+        exclude: ^(audiobook_automated/static/vendor/|migrations/|package-lock.json)
