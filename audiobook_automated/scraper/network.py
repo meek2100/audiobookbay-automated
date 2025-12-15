@@ -63,7 +63,7 @@ def get_semaphore() -> threading.BoundedSemaphore:
 
 def get_random_user_agent() -> str:
     """Return a random User-Agent string from the constants list."""
-    return random.choice(USER_AGENTS)  # nosec B311 # noqa: S311
+    return random.choice(USER_AGENTS)  # nosec B311  # noqa: S311
 
 
 def get_trackers() -> list[str]:

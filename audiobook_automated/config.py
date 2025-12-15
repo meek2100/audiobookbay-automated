@@ -12,7 +12,7 @@ class Config:
 
     # Core Flask Config
     # nosec B105: Default key is intentional for development; validation logic handles warning user.
-    # noqa: S105: Ruff flag for hardcoded password
+    # noqa: S105  # Ruff flag for hardcoded password
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
     FLASK_DEBUG: bool = os.getenv("FLASK_DEBUG", "0") == "1"
     TESTING: bool = os.getenv("TESTING", "0") == "1"
@@ -87,8 +87,9 @@ class Config:
     @classmethod
     def validate(cls, logger: logging.Logger) -> None:
         """Validate critical configuration at startup."""
-        # nosec B105, noqa: S105
-        if cls.SECRET_KEY == "change-this-to-a-secure-random-key":
+        # nosec B105
+        # The following line triggers S105/B105 but is intentional for validation.
+        if cls.SECRET_KEY == "change-this-to-a-secure-random-key":  # noqa: S105
             if cls.FLASK_DEBUG or cls.TESTING:
                 logger.warning(
                     "WARNING: You are using the default insecure SECRET_KEY. "

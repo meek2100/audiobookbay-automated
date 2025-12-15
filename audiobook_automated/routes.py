@@ -8,7 +8,7 @@ from typing import Any, cast
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
 
-from audiobook_automated.constants import DEFAULT_COVER_FILENAME, FALLBACK_TITLE
+from audiobook_automated.constants import DEFAULT_COVER_FILENAME, FALLBACK_TITLE, MIN_SEARCH_QUERY_LENGTH
 
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
@@ -79,8 +79,8 @@ def search() -> str | Response:
 
         if query:
             # SAFETY: Minimum length check to prevent scraping spam
-            if len(query) < 2:
-                error_message = "Search query must be at least 2 characters long."
+            if len(query) < MIN_SEARCH_QUERY_LENGTH:
+                error_message = f"Search query must be at least {MIN_SEARCH_QUERY_LENGTH} characters long."
                 return render_template("search.html", books=[], error=error_message, query=query)
 
             # AudiobookBay requires lowercase search terms

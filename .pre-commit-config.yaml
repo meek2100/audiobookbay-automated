@@ -95,15 +95,7 @@ repos:
       - id: pydocstyle
         exclude: "(tests/)"
 
-  # 8. Python Security Linter (Bandit)
-  - repo: https://github.com/PyCQA/bandit
-    rev: "1.9.2"
-    hooks:
-      - id: bandit
-        args: ["-c", "pyproject.toml"]
-        exclude: "(tests/)"
-
-  # 9. Spelling (codespell)
+  # 8. Spelling (codespell)
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:

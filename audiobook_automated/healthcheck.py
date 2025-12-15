@@ -22,7 +22,7 @@ def health_check(timeout: int = 3) -> None:
     # If using [::] (all IPv6), we query [::1].
     listen_host = os.getenv("LISTEN_HOST", "127.0.0.1")
 
-    if listen_host == "0.0.0.0":  # nosec B104 # noqa: S104
+    if listen_host == "0.0.0.0":  # nosec B104  # noqa: S104
         host = "127.0.0.1"
     elif listen_host == "[::]":
         host = "[::1]"
@@ -35,7 +35,7 @@ def health_check(timeout: int = 3) -> None:
     try:
         # TIMEOUT ADDED: Prevents the healthcheck from hanging indefinitely
         # nosec B310: URL is constructed from trusted local env vars (localhost/loopback)
-        # noqa: S310: Ruff flag for URL open
+        # noqa: S310  # Ruff flag for URL open
         with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310
             if response.status == 200:  # noqa: PLR2004
                 sys.exit(0)  # Success

@@ -51,7 +51,6 @@ dev = [
     "types-beautifulsoup4",
     "types-jsonschema",
     "types-gunicorn",
-    "bandit>=1.7.9",
     "pydocstyle>=6.3.0",
 ]
 
@@ -125,9 +124,6 @@ module = [
 ]
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
-
-[tool.bandit]
-exclude = ["tests/"]
 
 [tool.pydocstyle]
 convention = "google"

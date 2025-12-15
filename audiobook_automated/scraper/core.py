@@ -70,7 +70,7 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
         # OPTIMIZATION: Sleep outside the semaphore.
         # Sleeping while holding the semaphore blocks other threads from doing useful work.
         # Random jitter (0.5-1.5s) to prevent IP bans.
-        sleep_time = random.uniform(0.5, 1.5)  # nosec B311 # noqa: S311
+        sleep_time = random.uniform(0.5, 1.5)  # nosec B311  # noqa: S311
         time.sleep(sleep_time)
 
         # Semaphore is now retrieved dynamically
@@ -247,7 +247,7 @@ def get_book_details(details_url: str) -> BookDetails:
 
     try:
         # OPTIMIZATION: Sleep outside the semaphore (same as in fetch_and_parse_page)
-        time.sleep(random.uniform(0.5, 1.5))  # nosec B311 # noqa: S311
+        time.sleep(random.uniform(0.5, 1.5))  # nosec B311  # noqa: S311
 
         with get_semaphore():
             # 30s timeout for better resilience.

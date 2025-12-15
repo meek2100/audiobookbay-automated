@@ -1,11 +1,14 @@
-"""Global constants and static data for the application."""
+"""Application constants and configuration defaults."""
 
 from typing import Final
 
 # --- Application Constants ---
+FALLBACK_TITLE: Final[str] = "Unknown_Title_Fallback"
 DEFAULT_COVER_FILENAME: Final[str] = "default_cover.jpg"
-# Fallback directory name if title sanitization fails completely
-FALLBACK_TITLE: Final[str] = "Unknown_Title"
+
+# --- Search Configuration ---
+MIN_SEARCH_QUERY_LENGTH: Final[int] = 2
+
 
 # --- Filesystem Constants ---
 # Windows reserved filenames to sanitize against, ensuring SMB/Cross-platform compatibility.

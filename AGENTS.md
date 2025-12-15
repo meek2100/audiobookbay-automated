@@ -107,9 +107,9 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Always maintain **100% coverage** (`--cov-fail-under=100`).
 - **MANDATE:** Code quality is strictly enforced via the following pre-commit hooks:
   - **MyPy:** Mandatory checks for static type correctness.
-  - **Bandit:** Mandatory scanning for common security vulnerabilities.
+  - **Ruff (Security):** Mandatory scanning for common security vulnerabilities (replacing Bandit).
   - **pydocstyle:** Mandatory enforcement of the Google Docstring Convention.
-  - **Ruff:** Mandatory linting and formatting.
+  - **Ruff (Lint/Format):** Mandatory linting and formatting.
 - Tests must be meaningful and not redundant.
 - Avoid testing the same happy/unhappy path twice unless essential.
 - Remove or consolidate redundant tests.
@@ -283,12 +283,14 @@ fetching. Future implementations must respect these specific library constraints
 
 - **Resource Cleanup:** All strategies must implement a `close()` method to release sockets/sessions explicitly.
 - **Progress Normalization:**
+
   - **qBittorrent:** Returns float `0.0 - 1.0`. Must multiply by 100.
   - **Transmission:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
   - **Deluge:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
   - **Result:** All strategies must return a standard `0.0 - 100.0` float rounded to 2 decimal places.
 
 - **Category/Label Filtering:**
+
   - **qBittorrent:** Supports efficient server-side filtering (`torrents_info(category=...)`). Use it.
   - **Transmission:** Does **NOT** support server-side label filtering. You **MUST** fetch all torrents and filter by
     label client-side (in Python).
