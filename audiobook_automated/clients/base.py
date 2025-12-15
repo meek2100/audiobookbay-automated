@@ -70,9 +70,9 @@ class TorrentClientStrategy(ABC):
         try:
             size: float = float(size_bytes)
             for unit in ["B", "KB", "MB", "GB", "TB"]:
-                if size < 1024.0:
+                if size < 1024.0:  # noqa: PLR2004
                     return f"{size:.2f} {unit}"
-                size /= 1024.0
+                size /= 1024.0  # noqa: PLR2004
             return f"{size:.2f} PB"
         except (ValueError, TypeError):
             return "Unknown"

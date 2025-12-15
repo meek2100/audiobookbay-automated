@@ -63,7 +63,7 @@ def get_semaphore() -> threading.BoundedSemaphore:
 
 def get_random_user_agent() -> str:
     """Return a random User-Agent string from the constants list."""
-    return random.choice(USER_AGENTS)  # nosec B311
+    return random.choice(USER_AGENTS)  # nosec B311 # noqa: S311
 
 
 def get_trackers() -> list[str]:
@@ -191,7 +191,7 @@ def check_mirror(hostname: str) -> str | None:
 
     try:
         response = session.head(url, headers=headers, timeout=5, allow_redirects=True)
-        if response.status_code == 200:
+        if response.status_code == 200:  # noqa: PLR2004
             return hostname
     except (requests.Timeout, requests.ConnectionError):
         # FAIL FAST: If HEAD times out, do NOT try GET.
@@ -202,7 +202,7 @@ def check_mirror(hostname: str) -> str | None:
     try:
         response = session.get(url, headers=headers, timeout=5, stream=True)
         response.close()
-        if response.status_code == 200:
+        if response.status_code == 200:  # noqa: PLR2004
             return hostname
     except (requests.Timeout, requests.RequestException):
         pass

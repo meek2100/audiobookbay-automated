@@ -60,7 +60,7 @@ def calculate_static_hash(static_folder: str) -> str:
     Returns:
         str: An 8-character hex string representing the content hash.
     """
-    hash_md5 = hashlib.md5()  # nosec B324
+    hash_md5 = hashlib.md5()  # nosec B324 # noqa: S324
 
     if not os.path.exists(static_folder):
         return "v1"
