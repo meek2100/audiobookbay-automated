@@ -56,6 +56,46 @@ def test_ensure_collision_safety_collision() -> None:
         assert result == expected
 
 
+def test_ensure_collision_safety_max_length() -> None:
+    """Test that titles exceeding max_length are truncated and get a UUID."""
+    # Mock uuid
+    with patch("uuid.uuid4") as mock_uuid:
+        mock_uuid.return_value.hex = "12345678" * 4
+        # UUID suffix is _12345678 (9 chars)
+
+        # Title: "123456789012345" (15 chars)
+        # Max: 10
+        # Expected Logic:
+        # trunc_len = max_length(10) - 9 = 1
+        # Prefix = title[:1] = "1"
+        # Suffix = "_12345678"
+        # Result = "1_12345678" (Total 10 chars)
+
+        title = "123456789012345"
+        result = ensure_collision_safety(title, max_length=10)
+        assert len(result) == 10
+        assert result == "1_12345678"
+
+
+def test_ensure_collision_safety_short_max_length() -> None:
+    """Test max_length logic when the allowed length is extremely short (< 9).
+
+    This forces trunc_len to be < 1, triggering the safety floor of 1.
+    """
+    with patch("uuid.uuid4") as mock_uuid:
+        mock_uuid.return_value.hex = "12345678" * 4
+
+        title = "Short"
+        # If max_length is 5, reserved is 9.
+        # trunc_len = 5 - 9 = -4.
+        # Logic should force trunc_len = 1.
+        # Result = "S" (1 char) + "_12345678" (9 chars) = "S_12345678" (10 chars total)
+        # Note: The function returns a string LONGER than max_length in this extreme edge case
+        # to ensure uniqueness/validity over strict length adherence (safety > strictness).
+        result = ensure_collision_safety(title, max_length=5)
+        assert result == "S_12345678"
+
+
 def test_calculate_static_hash(tmp_path: Path) -> None:
     """Test static hash calculation."""
     # Create dummy static structure

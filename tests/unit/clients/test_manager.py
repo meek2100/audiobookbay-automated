@@ -359,3 +359,29 @@ def test_force_disconnect_exception_handling(app: Flask, setup_manager: Any) -> 
 
     # Verify strategy was still cleared
     assert manager._local.strategy is None
+
+
+def test_verify_credentials_import_error(app: Flask, setup_manager: Any) -> None:
+    """Test verify_credentials handles ImportError gracefully (e.g. missing plugin)."""
+    manager = setup_manager(app, DL_CLIENT="qbittorrent")
+
+    # Capture the original import function
+    original_import = importlib.import_module
+
+    # Define a side effect that fails ONLY for the client module
+    def side_effect(name: str, *args: Any, **kwargs: Any) -> Any:
+        # Match against likely import names for the client plugin
+        if name == ".qbittorrent" or name == "audiobook_automated.clients.qbittorrent":
+            raise ImportError("Module missing")
+        return original_import(name, *args, **kwargs)
+
+    # Use side_effect instead of a blanket raise
+    with patch("importlib.import_module", side_effect=side_effect):
+        with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+            result = manager.verify_credentials()
+
+            assert result is False
+            # Verify the error was logged in _get_strategy
+            mock_logger.error.assert_called()
+            # It catches ImportError and logs "Unsupported download client..."
+            assert "Unsupported download client" in mock_logger.error.call_args[0][0]

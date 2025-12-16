@@ -171,21 +171,33 @@ def send() -> Response | tuple[Response, int]:
 
         if not magnet_link:
             logger.error(f"Failed to extract magnet link for '{safe_title}': {error}")
-            return cast(Response, jsonify({"message": f"Download failed: {error}"})), 500
+            # Map specific errors to 404/400 to avoid alerting on 500s
+            status_code = 404 if error and "found" in error else 400
+            return cast(Response, jsonify({"message": f"Download failed: {error}"})), status_code
+
+        # Dynamic Path Safety Calculation
+        # Calculate available length for directory name based on SAVE_PATH_BASE length.
+        # Max path on Windows is ~260. We reserve margin.
+        save_path_base = current_app.config.get("SAVE_PATH_BASE")
+        max_len = 240  # Default safe default
+        if save_path_base:
+            base_len = len(save_path_base)
+            # 260 - base_len - 1 (separator) - 10 (margin/uuid suffix buffer)
+            calculated_limit = 249 - base_len
+            # Ensure we don't go below a usable minimum (e.g. 50 chars)
+            max_len = max(50, calculated_limit)
 
         # Collision Prevention:
-        # Handles Fallback Title and Windows Reserved names by appending a UUID.
-        # This is a critical data integrity check moved to utils for central management.
+        # Handles Fallback Title, Windows Reserved names, and Path Length limits by appending UUID.
         previous_title = safe_title
-        safe_title = ensure_collision_safety(safe_title)
+        safe_title = ensure_collision_safety(safe_title, max_length=max_len)
 
         if safe_title != previous_title:
             logger.warning(
-                f"Title '{title}' required fallback handling ('{previous_title}'). "
+                f"Title '{title}' required fallback/truncate handling. "
                 f"Using collision-safe directory name: {safe_title}"
             )
 
-        save_path_base = current_app.config.get("SAVE_PATH_BASE")
         if save_path_base:
             save_path = os.path.join(save_path_base, safe_title)
         else:
@@ -281,13 +293,14 @@ def status() -> str | Response | tuple[Response, int]:
     Supports returning JSON for frontend polling via ?json=1.
 
     Query Params:
-        json (str): If set to "1", returns JSON instead of HTML.
+        json (str): If set to "1", "true", "yes", or "on", returns JSON instead of HTML.
 
     Returns:
         str | Response: Rendered HTML, JSON data, or Error Response.
     """
-    # Strict check for "1" to avoid "false"/"0" being interpreted as True
-    is_json = request.args.get("json") == "1"
+    # Robust boolean parsing
+    json_arg = request.args.get("json", "").lower()
+    is_json = json_arg in ("1", "true", "yes", "on")
 
     try:
         torrent_list = torrent_manager.get_status()

@@ -204,6 +204,9 @@ AI agents must follow the strictest, safest interpretation of these rules.
   `constants.py` (e.g., `ABS_TIMEOUT_SECONDS`). Magic number timeouts are prohibited.
 - **Dockerfile Build Order:** The Dockerfile MUST copy `pyproject.toml` and `audiobook_automated/` (the source code)
   **BEFORE** running `pip install .`. Failure to do so results in an empty package installation.
+- **Static Asset Versioning:** The `Dockerfile` MUST execute
+  `python3 -m audiobook_automated.utils > audiobook_automated/version.txt` during the build process to generate the
+  static asset hash. This avoids filesystem traversal at runtime.
 
 ### Rate Limiting & Scraping
 

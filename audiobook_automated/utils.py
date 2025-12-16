@@ -50,23 +50,39 @@ def sanitize_title(title: str | None) -> str:
     return sanitized
 
 
-def ensure_collision_safety(safe_title: str) -> str:
-    """Ensure a sanitized title is safe for filesystem creation by handling collisions.
+def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
+    """Ensure a sanitized title is safe for filesystem creation by handling collisions and length limits.
 
-    If the title matches the fallback or ends with the safe suffix (indicating a
-    reserved name collision), a UUID is appended to ensure uniqueness.
+    If the title matches the fallback, ends with the safe suffix (indicating a
+    reserved name collision), or exceeds the max_length, a UUID is appended/truncated
+    to ensure uniqueness and filesystem safety.
 
     Args:
         safe_title: The already sanitized title string.
+        max_length: The maximum allowed length for the directory name (default 240).
 
     Returns:
-        str: The collision-safe title, potentially with a UUID appended.
+        str: The collision-safe title, potentially truncated and with a UUID appended.
     """
+    needs_uuid = False
+
+    # Check 1: Reserved Name Collision or Fallback
     if safe_title == FALLBACK_TITLE or safe_title.endswith(SAFE_SUFFIX):
+        needs_uuid = True
+
+    # Check 2: Length Safety
+    # If the title is too long, we force UUID logic to safely truncate
+    if len(safe_title) > max_length:
+        needs_uuid = True
+
+    if needs_uuid:
         unique_id = uuid.uuid4().hex[:8]
-        # Truncate to leave room for ID (8 chars) + Underscore (1) = 9 chars.
-        # Max filename 255. Let's be safe with 240.
-        return f"{safe_title[:240]}_{unique_id}"
+        # Reserve space for ID (8 chars) + Underscore (1) = 9 chars.
+        trunc_len = max_length - 9
+        # Ensure we don't truncate to a negative or zero length
+        trunc_len = max(trunc_len, 1)
+        return f"{safe_title[:trunc_len]}_{unique_id}"
+
     return safe_title
 
 
@@ -103,3 +119,11 @@ def calculate_static_hash(static_folder: str | Path) -> str:
 
     # Return first 8 chars (sufficient for uniqueness)
     return hash_md5.hexdigest()[:8]
+
+
+if __name__ == "__main__":  # pragma: no cover
+    # Script entry point for Docker build time optimization.
+    # Calculates the hash of the static directory relative to this file
+    # and prints it to stdout for redirection to version.txt.
+    static_dir = Path(__file__).parent / "static"
+    print(calculate_static_hash(static_dir))

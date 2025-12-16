@@ -5,6 +5,8 @@ import concurrent.futures
 from typing import Any
 from unittest.mock import patch
 
+import pytest
+
 from audiobook_automated.scraper.core import search_audiobookbay
 
 
@@ -55,3 +57,13 @@ def test_search_partial_failure() -> None:
 
                 # 2. The cache should have been cleared due to the failure
                 mock_mirror_cache.clear.assert_called_once()
+
+
+def test_search_total_failure() -> None:
+    """Test that search raises ConnectionError when all mirrors fail (return None)."""
+    with patch("audiobook_automated.scraper.core.find_best_mirror", return_value=None):
+        with pytest.raises(ConnectionError) as exc:
+            search_audiobookbay("query")
+
+        # Verify specific error message used in core.py
+        assert "No reachable AudiobookBay mirrors" in str(exc.value)

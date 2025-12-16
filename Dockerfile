@@ -24,9 +24,9 @@ RUN apt-get update && \
 
 # 1. Copy project definition
 COPY pyproject.toml .
-
 # 2. Install dependencies (Optimized for caching)
-# We create a dummy directory structure so pip install . works for dependencies
+# We create a dummy directory structure so pip install .
+# works for dependencies
 # without invalidating the cache when source code changes later.
 RUN mkdir -p audiobook_automated && \
     touch audiobook_automated/__init__.py && \
@@ -42,10 +42,10 @@ RUN pip install --no-cache-dir --no-deps .
 
 # 5. Copy scripts with correct ownership
 COPY --chown=appuser:appuser entrypoint.sh .
-
-# 6. Set permissions on scripts and verify utils
+# 6. Set permissions on scripts and generate version artifact
+# Redirects the output of utils.py (the hash) to version.txt
 RUN chmod +x entrypoint.sh && \
-    python3 -m audiobook_automated.utils
+    python3 -m audiobook_automated.utils > audiobook_automated/version.txt
 
 # Expose the port the app runs on
 EXPOSE 5078

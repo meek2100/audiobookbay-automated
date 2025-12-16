@@ -22,17 +22,19 @@ MIN_TABLE_CELLS = 2
 # Why: AudioBookBay formats the info table unpredictably.
 # These regexes allow us to match table cells even if casing or whitespace changes slightly.
 RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
-# FUTURE PROOF: Updated to support SHA-1 (40 hex) and BitTorrent v2 SHA-256 (64 hex)
+# Why: Supports both SHA-1 (40 hex) and BitTorrent v2 SHA-256 (64 hex) hashes.
+# The boundary (\b) ensures we don't match partial hashes inside larger strings.
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b")
 
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
 RE_LANGUAGE = re.compile(r"Language:\s*(\S+)", re.IGNORECASE)
-# Robustness: Allow for end of string or 'Language:' as terminator for Category capture.
-# This prevents failure if the layout changes and 'Language:' is missing.
+# Why: The Category field is sometimes followed by "Language:", sometimes by end of line.
+# This regex uses a non-capturing group to robustly handle both terminators.
 RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|\s*$)", re.IGNORECASE)
 
 # Pre-compiled label patterns for parsing content
-# Robustness: Use IGNORECASE and allow optional whitespace for reliability
+# Why: Using IGNORECASE and allowing optional whitespace makes scraping resilient to
+# minor HTML layout changes or inconsistencies in older posts.
 RE_LABEL_POSTED = re.compile(r"Posted:", re.IGNORECASE)
 RE_LABEL_FORMAT = re.compile(r"Format:", re.IGNORECASE)
 RE_LABEL_BITRATE = re.compile(r"Bitrate:", re.IGNORECASE)
