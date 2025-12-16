@@ -44,7 +44,8 @@ class Strategy(TorrentClientStrategy):
         # Detect Plugins (Specifically 'Label')
         try:
             plugins_resp = self.client.get_plugins()
-            if plugins_resp.result and "Label" in plugins_resp.result:
+            # Narrow the type: verify it is a list or dict before checking for membership
+            if isinstance(plugins_resp.result, (list, dict)) and "Label" in plugins_resp.result:
                 self.label_plugin_enabled = True
                 logger.info("Deluge 'Label' plugin detected.")
             else:
