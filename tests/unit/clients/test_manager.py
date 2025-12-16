@@ -35,7 +35,8 @@ def test_init_dl_url_deluge_default(app: Flask, setup_manager: Any) -> None:
     with patch("audiobook_automated.clients.manager.logger") as mock_logger:
         manager = setup_manager(app, DL_CLIENT="deluge", DL_URL=None, DL_HOST=None, DL_PORT=None)
         assert manager.dl_url == "http://localhost:8112"
-        mock_logger.warning.assert_called_with("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
+        # UPDATED: Matched the actual log message in manager.py
+        mock_logger.warning.assert_called_with("DL_HOST missing. Defaulting Deluge to localhost.")
 
 
 def test_init_dl_port_missing(app: Flask, setup_manager: Any) -> None:
@@ -45,12 +46,16 @@ def test_init_dl_port_missing(app: Flask, setup_manager: Any) -> None:
         manager = setup_manager(app, DL_CLIENT="deluge", DL_HOST="deluge-host", DL_PORT=None)
         assert manager.port == 8112
         assert manager.dl_url == "http://deluge-host:8112"
-        mock_logger.info.assert_called_with("DL_PORT missing. Defaulting to 8112 for deluge.")
+        # UPDATED: Matched capitalization "Deluge"
+        mock_logger.info.assert_called_with("DL_PORT missing. Defaulting to 8112 for Deluge.")
 
         # Case 2: Other (qBittorrent) -> 8080
+        # NOTE: Fixing the failure above allows this code to run, restoring coverage to line 98.
         manager_qb = setup_manager(app, DL_CLIENT="qbittorrent", DL_HOST="qb-host", DL_PORT=None)
         assert manager_qb.port == 8080
         assert manager_qb.dl_url == "http://qb-host:8080"
+        # Added assertion to verify the generic log message as well
+        mock_logger.info.assert_called_with("DL_PORT missing. Defaulting to 8080 for qbittorrent.")
 
 
 def test_init_dl_url_parse_failure(app: Flask, setup_manager: Any) -> None:
@@ -125,6 +130,32 @@ def test_get_strategy_init_exception(app: Flask, setup_manager: Any) -> None:
             assert strategy is None
             args, _ = mock_logger.error.call_args
             assert "Error initializing torrent client strategy" in args[0]
+
+
+def test_get_strategy_syntax_error(app: Flask, setup_manager: Any) -> None:
+    """Test that SyntaxError in client plugin is caught and logged.
+
+    This ensures 100% coverage by hitting lines 153-154.
+    """
+    manager = setup_manager(app, DL_CLIENT="qbittorrent")
+
+    original_import = importlib.import_module
+
+    def side_effect(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name == ".qbittorrent" or name == "audiobook_automated.clients.qbittorrent":
+            raise SyntaxError("Bad syntax")
+        return original_import(name, *args, **kwargs)
+
+    with patch("importlib.import_module", side_effect=side_effect):
+        with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+            strategy = manager._get_strategy()
+            assert strategy is None
+
+            # Verify critical log was called
+            assert mock_logger.critical.called
+            args, kwargs = mock_logger.critical.call_args
+            assert "Syntax Error in client plugin" in args[0]
+            assert kwargs.get("exc_info") is True
 
 
 def test_get_strategy_missing_class(app: Flask, setup_manager: Any) -> None:
