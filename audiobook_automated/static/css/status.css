@@ -46,7 +46,9 @@ tbody tr {
     background: var(--glass-bg);
     box-shadow: var(--shadow-soft);
     border-radius: var(--border-radius);
-    transition: transform 0.2s ease, background 0.2s;
+    transition:
+        transform 0.2s ease,
+        background 0.2s;
 }
 
 tbody tr:hover {
