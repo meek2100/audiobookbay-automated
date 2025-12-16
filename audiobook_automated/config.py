@@ -5,6 +5,28 @@ import logging
 import os
 
 
+def _parse_env_int(key: str, default: int) -> int:
+    """Parse an integer environment variable safely.
+
+    Handles cases where values might be passed as float strings (e.g., "3.0")
+    by container orchestrators.
+
+    Args:
+        key: The environment variable key.
+        default: The default value if missing or invalid.
+
+    Returns:
+        int: The parsed integer.
+    """
+    raw = os.getenv(key)
+    if raw is None:
+        return default
+    try:
+        return int(float(raw.strip()))
+    except (ValueError, TypeError):
+        return default
+
+
 class Config:
     """Centralized configuration for the Flask application.
 
@@ -65,29 +87,15 @@ class Config:
     MAGNET_TRACKERS: list[str] = [t.strip() for t in _trackers_str.split(",") if t.strip()]
 
     # Page Limit (Default 3)
-    # Handles parsing of the environment variable for page scraping limits.
-    # Uses int(float(...)) to handle cases where env vars come in as "3.0".
-    PAGE_LIMIT: int
-    try:
-        PAGE_LIMIT = int(float(os.getenv("PAGE_LIMIT", "3").strip()))
-    except (ValueError, TypeError):
-        PAGE_LIMIT = 3
+    PAGE_LIMIT: int = _parse_env_int("PAGE_LIMIT", 3)
 
     # Scraper Concurrency
     # Defines the number of worker threads for the scraping executor.
-    SCRAPER_THREADS: int
-    try:
-        SCRAPER_THREADS = int(float(os.getenv("SCRAPER_THREADS", "3").strip()))
-    except (ValueError, TypeError):
-        SCRAPER_THREADS = 3
+    SCRAPER_THREADS: int = _parse_env_int("SCRAPER_THREADS", 3)
 
     # Scraper Request Timeout (Default 30)
     # Separated from Gunicorn timeout to ensure internal requests fail faster than the worker kill timer.
-    SCRAPER_TIMEOUT: int
-    try:
-        SCRAPER_TIMEOUT = int(float(os.getenv("SCRAPER_TIMEOUT", "30").strip()))
-    except (ValueError, TypeError):
-        SCRAPER_TIMEOUT = 30
+    SCRAPER_TIMEOUT: int = _parse_env_int("SCRAPER_TIMEOUT", 30)
 
     @classmethod
     def validate(cls, logger: logging.Logger) -> None:

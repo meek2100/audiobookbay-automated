@@ -59,10 +59,10 @@ jobs:
       fail-fast: false
       matrix:
         # PRODUCTION REQUIREMENT: Test ALL supported versions to ensure OS compatibility.
-        # 3.11: Debian 12 / Old Stable
+        # 3.11: Debian 12 / Legacy
         # 3.12: Ubuntu 24.04 / Old Stable
-        # 3.13: Fedora 41 / Current Stable
-        # 3.14: Fedora 43 / New Stable
+        # 3.13: Fedora 41 / Old Stable
+        # 3.14: Fedora 43 / Current Stable
         python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v6

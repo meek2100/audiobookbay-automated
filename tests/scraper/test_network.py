@@ -148,6 +148,18 @@ def test_get_ping_session_configuration() -> None:
     assert retry.backoff_factor == 0
 
 
+def test_get_ping_session_singleton() -> None:
+    """Test that get_ping_session returns the same singleton instance."""
+    # Reset singleton
+    network._ping_session = None
+
+    session1 = network.get_ping_session()
+    session2 = network.get_ping_session()
+
+    assert session1 is not None
+    assert session1 is session2
+
+
 def test_get_thread_session_initialization() -> None:
     """Test that get_thread_session creates a session and reuses it."""
     # Ensure we start with a clean state for this thread

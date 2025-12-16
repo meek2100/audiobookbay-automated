@@ -1,5 +1,6 @@
+# Dockerfile
 # Use an official Python runtime as a parent image
-# Using 3.14-slim as per project requirements, though 3.13 is current stable LTS recommendation.
+# Using 3.14-slim as per project requirements (Current Stable).
 FROM python:3.14-slim
 
 # Labels for container registry metadata
@@ -21,19 +22,23 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends tzdata gosu && \
     rm -rf /var/lib/apt/lists/*
 
-# 1. Copy project definition first
+# 1. Copy project definition
 COPY pyproject.toml .
 
-# 2. Install dependencies and create user in a single layer (Fixes DL3059)
+# 2. Copy source code so it can be installed
+# This MUST happen before pip install, otherwise the package is installed empty.
+COPY audiobook_automated audiobook_automated/
+
+# 3. Install dependencies and create user in a single layer (Fixes DL3059)
 # We create the user here to ensure it exists before we COPY files with ownership
-RUN pip install --no-cache-dir . && \
+RUN pip install --no-cache-dir . \
+    && \
     useradd -m appuser
 
-# 3. Copy the source code with correct ownership (Avoids huge chown layer)
-COPY --chown=appuser:appuser audiobook_automated audiobook_automated/
+# 4. Copy scripts with correct ownership
 COPY --chown=appuser:appuser entrypoint.sh .
 
-# 4. Set permissions on scripts and verify utils
+# 5. Set permissions on scripts and verify utils
 RUN chmod +x entrypoint.sh && \
     python3 -m audiobook_automated.utils
 
@@ -45,5 +50,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3 /app/audiobook_automated/healthcheck.py
 
 # Define the command to run the application
-# Note: We do NOT switch USER here; entrypoint.sh handles the switch to 'appuser' via gosu
-CMD ["./entrypoint.sh"]
+# ENTRYPOINT handles the switch to 'appuser' via gosu
+ENTRYPOINT ["./entrypoint.sh"]
+
+# CMD provides the default execution arguments
+CMD ["gunicorn", "-c", "python:audiobook_automated.config", "audiobook_automated.app:app"]

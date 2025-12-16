@@ -84,33 +84,25 @@ class TorrentManager:
 
     def _configure_defaults(self, raw_host: str | None, raw_port: str | None) -> None:
         """Configure default ports and URLs based on client type."""
-        # Note: We rely on string comparison here for legacy defaults.
-        # This assumes client_type is normalized to lowercase.
+        # If DL_URL is explicitly set, we do not need to construct it or guess ports
+        if self.dl_url:
+            return
 
-        if not self.dl_url:
-            # Case 1: Host provided, Port missing
-            if raw_host and not raw_port:
-                if self.client_type == "deluge":
-                    self.port = 8112
-                else:
-                    self.port = 8080
-                logger.info(f"DL_PORT missing. Defaulting to {self.port} for {self.client_type}.")
-                self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+        # Legacy Default Handling:
+        # Deluge defaults to port 8112 if the user did NOT explicitly provide a port.
+        # Note: 'self.port' is already set to 8080 by default in init_app if raw_port is None.
+        if not raw_port and self.client_type == "deluge":
+            self.port = 8112
+            logger.info("DL_PORT missing. Defaulting to 8112 for Deluge.")
+        elif not raw_port:
+            logger.info(f"DL_PORT missing. Defaulting to {self.port} for {self.client_type}.")
 
-            # Case 2: Host missing (implies using localhost default)
-            elif not raw_host:
-                if self.client_type == "deluge":
-                    logger.warning("DL_HOST missing. Defaulting Deluge URL to localhost:8112.")
-                    self.host = "localhost"
-                    self.port = 8112
-                    self.dl_url = "http://localhost:8112"
-                else:
-                    # Default for others
-                    self.dl_url = f"{self.scheme}://{self.host}:{self.port}"  # pragma: no cover
+        # Handle host default warning (init_app already sets self.host="localhost")
+        if not raw_host and self.client_type == "deluge":
+            logger.warning("DL_HOST missing. Defaulting Deluge to localhost.")
 
-            # Case 3: Both provided or fallback handled
-            else:
-                self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+        # Construct final URL from normalized values
+        self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
 
     def _get_strategy(self) -> TorrentClientStrategy | None:
         """Return the thread-local strategy instance or create/connect if needed."""
@@ -132,6 +124,7 @@ class TorrentManager:
             module = importlib.import_module(f".{self.client_type}", package="audiobook_automated.clients")
 
             # Validate that the module actually has the Strategy class
+            # Cast to Any to satisfy MyPy since it doesn't know the module content
             if not hasattr(module, "Strategy"):
                 logger.error(f"Client plugin '{self.client_type}' found, but it does not export a 'Strategy' class.")
                 return None
@@ -155,6 +148,9 @@ class TorrentManager:
 
         except (ImportError, ModuleNotFoundError):
             logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
+            self._local.strategy = None
+        except SyntaxError:
+            logger.critical(f"Syntax Error in client plugin: {self.client_type}", exc_info=True)
             self._local.strategy = None
         except Exception as e:
             logger.error(f"Error initializing torrent client strategy: {e}", exc_info=True)
@@ -183,7 +179,9 @@ class TorrentManager:
         """Close and clear the current strategy to force a fresh connection on retry."""
         if self._local.strategy:
             try:
-                self._local.strategy.close()
+                # EAFP: Strategy might not have close method or might fail
+                if hasattr(self._local.strategy, "close"):
+                    self._local.strategy.close()
             except Exception as e:
                 logger.warning(f"Error closing strategy during reconnect: {e}")
         self._local.strategy = None

@@ -202,6 +202,8 @@ AI agents must follow the strictest, safest interpretation of these rules.
   CI builds.
 - **Explicit Timeouts:** All blocking I/O calls (requests, socket operations) MUST have an explicit constant defined in
   `constants.py` (e.g., `ABS_TIMEOUT_SECONDS`). Magic number timeouts are prohibited.
+- **Dockerfile Build Order:** The Dockerfile MUST copy `pyproject.toml` and `audiobook_automated/` (the source code)
+  **BEFORE** running `pip install .`. Failure to do so results in an empty package installation.
 
 ### Rate Limiting & Scraping
 

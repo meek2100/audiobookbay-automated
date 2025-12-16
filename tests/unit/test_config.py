@@ -1,7 +1,6 @@
 # tests/unit/test_config.py
 """Unit tests for configuration validation."""
 
-import importlib
 import logging
 
 import pytest
@@ -20,7 +19,7 @@ def test_config_validate_success(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setattr(Config, "SECRET_KEY", "prod-secret-key")
     monkeypatch.setattr(Config, "SAVE_PATH_BASE", "/data")
     monkeypatch.setattr(Config, "DL_SCHEME", "https")
-    monkeypatch.setattr(Config, "DL_CLIENT", "qbittorrent")  # NEW: Required now
+    monkeypatch.setattr(Config, "DL_CLIENT", "qbittorrent")  # Required now
     monkeypatch.setattr(Config, "TESTING", False)
     monkeypatch.setattr(Config, "FLASK_DEBUG", False)
 
@@ -59,7 +58,6 @@ def test_config_validate_insecure_secret_prod(monkeypatch: MonkeyPatch, caplog: 
     monkeypatch.setenv("FLASK_DEBUG", "0")
     monkeypatch.setenv("TESTING", "0")
 
-    # Use setattr to prevent polluting the Config class for other tests
     monkeypatch.setattr(Config, "FLASK_DEBUG", False)
     monkeypatch.setattr(Config, "TESTING", False)
     monkeypatch.setattr(Config, "SECRET_KEY", "change-this-to-a-secure-random-key")
@@ -85,7 +83,6 @@ def test_config_validate_insecure_secret_dev(monkeypatch: MonkeyPatch, caplog: L
 def test_config_validate_invalid_log_level(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     """Ensure validation warns on invalid LOG_LEVEL and defaults to INFO."""
     monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL")
-    # We must patch the class attribute because it's loaded at import time
     monkeypatch.setattr(Config, "LOG_LEVEL_STR", "INVALID_LEVEL")
 
     Config.validate(logging.getLogger("test"))
@@ -115,34 +112,25 @@ def test_config_validate_page_limit_low(monkeypatch: MonkeyPatch, caplog: LogCap
     assert "Invalid PAGE_LIMIT '0'" in caplog.text
 
 
-def test_config_page_limit_parsing_error(monkeypatch: MonkeyPatch) -> None:
-    """Ensure module-level parsing falls back to 3 on invalid int."""
-    monkeypatch.setenv("PAGE_LIMIT", "not_an_integer")
-
-    # Reload the module to re-execute the module-level parsing logic
-    importlib.reload(config)
-
-    assert config.Config.PAGE_LIMIT == 3
+def test_parse_env_int_success(monkeypatch: MonkeyPatch) -> None:
+    """Test parsing a valid integer string."""
+    monkeypatch.setenv("TEST_INT", "42")
+    assert config._parse_env_int("TEST_INT", 10) == 42
 
 
-def test_config_scraper_threads_parsing_error(monkeypatch: MonkeyPatch) -> None:
-    """Ensure module-level parsing falls back to 3 on invalid SCRAPER_THREADS."""
-    monkeypatch.setenv("SCRAPER_THREADS", "invalid_int")
-
-    # Reload to re-trigger parsing
-    importlib.reload(config)
-
-    assert config.Config.SCRAPER_THREADS == 3
+def test_parse_env_int_float_string(monkeypatch: MonkeyPatch) -> None:
+    """Test parsing a float string as an integer (Docker/K8s common case)."""
+    monkeypatch.setenv("TEST_INT", "42.0")
+    assert config._parse_env_int("TEST_INT", 10) == 42
 
 
-def test_config_scraper_timeout_parsing_error(monkeypatch: MonkeyPatch) -> None:
-    """Ensure module-level parsing falls back to 30 on invalid SCRAPER_TIMEOUT.
+def test_parse_env_int_missing(monkeypatch: MonkeyPatch) -> None:
+    """Test fallback to default when env var is missing."""
+    monkeypatch.delenv("TEST_INT", raising=False)
+    assert config._parse_env_int("TEST_INT", 10) == 10
 
-    Covers app/config.py lines 83-84 (ValueError block).
-    """
-    monkeypatch.setenv("SCRAPER_TIMEOUT", "invalid_int")
 
-    # Reload to re-trigger parsing
-    importlib.reload(config)
-
-    assert config.Config.SCRAPER_TIMEOUT == 30
+def test_parse_env_int_invalid(monkeypatch: MonkeyPatch) -> None:
+    """Test fallback to default when env var is invalid garbage."""
+    monkeypatch.setenv("TEST_INT", "not-a-number")
+    assert config._parse_env_int("TEST_INT", 10) == 10
