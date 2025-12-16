@@ -1,4 +1,3 @@
-# .github/dependabot.yaml
 version: 2
 updates:
   # 1. Python Dependencies (Existing)

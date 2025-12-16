@@ -1,4 +1,3 @@
-# tests/unit/test_healthcheck.py
 """Unit tests for the healthcheck script."""
 
 from unittest.mock import MagicMock, patch

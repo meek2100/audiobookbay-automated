@@ -1,4 +1,3 @@
-# .pre-commit-config.yaml
 # Exclude vendor files and minified assets from all hooks
 exclude: ^(audiobook_automated/static/vendor/|.*\.min\.(css|js))
 

@@ -1,4 +1,3 @@
-// audiobook_automated/static/js/status.js
 /**
  * Polling logic for the status page.
  * Fetches JSON status updates and refreshes the table DOM to avoid full page reloads.

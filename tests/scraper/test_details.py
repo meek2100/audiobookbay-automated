@@ -1,4 +1,3 @@
-# tests/scraper/test_details.py
 """Tests for get_book_details."""
 
 from typing import Any, cast

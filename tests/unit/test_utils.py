@@ -1,4 +1,3 @@
-# tests/unit/test_utils.py
 """Unit tests for utility functions."""
 
 from pathlib import Path

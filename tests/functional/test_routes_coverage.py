@@ -1,4 +1,3 @@
-# tests/functional/test_routes_coverage.py
 """Tests to ensure 100% coverage for routes.py."""
 
 import os

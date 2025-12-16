@@ -1,4 +1,3 @@
-# audiobook_automated/__init__.py
 """Main application package for AudiobookBay Automated."""
 
 import os

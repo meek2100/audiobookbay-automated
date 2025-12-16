@@ -1,4 +1,3 @@
-# tests/unit/clients/test_qbittorrent.py
 """Unit tests for QbittorrentStrategy."""
 
 from unittest.mock import MagicMock, patch

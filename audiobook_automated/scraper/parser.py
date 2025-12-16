@@ -1,4 +1,3 @@
-# audiobook_automated/scraper/parser.py
 """Parser module for BeautifulSoup HTML processing.
 
 This module contains regex patterns and helper functions to extract

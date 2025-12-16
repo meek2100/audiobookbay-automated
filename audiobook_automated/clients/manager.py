@@ -1,4 +1,3 @@
-# audiobook_automated/clients/manager.py
 """TorrentManager implementation using dynamic strategy loading."""
 
 import importlib

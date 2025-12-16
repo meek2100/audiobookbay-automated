@@ -1,4 +1,3 @@
-# tests/scraper/test_integration.py
 """Integration tests for the scraper module."""
 
 from typing import Any, cast

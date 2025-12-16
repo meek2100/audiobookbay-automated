@@ -1,4 +1,3 @@
-# tests/functional/test_search.py
 """Functional tests for the search routes and search logic."""
 
 from typing import Any

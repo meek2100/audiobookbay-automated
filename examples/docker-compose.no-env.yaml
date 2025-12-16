@@ -1,4 +1,3 @@
-# examples/docker-compose.no-env.yaml
 services:
   audiobookbay-automated:
     image: ghcr.io/jamesry96/audiobookbay-automated:latest

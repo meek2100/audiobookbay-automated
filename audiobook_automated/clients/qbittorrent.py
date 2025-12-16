@@ -1,4 +1,3 @@
-# audiobook_automated/clients/qbittorrent.py
 """Strategy implementation for qBittorrent."""
 
 import logging

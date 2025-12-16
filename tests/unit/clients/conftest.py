@@ -1,4 +1,3 @@
-# tests/unit/clients/conftest.py
 """Shared fixtures for client tests."""
 
 from collections.abc import Generator

@@ -1,4 +1,3 @@
-# audiobook_automated/clients/transmission.py
 """Strategy implementation for Transmission."""
 
 import logging

@@ -1,4 +1,3 @@
-# audiobook_automated/scraper/core.py
 """Core scraping logic for AudiobookBay."""
 
 import concurrent.futures

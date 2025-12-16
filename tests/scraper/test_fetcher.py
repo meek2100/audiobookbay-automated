@@ -1,4 +1,3 @@
-# tests/scraper/test_fetcher.py
 """Tests for fetch_and_parse_page."""
 
 import logging

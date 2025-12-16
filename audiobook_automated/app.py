@@ -1,4 +1,3 @@
-# audiobook_automated/app.py
 """Entry point for the application."""
 
 import logging

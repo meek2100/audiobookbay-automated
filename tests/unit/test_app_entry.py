@@ -1,4 +1,3 @@
-# tests/unit/test_app_entry.py
 """Unit tests for the application entry point and module initialization."""
 
 import importlib

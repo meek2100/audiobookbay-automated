@@ -1,4 +1,3 @@
-# tests/unit/test_extensions.py
 """Unit tests for the Extensions module."""
 
 from unittest.mock import MagicMock

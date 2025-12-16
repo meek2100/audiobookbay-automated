@@ -1,4 +1,3 @@
-# audiobook_automated/routes.py
 """Routes module handling all web endpoints."""
 
 import logging

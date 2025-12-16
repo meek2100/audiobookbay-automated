@@ -1,4 +1,3 @@
-# scripts/manage_headers.py
 """Universal utility to check or enforce file headers (banners).
 
 Usage:

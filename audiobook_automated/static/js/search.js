@@ -1,4 +1,3 @@
-// audiobook_automated/static/js/search.js
 // app/static/js/search.js
 
 // Define functions in the global scope (or attach to window) so tests and other scripts (actions.js) can use them.
