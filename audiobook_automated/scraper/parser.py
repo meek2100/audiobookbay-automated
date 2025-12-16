@@ -233,6 +233,96 @@ def parse_post_content(
     return meta
 
 
+def _sanitize_description(desc_tag: Tag | None) -> str:
+    """Extract and sanitize the description from the description tag.
+
+    Args:
+        desc_tag: The BeautifulSoup Tag containing the description.
+
+    Returns:
+        str: The sanitized HTML description string.
+    """
+    if not desc_tag:
+        return "No description available."
+
+    # Strict HTML Sanitization
+    allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
+    # SAFETY: Iterate over a list copy to safely modify the tree during iteration
+    for tag in list(desc_tag.find_all(True)):
+        if tag.name not in allowed_tags:
+            # IMPROVEMENT: Insert a space before unwrapping to prevent block-level elements
+            # from merging their text contents (e.g. "<div>A</div><div>B</div>" -> "AB").
+            tag.insert_after(" ")
+            tag.unwrap()
+        else:
+            tag.attrs = {}  # Strip attributes like onclick, style, etc.
+    return str(desc_tag.decode_contents())
+
+
+def _extract_table_data(info_table: Tag | None, file_size_fallback: str) -> tuple[list[str], str, str]:
+    """Extract trackers, file size, and info hash from the torrent info table.
+
+    Args:
+        info_table: The table Tag.
+        file_size_fallback: The current file size to fallback on if not found in table.
+
+    Returns:
+        tuple[list[str], str, str]: A tuple of (trackers, updated_file_size, info_hash).
+    """
+    trackers = []
+    file_size = file_size_fallback
+    info_hash = "Unknown"
+
+    if info_table:
+        for row in info_table.find_all("tr"):
+            cells = row.find_all("td")
+            if len(cells) >= 2:
+                label = cells[0].get_text(strip=True)
+                value = cells[1].get_text(strip=True)
+
+                if value == "?" or not value:
+                    value = "Unknown"
+
+                if "Tracker:" in label or "Announce URL:" in label:
+                    trackers.append(value)
+                elif "File Size:" in label and file_size == "Unknown":
+                    file_size = value
+                elif "Info Hash:" in label:
+                    info_hash = value
+    return trackers, file_size, info_hash
+
+
+def _find_info_hash_fallback(soup: BeautifulSoup, current_hash: str) -> str:
+    """Find the info hash using fallback strategies if not found in the table.
+
+    Args:
+        soup: The main page soup.
+        current_hash: The currently extracted hash (usually "Unknown").
+
+    Returns:
+        str: The discovered hash or "Unknown".
+    """
+    if current_hash != "Unknown":
+        return current_hash
+
+    # Fallback 1: Footer Hash
+    # Robustness: Search for text content recursively to handle nested tags (e.g., <b>Info Hash:</b>)
+    info_hash_row = soup.find(lambda tag: tag.name == "td" and bool(RE_INFO_HASH.search(tag.get_text())))
+    if info_hash_row:
+        sibling = info_hash_row.find_next_sibling("td")
+        if sibling:
+            return str(sibling.text.strip())
+
+    # Fallback 2: Regex on full text
+    # Note: soup.text approximates the raw text content.
+    # RE_HASH_STRING usually finds the hex string in the text nodes.
+    hash_match = RE_HASH_STRING.search(str(soup))
+    if hash_match:
+        return hash_match.group(1)
+
+    return "Unknown"
+
+
 def parse_book_details(soup: BeautifulSoup, url: str) -> BookDetails:
     """Extract full book details from the BeautifulSoup object of a details page.
 
@@ -263,62 +353,17 @@ def parse_book_details(soup: BeautifulSoup, url: str) -> BookDetails:
 
     meta = parse_post_content(content_div, post_info, author_tag, narrator_tag)
 
-    # --- Description Extraction & Sanitization ---
-    description = "No description available."
-    desc_tag = soup.select_one("div.desc")
-    if desc_tag:
-        # Strict HTML Sanitization
-        allowed_tags = ["p", "br", "b", "i", "em", "strong", "ul", "li"]
-        # SAFETY: Iterate over a list copy to safely modify the tree during iteration
-        for tag in list(desc_tag.find_all(True)):
-            if tag.name not in allowed_tags:
-                # IMPROVEMENT: Insert a space before unwrapping to prevent block-level elements
-                # from merging their text contents (e.g. "<div>A</div><div>B</div>" -> "AB").
-                tag.insert_after(" ")
-                tag.unwrap()
-            else:
-                tag.attrs = {}  # Strip attributes like onclick, style, etc.
-        description = desc_tag.decode_contents()
+    # Helper 1: Sanitize Description
+    description = _sanitize_description(soup.select_one("div.desc"))
 
-    # --- Tracker & Hash Extraction ---
-    trackers = []
-    file_size = meta.file_size
-    info_hash = "Unknown"
+    # Helper 2: Extract Table Data
+    trackers, file_size, info_hash = _extract_table_data(
+        soup.select_one("table.torrent_info"),
+        meta.file_size,
+    )
 
-    info_table = soup.select_one("table.torrent_info")
-    if info_table:
-        for row in info_table.find_all("tr"):
-            cells = row.find_all("td")
-            if len(cells) >= 2:
-                label = cells[0].get_text(strip=True)
-                value = cells[1].get_text(strip=True)
-
-                if value == "?" or not value:
-                    value = "Unknown"
-
-                if "Tracker:" in label or "Announce URL:" in label:
-                    trackers.append(value)
-                elif "File Size:" in label and file_size == "Unknown":
-                    file_size = value
-                elif "Info Hash:" in label:
-                    info_hash = value
-
-    # Fallback 1: Footer Hash
-    if info_hash == "Unknown":
-        # Robustness: Search for text content recursively to handle nested tags (e.g., <b>Info Hash:</b>)
-        info_hash_row = soup.find(lambda tag: tag.name == "td" and bool(RE_INFO_HASH.search(tag.get_text())))
-        if info_hash_row:
-            sibling = info_hash_row.find_next_sibling("td")
-            if sibling:
-                info_hash = sibling.text.strip()
-
-    # Fallback 2: Regex on full text
-    if info_hash == "Unknown":
-        # Note: soup.text approximates the raw text content.
-        # RE_HASH_STRING usually finds the hex string in the text nodes.
-        hash_match = RE_HASH_STRING.search(str(soup))
-        if hash_match:
-            info_hash = hash_match.group(1)
+    # Helper 3: Fallback Hash Extraction
+    info_hash = _find_info_hash_fallback(soup, info_hash)
 
     return {
         "title": title,

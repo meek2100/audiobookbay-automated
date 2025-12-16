@@ -3,7 +3,6 @@
 
 import logging
 import os
-import uuid
 from typing import Any, cast
 
 import requests
@@ -12,15 +11,13 @@ from flask import Blueprint, Response, current_app, jsonify, redirect, render_te
 from audiobook_automated.constants import (
     ABS_TIMEOUT_SECONDS,
     DEFAULT_COVER_FILENAME,
-    FALLBACK_TITLE,
     MIN_SEARCH_QUERY_LENGTH,
-    SAFE_SUFFIX,
 )
 
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .scraper.parser import BookSummary
-from .utils import sanitize_title
+from .utils import ensure_collision_safety, sanitize_title
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +38,7 @@ def inject_global_vars() -> dict[str, Any]:
     static_version = current_app.config.get("STATIC_VERSION", "v1")
 
     # OPTIMIZATION: Retrieve pre-calculated flag from config instead of re-evaluating
+    # Now uses the property defined in Config class
     library_reload_enabled = current_app.config.get("LIBRARY_RELOAD_ENABLED", False)
 
     return {
@@ -176,16 +174,16 @@ def send() -> Response | tuple[Response, int]:
             return cast(Response, jsonify({"message": f"Download failed: {error}"})), 500
 
         # Collision Prevention:
-        # 1. Fallback Title (Sanitization completely emptied the string, e.g. "...")
-        # 2. _Safe Suffix (Reserved Windows filename like "CON" -> "CON_Safe")
-        # In both cases, we append a UUID to ensure multiple books don't merge into one folder.
-        # This is a critical data integrity check.
-        if safe_title == FALLBACK_TITLE or safe_title.endswith(SAFE_SUFFIX):
-            logger.warning(f"Title '{title}' required fallback handling ('{safe_title}'). Appending UUID for safety.")
-            unique_id = uuid.uuid4().hex[:8]
-            # Truncate title to ~240 chars to leave room for ID and ensure filesystem safety
-            safe_title = f"{safe_title[:240]}_{unique_id}"
-            logger.info(f"Using collision-safe directory name: {safe_title}")
+        # Handles Fallback Title and Windows Reserved names by appending a UUID.
+        # This is a critical data integrity check moved to utils for central management.
+        previous_title = safe_title
+        safe_title = ensure_collision_safety(safe_title)
+
+        if safe_title != previous_title:
+            logger.warning(
+                f"Title '{title}' required fallback handling ('{previous_title}'). "
+                f"Using collision-safe directory name: {safe_title}"
+            )
 
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
         if save_path_base:
@@ -283,12 +281,13 @@ def status() -> str | Response | tuple[Response, int]:
     Supports returning JSON for frontend polling via ?json=1.
 
     Query Params:
-        json (str): If set, returns JSON instead of HTML.
+        json (str): If set to "1", returns JSON instead of HTML.
 
     Returns:
         str | Response: Rendered HTML, JSON data, or Error Response.
     """
-    is_json = request.args.get("json")
+    # Strict check for "1" to avoid "false"/"0" being interpreted as True
+    is_json = request.args.get("json") == "1"
 
     try:
         torrent_list = torrent_manager.get_status()

@@ -97,6 +97,15 @@ class Config:
     # Separated from Gunicorn timeout to ensure internal requests fail faster than the worker kill timer.
     SCRAPER_TIMEOUT: int = _parse_env_int("SCRAPER_TIMEOUT", 30)
 
+    @property
+    def LIBRARY_RELOAD_ENABLED(self) -> bool:
+        """Determine if Audiobookshelf integration is enabled.
+
+        Returns:
+            bool: True if all required ABS configuration values are present, False otherwise.
+        """
+        return all([self.ABS_URL, self.ABS_KEY, self.ABS_LIB])
+
     @classmethod
     def validate(cls, logger: logging.Logger) -> None:
         """Validate critical configuration at startup."""

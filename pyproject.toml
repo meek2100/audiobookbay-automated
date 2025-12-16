@@ -99,8 +99,6 @@ convention = "google"
     "S108",
     "PLR1714",
 ]
-# Parser logic is inherently complex; suppress specific complexity warnings
-"audiobook_automated/scraper/parser.py" = ["PLR0912", "PLR0915", "PLR2004"]
 # Network uses globals for singleton/semaphore management
 "audiobook_automated/scraper/network.py" = ["PLW0603"]
 

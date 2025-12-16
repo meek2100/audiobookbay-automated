@@ -2,8 +2,9 @@
 """Utility functions for the application."""
 
 import hashlib
-import os
 import re
+import uuid
+from pathlib import Path
 
 from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX, WINDOWS_RESERVED_NAMES
 
@@ -49,7 +50,27 @@ def sanitize_title(title: str | None) -> str:
     return sanitized
 
 
-def calculate_static_hash(static_folder: str) -> str:
+def ensure_collision_safety(safe_title: str) -> str:
+    """Ensure a sanitized title is safe for filesystem creation by handling collisions.
+
+    If the title matches the fallback or ends with the safe suffix (indicating a
+    reserved name collision), a UUID is appended to ensure uniqueness.
+
+    Args:
+        safe_title: The already sanitized title string.
+
+    Returns:
+        str: The collision-safe title, potentially with a UUID appended.
+    """
+    if safe_title == FALLBACK_TITLE or safe_title.endswith(SAFE_SUFFIX):
+        unique_id = uuid.uuid4().hex[:8]
+        # Truncate to leave room for ID (8 chars) + Underscore (1) = 9 chars.
+        # Max filename 255. Let's be safe with 240.
+        return f"{safe_title[:240]}_{unique_id}"
+    return safe_title
+
+
+def calculate_static_hash(static_folder: str | Path) -> str:
     """Calculate a short MD5 hash of the contents of the static folder.
 
     This is used for cache-busting: if any static file changes, this hash
@@ -62,23 +83,17 @@ def calculate_static_hash(static_folder: str) -> str:
         str: An 8-character hex string representing the content hash.
     """
     hash_md5 = hashlib.md5()  # nosec B324  # noqa: S324
+    folder_path = Path(static_folder)
 
-    if not os.path.exists(static_folder):
+    if not folder_path.exists():
         return "v1"
 
     # Walk through the static folder to hash all file contents
-    for root, dirs, files in os.walk(static_folder):
-        # Sort to ensure consistent hashing order across systems
-        dirs.sort()
-        files.sort()
-        for filename in files:
-            # Skip hidden files
-            if filename.startswith("."):
-                continue
-
-            filepath = os.path.join(root, filename)
+    # Use sorted() to ensure consistent hashing order across systems
+    for path in sorted(folder_path.rglob("*")):
+        if path.is_file() and not path.name.startswith("."):
             try:
-                with open(filepath, "rb") as f:
+                with path.open("rb") as f:
                     # Read in chunks to handle large files efficiently
                     for chunk in iter(lambda: f.read(4096), b""):
                         hash_md5.update(chunk)
@@ -88,20 +103,3 @@ def calculate_static_hash(static_folder: str) -> str:
 
     # Return first 8 chars (sufficient for uniqueness)
     return hash_md5.hexdigest()[:8]
-
-
-if __name__ == "__main__":  # pragma: no cover
-    # Script entry point for build-time hash generation.
-    # This allows us to calculate the hash once during Docker build
-    # rather than every time the application starts up.
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    static_dir = os.path.join(base_dir, "static")
-    output_path = os.path.join(base_dir, "version.txt")
-
-    print(f"Generating static asset hash for: {static_dir}")
-    version_hash = calculate_static_hash(static_dir)
-
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(version_hash)
-
-    print(f"Version hash '{version_hash}' written to: {output_path}")

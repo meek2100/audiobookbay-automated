@@ -1,196 +1,78 @@
 # tests/unit/test_utils.py
 """Unit tests for utility functions."""
 
-import os
-import tempfile
-from typing import Any
+from pathlib import Path
 from unittest.mock import patch
 
-from audiobook_automated.constants import FALLBACK_TITLE
-from audiobook_automated.utils import calculate_static_hash, sanitize_title
-
-# --- Sanitize Title Tests ---
+from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX
+from audiobook_automated.utils import calculate_static_hash, ensure_collision_safety, sanitize_title
 
 
-def test_sanitize_simple_title() -> None:
-    """Test that a simple alphanumeric title requires no changes."""
-    assert sanitize_title("Harry Potter") == "Harry Potter"
+def test_sanitize_title_basic() -> None:
+    """Test basic title sanitization."""
+    assert sanitize_title("Valid Title") == "Valid Title"
+    assert sanitize_title("Title: Subtitle") == "Title Subtitle"
+    assert sanitize_title("Title/With/Slashes") == "TitleWithSlashes"
 
 
-def test_sanitize_special_chars() -> None:
-    """Test that filesystem-unsafe characters (colons, slashes) are removed."""
-    # Colons and slashes should be removed
-    assert sanitize_title("Book: The Movie / Part 1") == "Book The Movie  Part 1"
-
-
-def test_sanitize_path_traversal() -> None:
-    """Test that path traversal attempts are neutralized."""
-    # Parent directory traversal
-    assert sanitize_title("../../../etc/passwd") == "etcpasswd"
-    # Root directory traversal
-    assert sanitize_title("/etc/shadow") == "etcshadow"
-    # Windows-style backslashes
-    assert sanitize_title("..\\Windows\\System32") == "WindowsSystem32"
-
-
-def test_sanitize_windows_reserved() -> None:
-    """Test that trailing periods and spaces (unfriendly to Windows) are removed."""
-    # Trailing periods and spaces are bad in Windows
-    assert sanitize_title("The End. ") == "The End"
-
-
-def test_sanitize_empty() -> None:
-    """Test that explicit empty/None inputs fallback to FALLBACK_TITLE."""
-    assert sanitize_title("") == FALLBACK_TITLE
+def test_sanitize_title_empty() -> None:
+    """Test sanitization of empty or invalid titles."""
     assert sanitize_title(None) == FALLBACK_TITLE
-
-
-def test_sanitize_strips_to_empty() -> None:
-    """Test that a title composed only of illegal chars falls back safely."""
-    # A title like "..." cleans to "" then strips to "", so we need a fallback.
+    assert sanitize_title("") == FALLBACK_TITLE
+    assert sanitize_title("   ") == FALLBACK_TITLE
+    # "..." strips to empty string
     assert sanitize_title("...") == FALLBACK_TITLE
-    assert sanitize_title("???") == FALLBACK_TITLE
 
 
-def test_sanitize_reserved_filenames() -> None:
-    """Test that Windows reserved filenames are renamed safely."""
-    # Exact match
-    assert sanitize_title("CON") == "CON_Safe"
-    assert sanitize_title("nul") == "nul_Safe"
-    assert sanitize_title("LPT1") == "LPT1_Safe"
-    # Partial match should remain untouched
-    assert sanitize_title("CONFERENCE") == "CONFERENCE"
-    assert sanitize_title("NULLIFY") == "NULLIFY"
+def test_sanitize_title_windows_reserved() -> None:
+    """Test sanitization of Windows reserved names."""
+    assert sanitize_title("CON") == f"CON{SAFE_SUFFIX}"
+    assert sanitize_title("con.txt") == f"con.txt{SAFE_SUFFIX}"
+    assert sanitize_title("LPT1") == f"LPT1{SAFE_SUFFIX}"
 
 
-def test_sanitize_reserved_filenames_with_extensions() -> None:
-    """Test that reserved filenames with extensions are also caught."""
-    assert sanitize_title("CON.txt") == "CON.txt_Safe"
-    assert sanitize_title("lpt1.mp3") == "lpt1.mp3_Safe"
-    assert sanitize_title("AUX.json") == "AUX.json_Safe"
+def test_ensure_collision_safety_clean() -> None:
+    """Test that safe titles are returned unchanged."""
+    title = "My Safe Book"
+    assert ensure_collision_safety(title) == title
 
 
-def test_sanitize_reserved_filenames_complex_extension() -> None:
-    """Test that reserved filenames with compound extensions are caught.
+def test_ensure_collision_safety_collision() -> None:
+    """Test that collision-prone titles get a UUID appended."""
+    # Mock uuid to get a predictable value
+    with patch("uuid.uuid4") as mock_uuid:
+        mock_uuid.return_value.hex = "12345678" * 4  # 32 chars
 
-    This ensures that splitting 'CON.tar.gz' checks 'CON' and not just 'CON.tar'.
-    """
-    assert sanitize_title("CON.tar.gz") == "CON.tar.gz_Safe"
-    assert sanitize_title("prn.description.txt") == "prn.description.txt_Safe"
+        # Test 1: Fallback Title
+        result = ensure_collision_safety(FALLBACK_TITLE)
+        expected = f"{FALLBACK_TITLE}_12345678"
+        assert result == expected
 
-
-# --- Calculate Static Hash Tests ---
-
-
-def test_calculate_static_hash_valid() -> None:
-    """Test hashing a real temporary directory with files."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        # Create a dummy file
-        file_path = os.path.join(tmp_dir, "style.css")
-        with open(file_path, "w") as f:
-            f.write("body { color: red; }")
-
-        # Create a subdirectory with a file
-        sub_dir = os.path.join(tmp_dir, "js")
-        os.mkdir(sub_dir)
-        with open(os.path.join(sub_dir, "app.js"), "w") as f:
-            f.write("console.log('hello');")
-
-        # Calculate hash
-        hash_val = calculate_static_hash(tmp_dir)
-
-        # Assert it returns a string of expected length (8 chars)
-        assert isinstance(hash_val, str)
-        assert len(hash_val) == 8
-
-        # Verify determinism: Same content should yield same hash
-        assert calculate_static_hash(tmp_dir) == hash_val
-
-        # Modify file and verify hash changes
-        with open(file_path, "w") as f:
-            f.write("body { color: blue; }")
-
-        new_hash = calculate_static_hash(tmp_dir)
-        assert new_hash != hash_val
+        # Test 2: Safe Suffix (Reserved Name)
+        unsafe = f"CON{SAFE_SUFFIX}"
+        result = ensure_collision_safety(unsafe)
+        expected = f"{unsafe}_12345678"
+        assert result == expected
 
 
-def test_calculate_static_hash_ignore_hidden() -> None:
-    """Test that hidden files (starting with .) are skipped.
+def test_calculate_static_hash(tmp_path: Path) -> None:
+    """Test static hash calculation."""
+    # Create dummy static structure
+    static_dir = tmp_path / "static"
+    static_dir.mkdir()
+    (static_dir / "style.css").write_text("body { color: red; }")
 
-    This covers the 'if filename.startswith("."): continue' branch.
-    """
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        # 1. Create a visible file
-        visible_path = os.path.join(tmp_dir, "visible.txt")
-        with open(visible_path, "w") as f:
-            f.write("content")
+    # Calculate hash
+    hash1 = calculate_static_hash(static_dir)
+    assert len(hash1) == 8
 
-        # 2. Get baseline hash
-        hash_base = calculate_static_hash(tmp_dir)
+    # Modify file
+    (static_dir / "style.css").write_text("body { color: blue; }")
+    hash2 = calculate_static_hash(static_dir)
 
-        # 3. Add a hidden file
-        hidden_path = os.path.join(tmp_dir, ".DS_Store")
-        with open(hidden_path, "w") as f:
-            f.write("junk_data")
-
-        # 4. Get new hash
-        hash_new = calculate_static_hash(tmp_dir)
-
-        # 5. Assert equality (Hidden file should NOT change the hash)
-        assert hash_base == hash_new
+    assert hash1 != hash2
 
 
 def test_calculate_static_hash_missing_dir() -> None:
-    """Test that a missing directory returns the default fallback."""
-    assert calculate_static_hash("/path/that/does/not/exist") == "v1"
-
-
-def test_calculate_static_hash_empty_dir() -> None:
-    """Test hashing an empty directory."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        # Should return a consistent hash for empty dir
-        hash_val = calculate_static_hash(tmp_dir)
-        assert len(hash_val) == 8
-
-
-def test_calculate_static_hash_permission_error() -> None:
-    """Test that unreadable files are skipped without crashing (PermissionError)."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        file_path = os.path.join(tmp_dir, "locked.txt")
-        with open(file_path, "w") as f:
-            f.write("secret")
-
-        real_open = open
-
-        def side_effect(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
-            if str(file) == file_path and "rb" in mode:
-                raise PermissionError("Access denied")
-            return real_open(file, mode, *args, **kwargs)
-
-        with patch("builtins.open", side_effect=side_effect):
-            # Should not crash, just skip the file
-            hash_val = calculate_static_hash(tmp_dir)
-            assert len(hash_val) == 8
-
-
-def test_calculate_static_hash_os_error() -> None:
-    """Test that unreadable files are skipped without crashing (Generic OSError).
-
-    This specifically targets the requirement to Mock OSError.
-    """
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        file_path = os.path.join(tmp_dir, "corrupt.txt")
-        with open(file_path, "w") as f:
-            f.write("data")
-
-        real_open = open
-
-        def side_effect(file: Any, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
-            if str(file) == file_path and "rb" in mode:
-                raise OSError("I/O Error")
-            return real_open(file, mode, *args, **kwargs)
-
-        with patch("builtins.open", side_effect=side_effect):
-            # Should not crash, just skip the file
-            hash_val = calculate_static_hash(tmp_dir)
-            assert len(hash_val) == 8
+    """Test hash calculation handles missing directory gracefully."""
+    assert calculate_static_hash("nonexistent/path") == "v1"

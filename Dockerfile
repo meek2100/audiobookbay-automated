@@ -25,20 +25,25 @@ RUN apt-get update && \
 # 1. Copy project definition
 COPY pyproject.toml .
 
-# 2. Copy source code so it can be installed
-# This MUST happen before pip install, otherwise the package is installed empty.
-COPY audiobook_automated audiobook_automated/
-
-# 3. Install dependencies and create user in a single layer (Fixes DL3059)
-# We create the user here to ensure it exists before we COPY files with ownership
-RUN pip install --no-cache-dir . \
-    && \
+# 2. Install dependencies (Optimized for caching)
+# We create a dummy directory structure so pip install . works for dependencies
+# without invalidating the cache when source code changes later.
+RUN mkdir -p audiobook_automated && \
+    touch audiobook_automated/__init__.py && \
+    pip install --no-cache-dir . && \
     useradd -m appuser
 
-# 4. Copy scripts with correct ownership
+# 3. Copy source code
+COPY audiobook_automated audiobook_automated/
+
+# 4. Re-install package to include the actual source files
+# The --no-deps flag ensures we don't re-check dependencies, keeping it fast.
+RUN pip install --no-cache-dir --no-deps .
+
+# 5. Copy scripts with correct ownership
 COPY --chown=appuser:appuser entrypoint.sh .
 
-# 5. Set permissions on scripts and verify utils
+# 6. Set permissions on scripts and verify utils
 RUN chmod +x entrypoint.sh && \
     python3 -m audiobook_automated.utils
 
