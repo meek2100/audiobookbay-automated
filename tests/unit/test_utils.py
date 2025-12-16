@@ -85,7 +85,7 @@ def test_ensure_collision_safety_short_max_length() -> None:
     with patch("uuid.uuid4") as mock_uuid:
         mock_uuid.return_value.hex = "12345678" * 4
 
-        title = "Short"
+        title = "ShortTitle"
         # If max_length is 5, reserved is 9.
         # trunc_len = 5 - 9 = -4.
         # Logic should force trunc_len = 1.

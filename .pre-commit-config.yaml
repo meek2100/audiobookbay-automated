@@ -82,12 +82,19 @@ repos:
         additional_dependencies:
           - pytest
           - flask
-          - types-flask
+          - Flask-Limiter
+          - Flask-WTF
+          - qbittorrent-api
+          - transmission-rpc
+          - deluge-web-client
+          - cachetools
+          - gunicorn
           - types-requests
           - types-cachetools
           - types-setuptools
           - types-beautifulsoup4
           - types-jsonschema
+          - types-gunicorn
 
   - repo: https://github.com/PyCQA/pydocstyle
     rev: "6.3.0"
