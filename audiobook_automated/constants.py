@@ -39,6 +39,15 @@ WINDOWS_RESERVED_NAMES: Final[set[str]] = {
     "LPT9",
 }
 
+# Calculated from Windows MAX_PATH (260) - 10 (Safety/UUID Buffer) - 1 (Path Separator)
+WINDOWS_PATH_SAFE_LIMIT: Final[int] = 249
+# Threshold of remaining characters to trigger a warning about deep paths
+DEEP_PATH_WARNING_THRESHOLD: Final[int] = 10
+# Absolute minimum filename length to allow (prevents empty/unusable names)
+MIN_FILENAME_LENGTH: Final[int] = 5
+# Maximum filename length to enforce (safe default cap)
+MAX_FILENAME_LENGTH: Final[int] = 240
+
 # --- Network Constants ---
 # Timeout for Audiobookshelf API integration calls (Seconds)
 ABS_TIMEOUT_SECONDS: Final[int] = 10

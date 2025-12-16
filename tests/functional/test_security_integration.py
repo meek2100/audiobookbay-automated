@@ -10,7 +10,7 @@ from audiobook_automated import create_app
 
 
 @pytest.fixture
-def csrf_app() -> Generator[Flask, None, None]:
+def csrf_app() -> Generator[Flask]:
     """Fixture creating an app with CSRF protection explicitly ENABLED.
 
     Overrides the default test config which disables CSRF.

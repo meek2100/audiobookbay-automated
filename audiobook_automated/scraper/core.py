@@ -288,9 +288,8 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
         if not info_hash or info_hash == "Unknown":
             return None, "Info Hash could not be found on the page."
 
-        trackers = details.get("trackers", [])
-        if trackers is None:
-            trackers = []
+        # Simplify retrieval; .get() defaults to None if key missing, so 'or []' ensures list
+        trackers = details.get("trackers") or []
 
         # Load additional trackers lazy (IO or Config access)
         extra_trackers = get_trackers()

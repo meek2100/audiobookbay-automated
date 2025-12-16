@@ -36,7 +36,7 @@ class TestConfig(Config):
 
 
 @pytest.fixture
-def app() -> Generator[Flask, None, None]:
+def app() -> Generator[Flask]:
     """Create the 'World' for the tests: A Flask application instance.
 
     Uses TestConfig to ensure configuration is present before extension initialization.
@@ -59,7 +59,7 @@ def runner(app: Flask) -> FlaskCliRunner:
 
 
 @pytest.fixture(autouse=True)
-def push_app_context(app: Flask) -> Generator[None, None, None]:
+def push_app_context(app: Flask) -> Generator[None]:
     """Automatically push application context for all tests."""
     with app.app_context():
         yield

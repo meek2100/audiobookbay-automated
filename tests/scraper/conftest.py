@@ -17,7 +17,7 @@ from audiobook_automated.scraper.network import details_cache, mirror_cache, sea
 
 
 @pytest.fixture(autouse=True)
-def mock_sleep() -> Generator[Any, None, None]:
+def mock_sleep() -> Generator[Any]:
     """Globally mock time.sleep for all tests in this package to speed up execution.
 
     Automatically applied to all tests in tests/scraper/.
@@ -27,7 +27,7 @@ def mock_sleep() -> Generator[Any, None, None]:
 
 
 @pytest.fixture(autouse=True)
-def clear_caches() -> Generator[None, None, None]:
+def clear_caches() -> Generator[None]:
     """Automatically clear network caches before every test.
 
     CRITICAL: We clear caches in BOTH 'core' and 'network' modules.

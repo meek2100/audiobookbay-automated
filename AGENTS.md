@@ -221,12 +221,17 @@ AI agents must follow the strictest, safest interpretation of these rules.
 - **Session Reuse:** `requests.Session` objects for high-frequency operations (like ping checks) must be cached or
   thread-local to avoid expensive SSL handshake overhead.
 
-### Filesystem Safety
+### Filesystem Safety & Path Limits
 
 - Must sanitize illegal characters and reserved Windows filenames.
 - Reserved Filename Handling: Checks must identify reserved names even with extensions or compound extensions (e.g.,
   CON.txt and CON.tar.gz are both invalid).
 - Applies even when container runs on Linux.
+- **Path Length Safety (CRITICAL):**
+  - Logic MUST calculate the maximum allowable directory name length dynamically based on the configured
+    `SAVE_PATH_BASE`.
+  - **Priority:** The OS limitation (approx. 260 chars on Windows) overrides any "aesthetic" preference for long titles.
+  - If `SAVE_PATH_BASE` is deep, the application must truncate the title aggressively to prevent file system errors.
 - **Collision Avoidance:** When using fallback directory names **OR** sanitized names that result in potential
   collisions (e.g., Windows reserved names like `CON` becoming `CON_Safe`), you **MUST** append a short UUID (e.g.,
   `uuid.uuid4().hex[:8]`) to guarantee uniqueness.

@@ -11,7 +11,7 @@ from audiobook_automated.clients import TorrentManager
 
 
 @pytest.fixture
-def app() -> Generator[Flask, None, None]:
+def app() -> Generator[Flask]:
     """Create a minimal Flask app for testing context."""
     app = Flask(__name__)
     app.config["TESTING"] = True

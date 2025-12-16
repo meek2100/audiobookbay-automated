@@ -10,8 +10,12 @@ from flask import Blueprint, Response, current_app, jsonify, redirect, render_te
 
 from audiobook_automated.constants import (
     ABS_TIMEOUT_SECONDS,
+    DEEP_PATH_WARNING_THRESHOLD,
     DEFAULT_COVER_FILENAME,
+    MAX_FILENAME_LENGTH,
+    MIN_FILENAME_LENGTH,
     MIN_SEARCH_QUERY_LENGTH,
+    WINDOWS_PATH_SAFE_LIMIT,
 )
 
 from .extensions import limiter, torrent_manager
@@ -156,6 +160,11 @@ def send() -> Response | tuple[Response, int]:
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
 
+    # TYPE SAFETY: Ensure title is a string before calling string methods.
+    if title is not None and not isinstance(title, str):
+        logger.warning(f"Invalid send request: Title is not a string (Type: {type(title)}).")
+        return jsonify({"message": "Invalid request: Title must be a string"}), 400
+
     # Check raw title existence. We must allow titles that sanitize to FALLBACK_TITLE (e.g. "...")
     # to proceed to the collision handler, rather than blocking them as "Invalid".
     if not details_url or not title or not title.strip():
@@ -179,13 +188,25 @@ def send() -> Response | tuple[Response, int]:
         # Calculate available length for directory name based on SAVE_PATH_BASE length.
         # Max path on Windows is ~260. We reserve margin.
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
-        max_len = 240  # Default safe default
+        max_len = MAX_FILENAME_LENGTH  # Default safe default
         if save_path_base:
             base_len = len(save_path_base)
-            # 260 - base_len - 1 (separator) - 10 (margin/uuid suffix buffer)
-            calculated_limit = 249 - base_len
-            # Ensure we don't go below a usable minimum (e.g. 50 chars)
-            max_len = max(50, calculated_limit)
+            # Use constant for calculation: 260 - 10 - 1 = 249
+            calculated_limit = WINDOWS_PATH_SAFE_LIMIT - base_len
+
+            if calculated_limit < DEEP_PATH_WARNING_THRESHOLD:
+                logger.warning(
+                    f"SAVE_PATH_BASE is extremely deep ({base_len} chars). "
+                    "Titles will be severely truncated to prevent file system errors."
+                )
+
+            # SAFETY: Prioritize OS limits over "usable" length.
+            # We enforce a floor of MIN_FILENAME_LENGTH to avoid empty strings/collisions,
+            # but we cap the ceiling at the calculated limit to prevent crashes.
+            max_len = max(MIN_FILENAME_LENGTH, calculated_limit)
+
+            # Cap at MAX_FILENAME_LENGTH to ensure we never allow massive paths if base is short
+            max_len = min(MAX_FILENAME_LENGTH, max_len)
 
         # Collision Prevention:
         # Handles Fallback Title, Windows Reserved names, and Path Length limits by appending UUID.

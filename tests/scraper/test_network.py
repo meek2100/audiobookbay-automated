@@ -17,7 +17,7 @@ from audiobook_automated.scraper import network
 
 
 @pytest.fixture
-def mock_app_context(app: Flask) -> Generator[Flask, None, None]:
+def mock_app_context(app: Flask) -> Generator[Flask]:
     """Fixture to provide app for network functions."""
     yield app
 

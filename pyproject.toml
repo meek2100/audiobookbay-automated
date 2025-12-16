@@ -76,7 +76,7 @@ filterwarnings = ["ignore::DeprecationWarning:bs4.*"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["B", "D", "E", "F", "I", "S", "UP", "PL"]
@@ -103,7 +103,7 @@ convention = "google"
 "audiobook_automated/scraper/network.py" = ["PLW0603"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.14"
 warn_unused_configs = true
 ignore_missing_imports = true
 strict = true
