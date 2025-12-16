@@ -2,6 +2,7 @@
 """Unit tests for utility functions."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX
@@ -76,3 +77,31 @@ def test_calculate_static_hash(tmp_path: Path) -> None:
 def test_calculate_static_hash_missing_dir() -> None:
     """Test hash calculation handles missing directory gracefully."""
     assert calculate_static_hash("nonexistent/path") == "v1"
+
+
+def test_calculate_static_hash_oserror(tmp_path: Path) -> None:
+    """Test that hash calculation ignores files that raise OSError (e.g. permissions)."""
+    static_dir = tmp_path / "static_oserror"
+    static_dir.mkdir()
+    # Create two files: one readable, one "unreadable"
+    (static_dir / "readable.css").write_text("content")
+    (static_dir / "unreadable.css").write_text("secret")
+
+    # Capture the real Path.open to pass through for the readable file
+    original_open = Path.open
+
+    # Added typing to arguments to satisfy mypy [no-untyped-def]
+    def side_effect(self: Any, *args: Any, **kwargs: Any) -> Any:
+        # Trigger OSError only for the specific unreadable file
+        # We check self.name which should exist on the Path object passed as self
+        if getattr(self, "name", "") == "unreadable.css":
+            raise OSError("Simulated permission error")
+        return original_open(self, *args, **kwargs)
+
+    # Patch Path.open to inject the error
+    with patch("pathlib.Path.open", side_effect=side_effect, autospec=True):
+        # The hash should be calculated based on readable.css only
+        # We assume readable.css (alphabetical) or order doesn't matter for this test
+        # logic just needs to ensure it doesn't crash.
+        h = calculate_static_hash(static_dir)
+        assert len(h) == 8

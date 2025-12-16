@@ -15,6 +15,9 @@ from bs4 import BeautifulSoup, Tag
 
 from audiobook_automated.constants import DEFAULT_COVER_FILENAME
 
+# Constants
+MIN_TABLE_CELLS = 2
+
 # --- Regex Patterns ---
 # Why: AudioBookBay formats the info table unpredictably.
 # These regexes allow us to match table cells even if casing or whitespace changes slightly.
@@ -147,6 +150,59 @@ def normalize_cover_url(base_url: str, relative_url: str) -> str | None:
     return extracted_cover
 
 
+def _normalize_metadata(meta: BookMetadata) -> None:
+    """Normalize metadata fields in place, handling unknown values.
+
+    Iterates through all fields in the BookMetadata dataclass and ensures
+    '?' or empty strings are converted to "Unknown".
+    """
+    for f in fields(meta):
+        value = getattr(meta, f.name)
+
+        # 1. Normalize Categories (List)
+        if f.name == "category":
+            if not value:
+                setattr(meta, f.name, ["Unknown"])
+            else:
+                # Iterate and normalize individual items in the list
+                normalized_list = []
+                for item in value:
+                    # Check for '?', empty strings, or strings that are just whitespace/punctuation
+                    if not item or item.strip() in ["?", ""]:
+                        normalized_list.append("Unknown")
+                    else:
+                        normalized_list.append(item)
+                setattr(meta, f.name, normalized_list)
+            continue
+
+        # 2. Normalize Strings (File Size, Bitrate, etc.)
+        # TYPE SAFETY: Explicitly guard against 'category' list leaking here
+        if isinstance(value, str):
+            # Strip whitespace and check against invalid values
+            clean_val = value.strip()
+            if not clean_val or clean_val == "?" or clean_val.startswith("? "):
+                setattr(meta, f.name, "Unknown")
+
+
+def _parse_body_content(content_div: Tag, meta: BookMetadata) -> None:
+    """Extract metadata (Posted, Format, Bitrate, Size) from the body paragraphs.
+
+    Args:
+        content_div: The div containing the content paragraphs.
+        meta: The metadata object to update in place.
+    """
+    for p in content_div.find_all("p"):
+        p_text = p.get_text()
+        if RE_LABEL_POSTED.search(p_text):
+            meta.post_date = get_text_after_label(p, RE_LABEL_POSTED)
+        if RE_LABEL_FORMAT.search(p_text):
+            meta.format = get_text_after_label(p, RE_LABEL_FORMAT)
+        if RE_LABEL_BITRATE.search(p_text):
+            meta.bitrate = get_text_after_label(p, RE_LABEL_BITRATE)
+        if RE_LABEL_SIZE.search(p_text):
+            meta.file_size = get_text_after_label(p, RE_LABEL_SIZE, is_file_size=True)
+
+
 def parse_post_content(
     content_div: Tag | None,
     post_info: Tag | None,
@@ -155,7 +211,7 @@ def parse_post_content(
 ) -> BookMetadata:
     """Parse the post content and info sections to extract normalized metadata.
 
-    Handles '?' to 'Unknown' conversion centrally.
+    Refactored to reduce complexity by delegating normalization and body parsing.
 
     Args:
         content_div: The div containing the main post content (p tags).
@@ -184,16 +240,7 @@ def parse_post_content(
 
     # Parse Body Paragraphs
     if content_div:
-        for p in content_div.find_all("p"):
-            p_text = p.get_text()
-            if RE_LABEL_POSTED.search(p_text):
-                meta.post_date = get_text_after_label(p, RE_LABEL_POSTED)
-            if RE_LABEL_FORMAT.search(p_text):
-                meta.format = get_text_after_label(p, RE_LABEL_FORMAT)
-            if RE_LABEL_BITRATE.search(p_text):
-                meta.bitrate = get_text_after_label(p, RE_LABEL_BITRATE)
-            if RE_LABEL_SIZE.search(p_text):
-                meta.file_size = get_text_after_label(p, RE_LABEL_SIZE, is_file_size=True)
+        _parse_body_content(content_div, meta)
 
     # Parse People (Author/Narrator)
     if author_tag:
@@ -201,34 +248,8 @@ def parse_post_content(
     if narrator_tag:
         meta.narrator = narrator_tag.get_text(strip=True)
 
-    # Normalization Rule: Convert "?" or empty strings to "Unknown"
-    # We iterate over the dataclass fields to ensure consistent normalization
-    for f in fields(meta):
-        value = getattr(meta, f.name)
-
-        # 1. Normalize Categories (List)
-        if f.name == "category":
-            if not value:
-                setattr(meta, f.name, ["Unknown"])
-            else:
-                # Iterate and normalize individual items in the list
-                normalized_list = []
-                for item in value:
-                    # Check for '?', empty strings, or strings that are just whitespace/punctuation
-                    if not item or item.strip() in ["?", ""]:
-                        normalized_list.append("Unknown")
-                    else:
-                        normalized_list.append(item)
-                setattr(meta, f.name, normalized_list)
-            continue
-
-        # 2. Normalize Strings (File Size, Bitrate, etc.)
-        # TYPE SAFETY: Explicitly guard against 'category' list leaking here
-        if isinstance(value, str):
-            # Strip whitespace and check against invalid values
-            clean_val = value.strip()
-            if not clean_val or clean_val == "?" or clean_val.startswith("? "):
-                setattr(meta, f.name, "Unknown")
+    # Apply Normalization
+    _normalize_metadata(meta)
 
     return meta
 
@@ -276,7 +297,8 @@ def _extract_table_data(info_table: Tag | None, file_size_fallback: str) -> tupl
     if info_table:
         for row in info_table.find_all("tr"):
             cells = row.find_all("td")
-            if len(cells) >= 2:
+            # Replaced magic value '2' with constant
+            if len(cells) >= MIN_TABLE_CELLS:
                 label = cells[0].get_text(strip=True)
                 value = cells[1].get_text(strip=True)
 

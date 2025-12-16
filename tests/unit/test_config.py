@@ -112,6 +112,26 @@ def test_config_validate_page_limit_low(monkeypatch: MonkeyPatch, caplog: LogCap
     assert "Invalid PAGE_LIMIT '0'" in caplog.text
 
 
+def test_library_reload_enabled(monkeypatch: MonkeyPatch) -> None:
+    """Test that LIBRARY_RELOAD_ENABLED property works correctly."""
+    # Case 1: All required vars present
+    monkeypatch.setattr(Config, "ABS_URL", "http://abs")
+    monkeypatch.setattr(Config, "ABS_KEY", "token")
+    monkeypatch.setattr(Config, "ABS_LIB", "lib")
+
+    # Property must be accessed on an instance
+    assert Config().LIBRARY_RELOAD_ENABLED is True
+
+    # Case 2: Missing one variable (ABS_URL)
+    monkeypatch.setattr(Config, "ABS_URL", None)
+    assert Config().LIBRARY_RELOAD_ENABLED is False
+
+    # Case 3: Missing another variable (ABS_KEY)
+    monkeypatch.setattr(Config, "ABS_URL", "http://abs")
+    monkeypatch.setattr(Config, "ABS_KEY", None)
+    assert Config().LIBRARY_RELOAD_ENABLED is False
+
+
 def test_parse_env_int_success(monkeypatch: MonkeyPatch) -> None:
     """Test parsing a valid integer string."""
     monkeypatch.setenv("TEST_INT", "42")
