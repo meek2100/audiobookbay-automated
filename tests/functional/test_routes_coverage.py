@@ -85,3 +85,15 @@ def test_reload_library_request_exception_with_response(client: FlaskClient) -> 
         assert response.status_code == 500
         assert response.json is not None
         assert "503 Service Unavailable: Maintenance" in response.json["message"]
+
+
+def test_send_no_save_path_base(client: FlaskClient) -> None:
+    """Test send endpoint when SAVE_PATH_BASE is not configured."""
+    client.application.config["SAVE_PATH_BASE"] = None
+
+    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+        with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+            response = client.post("/send", json={"link": "http://link", "title": "Book"})
+            assert response.status_code == 200
+            # Verify add_magnet was called with just the title (no base path)
+            mock_tm.add_magnet.assert_called_with("magnet:?xt=urn:btih:123", "Book")
