@@ -1,3 +1,4 @@
+# File: pyproject.toml
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
@@ -72,9 +73,6 @@ env = [
     "DL_PASSWORD=admin",
 ]
 filterwarnings = ["ignore::DeprecationWarning:bs4.*"]
-
-[tool.coverage.run]
-omit = ["audiobook_automated/clients/client_template.py"]
 
 [tool.ruff]
 line-length = 120

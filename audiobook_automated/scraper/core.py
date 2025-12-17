@@ -1,10 +1,10 @@
+# File: audiobook_automated/scraper/core.py
 """Core scraping logic for AudiobookBay."""
 
 import concurrent.futures
 import logging
 import random
 import time
-from concurrent.futures import Future
 from urllib.parse import quote, urljoin, urlparse
 
 import requests
@@ -178,7 +178,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
 
     try:
         # Use the global executor to avoid spinning up new threads per request
-        futures: list[Future[list[BookSummary]]] = []
+        futures: list[concurrent.futures.Future[list[BookSummary]]] = []
         for page in range(1, max_pages + 1):
             futures.append(
                 executor.submit(
@@ -252,7 +252,8 @@ def get_book_details(details_url: str) -> BookDetails:
     timeout = current_app.config.get("SCRAPER_TIMEOUT", 30)
 
     try:
-        # OPTIMIZATION: Sleep outside the semaphore (same as in fetch_and_parse_page)
+        # COMPLIANCE: Jitter sleep is retained to strictly comply with AGENTS.md Rule 0.
+        # "Do NOT remove or reduce jitter sleeps... before all external requests."
         time.sleep(random.uniform(0.5, 1.5))  # nosec B311  # noqa: S311
 
         with get_semaphore():

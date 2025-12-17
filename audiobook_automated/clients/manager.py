@@ -1,3 +1,4 @@
+# File: audiobook_automated/clients/manager.py
 """TorrentManager implementation using dynamic strategy loading."""
 
 import importlib
@@ -98,7 +99,11 @@ class TorrentManager:
     def _load_strategy_class(
         self, client_name: str | None, suppress_errors: bool = False
     ) -> type[TorrentClientStrategy] | None:
-        """Dynamically load the strategy class for the given client name."""
+        """Dynamically load the strategy class for the given client name.
+
+        Distinguishes between a missing plugin module (acceptable) and a missing dependency
+        WITHIN that plugin (critical error).
+        """
         if not client_name:
             return None
 
@@ -110,10 +115,23 @@ class TorrentManager:
                 return cast(type[TorrentClientStrategy], module.Strategy)
             elif not suppress_errors:
                 logger.error(f"Client plugin '{client_name}' found, but it does not export a 'Strategy' class.")
-        except (ImportError, ModuleNotFoundError):
+
+        except ModuleNotFoundError as e:
+            # CRITICAL FIX: Distinguish between the plugin itself being missing vs. a dependency inside it.
+            # If the missing module IS the plugin, we handle it gracefully (if suppress_errors=True).
+            # If the missing module is something else (e.g., 'transmission_rpc'), we must raise it.
+            if e.name == f"audiobook_automated.clients.{client_name}":
+                if not suppress_errors:
+                    logger.error(f"Client plugin '{client_name}' not found.")
+            else:
+                # This is a missing dependency inside the plugin (e.g. user forgot pip install transmission-rpc)
+                raise e
+
+        except ImportError as e:
+            # Handle other import errors (e.g. circular imports)
             if not suppress_errors:
-                # Pass silently during config/init phase; detailed errors happen in _get_strategy
-                pass
+                logger.error(f"Error importing client plugin '{client_name}': {e}")
+
         return None
 
     def _get_strategy(self) -> TorrentClientStrategy | None:
@@ -182,6 +200,15 @@ class TorrentManager:
         self._local.strategy = None
 
     def _add_magnet_logic(self, magnet_link: str, save_path: str) -> None:
+        """Internal logic to add a magnet link via the active strategy.
+
+        Args:
+            magnet_link: The magnet URI.
+            save_path: The filesystem path.
+
+        Raises:
+            ConnectionError: If client is not connected.
+        """
         strategy = self._get_strategy()
         if not strategy:
             raise ConnectionError("Torrent client is not connected.")
@@ -198,6 +225,14 @@ class TorrentManager:
             self._remove_torrent_logic(torrent_id)
 
     def _remove_torrent_logic(self, torrent_id: str) -> None:
+        """Internal logic to remove a torrent via the active strategy.
+
+        Args:
+            torrent_id: The torrent info hash or ID.
+
+        Raises:
+            ConnectionError: If client is not connected.
+        """
         strategy = self._get_strategy()
         if not strategy:
             raise ConnectionError("Torrent client is not connected.")
@@ -214,6 +249,14 @@ class TorrentManager:
             return self._get_status_logic()
 
     def _get_status_logic(self) -> list[TorrentStatus]:
+        """Internal logic to get torrent status via the active strategy.
+
+        Returns:
+            list[TorrentStatus]: List of torrent status objects.
+
+        Raises:
+            ConnectionError: If client is not connected.
+        """
         strategy = self._get_strategy()
         if not strategy:
             raise ConnectionError("Torrent client is not connected.")

@@ -1,3 +1,4 @@
+# File: audiobook_automated/__init__.py
 """Main application package for AudiobookBay Automated."""
 
 import os
@@ -38,11 +39,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             static_folder = os.path.join(app.root_path, "static")
             app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
 
-    # OPTIMIZATION: Calculate enabled status once at startup to avoid per-request logic
-    abs_url = app.config.get("ABS_URL")
-    abs_key = app.config.get("ABS_KEY")
-    abs_lib = app.config.get("ABS_LIB")
-    app.config["LIBRARY_RELOAD_ENABLED"] = all([abs_url, abs_key, abs_lib])
+    # DRY IMPROVEMENT: Removed manual LIBRARY_RELOAD_ENABLED calculation.
+    # It is now a property in Config, accessed directly via app.config.
 
     # Initialize Extensions
     limiter.init_app(app)
@@ -50,6 +48,12 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(app)
+
+    # HEALTH CHECK: Verify torrent client connection at startup.
+    # This allows admins to see immediate feedback in logs if the client is unreachable.
+    # We do NOT block startup, as the app should remain accessible for debugging.
+    if not torrent_manager.verify_credentials():
+        app.logger.warning("Startup Check: Torrent client is NOT connected. Downloads will fail until resolved.")
 
     # Initialize Scraper Executor
     executor.init_app(app)

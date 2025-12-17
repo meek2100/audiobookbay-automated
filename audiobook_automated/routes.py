@@ -1,3 +1,4 @@
+# File: audiobook_automated/routes.py
 """Routes module handling all web endpoints."""
 
 import logging
@@ -217,6 +218,9 @@ def send() -> Response | tuple[Response, int]:
             logger.warning(msg)
 
         if save_path_base:
+            # NOTE: os.path.join uses the separator of the CONTAINER'S OS (Linux '/').
+            # If the remote torrent client is on Windows and strictly expects backslashes,
+            # this path might need conversion. However, most modern Windows clients handle forward slashes.
             save_path = os.path.join(save_path_base, safe_title)
         else:
             save_path = safe_title
