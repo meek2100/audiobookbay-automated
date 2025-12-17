@@ -53,6 +53,19 @@ def test_init_dl_port_missing(app: Flask, setup_manager: Any) -> None:
         assert manager.dl_url == "http://deluge-host:8112"
 
 
+def test_init_app_strategy_load_exception(app: Flask, setup_manager: Any) -> None:
+    """Test that exceptions during init_app strategy loading are caught and logged."""
+    # This covers the 'except Exception' block in manager.py init_app logic
+    with patch(
+        "audiobook_automated.clients.manager.TorrentManager._load_strategy_class", side_effect=Exception("Init Boom")
+    ):
+        with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+            setup_manager(app, DL_CLIENT="broken_init")
+            mock_logger.debug.assert_called()
+            # Verify the specific debug log format
+            assert "Error checking default port" in mock_logger.debug.call_args[0][0]
+
+
 def test_init_dl_url_parse_failure(app: Flask, setup_manager: Any) -> None:
     """Test that init_app handles URL parsing exceptions gracefully."""
     with (
@@ -192,7 +205,8 @@ def test_get_strategy_caching_and_success(app: Flask, setup_manager: Any) -> Non
         def remove_torrent(self, *args: Any) -> None:
             pass
 
-        def get_status(self, *args: Any) -> list:
+        # FIX: Added explicit return type annotation to satisfy MyPy
+        def get_status(self, *args: Any) -> list[TorrentStatus]:
             return []
 
     mock_module = MagicMock()

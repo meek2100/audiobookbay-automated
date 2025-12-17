@@ -66,9 +66,10 @@ class TorrentManager:
                 temp_class = self._load_strategy_class(self.client_type, suppress_errors=True)
                 if temp_class:
                     default_port = temp_class.DEFAULT_PORT
-            except Exception:
+            except Exception as e:
+                # S110: Log exception instead of pass
                 # Ignore errors during init; they will be caught/logged when connection is attempted
-                pass
+                logger.debug(f"Error checking default port for {self.client_type}: {e}")
 
         # URL Parsing with dynamic default port
         if self.dl_url:
