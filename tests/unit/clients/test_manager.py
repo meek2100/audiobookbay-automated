@@ -367,3 +367,12 @@ def test_verify_credentials_import_error(app: Flask, setup_manager: Any) -> None
             # Verify the error was logged in _get_strategy (via "Could not load..." path)
             mock_logger.error.assert_called()
             assert "Could not load strategy for client" in mock_logger.error.call_args[0][0]
+
+
+def test_load_strategy_class_none(app: Flask, setup_manager: Any) -> None:
+    """Test that _load_strategy_class returns None if client_name is None.
+
+    This covers the `if not client_name: return None` check in manager.py.
+    """
+    manager = setup_manager(app)
+    assert manager._load_strategy_class(None) is None

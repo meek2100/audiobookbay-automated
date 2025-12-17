@@ -144,9 +144,6 @@ class TorrentManager:
             )
             strategy.connect()
             self._local.strategy = strategy
-        except (ImportError, ModuleNotFoundError):
-            logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
-            self._local.strategy = None
         except SyntaxError:
             logger.critical(f"Syntax Error in client plugin: {self.client_type}", exc_info=True)
             self._local.strategy = None
