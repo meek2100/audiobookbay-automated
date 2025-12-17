@@ -2,11 +2,53 @@
 
 import concurrent.futures
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from audiobook_automated.scraper.core import search_audiobookbay
+from audiobook_automated.scraper.core import fetch_and_parse_page, search_audiobookbay
+
+
+def test_fetch_page_missing_href() -> None:
+    """Test fetch_and_parse_page handles post title missing href attribute gracefully."""
+    # This covers lines 97-98 in scraper/core.py where we check if href exists
+
+    # Mock HTML response: A post with a title link that has NO href
+    html_content = """
+    <html>
+        <body>
+            <div class="post">
+                <div class="postTitle">
+                    <h2><a>Title Without Href</a></h2>
+                </div>
+                <div class="postContent">
+                    <img src="/cover.jpg" />
+                    Some content
+                </div>
+                <div class="postInfo">Info</div>
+            </div>
+        </body>
+    </html>
+    """
+
+    mock_response = MagicMock()
+    mock_response.text = html_content
+    mock_response.raise_for_status = MagicMock()
+
+    mock_session = MagicMock()
+    mock_session.get.return_value = mock_response
+
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
+        with patch("audiobook_automated.scraper.core.get_semaphore"):
+            with patch("audiobook_automated.scraper.core.time.sleep"):  # Skip sleep
+                with patch("audiobook_automated.scraper.core.logger") as mock_logger:
+                    results = fetch_and_parse_page("audiobookbay.lu", "query", 1, "UserAgent", 30)
+
+                    # Should return empty list because the only post was skipped
+                    assert results == []
+
+                    # Verify the warning was logged
+                    mock_logger.warning.assert_called_with("Post title element missing href attribute. Skipping.")
 
 
 def test_search_partial_failure() -> None:

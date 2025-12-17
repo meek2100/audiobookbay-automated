@@ -73,6 +73,9 @@ env = [
 ]
 filterwarnings = ["ignore::DeprecationWarning:bs4.*"]
 
+[tool.coverage.run]
+omit = ["audiobook_automated/clients/client_template.py"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py314"

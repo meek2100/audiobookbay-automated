@@ -57,8 +57,18 @@ class TorrentManager:
         self.dl_url = config.get("DL_URL")
 
         # 1. Attempt to load the strategy class FIRST to get its defaults
-        strategy_class = self._load_strategy_class(self.client_type)
-        default_port = strategy_class.DEFAULT_PORT if strategy_class else 8080
+        # We catch basic ImportErrors here to avoid crashing init, but full validation happens in _get_strategy
+        default_port = 8080
+        if self.client_type:
+            try:
+                # We use a temporary loader just to peek at DEFAULT_PORT
+                # Pass explicit 'None' logging to suppress errors during this speculative check
+                temp_class = self._load_strategy_class(self.client_type, suppress_errors=True)
+                if temp_class:
+                    default_port = temp_class.DEFAULT_PORT
+            except Exception:
+                # Ignore errors during init; they will be caught/logged when connection is attempted
+                pass
 
         # URL Parsing with dynamic default port
         if self.dl_url:
@@ -84,7 +94,9 @@ class TorrentManager:
         # Reset thread local
         self._local = ClientLocal()
 
-    def _load_strategy_class(self, client_name: str | None) -> type[TorrentClientStrategy] | None:
+    def _load_strategy_class(
+        self, client_name: str | None, suppress_errors: bool = False
+    ) -> type[TorrentClientStrategy] | None:
         """Dynamically load the strategy class for the given client name."""
         if not client_name:
             return None
@@ -95,9 +107,12 @@ class TorrentManager:
             if hasattr(module, "Strategy") and issubclass(module.Strategy, TorrentClientStrategy):
                 # FIX: Explicit cast to satisfy MyPy no-any-return check
                 return cast(type[TorrentClientStrategy], module.Strategy)
+            elif not suppress_errors:
+                logger.error(f"Client plugin '{client_name}' found, but it does not export a 'Strategy' class.")
         except (ImportError, ModuleNotFoundError):
-            # Pass silently during config/init phase; detailed errors happen in _get_strategy
-            pass
+            if not suppress_errors:
+                # Pass silently during config/init phase; detailed errors happen in _get_strategy
+                pass
         return None
 
     def _get_strategy(self) -> TorrentClientStrategy | None:
@@ -109,14 +124,15 @@ class TorrentManager:
             logger.error("DL_CLIENT not configured.")
             return None
 
-        # Load class (cached by Python's import system)
-        strategy_class = self._load_strategy_class(self.client_type)
-
-        if not strategy_class:
-            logger.error(f"Could not load strategy for client: {self.client_type}")
-            return None
-
         try:
+            # Load class (cached by Python's import system)
+            # MOVED INSIDE TRY BLOCK: Captures SyntaxError, ImportError, and other load-time failures safely.
+            strategy_class = self._load_strategy_class(self.client_type)
+
+            if not strategy_class:
+                logger.error(f"Could not load strategy for client: {self.client_type}")
+                return None
+
             strategy = strategy_class(
                 host=self.host,
                 port=self.port,
@@ -127,6 +143,12 @@ class TorrentManager:
             )
             strategy.connect()
             self._local.strategy = strategy
+        except (ImportError, ModuleNotFoundError):
+            logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
+            self._local.strategy = None
+        except SyntaxError:
+            logger.critical(f"Syntax Error in client plugin: {self.client_type}", exc_info=True)
+            self._local.strategy = None
         except Exception as e:
             logger.error(f"Error initializing torrent client strategy: {e}", exc_info=True)
             self._local.strategy = None
