@@ -200,7 +200,7 @@ class TorrentManager:
         self._local.strategy = None
 
     def _add_magnet_logic(self, magnet_link: str, save_path: str) -> None:
-        """Internal logic to add a magnet link via the active strategy.
+        """Add a magnet link via the active strategy.
 
         Args:
             magnet_link: The magnet URI.
@@ -225,7 +225,7 @@ class TorrentManager:
             self._remove_torrent_logic(torrent_id)
 
     def _remove_torrent_logic(self, torrent_id: str) -> None:
-        """Internal logic to remove a torrent via the active strategy.
+        """Remove a torrent via the active strategy.
 
         Args:
             torrent_id: The torrent info hash or ID.
@@ -249,7 +249,7 @@ class TorrentManager:
             return self._get_status_logic()
 
     def _get_status_logic(self) -> list[TorrentStatus]:
-        """Internal logic to get torrent status via the active strategy.
+        """Retrieve torrent status via the active strategy.
 
         Returns:
             list[TorrentStatus]: List of torrent status objects.
