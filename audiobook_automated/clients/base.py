@@ -1,7 +1,7 @@
 """Base classes and types for torrent clients."""
 
 from abc import ABC, abstractmethod
-from typing import Any, TypedDict
+from typing import Any, ClassVar, TypedDict
 
 
 class TorrentStatus(TypedDict):
@@ -17,6 +17,10 @@ class TorrentStatus(TypedDict):
 class TorrentClientStrategy(ABC):
     """Abstract base class for torrent client strategies."""
 
+    # Plugin Configuration Contracts
+    # Subclasses should override this to define their default port.
+    DEFAULT_PORT: ClassVar[int] = 8080
+
     def __init__(
         self,
         host: str,
@@ -28,8 +32,8 @@ class TorrentClientStrategy(ABC):
     ) -> None:
         """Initialize the client strategy configuration.
 
-        Accepts **kwargs to allow subclasses (like Deluge) to accept extra parameters (like dl_url)
-        without breaking the common interface or strict super calls.
+        Accepts **kwargs to allow subclasses to accept extra parameters
+        without breaking the common interface.
         """
         self.host = host
         self.port = port

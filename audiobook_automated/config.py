@@ -144,9 +144,11 @@ class Config:
             )
 
         # Validate DL_CLIENT
+        # RELAXED VALIDATION: We now allow any string to support drop-in plugins.
+        # The Manager will fail later if the module doesn't exist.
         if not cls.DL_CLIENT:
             logger.critical("Configuration Error: DL_CLIENT is missing.")
-            raise ValueError("DL_CLIENT must be set to one of: qbittorrent, transmission, deluge")
+            raise ValueError("DL_CLIENT must be set.")
 
         # Validate PAGE_LIMIT
         if cls.PAGE_LIMIT < 1:

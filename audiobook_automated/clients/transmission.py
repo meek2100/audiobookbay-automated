@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 class Strategy(TorrentClientStrategy):
     """Strategy implementation for Transmission."""
 
+    DEFAULT_PORT = 9091
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the Transmission strategy."""
         super().__init__(*args, **kwargs)

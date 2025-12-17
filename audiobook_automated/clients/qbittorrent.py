@@ -23,6 +23,8 @@ class QbTorrentProtocol(Protocol):
 class Strategy(TorrentClientStrategy):
     """Strategy implementation for qBittorrent."""
 
+    DEFAULT_PORT = 8080
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the qBittorrent strategy."""
         super().__init__(*args, **kwargs)

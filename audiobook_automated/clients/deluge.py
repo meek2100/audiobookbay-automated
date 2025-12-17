@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 class Strategy(TorrentClientStrategy):
     """Strategy implementation for Deluge."""
 
+    DEFAULT_PORT = 8112
+
     def __init__(self, dl_url: str | None = None, *args: Any, **kwargs: Any) -> None:
         """Initialize the Deluge strategy.
 
@@ -35,7 +37,7 @@ class Strategy(TorrentClientStrategy):
 
         # Check login result
         response = self.client.login()
-        # FIX: Check for error explicitly rather than result boolean to be safe against false negatives
+        # Explicitly check for RPC errors as the client might not raise them automatically
         if response.error:
             # Raise exception so TorrentManager knows connection failed and can retry/log
             raise ConnectionError(f"Failed to login to Deluge: {response.error}")

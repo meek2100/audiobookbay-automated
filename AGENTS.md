@@ -147,6 +147,31 @@ AI agents must follow the strictest, safest interpretation of these rules.
 
 ---
 
+## H. Extension Guidelines: Adding New Torrent Clients
+
+The application supports a **Plugin Architecture** for torrent clients. Developers can add support for new clients
+without modifying the core codebase.
+
+### H.1 Implementation Steps
+
+1. **Use the Template:** Copy `audiobook_automated/clients/client_template.py` to a new file (e.g.,
+   `audiobook_automated/clients/rtorrent.py`).
+2. **Implement the Interface:** Your class must inherit from `TorrentClientStrategy` and implement all abstract methods.
+3. **Define Defaults:** You MUST set the `DEFAULT_PORT` class attribute to the standard port for that client.
+4. **Configuration:** The `TorrentManager` will automatically load your plugin if the `DL_CLIENT` environment variable
+   matches your filename (minus extension).
+
+### H.2 Deployment (Drop-in)
+
+For self-hosted setups using Docker, users can "drop in" a new client:
+
+1. Create the python file (e.g., `myclient.py`).
+2. Mount it into the container: `-v /path/to/myclient.py:/app/audiobook_automated/clients/myclient.py`.
+3. Set `DL_CLIENT=myclient`.
+4. Restart the container.
+
+---
+
 ## 1. Core Architecture: The Single-User Constraint
 
 ### The Concurrency Model (Critical)
@@ -274,6 +299,7 @@ AI agents must follow the strictest, safest interpretation of these rules.
   `sys.exit()`. This ensures the WSGI server (Gunicorn) captures and logs the stack trace before the worker process
   dies.
 - **Validation:** Configuration must fail fast. `DL_CLIENT` and `SAVE_PATH_BASE` are mandatory.
+  - `DL_CLIENT` **MUST** be set. (Use of specific client names is dynamically validated).
 - **Logging Level:** The application logger must explicitly apply the configured `LOG_LEVEL` in `__init__.py`. Flask
   does not do this automatically.
 - **Docker Permissions:** The application must start as `root` (PID 1) in the entrypoint to fix volume permissions via

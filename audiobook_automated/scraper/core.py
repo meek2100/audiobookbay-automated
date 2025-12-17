@@ -91,8 +91,14 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
                 if not title_element:
                     continue
 
+                # Safety: Check for href existence to avoid KeyError crashes
+                href = title_element.get("href")
+                if not href:
+                    logger.warning("Post title element missing href attribute. Skipping.")
+                    continue
+
                 title = title_element.text.strip()
-                link = urljoin(base_url, str(title_element["href"]))
+                link = urljoin(base_url, str(href))
 
                 cover_img = post.select_one(".postContent img")
                 cover = None

@@ -100,3 +100,6 @@ DEFAULT_TRACKERS: Final[list[str]] = [
     "udp://tracker.coppersurfer.tk:6969",
     "udp://tracker.leechers-paradise.org:6969",
 ]
+
+# Fallback port if client is unknown or unlisted (safe default)
+DEFAULT_PORT: Final[int] = 8080

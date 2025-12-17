@@ -3,6 +3,7 @@
 import importlib
 import logging
 import threading
+from typing import cast
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -13,10 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class ClientLocal(threading.local):
-    """Thread-local storage for client strategies with strict typing.
-
-    Ensures that attributes are initialized for every new thread context.
-    """
+    """Thread-local storage for client strategies with strict typing."""
 
     def __init__(self) -> None:
         """Initialize thread-local attributes."""
@@ -25,10 +23,7 @@ class ClientLocal(threading.local):
 
 
 class TorrentManager:
-    """Manages interactions with various torrent clients using the Strategy pattern.
-
-    Uses thread-local storage to ensure thread safety for the underlying sessions.
-    """
+    """Manages interactions with various torrent clients using the Strategy pattern."""
 
     def __init__(self) -> None:
         """Initialize the TorrentManager state."""
@@ -55,53 +50,55 @@ class TorrentManager:
         raw_host = config.get("DL_HOST")
         raw_port = config.get("DL_PORT")
 
-        self.host = raw_host or "localhost"
-        self.port = int(raw_port or 8080)
         self.username = config.get("DL_USERNAME")
         self.password = config.get("DL_PASSWORD")
         self.category = config.get("DL_CATEGORY", "abb-automated")
         self.scheme = config.get("DL_SCHEME", "http")
         self.dl_url = config.get("DL_URL")
 
-        # URL Parsing
+        # 1. Attempt to load the strategy class FIRST to get its defaults
+        strategy_class = self._load_strategy_class(self.client_type)
+        default_port = strategy_class.DEFAULT_PORT if strategy_class else 8080
+
+        # URL Parsing with dynamic default port
         if self.dl_url:
             try:
                 parsed = urlparse(self.dl_url)
-                if parsed.hostname:
-                    self.host = parsed.hostname
-                if parsed.port:
-                    self.port = parsed.port
+                self.host = parsed.hostname or raw_host or "localhost"
+                self.port = parsed.port or int(raw_port or default_port)
                 if parsed.scheme:
                     self.scheme = parsed.scheme
             except Exception as e:
                 logger.warning(f"Failed to parse DL_URL: {e}. Using raw config values.")
+                self.host = raw_host or "localhost"
+                self.port = int(raw_port or default_port)
+        else:
+            self.host = raw_host or "localhost"
+            self.port = int(raw_port or default_port)
+            self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
 
-        self._configure_defaults(raw_host, raw_port)
+            # Host default warning for Deluge (Legacy check, can be kept or eventually moved to plugin)
+            if not raw_host and self.client_type == "deluge":
+                logger.warning("DL_HOST missing. Defaulting Deluge to localhost.")
 
         # Reset thread local
         self._local = ClientLocal()
 
-    def _configure_defaults(self, raw_host: str | None, raw_port: str | None) -> None:
-        """Configure default ports and URLs based on client type."""
-        # If DL_URL is explicitly set, we do not need to construct it or guess ports
-        if self.dl_url:
-            return
+    def _load_strategy_class(self, client_name: str | None) -> type[TorrentClientStrategy] | None:
+        """Dynamically load the strategy class for the given client name."""
+        if not client_name:
+            return None
 
-        # Legacy Default Handling:
-        # Deluge defaults to port 8112 if the user did NOT explicitly provide a port.
-        # Note: 'self.port' is already set to 8080 by default in init_app if raw_port is None.
-        if not raw_port and self.client_type == "deluge":
-            self.port = 8112
-            logger.info("DL_PORT missing. Defaulting to 8112 for Deluge.")
-        elif not raw_port:
-            logger.info(f"DL_PORT missing. Defaulting to {self.port} for {self.client_type}.")
-
-        # Handle host default warning (init_app already sets self.host="localhost")
-        if not raw_host and self.client_type == "deluge":
-            logger.warning("DL_HOST missing. Defaulting Deluge to localhost.")
-
-        # Construct final URL from normalized values
-        self.dl_url = f"{self.scheme}://{self.host}:{self.port}"
+        try:
+            # Load from internal package
+            module = importlib.import_module(f".{client_name}", package="audiobook_automated.clients")
+            if hasattr(module, "Strategy") and issubclass(module.Strategy, TorrentClientStrategy):
+                # FIX: Explicit cast to satisfy MyPy no-any-return check
+                return cast(type[TorrentClientStrategy], module.Strategy)
+        except (ImportError, ModuleNotFoundError):
+            # Pass silently during config/init phase; detailed errors happen in _get_strategy
+            pass
+        return None
 
     def _get_strategy(self) -> TorrentClientStrategy | None:
         """Return the thread-local strategy instance or create/connect if needed."""
@@ -109,29 +106,17 @@ class TorrentManager:
             return self._local.strategy
 
         if not self.client_type:
-            # Should be caught by init check but robust just in case
             logger.error("DL_CLIENT not configured.")
-            return None  # pragma: no cover
+            return None
 
-        logger.debug(f"Initializing new {self.client_type} strategy for thread {threading.get_ident()}...")
+        # Load class (cached by Python's import system)
+        strategy_class = self._load_strategy_class(self.client_type)
 
-        strategy: TorrentClientStrategy | None = None
+        if not strategy_class:
+            logger.error(f"Could not load strategy for client: {self.client_type}")
+            return None
 
         try:
-            # Dynamic Loading
-            # This relies on the file audiobook_automated/clients/{self.client_type}.py existing
-            module = importlib.import_module(f".{self.client_type}", package="audiobook_automated.clients")
-
-            # Validate that the module actually has the Strategy class
-            # Cast to Any to satisfy MyPy since it doesn't know the module content
-            if not hasattr(module, "Strategy"):
-                logger.error(f"Client plugin '{self.client_type}' found, but it does not export a 'Strategy' class.")
-                return None
-
-            # Expecting a class named 'Strategy'
-            strategy_class = module.Strategy
-
-            # Instantiate with standard args + kwargs for flexibility
             strategy = strategy_class(
                 host=self.host,
                 port=self.port,
@@ -140,17 +125,8 @@ class TorrentManager:
                 scheme=self.scheme,
                 dl_url=self.dl_url,
             )
-
-            if strategy:
-                strategy.connect()
-                self._local.strategy = strategy
-
-        except (ImportError, ModuleNotFoundError):
-            logger.error(f"Unsupported download client configured or missing plugin: {self.client_type}", exc_info=True)
-            self._local.strategy = None
-        except SyntaxError:
-            logger.critical(f"Syntax Error in client plugin: {self.client_type}", exc_info=True)
-            self._local.strategy = None
+            strategy.connect()
+            self._local.strategy = strategy
         except Exception as e:
             logger.error(f"Error initializing torrent client strategy: {e}", exc_info=True)
             self._local.strategy = None

@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 from flask.testing import FlaskClient
 
+from audiobook_automated.scraper.parser import BookDetails
+
 
 def test_health_check(client: FlaskClient) -> None:
     """Test the health check endpoint."""
@@ -28,6 +30,47 @@ def test_search_endpoint_short_query(client: FlaskClient) -> None:
     response = client.get("/?query=a")
     assert response.status_code == 200
     assert b"Search query must be at least" in response.data
+
+
+def test_details_endpoint(client: FlaskClient) -> None:
+    """Test the details endpoint rendering."""
+    mock_details: BookDetails = {
+        "title": "Detailed Book",
+        "cover": "http://cover.jpg",
+        "description": "<p>Desc</p>",
+        "trackers": ["udp://tracker"],
+        "file_size": "200MB",
+        "info_hash": "12345",
+        "link": "http://test/details",
+        "language": "English",
+        "category": ["Audiobook"],
+        "post_date": "2025-01-01",
+        "format": "MP3",
+        "bitrate": "128kbps",
+        "author": "Author",
+        "narrator": "Narrator",
+    }
+
+    with patch("audiobook_automated.routes.get_book_details", return_value=mock_details):
+        response = client.get("/details?link=http://test/details")
+        assert response.status_code == 200
+        assert b"Detailed Book" in response.data
+        assert b"128kbps" in response.data
+
+
+def test_details_missing_link(client: FlaskClient) -> None:
+    """Test details endpoint redirects when link is missing."""
+    response = client.get("/details")
+    assert response.status_code == 302
+    assert response.location == "/" or response.location == "http://localhost/"
+
+
+def test_details_fetch_error(client: FlaskClient) -> None:
+    """Test details endpoint error handling."""
+    with patch("audiobook_automated.routes.get_book_details", side_effect=Exception("Fetch failed")):
+        response = client.get("/details?link=http://test")
+        assert response.status_code == 200
+        assert b"Could not load details" in response.data
 
 
 def test_send_success(client: FlaskClient) -> None:
