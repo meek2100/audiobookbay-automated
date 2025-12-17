@@ -39,6 +39,8 @@ AudiobookBay Downloader provides a simple and user-friendly interface for users 
 ### Environment Variables
 The app uses environment variables to configure its behavior. Below are the required variables:
 
+# For some unknown reason some users have issues if the hostname is quoted, if it doesn't work try removing the quotes. I have no idea why this happens and can only assume it depends on the host system and how it handles envs/DNS lookup.
+
 ```env
 DL_SCHEME=http
 DL_HOST=192.168.xxx.xxx        # IP or hostname of your qBittorrent or Transmission instance
