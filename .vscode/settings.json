@@ -53,7 +53,9 @@
     // ensuring .markdownlint.yaml rules are respected.
     "markdown.extension.list.indentationSize": 2,
     "markdown.extension.orderedList.autoRenumber": false,
-    "markdown.extension.syntax.decorations": false,
+    "markdown.extension.theming.decoration.renderCodeSpan": false,
+    "markdown.extension.theming.decoration.renderStrikethrough": false,
+    "markdown.extension.theming.decoration.renderLink": false,
 
     // -------------------------------------------------------------------------
     // FILE EXCLUSIONS
