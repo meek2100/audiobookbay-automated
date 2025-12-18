@@ -16,7 +16,8 @@ def test_template_structure() -> None:
 
 def test_template_initialization() -> None:
     """Ensure the template can be initialized."""
-    strategy = Strategy(host="localhost", port=8080)
+    # FIX: Added required username and password arguments
+    strategy = Strategy(host="localhost", port=8080, username="user", password="pass")
     assert strategy.host == "localhost"
     assert strategy.port == 8080
     assert strategy.client is None
@@ -24,7 +25,8 @@ def test_template_initialization() -> None:
 
 def test_template_raises_not_implemented() -> None:
     """Ensure all abstract methods raise NotImplementedError in the template."""
-    strategy = Strategy(host="localhost", port=8080)
+    # FIX: Added required username and password arguments
+    strategy = Strategy(host="localhost", port=8080, username="user", password="pass")
 
     # Mimic a connection for methods that check self.client
     strategy.client = True
@@ -41,18 +43,18 @@ def test_template_raises_not_implemented() -> None:
 
 def test_template_get_status_returns_empty() -> None:
     """Ensure get_status returns empty list by default (or raises if not implemented)."""
-    strategy = Strategy(host="localhost", port=8080)
+    # FIX: Added required username and password arguments
+    strategy = Strategy(host="localhost", port=8080, username="user", password="pass")
     strategy.client = True
 
     # The template implementation in the provided file actually returns []
-    # If the user changed it to raise NotImplementedError, this test would need adjustment.
-    # Based on provided content:
     assert strategy.get_status("cat") == []
 
 
 def test_template_methods_raise_connection_error_when_disconnected() -> None:
     """Ensure methods raise ConnectionError if client is None."""
-    strategy = Strategy(host="localhost", port=8080)
+    # FIX: Added required username and password arguments
+    strategy = Strategy(host="localhost", port=8080, username="user", password="pass")
     strategy.client = None
 
     with pytest.raises(ConnectionError, match="Client not connected"):
@@ -67,5 +69,6 @@ def test_template_methods_raise_connection_error_when_disconnected() -> None:
 
 def test_template_close_is_safe() -> None:
     """Ensure close() does not crash even if client is None."""
-    strategy = Strategy(host="localhost", port=8080)
+    # FIX: Added required username and password arguments
+    strategy = Strategy(host="localhost", port=8080, username="user", password="pass")
     strategy.close()  # Should not raise

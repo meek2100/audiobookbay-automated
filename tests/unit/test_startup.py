@@ -1,3 +1,4 @@
+# File: tests/unit/test_startup.py
 """Unit tests for startup configuration and verification logic."""
 
 import importlib
@@ -178,9 +179,14 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
         patch("audiobook_automated.os.path.exists") as mock_exists,
         patch("builtins.open", mock_open(read_data=expected_hash)) as mock_file,
         patch("audiobook_automated.calculate_static_hash") as mock_calc,
+        # FIX: Patch torrent_manager to prevent real connection attempt during startup
+        patch("audiobook_automated.torrent_manager") as mock_torrent_manager,
     ):
         # Configure exists to return True only if checking for version.txt
         mock_exists.side_effect = lambda p: p.endswith("version.txt")
+
+        # Mock the verify_credentials return to avoid warnings
+        mock_torrent_manager.verify_credentials.return_value = True
 
         # Call create_app directly
         audiobook_automated.create_app()
