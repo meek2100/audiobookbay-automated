@@ -50,7 +50,9 @@ class TorrentManager:
         if dl_client:
             # SAFETY: Validate client name to prevent directory traversal or injection
             if not re.match(r"^[a-zA-Z0-9_]+$", dl_client):
-                raise RuntimeError(f"Invalid DL_CLIENT value: '{dl_client}'. Must contain only alphanumeric characters and underscores.")
+                raise RuntimeError(
+                    f"Invalid DL_CLIENT value: '{dl_client}'. Must contain only alphanumeric characters and underscores."
+                )
             self.client_type = dl_client.lower()
         else:
             self.client_type = None

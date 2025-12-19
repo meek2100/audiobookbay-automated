@@ -1,8 +1,7 @@
 # File: tests/unit/clients/test_manager_syntax.py
 """Unit tests for Manager SyntaxError handling."""
 
-import importlib
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from audiobook_automated.clients.manager import TorrentManager
 

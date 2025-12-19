@@ -2,12 +2,10 @@
 """Test suite for Network module handling malformed trackers."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
-from cachetools import TTLCache
 
 from audiobook_automated.constants import DEFAULT_TRACKERS
-from audiobook_automated.scraper.network import get_trackers, tracker_cache, CACHE_LOCK
+from audiobook_automated.scraper.network import CACHE_LOCK, get_trackers, tracker_cache
 
 
 def test_malformed_trackers_json(app):
@@ -25,8 +23,8 @@ def test_malformed_trackers_json(app):
         # base_dir = Path(__file__).resolve().parents[2]
         # json_path = base_dir / "trackers.json"
 
-        mock_path_instance = mock_path_cls.return_value # resolve()
-        mock_path_instance.resolve.return_value.parents = [None, None, mock_path_instance] # parents[2]
+        mock_path_instance = mock_path_cls.return_value  # resolve()
+        mock_path_instance.resolve.return_value.parents = [None, None, mock_path_instance]  # parents[2]
 
         # When / "trackers.json" is called
         mock_json_path = mock_path_instance.__truediv__.return_value
@@ -48,6 +46,7 @@ def test_malformed_trackers_json(app):
 
                 assert trackers == DEFAULT_TRACKERS
                 # Verify we hit the specific path? We can check logs if we want, but return value is key.
+
 
 def test_json_load_exception(app):
     """Test that get_trackers handles JSONDecodeError or other exceptions."""

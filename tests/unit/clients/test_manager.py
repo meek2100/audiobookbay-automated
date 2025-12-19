@@ -1,7 +1,6 @@
 """Unit tests for the TorrentManager."""
 
 import importlib
-import re
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 

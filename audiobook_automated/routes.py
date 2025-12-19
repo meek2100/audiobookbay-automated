@@ -2,7 +2,6 @@
 """Routes module handling all web endpoints."""
 
 import logging
-import os
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, cast
 
