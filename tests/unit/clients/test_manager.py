@@ -1,6 +1,7 @@
 """Unit tests for the TorrentManager."""
 
 import importlib
+import re
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -376,3 +377,76 @@ def test_load_strategy_class_none(app: Flask, setup_manager: Any) -> None:
     """
     manager = setup_manager(app)
     assert manager._load_strategy_class(None) is None
+
+
+def test_syntax_error_in_plugin(app: Flask) -> None:
+    """Test that a SyntaxError in the plugin module is caught and logged."""
+    manager = TorrentManager()
+    app.config["DL_CLIENT"] = "test_client"
+
+    # We need to initialize the app so manager picks up the config
+    manager.init_app(app)
+
+    with patch("importlib.import_module") as mock_import:
+        mock_import.side_effect = SyntaxError("Test Syntax Error")
+
+        strategy = manager._get_strategy()
+
+        assert strategy is None
+        mock_import.assert_called()
+
+
+def test_invalid_dl_client_regex(app: Flask) -> None:
+    """Test that init_app raises RuntimeError for invalid DL_CLIENT characters."""
+    manager = TorrentManager()
+    app.config["DL_CLIENT"] = "invalid-client-name"  # Hyphens not allowed
+
+    with pytest.raises(RuntimeError) as excinfo:
+        manager.init_app(app)
+
+    assert "Invalid DL_CLIENT value" in str(excinfo.value)
+
+
+def test_missing_dl_client(app: Flask) -> None:
+    """Test that init_app handles missing DL_CLIENT gracefully (sets None)."""
+    manager = TorrentManager()
+    app.config["DL_CLIENT"] = None
+
+    manager.init_app(app)
+    assert manager.client_type is None
+
+
+def test_import_error_dependency(app: Flask) -> None:
+    """Test that ImportError for a dependency INSIDE the plugin raises the error."""
+    manager = TorrentManager()
+    app.config["DL_CLIENT"] = "valid_client"
+    manager.init_app(app)
+
+    # We simulate:
+    # 1. importlib.import_module("...valid_client") raises ImportError
+    # 2. BUT the name of the missing module is NOT the client itself, but 'some_dependency'
+
+    with patch("importlib.import_module") as mock_import:
+        # Create an ImportError with a specific name attribute
+        error = ModuleNotFoundError("No module named 'some_dependency'")
+        error.name = "some_dependency"  # Crucial: NOT 'audiobook_automated.clients.valid_client'
+        mock_import.side_effect = error
+
+        with pytest.raises(ImportError) as excinfo:
+            manager._load_strategy_class("valid_client")
+
+        assert str(excinfo.value) == "No module named 'some_dependency'"
+
+
+def test_manager_missing_dependency_during_get_strategy(app: Flask) -> None:
+    """Test the full flow in _get_strategy when dependency is missing."""
+    manager = TorrentManager()
+    app.config["DL_CLIENT"] = "valid_client"
+    manager.init_app(app)
+
+    with patch.object(manager, "_load_strategy_class") as mock_load:
+        # Mock _load_strategy_class to raise the ImportError (as it would if called directly)
+        mock_load.side_effect = ImportError("some_dependency")
+
+        strategy = manager._get_strategy()
+        assert strategy is None
