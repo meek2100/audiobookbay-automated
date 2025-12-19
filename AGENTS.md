@@ -230,16 +230,17 @@ For self-hosted setups using Docker, users can "drop in" a new client:
 - **Dockerfile Build Order:** The Dockerfile MUST copy `pyproject.toml` and `audiobook_automated/` (the source code)
   **BEFORE** running `pip install .`. Failure to do so results in an empty package installation.
 - **Static Asset Versioning:** The `Dockerfile` MUST execute
-  `python3 -m audiobook_automated.utils > audiobook_automated/version.txt` during the build process to generate the
-  static asset hash. This avoids filesystem traversal at runtime.
+  `python3 -m audiobook_automated.utils > audiobook_automated/version.txt` during the build process. The application
+  logic must prioritize reading this file at startup to prevent expensive filesystem traversal.
 
 ### Rate Limiting & Scraping
 
 - Safety > speed.
 - Random jitter (0.5-1.5 seconds) required before all external requests.
 - Mirror checks use `requests.head` with zero retries.
-- **Fail Fast:** Mirror checks must return `None` immediately upon `Timeout` or `ConnectionError`. Do NOT retry with
-  `GET` in these cases, as it exacerbates latency.
+- **Fail Fast:** Mirror checks must return `None` immediately upon `Timeout` or `ConnectionError`.
+- **Method Fallback:** If `HEAD` returns 405 (Method Not Allowed) or 403 (Forbidden), the check **MUST** fall back to a
+  `GET` request. Beyond this, Do NOT retry with `GET` in these cases, as it exacerbates latency.
 - All queries normalized to lowercase.
 - **Search Query Safety:** All search endpoints must enforce a minimum query length (e.g., 2 characters) to prevent
   spamming the scraper with broad queries.
@@ -339,12 +340,14 @@ fetching. Future implementations must respect these specific library constraints
 
 - **Resource Cleanup:** All strategies must implement a `close()` method to release sockets/sessions explicitly.
 - **Progress Normalization:**
+
   - **qBittorrent:** Returns float `0.0 - 1.0`. Must multiply by 100.
   - **Transmission:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
   - **Deluge:** Returns float `0.0 - 100.0`. **Do NOT** multiply by 100.
   - **Result:** All strategies must return a standard `0.0 - 100.0` float rounded to 2 decimal places.
 
 - **Category/Label Filtering:**
+
   - **qBittorrent:** Supports efficient server-side filtering (`torrents_info(category=...)`). Use it.
   - **Transmission:** Does **NOT** support server-side label filtering. You **MUST** fetch all torrents and filter by
     label client-side (in Python).

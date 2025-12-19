@@ -2,26 +2,22 @@
 """Routes module handling all web endpoints."""
 
 import logging
-from pathlib import PurePosixPath, PureWindowsPath
-from typing import Any, cast
+from pathlib import Path
+from typing import TypedDict, cast
 
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
 
 from audiobook_automated.constants import (
     ABS_TIMEOUT_SECONDS,
-    DEEP_PATH_WARNING_THRESHOLD,
     DEFAULT_COVER_FILENAME,
-    MAX_FILENAME_LENGTH,
-    MIN_FILENAME_LENGTH,
     MIN_SEARCH_QUERY_LENGTH,
-    WINDOWS_PATH_SAFE_LIMIT,
 )
 
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .scraper.parser import BookSummary
-from .utils import ensure_collision_safety, sanitize_title
+from .utils import construct_safe_save_path, get_application_version, sanitize_title
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +25,29 @@ logger = logging.getLogger(__name__)
 main_bp = Blueprint("main", __name__)
 
 
+class GlobalContext(TypedDict):
+    """Type definition for global template variables."""
+
+    nav_link_name: str | None
+    nav_link_url: str | None
+    library_reload_enabled: bool
+    static_version: str
+    default_cover_filename: str
+
+
 @main_bp.context_processor
-def inject_global_vars() -> dict[str, Any]:
+def inject_global_vars() -> GlobalContext:
     """Inject global variables into all templates.
 
     Uses current_app.config to access settings loaded in config.py.
 
     Returns:
-        dict[str, Any]: A dictionary of context variables available to templates.
+        GlobalContext: A dictionary of context variables available to templates.
     """
-    # Retrieve the pre-calculated hash from config to avoid disk I/O on every request.
-    static_version = current_app.config.get("STATIC_VERSION", "v1")
+    # Retrieve version hash from version.txt (prod) or calculation (dev)
+    # Using Path(current_app.root_path) ensures we look in the correct package location
+    static_folder = Path(current_app.root_path) / "audiobook_automated" / "static"
+    static_version = get_application_version(static_folder)
 
     # OPTIMIZATION: Retrieve pre-calculated flag from config instead of re-evaluating
     # Now uses the property defined in Config class
@@ -171,66 +179,25 @@ def send() -> Response | tuple[Response, int]:
         logger.warning("Invalid send request received: missing link or valid title")
         return jsonify({"message": "Invalid request: Title or Link missing"}), 400
 
-    safe_title = sanitize_title(title)
-
-    logger.info(f"Received download request for '{safe_title}'")
+    # Logging raw title before processing
+    logger.info(f"Received download request for '{sanitize_title(title)}'")
 
     try:
         magnet_link, error = extract_magnet_link(details_url)
 
         if not magnet_link:
-            logger.error(f"Failed to extract magnet link for '{safe_title}': {error}")
+            logger.error(f"Failed to extract magnet link for '{title}': {error}")
             # Map specific errors to 404/400 to avoid alerting on 500s
             status_code = 404 if error and "found" in error else 400
             return jsonify({"message": f"Download failed: {error}"}), status_code
 
-        # Dynamic Path Safety Calculation
-        # Calculate available length for directory name based on SAVE_PATH_BASE length.
-        # Max path on Windows is ~260. We reserve margin.
+        # DELEGATION: Path construction logic moved to utils.py
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
-        max_len = MAX_FILENAME_LENGTH  # Default safe default
-        if save_path_base:
-            base_len = len(save_path_base)
-            # Use constant for calculation: 260 - 10 - 1 = 249
-            calculated_limit = WINDOWS_PATH_SAFE_LIMIT - base_len
-
-            if calculated_limit < DEEP_PATH_WARNING_THRESHOLD:
-                logger.warning(
-                    f"SAVE_PATH_BASE is extremely deep ({base_len} chars). "
-                    "Titles will be severely truncated to prevent file system errors."
-                )
-
-            # SAFETY: Prioritize OS limits over "usable" length.
-            # We enforce a floor of MIN_FILENAME_LENGTH to avoid empty strings/collisions,
-            # but we cap the ceiling at the calculated limit to prevent crashes.
-            max_len = max(MIN_FILENAME_LENGTH, calculated_limit)
-
-            # Cap at MAX_FILENAME_LENGTH to ensure we never allow massive paths if base is short
-            max_len = min(MAX_FILENAME_LENGTH, max_len)
-
-        # Collision Prevention:
-        # Handles Fallback Title, Windows Reserved names, and Path Length limits by appending UUID.
-        previous_title = safe_title
-        safe_title = ensure_collision_safety(safe_title, max_length=max_len)
-
-        if safe_title != previous_title:
-            msg = f"Title '{title}' required fallback/truncate handling. Using collision-safe directory name: {safe_title}"
-            logger.warning(msg)
-
-        if save_path_base:
-            # NOTE: os.path.join uses the separator of the CONTAINER'S OS (Linux '/').
-            # If the remote torrent client is on Windows (indicated by backslashes), we must construct
-            # a Windows path even if running on Linux.
-            if "\\" in save_path_base:
-                save_path = str(PureWindowsPath(save_path_base).joinpath(safe_title))
-            else:
-                save_path = str(PurePosixPath(save_path_base).joinpath(safe_title))
-        else:
-            save_path = safe_title
+        save_path = construct_safe_save_path(save_path_base, title)
 
         torrent_manager.add_magnet(magnet_link, save_path)
 
-        logger.info(f"Successfully sent '{safe_title}' to {torrent_manager.client_type}")
+        logger.info(f"Successfully sent '{title}' to {torrent_manager.client_type}")
         return (
             jsonify(
                 {

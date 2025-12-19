@@ -1,3 +1,4 @@
+# File: audiobook_automated/scraper/network.py
 """Network module handling HTTP sessions, proxies, and mirrors."""
 
 import concurrent.futures
@@ -197,6 +198,15 @@ def check_mirror(hostname: str) -> str | None:
         response = session.head(url, headers=headers, timeout=5, allow_redirects=True)
         if response.status_code == 200:  # noqa: PLR2004
             return hostname
+
+        # ROBUSTNESS: Some Anti-DDoS/Cloudflare configs return 405 (Method Not Allowed)
+        # or 403 (Forbidden) for HEAD requests but allow GET. We must fall back.
+        if response.status_code in (403, 405):
+            logger.debug(f"Mirror {hostname} returned {response.status_code} on HEAD. Falling back to GET.")
+        else:
+            # 404, 500, 502, etc. indicate the mirror is likely down or broken.
+            return None
+
     except (requests.Timeout, requests.ConnectionError):
         # FAIL FAST: If HEAD times out, do NOT try GET.
         return None
