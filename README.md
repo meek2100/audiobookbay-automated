@@ -61,6 +61,8 @@ The app uses environment variables to configure its behavior.
 
 #### 1. Torrent Client Connection (Required)
 
+# For some unknown reason some users have issues if the hostname is quoted, if it doesn't work try removing the quotes. I have no idea why this happens and can only assume it depends on the host system and how it handles envs/DNS lookup.
+
 ```env
 DL_CLIENT=qbittorrent          # Options: qbittorrent, transmission, deluge
 DL_HOST=192.168.1.123          # IP/Hostname of your client
