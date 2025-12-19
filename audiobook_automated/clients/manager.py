@@ -3,6 +3,7 @@
 
 import importlib
 import logging
+import re
 import threading
 from typing import cast
 from urllib.parse import urlparse
@@ -45,8 +46,14 @@ class TorrentManager:
         config = app.config
 
         dl_client = config.get("DL_CLIENT")
-        # Normalize to lowercase to match module filenames
-        self.client_type = dl_client.lower() if dl_client else None
+
+        if dl_client:
+            # SAFETY: Validate client name to prevent directory traversal or injection
+            if not re.match(r"^[a-zA-Z0-9_]+$", dl_client):
+                raise RuntimeError(f"Invalid DL_CLIENT value: '{dl_client}'. Must contain only alphanumeric characters and underscores.")
+            self.client_type = dl_client.lower()
+        else:
+            self.client_type = None
 
         raw_host = config.get("DL_HOST")
         raw_port = config.get("DL_PORT")
@@ -110,9 +117,11 @@ class TorrentManager:
         try:
             # Load from internal package
             module = importlib.import_module(f".{client_name}", package="audiobook_automated.clients")
-            if hasattr(module, "Strategy") and issubclass(module.Strategy, TorrentClientStrategy):
+            strategy_class = getattr(module, "Strategy", None)
+
+            if strategy_class and issubclass(strategy_class, TorrentClientStrategy):
                 # FIX: Explicit cast to satisfy MyPy no-any-return check
-                return cast(type[TorrentClientStrategy], module.Strategy)
+                return cast(type[TorrentClientStrategy], strategy_class)
             elif not suppress_errors:
                 logger.error(f"Client plugin '{client_name}' found, but it does not export a 'Strategy' class.")
 

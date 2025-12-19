@@ -3,6 +3,7 @@
 
 import logging
 import os
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Any, cast
 
 import requests
@@ -219,9 +220,12 @@ def send() -> Response | tuple[Response, int]:
 
         if save_path_base:
             # NOTE: os.path.join uses the separator of the CONTAINER'S OS (Linux '/').
-            # If the remote torrent client is on Windows and strictly expects backslashes,
-            # this path might need conversion. However, most modern Windows clients handle forward slashes.
-            save_path = os.path.join(save_path_base, safe_title)
+            # If the remote torrent client is on Windows (indicated by backslashes), we must construct
+            # a Windows path even if running on Linux.
+            if "\\" in save_path_base:
+                save_path = str(PureWindowsPath(save_path_base).joinpath(safe_title))
+            else:
+                save_path = str(PurePosixPath(save_path_base).joinpath(safe_title))
         else:
             save_path = safe_title
 
