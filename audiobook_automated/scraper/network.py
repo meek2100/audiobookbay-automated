@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 # --- Concurrency Control ---
 DEFAULT_CONCURRENT_REQUESTS = 3
 _semaphore: threading.BoundedSemaphore = threading.BoundedSemaphore(DEFAULT_CONCURRENT_REQUESTS)
+# Executor for mirror availability checks to prevent thread churn
+_mirror_executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 CACHE_LOCK = threading.Lock()
 
 # --- Thread-Local Storage ---
@@ -133,6 +135,8 @@ def get_ping_session() -> Session:
     Reuses a single session instance to prevent expensive SSL context recreation overhead
     during high-concurrency mirror checks.
 
+    NOTE: This is a read-only session used for thread safety.
+
     Returns:
         Session: A configured requests Session object with 0 retries.
     """
@@ -226,23 +230,19 @@ def find_best_mirror() -> str | None:
 
     mirrors = get_mirrors()
     logger.debug(f"Checking connectivity for {len(mirrors)} mirrors...")
-    safe_mirror_workers = 5
 
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=safe_mirror_workers)
-    futures = [executor.submit(check_mirror, host) for host in mirrors]
+    futures = [_mirror_executor.submit(check_mirror, host) for host in mirrors]
 
-    try:
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            if result:
-                logger.info(f"Found active mirror: {result}")
-                for f in futures:
-                    f.cancel()
-                with CACHE_LOCK:
-                    mirror_cache[cache_key] = result
-                return result
-    finally:
-        executor.shutdown(wait=False)
+    for future in concurrent.futures.as_completed(futures):
+        result = future.result()
+        if result:
+            logger.info(f"Found active mirror: {result}")
+            # Best effort cancel other pending tasks
+            for f in futures:
+                f.cancel()
+            with CACHE_LOCK:
+                mirror_cache[cache_key] = result
+            return result
 
     logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
     with CACHE_LOCK:
