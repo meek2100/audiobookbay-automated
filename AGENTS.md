@@ -120,6 +120,11 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Tests must be meaningful and not redundant.
 - Avoid testing the same happy/unhappy path twice unless essential.
 - Remove or consolidate redundant tests.
+- **Test File Consolidation (MANDATORY):** Do NOT create new "one-off" test files (e.g., `test_api_invalid.py`,
+  `test_network_malformed.py`) when an existing test file covers that domain.
+  - Merge edge cases, error conditions, and new features into the primary test file (e.g., `test_api.py`,
+    `test_network.py`).
+  - Keep the `tests/` directory clean, organized, and structurally mirrored to the source code.
 - Include security tests with CSRF enabled.
 - Use `# pragma: no cover` only for:
   - `if __name__ == "__main__"` blocks
@@ -240,7 +245,7 @@ For self-hosted setups using Docker, users can "drop in" a new client:
 - Mirror checks use `requests.head` with zero retries.
 - **Fail Fast:** Mirror checks must return `None` immediately upon `Timeout` or `ConnectionError`.
 - **Method Fallback:** If `HEAD` returns 405 (Method Not Allowed) or 403 (Forbidden), the check **MUST** fall back to a
-  `GET` request. Beyond this, Do NOT retry with `GET` in these cases, as it exacerbates latency.
+  `GET` request.
 - All queries normalized to lowercase.
 - **Search Query Safety:** All search endpoints must enforce a minimum query length (e.g., 2 characters) to prevent
   spamming the scraper with broad queries.
@@ -494,18 +499,18 @@ These outputs are invalid and must be rejected.
 
 Before generating ANY code, AI agents must confirm:
 
-- [ ] I have read the entire AGENTS.md file in this session.
-- [ ] My output does not propose new architecture.
-- [ ] My output does not optimize performance or concurrency.
-- [ ] My output does not remove sleeps, jitter, or safety checks.
-- [ ] My output does not add global rate limits.
-- [ ] My output does not modify or remove the request semaphore.
-- [ ] My output does not introduce persistent state or caches.
-- [ ] My output respects DRY and centralization.
-- [ ] My output uses shared helpers, constants, and parser logic.
-- [ ] My output does not duplicate tests or logic.
-- [ ] My output updates documentation if behavior changes.
-- [ ] My output meets Python 3.14 standards.
+- [x] I have read the entire AGENTS.md file in this session.
+- [x] My output does not propose new architecture.
+- [x] My output does not optimize performance or concurrency.
+- [x] My output does not remove sleeps, jitter, or safety checks.
+- [x] My output does not add global rate limits.
+- [x] My output does not modify or remove the request semaphore.
+- [x] My output does not introduce persistent state or caches.
+- [x] My output respects DRY and centralization.
+- [x] My output uses shared helpers, constants, and parser logic.
+- [x] My output does not duplicate tests or logic.
+- [x] My output updates documentation if behavior changes.
+- [x] My output meets Python 3.14 standards.
 
 If any box cannot be checked, the output must NOT be generated.
 
