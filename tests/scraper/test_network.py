@@ -205,6 +205,22 @@ def test_check_mirror_head_500_fallback() -> None:
         assert result is None
 
 
+def test_check_mirror_head_405_fallback() -> None:
+    """Test fallback to GET if HEAD returns 405 Method Not Allowed."""
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        # HEAD returns 405
+        mock_session.head.return_value.status_code = 405
+        # GET returns 200
+        mock_session.get.return_value.status_code = 200
+
+        result = network.check_mirror("fallback.mirror")
+        assert result == "fallback.mirror"
+        # Verify both called
+        mock_session.head.assert_called()
+        mock_session.get.assert_called()
+
+
 def test_check_mirror_get_exception() -> None:
     """Test check_mirror returns None if both HEAD and GET fail."""
     with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
