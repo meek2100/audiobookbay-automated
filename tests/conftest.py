@@ -2,8 +2,7 @@
 """Global pytest fixtures and configuration for the test suite.
 
 This module defines the 'World' in which tests run, including the Flask application
-instance, test clients, and global configuration overrides (like disabling CSRF
-for API tests).
+instance, test clients, and global configuration overrides.
 """
 
 from __future__ import annotations
@@ -45,12 +44,16 @@ def mock_global_dependencies() -> Generator[None]:
 
     This fixture runs automatically for every test. It mocks the heavy
     lifters (TorrentManager) to prevent the application from trying to
-    connect to a real torrent client during startup or request handling,
-    which is likely the cause of local live connection errors.
+    connect to a real torrent client during startup (verify_credentials)
+    or request handling.
     """
-    # We patch where it is USED in the routes/app
-    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-        # Configure the mock to behave 'normally' so tests that don't customize it still pass
+    # CRITICAL FIX: Patch the instance in 'extensions' because that is where
+    # __init__.py imports it from during create_app().
+    with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
+        # Ensure startup check passes without network
+        mock_tm.verify_credentials.return_value = True
+
+        # Configure standard methods to behave 'normally'
         mock_tm.get_status.return_value = []
         mock_tm.add_magnet.return_value = "OK"
         yield
@@ -63,7 +66,6 @@ def app() -> Generator[Flask]:
     Uses TestConfig to ensure configuration is present before extension initialization.
     """
     app = create_app(TestConfig)
-
     yield app
 
 

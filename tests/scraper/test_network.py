@@ -1,10 +1,10 @@
 # File: tests/scraper/test_network.py
 """Tests for the network module, covering mirror management and tracker retrieval."""
 
-import pathlib
+import json
 from collections.abc import Generator
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 import pytest
 import requests
@@ -48,76 +48,62 @@ def test_get_trackers_from_env(mock_app_context: Any) -> None:
     assert trackers[0] == "udp://env.tracker:1337"
 
 
-def test_get_trackers_from_json_file(
-    mock_app_context: Any, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test loading trackers from the optional JSON file using real file IO."""
+def test_get_trackers_from_json_file(mock_app_context: Any) -> None:
+    """Test loading trackers from the optional JSON file."""
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []  # Empty env
 
-    # Hermeneutic approach: Use real files (Parts) to validate the loading logic (Whole)
-    # 1. Create the real file in a temporary directory
-    trackers_file = tmp_path / "trackers.json"
-    trackers_file.write_text('["udp://json.tracker:80"]', encoding="utf-8")
-
-    # 2. Change the current working directory to the temp dir so the app finds it
-    monkeypatch.chdir(tmp_path)
-
-    trackers = network.get_trackers()
-    assert trackers == ["udp://json.tracker:80"]
+    # Mock pathlib.Path.exists to return True
+    with patch("pathlib.Path.exists", return_value=True):
+        mock_data = '["udp://json.tracker:80"]'
+        # Mock open to return our JSON list
+        with patch("builtins.open", mock_open(read_data=mock_data)):
+            trackers = network.get_trackers()
+            assert trackers == ["udp://json.tracker:80"]
 
 
-def test_get_trackers_json_invalid_structure(
-    mock_app_context: Any, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_get_trackers_json_invalid_structure(mock_app_context: Any) -> None:
     """Test when trackers.json exists but contains a dict instead of a list."""
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
-    # Mock data as a JSON object/dict, not a list, written to real file
-    trackers_file = tmp_path / "trackers.json"
-    trackers_file.write_text('{"key": "value"}', encoding="utf-8")
-    monkeypatch.chdir(tmp_path)
+    with patch("pathlib.Path.exists", return_value=True):
+        # Mock data as a JSON object/dict, not a list
+        mock_data = '{"key": "value"}'
+        with patch("builtins.open", mock_open(read_data=mock_data)):
+            with patch("audiobook_automated.scraper.network.logger") as mock_logger:
+                trackers = network.get_trackers()
+                # Should fallback to defaults
+                assert trackers == DEFAULT_TRACKERS
+                # Verify the specific warning was logged
+                args, _ = mock_logger.warning.call_args
+                assert "trackers.json contains invalid data" in args[0]
 
-    with patch("audiobook_automated.scraper.network.logger") as mock_logger:
-        trackers = network.get_trackers()
-        # Should fallback to defaults
-        assert trackers == DEFAULT_TRACKERS
-        # Verify the specific warning was logged
-        args, _ = mock_logger.warning.call_args
-        assert "trackers.json contains invalid data" in args[0]
 
-
-def test_get_trackers_json_read_error(
-    mock_app_context: Any, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test when reading/parsing trackers.json raises an exception (e.g. invalid JSON)."""
+def test_get_trackers_json_read_error(mock_app_context: Any) -> None:
+    """Test when reading/parsing trackers.json raises an exception."""
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
-    # Write invalid JSON to trigger a JSONDecodeError
-    trackers_file = tmp_path / "trackers.json"
-    trackers_file.write_text("{incomplete_json", encoding="utf-8")
-    monkeypatch.chdir(tmp_path)
-
-    with patch("audiobook_automated.scraper.network.logger") as mock_logger:
-        trackers = network.get_trackers()
-        assert trackers == DEFAULT_TRACKERS
-        # Verify exception logging
-        args, _ = mock_logger.warning.call_args
-        assert "Failed to load trackers.json" in args[0]
+    with patch("pathlib.Path.exists", return_value=True):
+        # Simulate invalid JSON syntax
+        with patch("builtins.open", side_effect=json.JSONDecodeError("Expecting value", "doc", 0)):
+            with patch("audiobook_automated.scraper.network.logger") as mock_logger:
+                trackers = network.get_trackers()
+                assert trackers == DEFAULT_TRACKERS
+                # Verify exception logging
+                args, _ = mock_logger.warning.call_args
+                assert "Failed to load trackers.json" in args[0]
 
 
-def test_get_trackers_defaults(mock_app_context: Any, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_trackers_defaults(mock_app_context: Any) -> None:
     """Test fallback to default trackers when config is empty and no JSON file exists."""
     network.tracker_cache.clear()
     mock_app_context.config["MAGNET_TRACKERS"] = []
 
-    # Ensure we are in an empty temp directory where trackers.json definitively does not exist
-    monkeypatch.chdir(tmp_path)
-
-    trackers = network.get_trackers()
-    assert trackers == DEFAULT_TRACKERS
+    with patch("pathlib.Path.exists", return_value=False):
+        trackers = network.get_trackers()
+        assert trackers == DEFAULT_TRACKERS
 
 
 def test_get_mirrors_logic(mock_app_context: Any) -> None:
