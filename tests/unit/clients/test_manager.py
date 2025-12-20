@@ -9,7 +9,6 @@ from flask import Flask
 
 from audiobook_automated.clients import TorrentManager, TorrentStatus
 from audiobook_automated.clients.base import TorrentClientStrategy
-from audiobook_automated.clients.manager import TorrentManager
 
 
 def test_init_with_dl_url(app: Flask, setup_manager: Any) -> None:
@@ -41,9 +40,6 @@ def test_init_dl_url_deluge_default(app: Flask, setup_manager: Any) -> None:
 
 def test_init_dl_port_missing(app: Flask, setup_manager: Any) -> None:
     """Test that default port is assigned if DL_HOST is present but DL_PORT is missing."""
-    # Logic Change: We no longer explicitly log "DL_PORT missing" in init_app,
-    # as the logic is now handled by looking up defaults on the strategy class.
-
     # Mock loading the strategy class to return a default port (Simulating Deluge)
     mock_strategy = MagicMock()
     mock_strategy.DEFAULT_PORT = 8112
@@ -450,69 +446,3 @@ def test_manager_missing_dependency_during_get_strategy(app: Flask) -> None:
 
         strategy = manager._get_strategy()
         assert strategy is None
-
-
-class TestManagerSyntax:
-    """Test suite for Manager SyntaxError handling."""
-
-    def test_syntax_error_in_plugin(self, app):
-        """Test that a SyntaxError in the plugin module is caught and logged."""
-        manager = TorrentManager()
-        app.config["DL_CLIENT"] = "test_client"
-
-        # We need to initialize the app so manager picks up the config
-        manager.init_app(app)
-
-        with patch("importlib.import_module") as mock_import:
-            mock_import.side_effect = SyntaxError("Test Syntax Error")
-
-            strategy = manager._get_strategy()
-
-            assert strategy is None
-            mock_import.assert_called()
-
-
-@patch("audiobook_automated.clients.manager.importlib.import_module")
-def test_manager_syntax_error_in_plugin(mock_import):
-    """Test that a SyntaxError in a plugin is caught and logged."""
-    manager = TorrentManager()
-    manager.client_type = "broken_plugin"
-
-    # Simulate a SyntaxError during import
-    mock_import.side_effect = SyntaxError("Bad syntax")
-
-    # Should not raise exception, but return None and log error
-    strategy = manager._get_strategy()
-    assert strategy is None
-
-
-@patch("audiobook_automated.clients.manager.importlib.import_module")
-def test_manager_missing_plugin(mock_import):
-    """Test graceful handling of missing plugin module."""
-    manager = TorrentManager()
-    manager.client_type = "nonexistent"
-
-    # Simulate ModuleNotFoundError for the plugin itself
-    error = ModuleNotFoundError(
-        "No module named 'audiobook_automated.clients.nonexistent'", name="audiobook_automated.clients.nonexistent"
-    )
-    mock_import.side_effect = error
-
-    strategy = manager._get_strategy()
-    assert strategy is None
-
-
-@patch("audiobook_automated.clients.manager.importlib.import_module")
-def test_manager_missing_dependency_inside_plugin(mock_import):
-    """Test that missing dependencies INSIDE a plugin DO raise an error."""
-    manager = TorrentManager()
-    manager.client_type = "valid_plugin"
-
-    # Simulate ModuleNotFoundError for a dependency (e.g. 'requests')
-    # The name is NOT the plugin path
-    error = ModuleNotFoundError("No module named 'requests'", name="requests")
-    mock_import.side_effect = error
-
-    # This should propagate
-    with pytest.raises(ModuleNotFoundError):
-        manager._get_strategy()

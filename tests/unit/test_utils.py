@@ -5,7 +5,13 @@ from typing import Any
 from unittest.mock import patch
 
 from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX
-from audiobook_automated.utils import calculate_static_hash, ensure_collision_safety, sanitize_title
+from audiobook_automated.utils import (
+    calculate_static_hash,
+    construct_safe_save_path,
+    ensure_collision_safety,
+    get_application_version,
+    sanitize_title,
+)
 
 
 def test_sanitize_title_basic() -> None:
@@ -93,6 +99,31 @@ def test_ensure_collision_safety_short_max_length() -> None:
         # to ensure uniqueness/validity over strict length adherence (safety > strictness).
         result = ensure_collision_safety(title, max_length=5)
         assert result == "S_12345678"
+
+
+def test_construct_safe_save_path_windows_path() -> None:
+    """Test that construct_safe_save_path handles Windows paths correctly."""
+    base_path = "C:\\Downloads"
+    title = "My Book"
+    # Should use PureWindowsPath
+    expected = "C:\\Downloads\\My Book"
+    assert construct_safe_save_path(base_path, title) == expected
+
+
+def test_get_application_version_os_error(tmp_path: Path) -> None:
+    """Test get_application_version handles OSError when reading version.txt."""
+    version_file = tmp_path / "version.txt"
+    version_file.write_text("hash")
+
+    # Use a subdir so parent is tmp_path
+    static_folder = tmp_path / "static"
+    static_folder.mkdir()
+
+    with patch("pathlib.Path.read_text", side_effect=OSError("Read error")):
+        with patch("audiobook_automated.utils.calculate_static_hash", return_value="calculated_v1") as mock_calc:
+            version = get_application_version(static_folder)
+            assert version == "calculated_v1"
+            mock_calc.assert_called_once()
 
 
 def test_calculate_static_hash(tmp_path: Path) -> None:
