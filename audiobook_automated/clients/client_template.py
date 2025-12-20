@@ -1,3 +1,4 @@
+# File: audiobook_automated/clients/client_template.py
 """Template for creating custom Torrent Client plugins.
 
 Instructions for Developers:

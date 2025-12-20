@@ -1,3 +1,4 @@
+# File: tests/scraper/test_magnet.py
 """Tests for magnet link extraction logic."""
 
 from typing import Any, cast

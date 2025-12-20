@@ -1,3 +1,4 @@
+# File: .github/workflows/vendor-sync.yaml
 name: Vendor Sync & PR
 
 on:

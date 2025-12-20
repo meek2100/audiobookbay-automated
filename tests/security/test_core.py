@@ -1,3 +1,4 @@
+# File: tests/security/test_core.py
 """Tests for core security features like CSRF, SSRF, and input sanitization."""
 
 from typing import Any

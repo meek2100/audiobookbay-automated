@@ -1,3 +1,4 @@
+# File: tests/scraper/test_core.py
 """Unit tests for core scraping logic."""
 
 import concurrent.futures

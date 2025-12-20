@@ -1,3 +1,4 @@
+# File: tests/unit/test_config.py
 """Unit tests for configuration validation."""
 
 import logging

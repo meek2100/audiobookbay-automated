@@ -1,3 +1,4 @@
+# File: tests/functional/test_system.py
 """Functional tests for system-level routes and static assets."""
 
 from typing import Any

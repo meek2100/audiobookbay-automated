@@ -1,3 +1,4 @@
+// File: tests/js/actions.test.js
 /**
  * @jest-environment jsdom
  */

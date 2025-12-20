@@ -1,3 +1,4 @@
+# File: tests/conftest.py
 """Global pytest fixtures and configuration for the test suite.
 
 This module defines the 'World' in which tests run, including the Flask application

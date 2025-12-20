@@ -1,3 +1,4 @@
+# File: audiobook_automated/constants.py
 """Application constants and configuration defaults."""
 
 from typing import Final

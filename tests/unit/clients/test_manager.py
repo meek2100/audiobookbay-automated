@@ -1,3 +1,4 @@
+# File: tests/unit/clients/test_manager.py
 """Unit tests for the TorrentManager."""
 
 import importlib

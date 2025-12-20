@@ -1,3 +1,4 @@
+# File: tests/unit/clients/test_base.py
 """Unit tests for base client logic."""
 
 from typing import Any

@@ -1,3 +1,4 @@
+# File: audiobook_automated/config.py
 """Configuration module."""
 
 import logging

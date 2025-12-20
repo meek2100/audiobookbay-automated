@@ -1,3 +1,4 @@
+# File: .yamllint.yaml
 ---
 # Configuration file for yamllint to enforce consistency on YAML files.
 # Extends the default relaxed profile.

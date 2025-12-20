@@ -1,3 +1,4 @@
+# File: tests/scraper/conftest.py
 """Fixtures specifically for the scraper test package.
 
 Includes mocks for time.sleep to speed up tests and cache clearing

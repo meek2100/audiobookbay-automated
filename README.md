@@ -1,3 +1,5 @@
+<!-- File: README.md -->
+
 # AudiobookBay Automated
 
 AudiobookBay Automated is a lightweight web application designed to simplify audiobook management. It allows users to

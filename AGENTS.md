@@ -1,3 +1,5 @@
+<!-- File: AGENTS.md -->
+
 # Developer & AI Agent Guide
 
 **READ THIS FIRST — ALL HUMAN DEVELOPERS AND ALL AI AGENTS MUST FOLLOW THIS DOCUMENT.** **No change, refactor, or
