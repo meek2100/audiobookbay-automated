@@ -1,0 +1,194 @@
+/* --- Container & Table Layout --- */
+.status-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 15px;
+    table-layout: fixed;
+}
+
+thead th {
+    text-align: left;
+    padding: 15px 20px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Column Widths */
+th.col-title {
+    width: 45%;
+}
+th.col-progress {
+    width: 15%;
+}
+th.col-state {
+    width: 15%;
+}
+th.col-size {
+    width: 10%;
+}
+th.col-action {
+    width: 15%;
+    text-align: right;
+}
+
+/* Row Styles */
+tbody tr {
+    background: var(--glass-bg);
+    box-shadow: var(--shadow-soft);
+    border-radius: var(--border-radius);
+    transition:
+        transform 0.2s ease,
+        background 0.2s;
+}
+
+tbody tr:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+tbody td {
+    padding: 20px;
+    color: var(--text-muted);
+    vertical-align: middle;
+    border: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+tbody tr td:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+tbody tr td:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Cell Content */
+.cell-title {
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 1rem;
+    white-space: normal;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.cell-progress {
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.cell-state {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: white;
+}
+
+.cell-action {
+    text-align: right;
+}
+
+/* Standardized Remove Button */
+.remove-button {
+    background-color: rgba(239, 83, 80, 0.1);
+    color: #ff8a80;
+    border: 1px solid rgba(239, 83, 80, 0.3);
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px; /* Consistent with other small elements */
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.remove-button:hover {
+    background-color: #d32f2f;
+    color: white;
+    border-color: #d32f2f;
+    box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);
+}
+
+/* Mobile Card View */
+@media (max-width: 850px) {
+    thead {
+        display: none;
+    }
+
+    table,
+    tbody,
+    tr,
+    td {
+        display: block;
+        width: 100%;
+        text-align: left;
+        white-space: normal;
+    }
+
+    tbody tr {
+        margin-bottom: 20px;
+        padding: 20px;
+        border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    td.cell-title {
+        font-size: 1.15rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0 0 15px 0;
+        margin-bottom: 15px;
+    }
+
+    td.cell-progress,
+    td.cell-state,
+    td.cell-size {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        font-size: 0.95rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    td.cell-progress::before {
+        content: "Progress";
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 600;
+    }
+    td.cell-state::before {
+        content: "State";
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 600;
+    }
+    td.cell-size::before {
+        content: "Size";
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: 600;
+    }
+
+    td.cell-action {
+        padding: 25px 0 0 0;
+        text-align: center;
+    }
+
+    .remove-button {
+        width: 100%;
+        padding: 12px;
+        font-size: 1rem;
+        border-radius: 50px; /* Match Mobile Actions */
+    }
+}

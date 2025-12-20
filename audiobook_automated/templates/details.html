@@ -1,0 +1,94 @@
+{% extends "base.html" %} {% block title %}Details - {{ book.title if book else 'Error' }}{% endblock %} {% block
+extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/details.css', v=static_version) }}" />
+{% endblock %} {% block content %} {% if error %}
+<div class="error-message">
+    <p>{{ error }}</p>
+    <p><a href="javascript:history.back()" style="color: inherit; font-weight: bold">← Back to Search</a></p>
+</div>
+{% elif book %}
+
+<div class="details-container">
+    <div class="details-left">
+        {% set default_cover_url = url_for('static', filename='images/' + default_cover_filename, v=static_version) %}
+        <img
+            src="{{ book.cover if book.cover else default_cover_url }}"
+            alt="Cover"
+            class="details-cover"
+            onerror="this.src='{{ default_cover_url }}'"
+        />
+    </div>
+
+    <div class="details-info">
+        <a href="javascript:history.back()" class="back-link">← Back to results</a>
+
+        <h2>{{ book.title }}</h2>
+
+        <div class="details-meta-wrapper">
+            <div class="metadata-grid">
+                <div class="meta-item">
+                    <span class="meta-label">Author</span>
+                    <span class="meta-value accent">{{ book.author }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Narrator</span>
+                    <span class="meta-value">{{ book.narrator }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Language</span>
+                    <span class="meta-value">{{ book.language }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Format</span>
+                    <span class="meta-value">{{ book.format }} / {{ book.bitrate }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Size</span>
+                    <span class="meta-value">{{ book.file_size }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Category</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 5px">
+                        {% for cat in book.category %}
+                        <span class="category-tag">{{ cat }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.4)">
+                <strong>Info Hash:</strong> <code style="color: var(--accent-color)">{{ book.info_hash }}</code>
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <button
+                class="btn-primary details-download-btn"
+                onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)"
+            >
+                Download
+            </button>
+
+            <button class="btn-glass direct-link-btn" onclick="openExternalLink('{{ book.link|escape }}')">
+                Open External Page
+            </button>
+        </div>
+
+        <div class="details-description">
+            <h3>Description</h3>
+            {{ book.description | safe }}
+        </div>
+
+        {% if book.trackers %}
+        <div class="tracker-container">
+            <span class="tracker-title">Active Trackers</span>
+            <ul class="tracker-list">
+                {% for tracker in book.trackers %}
+                <li class="tracker-item">{{ tracker }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %} {% endblock %}

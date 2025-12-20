@@ -1,8 +1,9 @@
 run:
-	source app/.env/bin/activate && python3.10 app/app.py
+	.venv/bin/python -m audiobook_automated.app
 
 venv:
-	python3.10 -m venv app/.env
+	python3 -m venv .venv
 
-requirements:
-	source app/.env/bin/activate && python3.10 -m pip install -r app/requirements.txt
+# Modern install: Installs deps AND the app in editable mode
+install:
+	.venv/bin/pip install -e ".[dev]"
