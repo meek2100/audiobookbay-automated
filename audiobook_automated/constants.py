@@ -8,6 +8,9 @@ FALLBACK_TITLE: Final[str] = "Unknown_Title_Fallback"
 DEFAULT_COVER_FILENAME: Final[str] = "default_cover.jpg"
 SAFE_SUFFIX: Final[str] = "_Safe"
 
+# --- Error Constants ---
+ERROR_HASH_NOT_FOUND: Final[str] = "Info Hash could not be found on the page."
+
 # --- Search Configuration ---
 MIN_SEARCH_QUERY_LENGTH: Final[int] = 2
 

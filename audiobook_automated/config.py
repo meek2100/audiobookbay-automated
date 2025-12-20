@@ -27,6 +27,24 @@ def _parse_env_int(key: str, default: int) -> int:
         return default
 
 
+def _parse_env_bool(key: str, default: bool = False) -> bool:
+    """Parse a boolean environment variable safely.
+
+    Supports '1', 'true', 'yes', 'on' (case-insensitive) as True.
+
+    Args:
+        key: The environment variable key.
+        default: The default value if missing.
+
+    Returns:
+        bool: The parsed boolean.
+    """
+    val = os.getenv(key)
+    if val is None:
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
+
+
 class Config:
     """Centralized configuration for the Flask application.
 
@@ -37,8 +55,8 @@ class Config:
     # nosec B105: Default key is intentional for development; validation logic handles warning user.
     # noqa: S105  # Ruff flag for hardcoded password
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
-    FLASK_DEBUG: bool = os.getenv("FLASK_DEBUG", "0") == "1"
-    TESTING: bool = os.getenv("TESTING", "0") == "1"
+    FLASK_DEBUG: bool = _parse_env_bool("FLASK_DEBUG", False)
+    TESTING: bool = _parse_env_bool("TESTING", False)
 
     # Static Asset Caching (1 Year)
     SEND_FILE_MAX_AGE_DEFAULT: int = 31536000

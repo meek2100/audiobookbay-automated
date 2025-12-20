@@ -49,6 +49,7 @@ echo "Starting Gunicorn with 1 worker and $THREADS threads at log level $LOG_LEV
 
 # Drop root privileges and execute Gunicorn as appuser
 # 'exec' ensures Gunicorn becomes PID 1 (or child of) to handle signals correctly
+# "$@" appends any arguments passed to the container (e.g. from Dockerfile CMD)
 exec gosu appuser gunicorn --preload \
     --log-level "$LOG_LEVEL" \
     --access-logfile - \
@@ -57,4 +58,5 @@ exec gosu appuser gunicorn --preload \
     --workers 1 \
     --threads "$THREADS" \
     --timeout "$TIMEOUT" \
-    audiobook_automated.app:app
+    audiobook_automated.app:app \
+    "$@"

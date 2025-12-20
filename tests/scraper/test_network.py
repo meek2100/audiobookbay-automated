@@ -152,8 +152,8 @@ def test_get_ping_session_configuration() -> None:
 
 def test_get_ping_session_singleton() -> None:
     """Test that get_ping_session returns the same singleton instance."""
-    # Reset singleton
-    network._ping_session = None
+    # Reset thread-local singleton
+    network._local.ping_session = None
 
     session1 = network.get_ping_session()
     session2 = network.get_ping_session()
@@ -165,8 +165,7 @@ def test_get_ping_session_singleton() -> None:
 def test_get_thread_session_initialization() -> None:
     """Test that get_thread_session creates a session and reuses it."""
     # Ensure we start with a clean state for this thread
-    if hasattr(network._thread_local, "session"):
-        del network._thread_local.session
+    network._local.session = None
 
     # First call: Should create a new session
     session1 = network.get_thread_session()

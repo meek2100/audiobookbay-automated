@@ -11,6 +11,7 @@ from flask import Blueprint, Response, current_app, jsonify, redirect, render_te
 from audiobook_automated.constants import (
     ABS_TIMEOUT_SECONDS,
     DEFAULT_COVER_FILENAME,
+    ERROR_HASH_NOT_FOUND,
     MIN_SEARCH_QUERY_LENGTH,
 )
 
@@ -178,7 +179,7 @@ def send() -> Response | tuple[Response, int]:
         if not magnet_link:
             logger.error(f"Failed to extract magnet link for '{title}': {error}")
             # Map specific errors to 404/400 to avoid alerting on 500s
-            status_code = 404 if error and "found" in error else 400
+            status_code = 404 if error == ERROR_HASH_NOT_FOUND else 400
             return jsonify({"message": f"Download failed: {error}"}), status_code
 
         # DELEGATION: Path construction logic moved to utils.py

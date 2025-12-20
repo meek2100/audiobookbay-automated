@@ -11,6 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import current_app
 
+from audiobook_automated.constants import ERROR_HASH_NOT_FOUND
 from audiobook_automated.extensions import executor
 from audiobook_automated.scraper.network import (
     CACHE_LOCK,
@@ -292,7 +293,7 @@ def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
 
         info_hash = details.get("info_hash")
         if not info_hash or info_hash == "Unknown":
-            return None, "Info Hash could not be found on the page."
+            return None, ERROR_HASH_NOT_FOUND
 
         # Simplify retrieval; .get() defaults to None if key missing, so 'or []' ensures list
         trackers = details.get("trackers") or []

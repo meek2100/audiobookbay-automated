@@ -28,13 +28,19 @@ _semaphore: threading.BoundedSemaphore = threading.BoundedSemaphore(DEFAULT_CONC
 _mirror_executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
 CACHE_LOCK = threading.Lock()
 
-# --- Thread-Local Storage ---
-_thread_local = threading.local()
 
-# --- Persistent Session Storage ---
-# Cached session for low-overhead ping/availability checks
-_ping_session: Session | None = None
-_ping_session_lock = threading.Lock()
+# --- Thread-Local Storage ---
+class NetworkLocal(threading.local):
+    """Thread-local storage for network sessions to ensure thread safety."""
+
+    def __init__(self) -> None:
+        """Initialize thread-local attributes."""
+        super().__init__()
+        self.session: Session | None = None
+        self.ping_session: Session | None = None
+
+
+_local = NetworkLocal()
 
 # --- Caches ---
 mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
@@ -131,40 +137,35 @@ def get_session() -> Session:
 
 
 def get_ping_session() -> Session:
-    """Configure and return a reusable requests Session with ZERO retries for availability checks.
+    """Retrieve or create a thread-local Session with ZERO retries for checks.
 
-    Reuses a single session instance to prevent expensive SSL context recreation overhead
-    during high-concurrency mirror checks.
-
-    NOTE: This is a read-only session used for thread safety.
+    Uses thread-local storage to avoid race conditions while reusing SSL connections
+    within the same worker thread.
 
     Returns:
         Session: A configured requests Session object with 0 retries.
     """
-    global _ping_session
-    if _ping_session is None:
-        with _ping_session_lock:
-            if _ping_session is None:
-                session = requests.Session()
-                retry_strategy = Retry(
-                    total=0,
-                    backoff_factor=0,
-                    status_forcelist=[],
-                    allowed_methods=["HEAD", "GET"],
-                )
-                adapter = HTTPAdapter(max_retries=retry_strategy)
-                session.mount("https://", adapter)
-                session.mount("http://", adapter)
-                _ping_session = session
+    if _local.ping_session is None:
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=0,
+            backoff_factor=0,
+            status_forcelist=[],
+            allowed_methods=["HEAD", "GET"],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+        _local.ping_session = session
 
-    return _ping_session
+    return _local.ping_session
 
 
 def get_thread_session() -> Session:
-    """Retrieve or create a thread-local Session."""
-    if not hasattr(_thread_local, "session"):
-        _thread_local.session = get_session()
-    return cast(Session, _thread_local.session)
+    """Retrieve or create a thread-local Session with full retry logic."""
+    if _local.session is None:
+        _local.session = get_session()
+    return _local.session
 
 
 def get_headers(user_agent: str | None = None, referer: str | None = None) -> dict[str, str]:
@@ -188,7 +189,7 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
 def check_mirror(hostname: str) -> str | None:
     """Check if a mirror is reachable via HEAD or GET request.
 
-    Uses a zero-retry reusable session to fail fast.
+    Uses a zero-retry thread-local session to fail fast.
     """
     url = f"https://{hostname}/"
     headers = get_headers()
