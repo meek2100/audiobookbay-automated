@@ -3,7 +3,7 @@
 
 import logging
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Any, cast
 
 import requests
 from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
@@ -25,24 +25,14 @@ logger = logging.getLogger(__name__)
 main_bp = Blueprint("main", __name__)
 
 
-class GlobalContext(TypedDict):
-    """Type definition for global template variables."""
-
-    nav_link_name: str | None
-    nav_link_url: str | None
-    library_reload_enabled: bool
-    static_version: str
-    default_cover_filename: str
-
-
 @main_bp.context_processor
-def inject_global_vars() -> GlobalContext:
+def inject_global_vars() -> dict[str, Any]:
     """Inject global variables into all templates.
 
     Uses current_app.config to access settings loaded in config.py.
 
     Returns:
-        GlobalContext: A dictionary of context variables available to templates.
+        dict[str, Any]: A dictionary of context variables available to templates.
     """
     # Retrieve version hash from version.txt (prod) or calculation (dev)
     # Using Path(current_app.root_path) ensures we look in the correct package location

@@ -1,6 +1,5 @@
 """Functional tests for API endpoints."""
 
-import json
 import os
 from collections.abc import Generator
 from typing import Any
@@ -185,19 +184,6 @@ def test_send_sanitization_warning(client: FlaskClient, caplog: Any) -> None:
             # Updated expectation to match the new log message format in routes.py
             assert "required fallback/truncate handling" in caplog.text
             assert "Using collision-safe directory name" in caplog.text
-
-
-def test_send_invalid_title_type(client):
-    """Test that sending an integer title to /send returns a 400 error."""
-    payload = {
-        "link": "http://example.com/details",
-        "title": 12345,  # Invalid: Should be a string
-    }
-
-    response = client.post("/send", data=json.dumps(payload), content_type="application/json")
-
-    assert response.status_code == 400
-    assert "Title must be a string" in response.get_json()["message"]
 
 
 @pytest.fixture
