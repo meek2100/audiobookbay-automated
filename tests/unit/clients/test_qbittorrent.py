@@ -10,7 +10,8 @@ from audiobook_automated.clients.qbittorrent import Strategy as QbittorrentStrat
 
 def test_qbittorrent_strategy_add_magnet() -> None:
     """Test that QbittorrentStrategy adds magnet correctly."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+    # autospec=True ensures the mock mimics the real class structure
+    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Ok."
 
@@ -34,7 +35,7 @@ def test_qbittorrent_strategy_add_magnet() -> None:
 
 def test_qbittorrent_add_magnet_failure_response() -> None:
     """Test logging when qBittorrent returns a failure string."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Fails."
 
@@ -50,7 +51,7 @@ def test_qbittorrent_add_magnet_failure_response() -> None:
 
 def test_remove_torrent_qbittorrent() -> None:
     """Test removing torrent for qBittorrent."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
 
         strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
@@ -62,7 +63,7 @@ def test_remove_torrent_qbittorrent() -> None:
 
 def test_get_status_qbittorrent() -> None:
     """Test fetching status from qBittorrent."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
 
         mock_torrent = MagicMock()
@@ -86,7 +87,7 @@ def test_get_status_qbittorrent() -> None:
 
 def test_get_status_qbittorrent_robustness() -> None:
     """Test qBittorrent handling of None progress."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
 
         mock_torrent = MagicMock()
@@ -109,7 +110,7 @@ def test_get_status_qbittorrent_robustness() -> None:
 
 def test_qbittorrent_close() -> None:
     """Test closing the qBittorrent session."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
         strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
@@ -127,7 +128,7 @@ def test_qbittorrent_close() -> None:
 
 def test_qbittorrent_close_exception() -> None:
     """Test exception handling during close."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient") as MockQbClient:
+    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
         # Simulate error on logout
         mock_instance.auth_log_out.side_effect = Exception("Logout Error")

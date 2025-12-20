@@ -9,6 +9,7 @@ for API tests).
 from __future__ import annotations
 
 from collections.abc import Generator
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -33,6 +34,26 @@ class TestConfig(Config):
     # Enable Rate Limit headers for assertions
     RATELIMIT_HEADERS_ENABLED = True
     RATELIMIT_ENABLED = True
+
+    # Prevent real connections in config
+    DL_HOST = "mock_localhost"
+
+
+@pytest.fixture(autouse=True)
+def mock_global_dependencies() -> Generator[None]:
+    """Isolate the test suite from the real world.
+
+    This fixture runs automatically for every test. It mocks the heavy
+    lifters (TorrentManager) to prevent the application from trying to
+    connect to a real torrent client during startup or request handling,
+    which is likely the cause of local live connection errors.
+    """
+    # We patch where it is USED in the routes/app
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        # Configure the mock to behave 'normally' so tests that don't customize it still pass
+        mock_tm.get_status.return_value = []
+        mock_tm.add_magnet.return_value = "OK"
+        yield
 
 
 @pytest.fixture
