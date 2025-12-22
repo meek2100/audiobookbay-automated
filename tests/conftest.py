@@ -7,7 +7,10 @@ instance, test clients, and global configuration overrides.
 
 from __future__ import annotations
 
+import os
+import tempfile
 from collections.abc import Generator
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -26,7 +29,9 @@ class TestConfig(Config):
     """
 
     TESTING = True
-    SAVE_PATH_BASE = "/tmp/test_downloads"
+    # CROSS-PLATFORM FIX: Use system temp directory instead of hardcoded /tmp
+    # This prevents permission issues or creation of C:\tmp on Windows.
+    SAVE_PATH_BASE = os.path.join(tempfile.gettempdir(), "test_downloads")
     SECRET_KEY = "test-secret-key"
     WTF_CSRF_ENABLED = False
 
@@ -57,6 +62,17 @@ def mock_global_dependencies() -> Generator[None]:
         mock_tm.get_status.return_value = []
         mock_tm.add_magnet.return_value = "OK"
         yield
+
+
+@pytest.fixture(autouse=True)
+def mock_sleep() -> Generator[Any]:
+    """Globally mock time.sleep for ALL tests to speed up execution.
+
+    Moved here from tests/scraper/conftest.py to ensure Functional and Unit
+    tests also benefit from zero-delay sleeps (e.g. when testing search routes).
+    """
+    with patch("time.sleep") as mock_sleep:
+        yield mock_sleep
 
 
 @pytest.fixture

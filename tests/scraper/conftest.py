@@ -1,29 +1,15 @@
 # File: tests/scraper/conftest.py
 """Fixtures specifically for the scraper test package.
 
-Includes mocks for time.sleep to speed up tests and cache clearing
-mechanisms to ensure test isolation.
+Includes cache clearing mechanisms to ensure test isolation.
 """
 
 from collections.abc import Generator
-from typing import Any
-from unittest.mock import patch
 
 import pytest
 
 # FIX: Import caches directly from network where they are defined to avoid mypy export errors
-# Previously imported via scraper_core which caused "does not explicitly export" errors
 from audiobook_automated.scraper.network import details_cache, mirror_cache, search_cache
-
-
-@pytest.fixture(autouse=True)
-def mock_sleep() -> Generator[Any]:
-    """Globally mock time.sleep for all tests in this package to speed up execution.
-
-    Automatically applied to all tests in tests/scraper/.
-    """
-    with patch("time.sleep") as mock_sleep:
-        yield mock_sleep
 
 
 @pytest.fixture(autouse=True)
