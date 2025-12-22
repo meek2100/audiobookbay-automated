@@ -33,6 +33,7 @@ dependencies = [
     "gunicorn==23.0.0",
     "Flask-WTF==1.2.2",
     "Flask-Limiter==4.1.1",
+    "Flask-Talisman==1.1.0",
 ]
 [project.optional-dependencies]
 dev = [
@@ -44,6 +45,7 @@ dev = [
     "ruff==0.14.10",
     "pre-commit==4.5.1",
     "mypy==1.19.1",
+    "pyright==1.1.407",
     "types-requests==2.32.4.20250913",
     "types-cachetools==6.2.0.20251022",
     "types-setuptools==80.9.0.20251221",
@@ -117,6 +119,16 @@ module = [
     "urllib3.*",
     "requests_mock.*",
     "pytest.*",
+    "flask_talisman.*",
 ]
 ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
+
+[tool.pyright]
+pythonVersion = "3.14"
+include = ["audiobook_automated", "tests"]
+typeCheckingMode = "strict"
+# Reduce noise from untyped libraries (handled by mypy overrides mostly)
+reportMissingImports = "none"
+reportMissingTypeStubs = "none"
+reportUntypedFunctionDecorator = "none"

@@ -3,7 +3,9 @@
 exclude: ^(audiobook_automated/static/vendor/|.*\.min\.(css|js))
 
 repos:
-  # 1. Standard Cleanup
+  # ------------------------------------------------------------------
+  # 1. CLEANUP & BASICS (Fastest)
+  # ------------------------------------------------------------------
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -21,15 +23,15 @@ repos:
       - id: no-commit-to-branch
         args: [--branch, main, --branch, master]
 
-  # 2. Python (Ruff)
+  # ------------------------------------------------------------------
+  # 2. FORMATTERS (Modify code style first)
+  # ------------------------------------------------------------------
+  # Run Format BEFORE Check so linters validate the final code structure.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.8
     hooks:
-      - id: ruff-check
-        args: ["--fix"]
       - id: ruff-format
 
-  # 3. Frontend (Prettier)
   - repo: https://github.com/rbubley/mirrors-prettier
     rev: "v3.7.4"
     hooks:
@@ -37,7 +39,41 @@ repos:
         types_or: [css, javascript, html, json, yaml, markdown]
         args: ["--config", ".prettierrc.yaml"]
 
-  # 4. Markdown Linting (markdownlint-cli)
+  # ------------------------------------------------------------------
+  # 3. SPELLING & HEADERS (Fast checks)
+  # ------------------------------------------------------------------
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        exclude: ^(poetry\.lock|package-lock\.json)$
+        args: ["--ignore-words-list", "afterAll"]
+
+  - repo: https://github.com/meek2100/pre-commit-context-header
+    rev: v0.1.0
+    hooks:
+      - id: context-headers
+        args: ["--fix"]
+        exclude: ^(audiobook_automated/static/vendor/|package-lock.json)
+
+  # ------------------------------------------------------------------
+  # 4. LINTERS (Logic & Validity)
+  # ------------------------------------------------------------------
+  # Python Linter (Ruff)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.8
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+
+  # Documentation Linter
+  - repo: https://github.com/PyCQA/pydocstyle
+    rev: "6.3.0"
+    hooks:
+      - id: pydocstyle
+        exclude: "(tests/)"
+
+  # Markdown Linter
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.46.0
     hooks:
@@ -45,7 +81,7 @@ repos:
         name: Lint Markdown
         args: ["--config", ".markdownlint.yaml", "--fix"]
 
-  # 5. Infrastructure (Docker & Shell)
+  # Infrastructure Linters (Docker, Shell, YAML)
   - repo: https://github.com/IamTheFij/docker-pre-commit
     rev: v3.0.1
     hooks:
@@ -64,7 +100,6 @@ repos:
       - id: shellcheck
         args: ["--format=gcc"]
 
-  # 6. YAML Linting (yamllint)
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.37.1
     hooks:
@@ -72,7 +107,9 @@ repos:
         name: Lint YAML
         args: ["--config-file", ".yamllint.yaml"]
 
-  # 7. Type Checking & Docs (MyPy & pydocstyle) - Python Hooks
+  # ------------------------------------------------------------------
+  # 5. STATIC TYPE CHECKING (Slowest - Run last)
+  # ------------------------------------------------------------------
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.19.0"
     hooks:
@@ -96,24 +133,7 @@ repos:
           - types-jsonschema
           - types-gunicorn
 
-  - repo: https://github.com/PyCQA/pydocstyle
-    rev: "6.3.0"
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.407
     hooks:
-      - id: pydocstyle
-        exclude: "(tests/)"
-
-  # 8. Spelling (codespell)
-  - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
-    hooks:
-      - id: codespell
-        exclude: ^(poetry\.lock|package-lock\.json)$
-        args: ["--ignore-words-list", "afterAll"]
-
-  # 9. File Headers
-  - repo: https://github.com/meek2100/pre-commit-context-header
-    rev: v0.1.0
-    hooks:
-      - id: context-headers
-        args: ["--fix"]
-        exclude: ^(audiobook_automated/static/vendor/|package-lock.json)
+      - id: pyright

@@ -7,7 +7,7 @@ import os
 from flask import Flask, Response, request
 
 from .config import Config
-from .extensions import csrf, executor, limiter, torrent_manager
+from .extensions import csrf, executor, limiter, talisman, torrent_manager
 from .routes import main_bp
 from .scraper import network
 from .utils import calculate_static_hash
@@ -65,6 +65,25 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Initialize Extensions
     limiter.init_app(app)
     csrf.init_app(app)
+
+    # Initialize Security Headers
+    # We must allow 'unsafe-inline' for style-src because of the dynamic nature of
+    # some UI components, but we restrict scripts strictly.
+    # We also allow images from any source (*) because cover images come from random mirrors.
+    csp = {
+        "default-src": ["'self'"],
+        "img-src": ["'self'", "*", "data:"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        # Add 'unsafe-eval' only if strictly needed by libraries like Flatpickr,
+        # otherwise keep strict.
+        "script-src": ["'self'"],
+    }
+    talisman.init_app(
+        app,
+        content_security_policy=csp,
+        # Allow HTTP in dev/test, force HTTPS in prod if needed (usually handled by proxy)
+        force_https=not (app.config["TESTING"] or app.config["FLASK_DEBUG"]),
+    )
 
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(app)

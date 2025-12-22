@@ -44,10 +44,15 @@ class NetworkLocal(threading.local):
 _local = NetworkLocal()
 
 # --- Caches ---
+# mirror_cache: Stores the currently active (working) mirror hostname to avoid repeated checks.
 mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
+# failure_cache: Negative cache to prevent rapid retries if all mirrors are known to be down.
 failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
+# search_cache: Caches search results by query to reduce load on the mirror and improve speed.
 search_cache: TTLCache[str, list[BookSummary]] = TTLCache(maxsize=100, ttl=300)
+# details_cache: Caches parsed book details by URL to prevent redundant network fetches.
 details_cache: TTLCache[str, BookDetails] = TTLCache(maxsize=100, ttl=300)
+# tracker_cache: Caches the list of magnet trackers to minimize filesystem I/O.
 tracker_cache: TTLCache[str, list[str]] = TTLCache(maxsize=1, ttl=300)
 
 

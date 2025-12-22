@@ -148,7 +148,10 @@ def test_get_application_version_os_error(tmp_path: Path) -> None:
     static_folder.mkdir()
 
     with patch("pathlib.Path.read_text", side_effect=OSError("Read error")):
-        with patch("audiobook_automated.utils.calculate_static_hash", return_value="calculated_v1") as mock_calc:
+        with patch(
+            "audiobook_automated.utils.calculate_static_hash",
+            return_value="calculated_v1",
+        ) as mock_calc:
             version = get_application_version(static_folder)
             assert version == "calculated_v1"
             mock_calc.assert_called_once()
@@ -203,3 +206,19 @@ def test_calculate_static_hash_oserror(tmp_path: Path) -> None:
         # logic just needs to ensure it doesn't crash.
         h = calculate_static_hash(static_dir)
         assert len(h) == 8
+
+
+def test_sanitize_title_dot_handling() -> None:
+    """Refute the PDF claim that '. Hidden Book' results in empty stem.
+
+    The PDF claimed: 'If a user provides a title like . Hidden Book, base_stem becomes an empty string.'
+    This test proves that strip('. ') handles it correctly.
+    """
+    # 1. Leading dot with space
+    assert sanitize_title(". Hidden Book") == "Hidden Book"
+    # 2. Leading dot no space
+    assert sanitize_title(".Hidden Book") == "Hidden Book"
+    # 3. Trailing dot
+    assert sanitize_title("Hidden Book.") == "Hidden Book"
+    # 4. Just dots (should fallback)
+    assert sanitize_title("...") == FALLBACK_TITLE

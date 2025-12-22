@@ -9,6 +9,7 @@ from typing import Any
 from flask import Flask
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
 from flask_wtf.csrf import CSRFProtect
 
 from .clients import TorrentManager
@@ -22,6 +23,10 @@ limiter = Limiter(
     key_func=get_remote_address,
     storage_uri="memory://",
 )
+
+# Initialize Security Headers (Talisman)
+# Note: Configuration happens in __init__.py/create_app
+talisman = Talisman()
 
 # Initialize Torrent Manager
 torrent_manager = TorrentManager()

@@ -73,7 +73,10 @@ def test_details_missing_link(client: FlaskClient) -> None:
 
 def test_details_fetch_error(client: FlaskClient) -> None:
     """Test details endpoint error handling."""
-    with patch("audiobook_automated.routes.get_book_details", side_effect=Exception("Fetch failed")):
+    with patch(
+        "audiobook_automated.routes.get_book_details",
+        side_effect=Exception("Fetch failed"),
+    ):
         response = client.get("/details?link=http://test")
         assert response.status_code == 200
         assert b"Could not load details" in response.data
@@ -81,7 +84,10 @@ def test_details_fetch_error(client: FlaskClient) -> None:
 
 def test_send_success(client: FlaskClient) -> None:
     """Test successful download request."""
-    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+    with patch(
+        "audiobook_automated.routes.extract_magnet_link",
+        return_value=("magnet:?xt=urn:btih:123", None),
+    ):
         with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
             response = client.post(
                 "/send",
@@ -126,7 +132,10 @@ def test_send_extraction_failure(client: FlaskClient) -> None:
 
 def test_send_connection_error(client: FlaskClient) -> None:
     """Test handling of connection errors during send."""
-    with patch("audiobook_automated.routes.extract_magnet_link", side_effect=ConnectionError("Down")):
+    with patch(
+        "audiobook_automated.routes.extract_magnet_link",
+        side_effect=ConnectionError("Down"),
+    ):
         response = client.post(
             "/send",
             json={"link": "https://audiobookbay.lu/book", "title": "Book"},
@@ -178,7 +187,10 @@ def test_status_json(client: FlaskClient) -> None:
 
 def test_send_sanitization_warning(client: FlaskClient, caplog: Any) -> None:
     """Test logging warning for titles requiring sanitization fallback."""
-    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+    with patch(
+        "audiobook_automated.routes.extract_magnet_link",
+        return_value=("magnet:?xt=urn:btih:123", None),
+    ):
         # FIX: Removed unused 'as mock_tm' to satisfy Ruff
         with patch("audiobook_automated.routes.torrent_manager"):
             client.post("/send", json={"link": "http://example.com", "title": "..."})
@@ -272,7 +284,10 @@ def test_send_deep_path_truncation(client: FlaskClient) -> None:
 
     long_title = "A" * 100  # Should be heavily truncated
 
-    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+    with patch(
+        "audiobook_automated.routes.extract_magnet_link",
+        return_value=("magnet:?xt=urn:btih:123", None),
+    ):
         with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
             response = client.post("/send", json={"link": "http://link", "title": long_title})
             assert response.status_code == 200
@@ -329,7 +344,8 @@ def test_reload_library_request_exception(client: FlaskClient) -> None:
     import requests
 
     with patch(
-        "audiobook_automated.routes.requests.post", side_effect=requests.exceptions.RequestException("ABS Down")
+        "audiobook_automated.routes.requests.post",
+        side_effect=requests.exceptions.RequestException("ABS Down"),
     ):
         response = client.post("/reload_library")
         assert response.status_code == 500
@@ -366,9 +382,23 @@ def test_send_no_save_path_base(client: FlaskClient) -> None:
     """Test send endpoint when SAVE_PATH_BASE is not configured."""
     client.application.config["SAVE_PATH_BASE"] = None
 
-    with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+    with patch(
+        "audiobook_automated.routes.extract_magnet_link",
+        return_value=("magnet:?xt=urn:btih:123", None),
+    ):
         with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
             response = client.post("/send", json={"link": "http://link", "title": "Book"})
             assert response.status_code == 200
             # Verify add_magnet was called with just the title (no base path)
             mock_tm.add_magnet.assert_called_with("magnet:?xt=urn:btih:123", "Book")
+
+
+def test_send_json_list(client: FlaskClient) -> None:
+    """Test send endpoint with JSON list (not dict).
+
+    This ensures 100% coverage of the 'if not isinstance(data, dict)' check in routes.py.
+    """
+    response = client.post("/send", json=["not", "a", "dict"])
+    assert response.status_code == 400
+    assert response.json is not None
+    assert "Invalid JSON format" in response.json["message"]
