@@ -111,6 +111,33 @@ def test_construct_safe_save_path_windows_path() -> None:
     assert construct_safe_save_path(base_path, title) == expected
 
 
+def test_construct_safe_save_path_windows_reserved_collision_logic() -> None:
+    """Test that Windows reserved names trigger UUID collision safety even on Linux paths.
+
+    This simulates the app running on Linux (Docker) but saving to a Windows SMB share/path structure.
+    """
+    # Simulate a path structure that implies Windows (backslashes)
+    base_path = r"\\Server\Share\Books"
+    # Reserved name
+    unsafe_title = "CON"
+
+    with patch("uuid.uuid4") as mock_uuid:
+        mock_uuid.return_value.hex = "12345678" * 4
+
+        # Expected flow:
+        # 1. sanitize_title("CON") -> "CON_Safe"
+        # 2. ensure_collision_safety("CON_Safe") -> "CON_Safe_12345678" (due to _Safe suffix trigger)
+        # 3. PureWindowsPath join
+        result = construct_safe_save_path(base_path, unsafe_title)
+
+        expected_suffix = "12345678"
+        # We check that the result contains the safe suffix AND the uuid
+        assert "CON_Safe" in result
+        assert expected_suffix in result
+        # Check path separators
+        assert "\\" in result
+
+
 def test_get_application_version_os_error(tmp_path: Path) -> None:
     """Test get_application_version handles OSError when reading version.txt."""
     version_file = tmp_path / "version.txt"

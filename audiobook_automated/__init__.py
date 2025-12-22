@@ -1,6 +1,7 @@
 # File: audiobook_automated/__init__.py
 """Main application package for AudiobookBay Automated."""
 
+import logging
 import os
 
 from flask import Flask, Response, request
@@ -23,6 +24,17 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # PRODUCTION FIX: Explicitly apply the configured log level to the Flask logger.
     # Flask does not automatically apply the 'LOG_LEVEL' config value to its logger.
     app.logger.setLevel(app.config.get("LOG_LEVEL", "INFO"))
+
+    # DEPLOYMENT FIX: Attach Gunicorn handlers if running in production
+    # Gunicorn creates its own logger ('gunicorn.error'), and without this,
+    # Flask application logs might not appear in the container stdout/stderr.
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    if gunicorn_logger.handlers:
+        app.logger.handlers = gunicorn_logger.handlers
+        # Sync level to match Gunicorn (unless overridden by config)
+        # We respect app config first, but fallback to Gunicorn's level if needed.
+        if not app.config.get("LOG_LEVEL"):
+            app.logger.setLevel(gunicorn_logger.level)
 
     # OPTIMIZATION: Static Asset Versioning Strategy
     # Priority:

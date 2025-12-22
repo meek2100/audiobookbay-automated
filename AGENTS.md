@@ -239,6 +239,8 @@ For self-hosted setups using Docker, users can "drop in" a new client:
 - **Static Asset Versioning:** The `Dockerfile` MUST execute
   `python3 -m audiobook_automated.utils > audiobook_automated/version.txt` during the build process. The application
   logic must prioritize reading this file at startup to prevent expensive filesystem traversal.
+- **Graceful Shutdown:** Background executors (e.g. `_mirror_executor`) MUST be registered with `atexit` to ensure they
+  shutdown cleanly when the application stops.
 
 ### Rate Limiting & Scraping
 
@@ -310,6 +312,8 @@ For self-hosted setups using Docker, users can "drop in" a new client:
   - `DL_CLIENT` **MUST** be set. (Use of specific client names is dynamically validated).
 - **Logging Level:** The application logger must explicitly apply the configured `LOG_LEVEL` in `__init__.py`. Flask
   does not do this automatically.
+- **Gunicorn Integration:** In `__init__.py`, code MUST explicitly attach Gunicorn's error handlers to the Flask app
+  logger if running in a production container context.
 - **Docker Permissions:** The application must start as `root` (PID 1) in the entrypoint to fix volume permissions via
   `chown` and `usermod`, then drop privileges to `appuser` using `gosu`.
 - **Client Connectivity Check:** The application MUST attempt to verify torrent client credentials at startup (in
@@ -361,7 +365,9 @@ fetching. Future implementations must respect these specific library constraints
 
 - **Add Magnet Logic:**
   - **qBittorrent:** API v2 returns JSON metadata; older versions return string "Ok."/"Fails.". Logic must handle both.
-  - **Transmission:** Must handle `http` vs `https` protocols explicitly in the client constructor.
+  - **Transmission:** Must handle `http` vs `https` protocols explicitly in the client constructor. Fallback logic for
+    labels **MUST** check the error message string (e.g. for "invalid argument") rather than catching generic exceptions
+    to avoid masking real errors like "Disk Full".
   - **Deluge:** Must handle potential "Unknown Parameter" errors if the Label plugin is missing during add.
 
 ### Naming Conventions

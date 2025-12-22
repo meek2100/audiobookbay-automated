@@ -25,6 +25,7 @@ def test_transmission_add_magnet_fallback() -> None:
     """Test that transmission falls back to adding torrent without label if first attempt fails."""
     with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
+        # Simulate an error message specific to arguments/labels
         mock_instance.add_torrent.side_effect = [TypeError("unexpected keyword argument 'labels'"), None]
 
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
@@ -39,21 +40,24 @@ def test_transmission_add_magnet_fallback() -> None:
         assert mock_instance.add_torrent.call_count == 2
 
 
-def test_transmission_add_magnet_generic_exception_fallback() -> None:
-    """Test that Transmission falls back even on generic exceptions."""
+def test_transmission_add_magnet_real_error_raises() -> None:
+    """Test that Transmission DOES NOT fallback on generic errors like Disk Full.
+
+    This ensures we don't spam the server with retry attempts for fatal errors.
+    """
     with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
-        mock_instance.add_torrent.side_effect = [Exception("Generic Protocol Error"), None]
+        # A mock error that doesn't look like a label issue
+        mock_instance.add_torrent.side_effect = Exception("Disk Full")
 
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
 
-        with patch("audiobook_automated.clients.transmission.logger") as mock_logger:
+        # Should raise immediately without retry
+        with pytest.raises(Exception, match="Disk Full"):
             strategy.add_magnet("magnet:?xt=urn:btih:GENERIC", "/downloads/Book", "audiobooks")
-            args, _ = mock_logger.warning.call_args
-            assert "Transmission label assignment failed" in args[0]
 
-        assert mock_instance.add_torrent.call_count == 2
+        assert mock_instance.add_torrent.call_count == 1
 
 
 def test_remove_torrent_transmission_hash() -> None:
@@ -147,7 +151,6 @@ def test_get_status_transmission_robustness() -> None:
 
 def test_transmission_close() -> None:
     """Test closing the Transmission session."""
-    # Fix: Removed unused 'as MockTxClient' variable
     with patch("audiobook_automated.clients.transmission.TxClient"):
         strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()

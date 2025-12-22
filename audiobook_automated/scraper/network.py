@@ -1,6 +1,7 @@
 # File: audiobook_automated/scraper/network.py
 """Network module handling HTTP sessions, proxies, and mirrors."""
 
+import atexit
 import concurrent.futures
 import json
 import logging
@@ -259,3 +260,14 @@ def find_best_mirror() -> str | None:
     with CACHE_LOCK:
         failure_cache["failure"] = True
     return None
+
+
+def _shutdown_network() -> None:
+    """Shutdown the mirror checking executor gracefully."""
+    logger.info("Shutting down network executors...")
+    # cancel_futures=True ensures pending checks don't block shutdown (Python 3.9+)
+    _mirror_executor.shutdown(wait=False, cancel_futures=True)
+
+
+# Register shutdown handler
+atexit.register(_shutdown_network)

@@ -49,8 +49,17 @@ class Strategy(TorrentClientStrategy):
             self.client.add_torrent(magnet_link, download_dir=save_path, labels=[category])
         except Exception as e:
             # Fallback for older Transmission versions (< RPC 15) that don't support labels
-            logger.warning(f"Transmission label assignment failed (server may be old): {e}. Retrying without labels.")
-            self.client.add_torrent(magnet_link, download_dir=save_path)
+            # RESILIENCE FIX: Only fallback if error explicitly relates to invalid arguments/labels.
+            # Blindly catching Exception hides critical errors (e.g., Disk Full, Network Error).
+            error_str = str(e).lower()
+            if "label" in error_str or "argument" in error_str or "method" in error_str:
+                logger.warning(
+                    f"Transmission label assignment failed (server may be old): {e}. Retrying without labels."
+                )
+                self.client.add_torrent(magnet_link, download_dir=save_path)
+            else:
+                # Re-raise unexpected errors (e.g. ConnectionError, DuplicateTorrent)
+                raise e
 
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Transmission."""
