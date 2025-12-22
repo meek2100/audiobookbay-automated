@@ -258,3 +258,35 @@ def test_create_app_with_gunicorn_integration(monkeypatch: Any, mock_flask_facto
             # Verify that due to missing LOG_LEVEL, we fell back to Gunicorn's level
             # Use the mock_app_logger directly to avoid MyPy errors on the Flask app.logger type
             mock_app_logger.setLevel.assert_called_with(20)
+
+
+def test_create_app_with_gunicorn_and_config_override(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that Config LOG_LEVEL overrides Gunicorn level if set."""
+    _, mock_app_logger = mock_flask_factory
+
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
+    # User explicit override (10 = DEBUG)
+    monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+
+    mock_gunicorn_logger = MagicMock()
+    # Ensure handlers exist so we enter the 'if gunicorn_logger.handlers:' block
+    mock_gunicorn_logger.handlers = [MagicMock()]
+    mock_gunicorn_logger.level = 40  # ERROR
+
+    original_get_logger = logging.getLogger
+
+    def side_effect(name: str) -> Any:
+        if name == "gunicorn.error":
+            return mock_gunicorn_logger
+        return original_get_logger(name)
+
+    # Reload to apply env vars to Config
+    importlib.reload(audiobook_automated.config)
+    importlib.reload(audiobook_automated)
+
+    with patch("logging.getLogger", side_effect=side_effect):
+        with patch("audiobook_automated.torrent_manager"):
+            app = audiobook_automated.create_app()
+
+            # Should use DEBUG (10) from config, ignoring Gunicorn's ERROR (40)
+            mock_app_logger.setLevel.assert_called_with(10)
