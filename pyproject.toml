@@ -132,3 +132,8 @@ typeCheckingMode = "strict"
 reportMissingImports = "none"
 reportMissingTypeStubs = "none"
 reportUntypedFunctionDecorator = "none"
+# Allow untyped variables from libraries (essential for Flask/Requests/BS4)
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownParameterType = "none"

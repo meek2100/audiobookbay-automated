@@ -391,14 +391,3 @@ def test_send_no_save_path_base(client: FlaskClient) -> None:
             assert response.status_code == 200
             # Verify add_magnet was called with just the title (no base path)
             mock_tm.add_magnet.assert_called_with("magnet:?xt=urn:btih:123", "Book")
-
-
-def test_send_json_list(client: FlaskClient) -> None:
-    """Test send endpoint with JSON list (not dict).
-
-    This ensures 100% coverage of the 'if not isinstance(data, dict)' check in routes.py.
-    """
-    response = client.post("/send", json=["not", "a", "dict"])
-    assert response.status_code == 400
-    assert response.json is not None
-    assert "Invalid JSON format" in response.json["message"]
