@@ -286,7 +286,8 @@ def test_create_app_with_gunicorn_and_config_override(monkeypatch: Any, mock_fla
 
     with patch("logging.getLogger", side_effect=side_effect):
         with patch("audiobook_automated.torrent_manager"):
-            app = audiobook_automated.create_app()
+            # FIX: Do not assign to unused variable 'app'
+            audiobook_automated.create_app()
 
             # Should use DEBUG (10) from config, ignoring Gunicorn's ERROR (40)
             mock_app_logger.setLevel.assert_called_with(10)
