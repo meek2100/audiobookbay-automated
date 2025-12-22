@@ -312,3 +312,14 @@ def test_get_random_user_agent_returns_string() -> None:
     assert isinstance(ua, str)
     assert len(ua) > 10
     assert ua in USER_AGENTS
+
+
+def test_shutdown_network() -> None:
+    """Test that the network shutdown handler correctly terminates executors."""
+    # Patch the global executor in the network module
+    with patch("audiobook_automated.scraper.network._mirror_executor") as mock_executor:
+        # Call the private shutdown function explicitly
+        network._shutdown_network()
+
+        # Verify it called shutdown with correct params for Python 3.9+ behavior
+        mock_executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)

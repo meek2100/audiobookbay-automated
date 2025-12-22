@@ -2,6 +2,7 @@
 """Unit tests for startup configuration and verification logic."""
 
 import importlib
+import logging
 import os
 import sys
 from collections.abc import Generator
@@ -217,3 +218,43 @@ def test_app_entry_point() -> None:
 
     # Verify that the module contains the 'app' variable (the Flask instance)
     assert reloaded_module.app is not None
+
+
+def test_create_app_with_gunicorn_integration(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that Gunicorn logger handlers are attached if present."""
+    _, mock_app_logger = mock_flask_factory
+
+    # Simulate environment where Config.LOG_LEVEL is NOT set/detected
+    # We must patch config BEFORE reload so the class defaults are correct
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
+    # Set to empty to trigger fallback logic
+    monkeypatch.setenv("LOG_LEVEL", "")
+
+    # We must patch getLogger to simulate Gunicorn environment
+    mock_gunicorn_logger = MagicMock()
+    # Use MagicMock objects for handlers to satisfy MyPy (list[Handler] vs list[str])
+    mock_handler = MagicMock()
+    mock_gunicorn_logger.handlers = [mock_handler]
+    mock_gunicorn_logger.level = 20  # INFO
+
+    original_get_logger = logging.getLogger
+
+    def side_effect(name: str) -> Any:
+        if name == "gunicorn.error":
+            return mock_gunicorn_logger
+        return original_get_logger(name)
+
+    # Reload to apply env vars to Config
+    importlib.reload(audiobook_automated.config)
+    importlib.reload(audiobook_automated)
+
+    with patch("logging.getLogger", side_effect=side_effect):
+        with patch("audiobook_automated.torrent_manager"):  # Silence connection warning
+            app = audiobook_automated.create_app()
+
+            # Verify handlers were attached
+            # Use mock objects to ensure type compatibility
+            assert app.logger.handlers == [mock_handler]
+            # Verify that due to missing LOG_LEVEL, we fell back to Gunicorn's level
+            # Use the mock_app_logger directly to avoid MyPy errors on the Flask app.logger type
+            mock_app_logger.setLevel.assert_called_with(20)
