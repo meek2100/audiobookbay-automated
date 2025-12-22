@@ -192,15 +192,25 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
                 )
             )
 
+        # RESILIENCE: Local flag to prevent cache thrashing.
+        # If multiple pages fail, we only invalidate the mirror once per search request.
+        mirror_invalidated = False
+
         for future in concurrent.futures.as_completed(futures):
             try:
                 page_data = future.result()
                 results.extend(page_data)
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                logger.error(f"Network error during scrape: {exc}")
+                # Only clear cache once per search loop to prevent lock contention/thrashing
+                if not mirror_invalidated:
+                    logger.warning(f"Invalidating mirror cache due to network failure: {active_hostname}")
+                    with CACHE_LOCK:
+                        mirror_cache.clear()
+                    mirror_invalidated = True
             except Exception as exc:
-                logger.error(f"Page scrape failed, invalidating mirror cache. {exc}", exc_info=True)
-                # This clears cache because the SPECIFIC mirror failed, not because we found none.
-                with CACHE_LOCK:
-                    mirror_cache.clear()
+                logger.error(f"Page scrape failed (Parsing/Generic): {exc}", exc_info=True)
+                # Do not invalidate mirror for parsing errors or other non-connection issues
 
     finally:
         pass

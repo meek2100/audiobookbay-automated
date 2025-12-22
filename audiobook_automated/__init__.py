@@ -21,9 +21,13 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Validate critical configuration
     config_class.validate(app.logger)
 
-    # PRODUCTION FIX: Explicitly apply the configured log level to the Flask logger.
-    # Flask does not automatically apply the 'LOG_LEVEL' config value to its logger.
-    app.logger.setLevel(app.config.get("LOG_LEVEL", "INFO"))
+    # PRODUCTION FIX: Log Level Inheritance
+    # Priority:
+    # 1. Configured LOG_LEVEL (if set in env)
+    # 2. Gunicorn Logger Level (if running in Gunicorn)
+    # 3. Default (INFO)
+
+    configured_level = app.config.get("LOG_LEVEL")
 
     # DEPLOYMENT FIX: Attach Gunicorn handlers if running in production
     # Gunicorn creates its own logger ('gunicorn.error'), and without this,
@@ -32,9 +36,13 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     if gunicorn_logger.handlers:
         app.logger.handlers = gunicorn_logger.handlers
         # Sync level to match Gunicorn (unless overridden by config)
-        # We respect app config first, but fallback to Gunicorn's level if needed.
-        if not app.config.get("LOG_LEVEL"):
+        if configured_level is not None:
+            app.logger.setLevel(configured_level)
+        else:
             app.logger.setLevel(gunicorn_logger.level)
+    else:
+        # Local/Dev mode or non-Gunicorn runner
+        app.logger.setLevel(configured_level if configured_level is not None else logging.INFO)
 
     # OPTIMIZATION: Static Asset Versioning Strategy
     # Priority:

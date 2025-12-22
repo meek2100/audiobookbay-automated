@@ -1,6 +1,7 @@
 # File: audiobook_automated/extensions.py
 """Extensions module initializing Flask extensions."""
 
+import atexit
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Any
@@ -47,6 +48,9 @@ class ScraperExecutor:
         # Defaults to 3 if not set (matching previous Config default)
         max_workers = app.config.get("SCRAPER_THREADS", 3)
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
+
+        # RESOURCE SAFETY: Register shutdown to ensure clean exit in Docker/Gunicorn
+        atexit.register(self.shutdown)
 
         # NOTE: Semaphore initialization has been moved to app/__init__.py
         # to prevent circular imports between extensions.py and scraper/network.py

@@ -88,8 +88,11 @@ class Config:
     DL_URL: str | None = os.getenv("DL_URL")
 
     # Logging
-    LOG_LEVEL_STR: str = os.getenv("LOG_LEVEL", "INFO").upper()
-    LOG_LEVEL: int = getattr(logging, LOG_LEVEL_STR, logging.INFO)
+    # We allow LOG_LEVEL to be None if unset to support Gunicorn level inheritance in __init__.py.
+    _log_level_env: str | None = os.getenv("LOG_LEVEL")
+    LOG_LEVEL_STR: str = _log_level_env.upper() if _log_level_env else "INFO"
+    # Logic: If Env is set, resolve it (defaulting to INFO if invalid string). If not set, leave as None.
+    LOG_LEVEL: int | None = getattr(logging, LOG_LEVEL_STR, logging.INFO) if _log_level_env else None
 
     # Scraper Configuration
     # ROBUSTNESS: Fallback if env var is set but empty string
@@ -144,7 +147,8 @@ class Config:
                 )
 
         # Validate LOG_LEVEL
-        if not hasattr(logging, cls.LOG_LEVEL_STR):
+        # Only validate if the user actually tried to set it
+        if cls._log_level_env and not hasattr(logging, cls.LOG_LEVEL_STR):
             logger.warning(
                 f"Configuration Warning: Invalid LOG_LEVEL '{cls.LOG_LEVEL_STR}' provided. Defaulting to INFO."
             )

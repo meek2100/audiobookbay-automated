@@ -116,9 +116,13 @@ class TorrentManager:
         if not client_name:
             return None
 
+        # REFACTOR: Use package relative logic to make it robust against renames.
+        package_name = __package__ or "audiobook_automated.clients"
+        full_module_name = f"{package_name}.{client_name}"
+
         try:
             # Load from internal package
-            module = importlib.import_module(f".{client_name}", package="audiobook_automated.clients")
+            module = importlib.import_module(f".{client_name}", package=package_name)
             strategy_class = getattr(module, "Strategy", None)
 
             if strategy_class and issubclass(strategy_class, TorrentClientStrategy):
@@ -131,7 +135,7 @@ class TorrentManager:
             # CRITICAL FIX: Distinguish between the plugin itself being missing vs. a dependency inside it.
             # If the missing module IS the plugin, we handle it gracefully (if suppress_errors=True).
             # If the missing module is something else (e.g., 'transmission_rpc'), we must raise it.
-            if e.name == f"audiobook_automated.clients.{client_name}":
+            if e.name == full_module_name:
                 if not suppress_errors:
                     logger.error(f"Client plugin '{client_name}' not found.")
             else:
