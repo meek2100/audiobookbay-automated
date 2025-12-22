@@ -84,6 +84,8 @@ def test_config_validate_invalid_log_level(monkeypatch: MonkeyPatch, caplog: Log
     """Ensure validation warns on invalid LOG_LEVEL and defaults to INFO."""
     monkeypatch.setenv("LOG_LEVEL", "INVALID_LEVEL")
     monkeypatch.setattr(Config, "LOG_LEVEL_STR", "INVALID_LEVEL")
+    # UPDATED: Must patch the internal env variable attribute because Config loads this at import time.
+    monkeypatch.setattr(Config, "_log_level_env", "INVALID_LEVEL")
 
     Config.validate(logging.getLogger("test"))
 

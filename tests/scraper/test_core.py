@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from audiobook_automated.scraper.core import fetch_and_parse_page, search_audiobookbay
 
@@ -78,7 +79,9 @@ def test_search_partial_failure() -> None:
     future_success.set_result(success_result)
 
     future_failure: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
-    future_failure.set_exception(ValueError("Parsing failed for page 2"))
+    # UPDATED: Raise ConnectionError to trigger the cache invalidation logic.
+    # Generic errors (ValueError) are now swallowed without clearing cache to prevent thrashing.
+    future_failure.set_exception(requests.ConnectionError("Network failed for page 2"))
 
     # We mock executor.submit to return our prepared futures
     # The order depends on the loop in search_audiobookbay (page 1, page 2...)

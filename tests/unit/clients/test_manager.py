@@ -441,26 +441,28 @@ def test_load_strategy_missing_plugin_vs_dependency(app: Flask, setup_manager: A
     manager = setup_manager(app)
     client_name = "missing_client"
 
-    # CASE 1: The plugin itself is missing (should return None, log error, NO raise)
-    with patch("importlib.import_module") as mock_import:
-        # e.name matches the plugin full path
-        error = ModuleNotFoundError(f"No module named '{client_name}'")
-        error.name = f"audiobook_automated.clients.{client_name}"
-        mock_import.side_effect = error
+    # Ensure __package__ resolves predictably in the test environment for the check `if e.name == full_module_name`
+    with patch("audiobook_automated.clients.manager.__package__", "audiobook_automated.clients"):
+        # CASE 1: The plugin itself is missing (should return None, log error, NO raise)
+        with patch("importlib.import_module") as mock_import:
+            # e.name matches the plugin full path
+            error = ModuleNotFoundError(f"No module named '{client_name}'")
+            error.name = f"audiobook_automated.clients.{client_name}"
+            mock_import.side_effect = error
 
-        with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-            result = manager._load_strategy_class(client_name, suppress_errors=False)
-            assert result is None
-            mock_logger.error.assert_called()
-            assert f"Client plugin '{client_name}' not found" in mock_logger.error.call_args[0][0]
+            with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+                result = manager._load_strategy_class(client_name, suppress_errors=False)
+                assert result is None
+                mock_logger.error.assert_called()
+                assert f"Client plugin '{client_name}' not found" in mock_logger.error.call_args[0][0]
 
-    # CASE 2: A dependency inside the plugin is missing (should RAISE ImportError)
-    with patch("importlib.import_module") as mock_import:
-        # e.name matches some random dependency
-        error = ModuleNotFoundError("No module named 'some_lib'")
-        error.name = "some_lib"
-        mock_import.side_effect = error
+        # CASE 2: A dependency inside the plugin is missing (should RAISE ImportError)
+        with patch("importlib.import_module") as mock_import:
+            # e.name matches some random dependency
+            error = ModuleNotFoundError("No module named 'some_lib'")
+            error.name = "some_lib"
+            mock_import.side_effect = error
 
-        with pytest.raises(ModuleNotFoundError) as exc:
-            manager._load_strategy_class(client_name)
-        assert exc.value.name == "some_lib"
+            with pytest.raises(ModuleNotFoundError) as exc:
+                manager._load_strategy_class(client_name)
+            assert exc.value.name == "some_lib"

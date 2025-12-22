@@ -5,6 +5,7 @@ from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from audiobook_automated.scraper import search_audiobookbay
 from audiobook_automated.scraper.network import search_cache
@@ -71,7 +72,11 @@ def test_search_thread_failure(mock_sleep: Any) -> None:
     with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
         # FIX: Patch get_thread_session as that is what core.py imports/uses
         with patch("audiobook_automated.scraper.core.get_thread_session"):
-            with patch("audiobook_automated.scraper.core.fetch_and_parse_page", side_effect=Exception("Scrape Fail")):
+            # UPDATED: Use ConnectionError to ensure cache clearing is triggered
+            with patch(
+                "audiobook_automated.scraper.core.fetch_and_parse_page",
+                side_effect=requests.ConnectionError("Scrape Fail"),
+            ):
                 with patch("audiobook_automated.scraper.core.mirror_cache") as mock_cache:
                     results = search_audiobookbay("query", max_pages=1)
                     assert results == []
@@ -97,4 +102,5 @@ def test_search_audiobookbay_generic_exception_in_thread(mock_sleep: Any) -> Non
                             assert results == []
                             args, _ = mock_logger.error.call_args
                             assert "Page scrape failed" in args[0]
-                            mock_mirror_clear.clear.assert_called()
+                            # UPDATED: Generic errors should NOT clear cache anymore
+                            mock_mirror_clear.clear.assert_not_called()
