@@ -1,5 +1,4 @@
 <!-- File: AGENTS.md -->
-
 # Developer & AI Agent Guide
 
 **READ THIS FIRST — ALL HUMAN DEVELOPERS AND ALL AI AGENTS MUST FOLLOW THIS DOCUMENT.** **No change, refactor, or
@@ -100,12 +99,16 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 
 ## D. Python 3.14 Standards
 
-- Full type hints everywhere. **Type safety is strictly enforced using MyPy.**
+- Full type hints everywhere. **Type safety is strictly enforced using MyPy AND Pyright.**
 - Modern Python idioms. **Use `pathlib` instead of `os.path` for filesystem operations.**
 - Avoid deprecated patterns.
 - Code must be Pylance/MyPy-friendly.
 - **Type Separation:** Use `BookSummary` for search results and `BookDetails` for full book info. Do not mix them.
   `BookDetails` must enforce fields like `description`, `trackers`, and `info_hash`.
+- **Conflict Resolution (Type Assignment Pattern):** If MyPy complains about `Any` return types but Pyright flags a cast
+  as unnecessary (e.g., after `issubclass` checks), use explicit variable assignment to resolve the conflict.
+  - **Bad:** `return cast(TargetType, value)` (Pyright error: unnecessary cast)
+  - **Good:** `typed_value: TargetType = value; return typed_value` (Satisfies both)
 
 ---
 
@@ -114,6 +117,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 - Always maintain **100% coverage** (`--cov-fail-under=100`).
 - **MANDATE:** Code quality is strictly enforced via the following pre-commit hooks:
   - **MyPy:** Mandatory checks for static type correctness.
+  - **Pyright:** Mandatory strict type checking (configured in `pyproject.toml`).
   - **Ruff (Security):** Mandatory scanning for common security vulnerabilities (replacing Bandit).
   - **pydocstyle:** Mandatory enforcement of the Google Docstring Convention.
   - **Ruff (Lint/Format):** Mandatory linting and formatting.
@@ -164,8 +168,10 @@ without modifying the core codebase.
 1. **Use the Template:** Copy `audiobook_automated/clients/client_template.py` to a new file (e.g.,
    `audiobook_automated/clients/rtorrent.py`).
 2. **Implement the Interface:** Your class must inherit from `TorrentClientStrategy` and implement all abstract methods.
-3. **Define Defaults:** You MUST set the `DEFAULT_PORT` class attribute to the standard port for that client.
-4. **Configuration:** The `TorrentManager` will automatically load your plugin if the `DL_CLIENT` environment variable
+3. **Use Shared Utilities:** You **MUST** import `format_size` from `audiobook_automated.utils` to format file sizes in
+   `get_status`. Do not reimplement size formatting logic.
+4. **Define Defaults:** You MUST set the `DEFAULT_PORT` class attribute to the standard port for that client.
+5. **Configuration:** The `TorrentManager` will automatically load your plugin if the `DL_CLIENT` environment variable
    matches your filename (minus extension).
 
 ### H.2 Deployment (Drop-in)
