@@ -52,9 +52,10 @@ def mock_global_dependencies() -> Generator[None]:
     connect to a real torrent client during startup (verify_credentials)
     or request handling.
     """
-    # CRITICAL FIX: Patch the instance in 'extensions' because that is where
-    # __init__.py imports it from during create_app().
-    with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
+    # CRITICAL FIX: Patch 'audiobook_automated.torrent_manager' instead of '.extensions.torrent_manager'.
+    # This ensures that the 'torrent_manager' reference imported in __init__.py is replaced
+    # during the create_app execution, preventing the real verify_credentials() from running.
+    with patch("audiobook_automated.torrent_manager") as mock_tm:
         # Ensure startup check passes without network
         mock_tm.verify_credentials.return_value = True
 

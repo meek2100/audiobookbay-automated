@@ -38,6 +38,15 @@ def test_search_endpoint_short_query(client: FlaskClient) -> None:
     assert b"Search query must be at least" in response.data
 
 
+def test_search_endpoint_connection_error(client: FlaskClient) -> None:
+    """Test search endpoint handles connection errors to mirrors."""
+    with patch("audiobook_automated.routes.search_audiobookbay", side_effect=ConnectionError("Mirror down")):
+        response = client.get("/?query=testbook")
+        assert response.status_code == 200
+        # Verify the user friendly error message is displayed
+        assert b"Could not connect to AudiobookBay mirrors" in response.data
+
+
 def test_details_endpoint(client: FlaskClient) -> None:
     """Test the details endpoint rendering."""
     mock_details: BookDetails = {
