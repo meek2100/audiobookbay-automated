@@ -45,7 +45,7 @@ def test_init_dl_port_missing(app: Flask, setup_manager: Any) -> None:
     mock_strategy = MagicMock()
     mock_strategy.DEFAULT_PORT = 8112
 
-    with patch("audiobook_automated.clients.manager.TorrentManager._load_strategy_class", return_value=mock_strategy):
+    with patch("audiobook_automated.clients.manager.TorrentManager._load_strategy_class", return_value=mock_strategy):  # pyright: ignore[reportPrivateUsage]
         manager = setup_manager(app, DL_CLIENT="deluge", DL_HOST="deluge-host", DL_PORT=None)
         assert manager.port == 8112
         assert manager.dl_url == "http://deluge-host:8112"
@@ -55,7 +55,8 @@ def test_init_app_strategy_load_exception(app: Flask, setup_manager: Any) -> Non
     """Test that exceptions during init_app strategy loading are caught and logged."""
     # This covers the 'except Exception' block in manager.py init_app logic
     with patch(
-        "audiobook_automated.clients.manager.TorrentManager._load_strategy_class", side_effect=Exception("Init Boom")
+        "audiobook_automated.clients.manager.TorrentManager._load_strategy_class",
+        side_effect=Exception("Init Boom"),  # pyright: ignore[reportPrivateUsage]
     ):
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
             setup_manager(app, DL_CLIENT="broken_init")
@@ -81,7 +82,7 @@ def test_verify_credentials_success(app: Flask, setup_manager: Any) -> None:
     """Targets verify_credentials success path (True)."""
     manager = setup_manager(app)
     # Mock _get_strategy to return a mock object (truthy)
-    with patch.object(manager, "_get_strategy", return_value=MagicMock()):
+    with patch.object(manager, "_get_strategy", return_value=MagicMock()):  # pyright: ignore[reportPrivateUsage]
         assert manager.verify_credentials() is True
 
 
@@ -89,7 +90,7 @@ def test_verify_credentials_failure(app: Flask, setup_manager: Any) -> None:
     """Targets verify_credentials failure path (False)."""
     manager = setup_manager(app)
     # Mock _get_strategy to return None
-    with patch.object(manager, "_get_strategy", return_value=None):
+    with patch.object(manager, "_get_strategy", return_value=None):  # pyright: ignore[reportPrivateUsage]
         assert manager.verify_credentials() is False
 
 
@@ -98,7 +99,7 @@ def test_unsupported_client_strategy(app: Flask, setup_manager: Any) -> None:
     manager = setup_manager(app, DL_CLIENT="fake_client")
 
     with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-        strategy = manager._get_strategy()
+        strategy = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
         assert strategy is None
         assert mock_logger.error.called
         # The new logic in _load_strategy_class catches the ImportError and returns None,
@@ -114,7 +115,7 @@ def test_get_strategy_missing_client_config(app: Flask, setup_manager: Any) -> N
     manager.client_type = None  # Force None
 
     with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-        strategy = manager._get_strategy()
+        strategy = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
         assert strategy is None
         mock_logger.error.assert_called_with("DL_CLIENT not configured.")
 
@@ -134,7 +135,7 @@ def test_get_strategy_init_exception(app: Flask, setup_manager: Any) -> None:
 
     with patch("importlib.import_module", side_effect=side_effect):
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-            strategy = manager._get_strategy()
+            strategy = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
             assert strategy is None
             args, _ = mock_logger.error.call_args
             assert "Error initializing torrent client strategy" in args[0]
@@ -153,7 +154,7 @@ def test_get_strategy_syntax_error(app: Flask, setup_manager: Any) -> None:
 
     with patch("importlib.import_module", side_effect=side_effect):
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-            strategy = manager._get_strategy()
+            strategy = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
             assert strategy is None
             mock_logger.critical.assert_called()
             assert "Syntax Error in client plugin" in mock_logger.critical.call_args[0][0]
@@ -173,7 +174,7 @@ def test_get_strategy_missing_class(app: Flask, setup_manager: Any) -> None:
 
     with patch("importlib.import_module", side_effect=side_effect):
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-            strategy = manager._get_strategy()
+            strategy = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
             assert strategy is None
             # Scan all error calls for the specific message
             found = False
@@ -213,7 +214,7 @@ def test_get_strategy_caching_and_success(app: Flask, setup_manager: Any) -> Non
 
     with patch("importlib.import_module", return_value=mock_module) as mock_import:
         # 1. First Call: Should Initialize
-        strategy1 = manager._get_strategy()
+        strategy1 = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
         assert strategy1 is not None
         assert isinstance(strategy1, MockStrategy)
 
@@ -221,7 +222,7 @@ def test_get_strategy_caching_and_success(app: Flask, setup_manager: Any) -> Non
         # Reset mocks to prove they aren't called again
         mock_import.reset_mock()
 
-        strategy2 = manager._get_strategy()
+        strategy2 = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
         assert strategy2 is strategy1
         mock_import.assert_not_called()
 
@@ -229,7 +230,7 @@ def test_get_strategy_caching_and_success(app: Flask, setup_manager: Any) -> Non
 def test_remove_torrent_no_client_raises(app: Flask, setup_manager: Any) -> None:
     """Test that an error is raised if no client can be connected during removal."""
     manager = setup_manager(app)
-    with patch.object(manager, "_get_strategy", return_value=None):
+    with patch.object(manager, "_get_strategy", return_value=None):  # pyright: ignore[reportPrivateUsage]
         with pytest.raises(ConnectionError) as exc:
             manager.remove_torrent("123")
         assert "Torrent client is not connected" in str(exc.value)
@@ -241,7 +242,7 @@ def test_add_magnet_success_logic(app: Flask, setup_manager: Any) -> None:
     manager = setup_manager(app, DL_CATEGORY="abb-automated")
     mock_strategy = MagicMock()
 
-    with patch.object(manager, "_get_strategy", return_value=mock_strategy):
+    with patch.object(manager, "_get_strategy", return_value=mock_strategy):  # pyright: ignore[reportPrivateUsage]
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
             manager.add_magnet("magnet:?xt=urn:btih:123", "/downloads")
 
@@ -258,12 +259,12 @@ def test_logic_methods_no_client(app: Flask, setup_manager: Any) -> None:
     """Test that logic methods raise ConnectionError when strategy is None."""
     manager = setup_manager(app)
     # Force client to be None despite any init attempts
-    with patch.object(manager, "_get_strategy", return_value=None):
+    with patch.object(manager, "_get_strategy", return_value=None):  # pyright: ignore[reportPrivateUsage]
         with pytest.raises(ConnectionError):
-            manager._add_magnet_logic("magnet:...", "/path")
+            manager._add_magnet_logic("magnet:...", "/path")  # pyright: ignore[reportPrivateUsage]
 
         with pytest.raises(ConnectionError):
-            manager._get_status_logic()
+            manager._get_status_logic()  # pyright: ignore[reportPrivateUsage]
 
 
 def test_remove_torrent_retry_coverage(app: Flask, setup_manager: Any) -> None:
@@ -276,7 +277,7 @@ def test_remove_torrent_retry_coverage(app: Flask, setup_manager: Any) -> None:
 
     strategy_ok = MagicMock()
 
-    with patch.object(manager, "_get_strategy", side_effect=[strategy_fail, strategy_ok]) as mock_get_strat:
+    with patch.object(manager, "_get_strategy", side_effect=[strategy_fail, strategy_ok]) as mock_get_strat:  # pyright: ignore[reportPrivateUsage]
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
             manager.remove_torrent("123")
 
@@ -296,7 +297,7 @@ def test_add_magnet_retry_coverage(app: Flask, setup_manager: Any) -> None:
 
     strategy_ok = MagicMock()
 
-    with patch.object(manager, "_get_strategy", side_effect=[strategy_fail, strategy_ok]) as mock_get_strat:
+    with patch.object(manager, "_get_strategy", side_effect=[strategy_fail, strategy_ok]) as mock_get_strat:  # pyright: ignore[reportPrivateUsage]
         with patch("audiobook_automated.clients.manager.logger") as mock_logger:
             manager.add_magnet("magnet:...", "/save")
 
@@ -313,7 +314,7 @@ def test_get_status_retry_coverage(app: Flask, setup_manager: Any) -> None:
     mock_status = cast(list[TorrentStatus], [{"name": "test"}])
     strategy_mock.get_status.return_value = mock_status
 
-    with patch.object(manager, "_get_strategy") as mock_get_strat:
+    with patch.object(manager, "_get_strategy") as mock_get_strat:  # pyright: ignore[reportPrivateUsage]
         strategy_fail = MagicMock()
         strategy_fail.get_status.side_effect = Exception("Conn Error")
 
@@ -334,17 +335,17 @@ def test_force_disconnect_exception_handling(app: Flask, setup_manager: Any) -> 
 
     mock_strategy = MagicMock()
     mock_strategy.close.side_effect = Exception("Close Error")
-    manager._local.strategy = mock_strategy
+    manager._local.strategy = mock_strategy  # pyright: ignore[reportPrivateUsage]
 
     with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-        manager._force_disconnect()
+        manager._force_disconnect()  # pyright: ignore[reportPrivateUsage]
 
         mock_logger.warning.assert_called()
         args, _ = mock_logger.warning.call_args
         assert "Error closing strategy during reconnect" in args[0]
         assert "Close Error" in str(args[0])
 
-    assert manager._local.strategy is None
+    assert manager._local.strategy is None  # pyright: ignore[reportPrivateUsage]
 
 
 def test_verify_credentials_import_error(app: Flask, setup_manager: Any) -> None:
@@ -374,7 +375,7 @@ def test_load_strategy_class_none(app: Flask, setup_manager: Any) -> None:
     This covers the `if not client_name: return None` check in manager.py.
     """
     manager = setup_manager(app)
-    assert manager._load_strategy_class(None) is None
+    assert manager._load_strategy_class(None) is None  # pyright: ignore[reportPrivateUsage]
 
 
 def test_syntax_error_in_plugin(app: Flask) -> None:
@@ -388,7 +389,7 @@ def test_syntax_error_in_plugin(app: Flask) -> None:
     with patch("importlib.import_module") as mock_import:
         mock_import.side_effect = SyntaxError("Test Syntax Error")
 
-        strategy = manager._get_strategy()
+        strategy = manager._get_strategy()  # pyright: ignore[reportPrivateUsage]
 
         assert strategy is None
         mock_import.assert_called()
@@ -431,7 +432,7 @@ def test_import_error_dependency(app: Flask) -> None:
         mock_import.side_effect = error
 
         with pytest.raises(ImportError) as excinfo:
-            manager._load_strategy_class("valid_client")
+            manager._load_strategy_class("valid_client")  # pyright: ignore[reportPrivateUsage]
 
         assert str(excinfo.value) == "No module named 'some_dependency'"
 
@@ -459,7 +460,7 @@ def test_load_strategy_missing_plugin_vs_dependency(app: Flask, setup_manager: A
             mock_import.side_effect = side_effect
 
             with patch("audiobook_automated.clients.manager.logger") as mock_logger:
-                result = manager._load_strategy_class(client_name, suppress_errors=False)
+                result = manager._load_strategy_class(client_name, suppress_errors=False)  # pyright: ignore[reportPrivateUsage]
                 assert result is None
                 mock_logger.error.assert_called()
                 assert f"Client plugin '{client_name}' not found" in mock_logger.error.call_args[0][0]
@@ -479,5 +480,5 @@ def test_load_strategy_missing_plugin_vs_dependency(app: Flask, setup_manager: A
             mock_import.side_effect = side_effect_dep
 
             with pytest.raises(ModuleNotFoundError) as exc:
-                manager._load_strategy_class(client_name)
+                manager._load_strategy_class(client_name)  # pyright: ignore[reportPrivateUsage]
             assert exc.value.name == "some_lib"

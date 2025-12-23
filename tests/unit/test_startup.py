@@ -183,7 +183,11 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
         patch("audiobook_automated.torrent_manager") as mock_torrent_manager,
     ):
         # Configure exists to return True only if checking for version.txt
-        mock_exists.side_effect = lambda p: p.endswith("version.txt")
+        # FIX: Explicitly type lambda parameter or use inner function to avoid pyright unknown type error
+        def side_effect(p: str | Any) -> bool:
+            return str(p).endswith("version.txt")
+
+        mock_exists.side_effect = side_effect
 
         # Mock the verify_credentials return to avoid warnings
         mock_torrent_manager.verify_credentials.return_value = True

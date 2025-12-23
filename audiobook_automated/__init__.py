@@ -111,7 +111,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Since we use versioning (?v=hash) in templates, we can safely tell
     # the browser to cache static files for a year (31536000 seconds).
     @app.after_request
-    def add_header(response: Response) -> Response:
+    def add_header(response: Response) -> Response:  # pyright: ignore[reportUnusedFunction]
         """Add Cache-Control headers to static files."""
         if request.path.startswith("/static"):
             response.headers["Cache-Control"] = "public, max-age=31536000"

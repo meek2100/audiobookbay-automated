@@ -74,7 +74,7 @@ def test_search_partial_failure() -> None:
     ]
 
     # Create futures: one succeeds, one raises an exception
-    # FIX: Explicit type annotation required for strict mypy
+    # FIX: Explicit type annotation required for strict mypy/pyright
     future_success: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
     future_success.set_result(success_result)
 
