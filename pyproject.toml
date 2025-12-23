@@ -137,3 +137,5 @@ reportUnknownMemberType = "none"
 reportUnknownVariableType = "none"
 reportUnknownArgumentType = "none"
 reportUnknownParameterType = "none"
+# Missing sources are inevitable for some libraries (like bs4 stubs issues)
+reportMissingModuleSource = "none"

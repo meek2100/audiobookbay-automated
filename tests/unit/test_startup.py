@@ -122,7 +122,8 @@ def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -
 
 def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Test that non-integer PAGE_LIMIT defaults to 3."""
-    _, mock_logger = mock_flask_factory
+    # FIX: Use underscore for unused variables to satisfy pyright 'reportUnusedVariable'
+    _ = mock_flask_factory
     monkeypatch.setenv("PAGE_LIMIT", "invalid_string")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
 
