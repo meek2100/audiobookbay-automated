@@ -7,6 +7,8 @@ from typing import Any
 from deluge_web_client import DelugeWebClient
 from deluge_web_client.schema import TorrentOptions
 
+from audiobook_automated.utils import format_size
+
 from .base import TorrentClientStrategy, TorrentStatus
 
 logger = logging.getLogger(__name__)
@@ -139,7 +141,8 @@ class Strategy(TorrentClientStrategy):
                             "name": deluge_data.get("name", "Unknown"),
                             "progress": progress,
                             "state": deluge_data.get("state", "Unknown"),
-                            "size": self._format_size(deluge_data.get("total_size")),
+                            # FIX: Use public utility format_size
+                            "size": format_size(deluge_data.get("total_size")),
                         }
                     )
             else:

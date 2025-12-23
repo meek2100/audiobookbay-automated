@@ -116,7 +116,7 @@ class Strategy(TorrentClientStrategy):
         #         "name": t.name,
         #         "progress": t.progress_percent,  # Must be 0.0 - 100.0
         #         "state": t.state,                # e.g., 'Downloading', 'Seeding'
-        #         "size": self._format_size(t.size_bytes)
+        #         "size": format_size(t.size_bytes)
         #     })
 
         return results

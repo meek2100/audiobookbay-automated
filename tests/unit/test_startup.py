@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 
 import audiobook_automated
-import audiobook_automated.app
 import audiobook_automated.config
 
 

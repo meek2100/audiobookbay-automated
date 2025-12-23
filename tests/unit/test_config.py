@@ -137,22 +137,26 @@ def test_library_reload_enabled(monkeypatch: MonkeyPatch) -> None:
 def test_parse_env_int_success(monkeypatch: MonkeyPatch) -> None:
     """Test parsing a valid integer string."""
     monkeypatch.setenv("TEST_INT", "42")
-    assert config._parse_env_int("TEST_INT", 10) == 42
+    # Updated: Use public function name
+    assert config.parse_env_int("TEST_INT", 10) == 42
 
 
 def test_parse_env_int_float_string(monkeypatch: MonkeyPatch) -> None:
     """Test parsing a float string as an integer (Docker/K8s common case)."""
     monkeypatch.setenv("TEST_INT", "42.0")
-    assert config._parse_env_int("TEST_INT", 10) == 42
+    # Updated: Use public function name
+    assert config.parse_env_int("TEST_INT", 10) == 42
 
 
 def test_parse_env_int_missing(monkeypatch: MonkeyPatch) -> None:
     """Test fallback to default when env var is missing."""
     monkeypatch.delenv("TEST_INT", raising=False)
-    assert config._parse_env_int("TEST_INT", 10) == 10
+    # Updated: Use public function name
+    assert config.parse_env_int("TEST_INT", 10) == 10
 
 
 def test_parse_env_int_invalid(monkeypatch: MonkeyPatch) -> None:
     """Test fallback to default when env var is invalid garbage."""
     monkeypatch.setenv("TEST_INT", "not-a-number")
-    assert config._parse_env_int("TEST_INT", 10) == 10
+    # Updated: Use public function name
+    assert config.parse_env_int("TEST_INT", 10) == 10

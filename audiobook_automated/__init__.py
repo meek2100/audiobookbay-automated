@@ -53,14 +53,16 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     if not app.config.get("STATIC_VERSION"):
         version_file = os.path.join(app.root_path, "version.txt")
         if os.path.exists(version_file):
-            with open(version_file, encoding="utf-8") as f:
-                app.config["STATIC_VERSION"] = f.read().strip()
+            try:
+                with open(version_file, encoding="utf-8") as f:
+                    app.config["STATIC_VERSION"] = f.read().strip()
+            except OSError:
+                app.logger.warning("Failed to read version.txt, falling back to calculation.")
+                static_folder = os.path.join(app.root_path, "static")
+                app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
         else:
             static_folder = os.path.join(app.root_path, "static")
             app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
-
-    # DRY IMPROVEMENT: Removed manual LIBRARY_RELOAD_ENABLED calculation.
-    # It is now a property in Config, accessed directly via app.config.
 
     # Initialize Extensions
     limiter.init_app(app)

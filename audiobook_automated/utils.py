@@ -208,6 +208,28 @@ def get_application_version(static_folder: str | Path) -> str:
     return calculate_static_hash(folder_path)
 
 
+def format_size(size_bytes: int | float | str | None) -> str:
+    """Format bytes into human-readable B, KB, MB, GB, TB, PB.
+
+    Args:
+        size_bytes: The size in bytes (can be string, int, or float).
+
+    Returns:
+        str: Formatted string (e.g. "1.50 MB").
+    """
+    if size_bytes is None:
+        return "Unknown"
+    try:
+        size: float = float(size_bytes)
+        for unit in ["B", "KB", "MB", "GB", "TB"]:
+            if size < 1024.0:  # noqa: PLR2004
+                return f"{size:.2f} {unit}"
+            size /= 1024.0  # noqa: PLR2004
+        return f"{size:.2f} PB"
+    except (ValueError, TypeError):
+        return "Unknown"
+
+
 if __name__ == "__main__":  # pragma: no cover
     # Script entry point for Docker build time optimization.
     # Calculates the hash of the static directory relative to this file

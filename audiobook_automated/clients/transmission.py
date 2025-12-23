@@ -6,6 +6,8 @@ from typing import Any, Literal, cast
 
 from transmission_rpc import Client as TxClient
 
+from audiobook_automated.utils import format_size
+
 from .base import TorrentClientStrategy, TorrentStatus
 
 logger = logging.getLogger(__name__)
@@ -90,8 +92,9 @@ class Strategy(TorrentClientStrategy):
             if category in labels:
                 # transmission-rpc 'progress' property returns percentage (0.0-100.0)
                 # NOT 0.0-1.0 like qBittorrent.
-                raw_progress = tx_torrent.progress
-                progress = raw_progress if raw_progress is not None else 0.0
+                # FIX: Removed redundant check 'if raw_progress is not None' to satisfy Pyright.
+                # The library types 'progress' as float, so we simply use it.
+                progress = tx_torrent.progress
 
                 results.append(
                     {
@@ -99,7 +102,7 @@ class Strategy(TorrentClientStrategy):
                         "name": tx_torrent.name,
                         "progress": progress,
                         "state": tx_torrent.status.name,
-                        "size": self._format_size(tx_torrent.total_size),
+                        "size": format_size(tx_torrent.total_size),
                     }
                 )
         return results

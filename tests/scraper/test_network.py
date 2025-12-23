@@ -153,7 +153,7 @@ def test_get_ping_session_configuration() -> None:
 def test_get_ping_session_singleton() -> None:
     """Test that get_ping_session returns the same singleton instance."""
     # Reset thread-local singleton
-    network._local.ping_session = None
+    network._local.ping_session = None  # pyright: ignore[reportPrivateUsage]
 
     session1 = network.get_ping_session()
     session2 = network.get_ping_session()
@@ -165,7 +165,7 @@ def test_get_ping_session_singleton() -> None:
 def test_get_thread_session_initialization() -> None:
     """Test that get_thread_session creates a session and reuses it."""
     # Ensure we start with a clean state for this thread
-    network._local.session = None
+    network._local.session = None  # pyright: ignore[reportPrivateUsage]
 
     # First call: Should create a new session
     session1 = network.get_thread_session()
@@ -319,7 +319,7 @@ def test_shutdown_network() -> None:
     # Patch the global executor in the network module
     with patch("audiobook_automated.scraper.network._mirror_executor") as mock_executor:
         # Call the private shutdown function explicitly
-        network._shutdown_network()
+        network._shutdown_network()  # pyright: ignore[reportPrivateUsage]
 
         # Verify it called shutdown with correct params for Python 3.9+ behavior
         mock_executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)

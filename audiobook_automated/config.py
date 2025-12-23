@@ -5,7 +5,7 @@ import logging
 import os
 
 
-def _parse_env_int(key: str, default: int) -> int:
+def parse_env_int(key: str, default: int) -> int:
     """Parse an integer environment variable safely.
 
     Handles cases where values might be passed as float strings (e.g., "3.0")
@@ -27,7 +27,7 @@ def _parse_env_int(key: str, default: int) -> int:
         return default
 
 
-def _parse_env_bool(key: str, default: bool = False) -> bool:
+def parse_env_bool(key: str, default: bool = False) -> bool:
     """Parse a boolean environment variable safely.
 
     Supports '1', 'true', 'yes', 'on' (case-insensitive) as True.
@@ -55,8 +55,8 @@ class Config:
     # nosec B105: Default key is intentional for development; validation logic handles warning user.
     # noqa: S105  # Ruff flag for hardcoded password
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
-    FLASK_DEBUG: bool = _parse_env_bool("FLASK_DEBUG", False)
-    TESTING: bool = _parse_env_bool("TESTING", False)
+    FLASK_DEBUG: bool = parse_env_bool("FLASK_DEBUG", False)
+    TESTING: bool = parse_env_bool("TESTING", False)
 
     # Static Asset Caching (1 Year)
     SEND_FILE_MAX_AGE_DEFAULT: int = 31536000
@@ -108,15 +108,15 @@ class Config:
     MAGNET_TRACKERS: list[str] = [t.strip() for t in _trackers_str.split(",") if t.strip()]
 
     # Page Limit (Default 3)
-    PAGE_LIMIT: int = _parse_env_int("PAGE_LIMIT", 3)
+    PAGE_LIMIT: int = parse_env_int("PAGE_LIMIT", 3)
 
     # Scraper Concurrency
     # Defines the number of worker threads for the scraping executor.
-    SCRAPER_THREADS: int = _parse_env_int("SCRAPER_THREADS", 3)
+    SCRAPER_THREADS: int = parse_env_int("SCRAPER_THREADS", 3)
 
     # Scraper Request Timeout (Default 30)
     # Separated from Gunicorn timeout to ensure internal requests fail faster than the worker kill timer.
-    SCRAPER_TIMEOUT: int = _parse_env_int("SCRAPER_TIMEOUT", 30)
+    SCRAPER_TIMEOUT: int = parse_env_int("SCRAPER_TIMEOUT", 30)
 
     @property
     def LIBRARY_RELOAD_ENABLED(self) -> bool:

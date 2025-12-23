@@ -5,27 +5,27 @@ from typing import Any
 
 import pytest
 
-from audiobook_automated.clients.base import TorrentClientStrategy
+from audiobook_automated.utils import format_size
 
 
 def test_format_size_logic() -> None:
     """Verify that bytes are converted to human-readable strings correctly."""
     # Standard units
-    assert TorrentClientStrategy._format_size(500) == "500.00 B"
-    assert TorrentClientStrategy._format_size(1024) == "1.00 KB"
-    assert TorrentClientStrategy._format_size(1048576) == "1.00 MB"
-    assert TorrentClientStrategy._format_size(1073741824) == "1.00 GB"
+    assert format_size(500) == "500.00 B"
+    assert format_size(1024) == "1.00 KB"
+    assert format_size(1048576) == "1.00 MB"
+    assert format_size(1073741824) == "1.00 GB"
 
     # Petabytes (Edge case)
     huge_number = 1024 * 1024 * 1024 * 1024 * 1024 * 5
-    assert "5.00 PB" in TorrentClientStrategy._format_size(huge_number)
+    assert "5.00 PB" in format_size(huge_number)
 
     # Invalid inputs
-    assert TorrentClientStrategy._format_size(None) == "Unknown"
-    assert TorrentClientStrategy._format_size("not a number") == "Unknown"
+    assert format_size(None) == "Unknown"
+    assert format_size("not a number") == "Unknown"
 
     bad_input: Any = [1, 2]
-    assert TorrentClientStrategy._format_size(bad_input) == "Unknown"
+    assert format_size(bad_input) == "Unknown"
 
 
 @pytest.mark.parametrize(
@@ -44,5 +44,5 @@ def test_format_size_logic() -> None:
     ],
 )
 def test_format_size_parameterized(input_bytes: Any, expected: str) -> None:
-    """Cover all branches of _format_size including recursion/loop and exceptions."""
-    assert TorrentClientStrategy._format_size(input_bytes) == expected
+    """Cover all branches of format_size including recursion/loop and exceptions."""
+    assert format_size(input_bytes) == expected

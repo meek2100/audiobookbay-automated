@@ -6,6 +6,8 @@ from typing import Any, Protocol, cast
 
 from qbittorrentapi import Client as QbClient
 
+from audiobook_automated.utils import format_size
+
 from .base import TorrentClientStrategy, TorrentStatus
 
 logger = logging.getLogger(__name__)
@@ -85,7 +87,7 @@ class Strategy(TorrentClientStrategy):
                     # qB API returns progress as 0.0-1.0 float, normalize to 0.0-100.0
                     "progress": round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
                     "state": qb_torrent.state,
-                    "size": self._format_size(qb_torrent.total_size),
+                    "size": format_size(qb_torrent.total_size),
                 }
             )
         return results

@@ -198,14 +198,14 @@ def test_get_strategy_caching_and_success(app: Flask, setup_manager: Any) -> Non
         def close(self) -> None:
             pass
 
-        def add_magnet(self, *args: Any) -> None:
+        # FIX: Updated signatures to match TorrentClientStrategy exactly
+        def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
             pass
 
-        def remove_torrent(self, *args: Any) -> None:
+        def remove_torrent(self, torrent_id: str) -> None:
             pass
 
-        # FIX: Added explicit return type annotation to satisfy MyPy
-        def get_status(self, *args: Any) -> list[TorrentStatus]:
+        def get_status(self, category: str) -> list[TorrentStatus]:
             return []
 
     mock_module = MagicMock()
