@@ -49,4 +49,5 @@ def test_executor_shutdown() -> None:
     executor.shutdown(wait=False)
 
     # Verify the underlying shutdown was called with correct args
-    executor._executor.shutdown.assert_called_once_with(wait=False)
+    # We suppress reportPrivateUsage here because we are white-box testing the internal proxy logic
+    executor._executor.shutdown.assert_called_once_with(wait=False)  # pyright: ignore[reportPrivateUsage]

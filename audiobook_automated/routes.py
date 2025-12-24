@@ -54,13 +54,20 @@ def inject_global_vars() -> dict[str, Any]:
 
 
 @main_bp.route("/health")
-def health() -> Response:
-    """Perform a health check.
+def health() -> Response | tuple[Response, int]:
+    """Perform a comprehensive health check.
+
+    Checks:
+    1. Application is running.
+    2. Torrent client is reachable.
 
     Returns:
-        Response: A JSON response with status "ok".
+        Response: JSON with status details. 200 if OK, 503 if degraded.
     """
-    return jsonify({"status": "ok"})
+    if torrent_manager.verify_credentials():
+        return jsonify({"status": "ok", "client": "connected"})
+
+    return jsonify({"status": "degraded", "client": "disconnected"}), 503
 
 
 @main_bp.route("/", methods=["GET", "POST"])

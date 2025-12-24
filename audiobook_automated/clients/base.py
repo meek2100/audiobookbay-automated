@@ -66,18 +66,3 @@ class TorrentClientStrategy(ABC):
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Retrieve status of torrents in the given category."""
         pass  # pragma: no cover
-
-    @staticmethod
-    def _format_size(size_bytes: int | float | str | None) -> str:
-        """Format bytes into human-readable B, KB, MB, GB, TB, PB."""
-        if size_bytes is None:
-            return "Unknown"
-        try:
-            size: float = float(size_bytes)
-            for unit in ["B", "KB", "MB", "GB", "TB"]:
-                if size < 1024.0:  # noqa: PLR2004
-                    return f"{size:.2f} {unit}"
-                size /= 1024.0  # noqa: PLR2004
-            return f"{size:.2f} PB"
-        except (ValueError, TypeError):
-            return "Unknown"

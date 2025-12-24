@@ -18,7 +18,7 @@ def test_health_check(client: FlaskClient) -> None:
     """Test the health check endpoint."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json == {"status": "ok"}
+    assert response.json == {"status": "ok", "client": "connected"}
 
 
 def test_search_endpoint_valid(client: FlaskClient) -> None:
@@ -36,6 +36,15 @@ def test_search_endpoint_short_query(client: FlaskClient) -> None:
     response = client.get("/?query=a")
     assert response.status_code == 200
     assert b"Search query must be at least" in response.data
+
+
+def test_search_endpoint_connection_error(client: FlaskClient) -> None:
+    """Test search endpoint handles connection errors to mirrors."""
+    with patch("audiobook_automated.routes.search_audiobookbay", side_effect=ConnectionError("Mirror down")):
+        response = client.get("/?query=testbook")
+        assert response.status_code == 200
+        # Verify the user friendly error message is displayed
+        assert b"Could not connect to AudiobookBay mirrors" in response.data
 
 
 def test_details_endpoint(client: FlaskClient) -> None:
@@ -191,7 +200,6 @@ def test_send_sanitization_warning(client: FlaskClient, caplog: Any) -> None:
         "audiobook_automated.routes.extract_magnet_link",
         return_value=("magnet:?xt=urn:btih:123", None),
     ):
-        # FIX: Removed unused 'as mock_tm' to satisfy Ruff
         with patch("audiobook_automated.routes.torrent_manager"):
             client.post("/send", json={"link": "http://example.com", "title": "..."})
             # Updated expectation to match the new log message format in routes.py

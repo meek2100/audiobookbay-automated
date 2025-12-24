@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 
 import audiobook_automated
-import audiobook_automated.app
 import audiobook_automated.config
 
 
@@ -71,13 +70,18 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
     monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
     monkeypatch.delenv("TESTING", raising=False)
 
-    with pytest.raises(RuntimeError) as excinfo:
-        importlib.reload(audiobook_automated.config)
-        importlib.reload(audiobook_automated)
-        if "audiobook_automated.app" in sys.modules:
-            importlib.reload(sys.modules["audiobook_automated.app"])
-        else:
-            importlib.import_module("audiobook_automated.app")
+    # CRITICAL FIX: Patch torrent_manager inside this test scope.
+    # Since we reload modules, the global conftest patch is lost/overwritten.
+    with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
+        mock_tm.verify_credentials.return_value = True
+
+        with pytest.raises(RuntimeError) as excinfo:
+            importlib.reload(audiobook_automated.config)
+            importlib.reload(audiobook_automated)
+            if "audiobook_automated.app" in sys.modules:
+                importlib.reload(sys.modules["audiobook_automated.app"])
+            else:
+                importlib.import_module("audiobook_automated.app")
 
     assert "Configuration Error: SAVE_PATH_BASE is missing" in str(excinfo.value)
     args, _ = mock_logger.critical.call_args
@@ -93,13 +97,16 @@ def test_startup_insecure_secret_key_production(monkeypatch: Any, mock_flask_fac
     monkeypatch.setenv("FLASK_DEBUG", "0")
     monkeypatch.delenv("TESTING", raising=False)
 
-    with pytest.raises(ValueError) as excinfo:
-        importlib.reload(audiobook_automated.config)
-        importlib.reload(audiobook_automated)
-        if "audiobook_automated.app" in sys.modules:
-            importlib.reload(sys.modules["audiobook_automated.app"])
-        else:
-            importlib.import_module("audiobook_automated.app")
+    with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
+        mock_tm.verify_credentials.return_value = True
+
+        with pytest.raises(ValueError) as excinfo:
+            importlib.reload(audiobook_automated.config)
+            importlib.reload(audiobook_automated)
+            if "audiobook_automated.app" in sys.modules:
+                importlib.reload(sys.modules["audiobook_automated.app"])
+            else:
+                importlib.import_module("audiobook_automated.app")
 
     assert "Application refused to start" in str(excinfo.value)
     args, _ = mock_logger.critical.call_args
@@ -123,7 +130,8 @@ def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -
 
 def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Test that non-integer PAGE_LIMIT defaults to 3."""
-    _, mock_logger = mock_flask_factory
+    # FIX: Use underscore for unused variables to satisfy pyright 'reportUnusedVariable'
+    _ = mock_flask_factory
     monkeypatch.setenv("PAGE_LIMIT", "invalid_string")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
 
@@ -181,10 +189,14 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
         patch("builtins.open", mock_open(read_data=expected_hash)) as mock_file,
         patch("audiobook_automated.calculate_static_hash") as mock_calc,
         # FIX: Patch torrent_manager to prevent real connection attempt during startup
-        patch("audiobook_automated.torrent_manager") as mock_torrent_manager,
+        patch("audiobook_automated.extensions.torrent_manager") as mock_torrent_manager,
     ):
         # Configure exists to return True only if checking for version.txt
-        mock_exists.side_effect = lambda p: p.endswith("version.txt")
+        # FIX: Explicitly type lambda parameter or use inner function to avoid pyright unknown type error
+        def side_effect(p: str | Any) -> bool:
+            return str(p).endswith("version.txt")
+
+        mock_exists.side_effect = side_effect
 
         # Mock the verify_credentials return to avoid warnings
         mock_torrent_manager.verify_credentials.return_value = True
@@ -214,7 +226,10 @@ def test_app_entry_point() -> None:
     if "audiobook_automated.app" not in sys.modules:
         importlib.import_module("audiobook_automated.app")
 
-    reloaded_module = importlib.reload(sys.modules["audiobook_automated.app"])
+    # Patch here as well to prevent real connection on reload
+    with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
+        mock_tm.verify_credentials.return_value = True
+        reloaded_module = importlib.reload(sys.modules["audiobook_automated.app"])
 
     # Verify that the module contains the 'app' variable (the Flask instance)
     assert reloaded_module.app is not None
@@ -234,6 +249,8 @@ def test_create_app_with_gunicorn_integration(monkeypatch: Any, mock_flask_facto
     mock_gunicorn_logger = MagicMock()
     # Use MagicMock objects for handlers to satisfy MyPy (list[Handler] vs list[str])
     mock_handler = MagicMock()
+    # FIX: Set level to avoid TypeError during Flask startup
+    mock_handler.level = logging.INFO
     mock_gunicorn_logger.handlers = [mock_handler]
     mock_gunicorn_logger.level = 20  # INFO
 
@@ -249,7 +266,8 @@ def test_create_app_with_gunicorn_integration(monkeypatch: Any, mock_flask_facto
     importlib.reload(audiobook_automated)
 
     with patch("logging.getLogger", side_effect=side_effect):
-        with patch("audiobook_automated.torrent_manager"):  # Silence connection warning
+        with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:  # Silence connection warning
+            mock_tm.verify_credentials.return_value = True
             app = audiobook_automated.create_app()
 
             # Verify handlers were attached
@@ -270,7 +288,10 @@ def test_create_app_with_gunicorn_and_config_override(monkeypatch: Any, mock_fla
 
     mock_gunicorn_logger = MagicMock()
     # Ensure handlers exist so we enter the 'if gunicorn_logger.handlers:' block
-    mock_gunicorn_logger.handlers = [MagicMock()]
+    mock_handler = MagicMock()
+    # FIX: Set level
+    mock_handler.level = logging.INFO
+    mock_gunicorn_logger.handlers = [mock_handler]
     mock_gunicorn_logger.level = 40  # ERROR
 
     original_get_logger = logging.getLogger
@@ -285,7 +306,8 @@ def test_create_app_with_gunicorn_and_config_override(monkeypatch: Any, mock_fla
     importlib.reload(audiobook_automated)
 
     with patch("logging.getLogger", side_effect=side_effect):
-        with patch("audiobook_automated.torrent_manager"):
+        with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
+            mock_tm.verify_credentials.return_value = True
             # FIX: Do not assign to unused variable 'app'
             audiobook_automated.create_app()
 

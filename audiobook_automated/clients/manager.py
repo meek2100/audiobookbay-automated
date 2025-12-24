@@ -5,7 +5,6 @@ import importlib
 import logging
 import re
 import threading
-from typing import cast
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -126,8 +125,10 @@ class TorrentManager:
             strategy_class = getattr(module, "Strategy", None)
 
             if strategy_class and issubclass(strategy_class, TorrentClientStrategy):
-                # FIX: Explicit cast to satisfy MyPy no-any-return check
-                return cast(type[TorrentClientStrategy], strategy_class)
+                # FIX: Assign to explicitly typed variable to satisfy both Mypy (no-any-return)
+                # and Pyright (redundant-cast). Mypy allows Any->Typed assignment; Pyright allows Typed->Typed.
+                validated_class: type[TorrentClientStrategy] = strategy_class
+                return validated_class
             elif not suppress_errors:
                 logger.error(f"Client plugin '{client_name}' found, but it does not export a 'Strategy' class.")
 

@@ -160,7 +160,9 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
 
     # Load configuration dynamically
     if max_pages is None:
-        max_pages = current_app.config.get("PAGE_LIMIT", 3)
+        # FIX: Force integer cast to prevent 'Operator + not supported for None' pyright error
+        # in the range() loop below, even though 'None' is impossible here.
+        max_pages = int(current_app.config.get("PAGE_LIMIT", 3))
 
     active_hostname = find_best_mirror()
     if not active_hostname:
