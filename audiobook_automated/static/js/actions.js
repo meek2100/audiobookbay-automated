@@ -10,6 +10,18 @@ window.deleteTorrent = deleteTorrent;
 window.sendTorrent = sendTorrent;
 window.openExternalLink = openExternalLink;
 
+document.addEventListener("DOMContentLoaded", function () {
+    // Mobile Menu Toggle Logic
+    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+    const navLinks = document.getElementById("nav-links");
+
+    if (mobileMenuBtn && navLinks) {
+        mobileMenuBtn.addEventListener("click", function () {
+            navLinks.classList.toggle("active");
+        });
+    }
+});
+
 /**
  * Displays a toast notification.
  * @param {string} message - The message to display.

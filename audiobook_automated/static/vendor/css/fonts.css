@@ -5,14 +5,6 @@
     font-weight: 400;
     font-display: swap;
     src: url("../fonts/inter-v20-latin-regular.woff2") format("woff2");
-    /* NOTE: Rename your file to match this src, or update this src to match your filename!
-     For simplicity, I recommend renaming the downloaded files to:
-     - inter-v20-latin-regular.woff2
-     - inter-v20-latin-500.woff2
-     - inter-v20-latin-600.woff2
-     - inter-v20-latin-700.woff2
-     - inter-v20-latin-800.woff2
-  */
 }
 
 /* inter-500 - latin */

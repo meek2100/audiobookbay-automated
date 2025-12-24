@@ -17,7 +17,7 @@
     --btn-primary-hover: linear-gradient(135deg, #7c4dff, #9965f4);
 
     /* --- Spacing & Dimensions --- */
-    --max-content-width: 1400px;
+    --max-content-width: 1800px;
     --header-height: 70px; /* Increased slightly for logo balance */
     --border-radius: 16px;
     --btn-radius: 50px;
@@ -107,6 +107,26 @@ body {
     transform: scale(1.08);
 }
 
+/* Hamburger Button (Hidden on Desktop) */
+.mobile-menu-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    z-index: 1001;
+}
+
+.mobile-menu-btn .bar {
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-main);
+    border-radius: 3px;
+    transition: all 0.3s ease;
+}
+
 /* Links Wrapper */
 .nav-links {
     display: flex;
@@ -134,6 +154,11 @@ body {
 }
 
 /* --- Global Typography --- */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Montserrat", sans-serif;
+    margin-top: 0;
+}
+
 h1 {
     font-size: clamp(2rem, 5vw, 3rem);
     margin: 0 0 30px 0;
@@ -289,18 +314,48 @@ a:hover {
 }
 
 /* --- Mobile Responsiveness --- */
-@media (max-width: 650px) {
+@media (max-width: 768px) {
     /* Navbar compacting */
     .nav-container {
         padding: 0 15px;
     }
+
+    .mobile-menu-btn {
+        display: flex;
+    }
+
+    /* Mobile Menu Overlay */
     .nav-links {
-        gap: 8px;
+        position: fixed;
+        top: var(--header-height);
+        left: 0;
+        right: 0;
+        background: rgba(30, 0, 45, 0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        flex-direction: column;
+        padding: 40px 20px;
+        gap: 20px;
+        transform: translateY(-150%);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .nav-links.active {
+        transform: translateY(0);
     }
 
     .navbar .nav-links a {
-        font-size: 0.85rem;
-        padding: 6px 12px;
+        width: 100%;
+        text-align: center;
+        padding: 15px;
+        font-size: 1.1rem;
+        background: rgba(255,255,255,0.05);
+    }
+
+    .navbar .nav-links a:hover, .navbar .nav-links a.active {
+        background: rgba(255,255,255,0.15);
     }
 
     .nav-logo img {

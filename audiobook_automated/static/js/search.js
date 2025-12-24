@@ -11,6 +11,7 @@ window.applyFilters = applyFilters;
 window.clearFilters = clearFilters;
 window.showLoadingSpinner = showLoadingSpinner;
 window.hideLoadingSpinner = hideLoadingSpinner;
+window.setViewMode = setViewMode;
 
 // Global variables defined in the file
 let datePicker;
@@ -25,7 +26,50 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("filter-button").addEventListener("click", applyFilters);
         document.getElementById("clear-button").addEventListener("click", clearFilters);
     }
+
+    // Initialize View Mode
+    const savedView = localStorage.getItem('viewMode') || 'list';
+    setViewMode(savedView);
+
+    // Bind Toggle Buttons
+    const listBtn = document.getElementById('view-list-btn');
+    const gridBtn = document.getElementById('view-grid-btn');
+
+    if (listBtn) listBtn.addEventListener('click', function() { setViewMode('list'); });
+    if (gridBtn) gridBtn.addEventListener('click', function() { setViewMode('grid'); });
+
+    // Search Form Handler
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+        searchForm.addEventListener('submit', function() {
+            showLoadingSpinner();
+        });
+    }
 });
+
+function setViewMode(mode) {
+    const container = document.getElementById('results-container');
+    const listBtn = document.getElementById('view-list-btn');
+    const gridBtn = document.getElementById('view-grid-btn');
+
+    if (!container || !listBtn || !gridBtn) return;
+
+    // Update localStorage
+    localStorage.setItem('viewMode', mode);
+
+    // Update Container Class
+    container.classList.remove('view-list', 'view-grid');
+    container.classList.add('view-' + mode);
+
+    // Update Buttons
+    if (mode === 'list') {
+        listBtn.classList.add('active');
+        gridBtn.classList.remove('active');
+    } else {
+        gridBtn.classList.add('active');
+        listBtn.classList.remove('active');
+    }
+}
 
 // ROBUSTNESS: Handle Browser Back/Forward Cache (BFCache)
 // If the user searches, navigates away, and clicks "Back", the page might load

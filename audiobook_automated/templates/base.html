@@ -11,6 +11,9 @@
             window.APP_VERSION = "{{ static_version }}";
         </script>
 
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fonts.css', v=static_version) }}" />
 
         <link
@@ -30,7 +33,13 @@
                     <img src="{{ url_for('static', filename='images/logo.png') }}" alt="AudiobookBay Automated" />
                 </a>
 
-                <div class="nav-links">
+                <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </button>
+
+                <div class="nav-links" id="nav-links">
                     <a
                         href="{{ url_for('main.search') }}"
                         class="{% if request.endpoint == 'main.search' %}active{% endif %}"
@@ -56,6 +65,7 @@
                 </div>
             </div>
         </div>
+
 
         <div class="content">
             <div id="notification-container"></div>
