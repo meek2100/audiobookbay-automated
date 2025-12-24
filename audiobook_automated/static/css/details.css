@@ -1,0 +1,169 @@
+/* File: audiobook_automated/static/css/details.css */
+.details-container {
+    background: var(--glass-bg);
+    border: var(--glass-border);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    display: flex;
+    gap: 40px;
+    box-shadow: var(--shadow-soft);
+    align-items: flex-start;
+}
+
+/* Left Column (Cover) */
+.details-left {
+    flex: 0 0 300px;
+}
+
+.details-cover {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    aspect-ratio: 1/1.5;
+    object-fit: cover;
+}
+
+/* Right Column (Info) */
+.details-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.back-link {
+    display: inline-flex;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+}
+
+.details-info h2 {
+    margin-top: 0;
+    color: white;
+    font-size: 2.2rem;
+    line-height: 1.2;
+    margin-bottom: 25px;
+}
+
+/* Metadata is now handled by .metadata-grid in style.css */
+/* We just add specific spacing here if needed */
+.details-meta-wrapper {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Action Buttons */
+.action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 35px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.details-download-btn {
+    /* Inherits .btn-primary */
+    padding: 14px 35px; /* Slightly larger for main CTA */
+    font-size: 1.1rem;
+}
+
+.direct-link-btn {
+    /* Inherits .btn-glass */
+    padding: 14px 25px;
+}
+
+/* Description */
+.details-description {
+    line-height: 1.8;
+    color: var(--text-muted);
+    font-size: 1.05rem;
+}
+
+.details-description h3 {
+    color: white;
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.details-description h3::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin-left: 15px;
+}
+
+/* Trackers */
+.tracker-container {
+    margin-top: 30px;
+    padding-top: 20px;
+}
+
+.tracker-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.tracker-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tracker-item {
+    font-size: 0.8rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 5px 12px;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: monospace;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .details-container {
+        flex-direction: column;
+        align-items: center;
+        padding: 25px;
+    }
+
+    .details-left {
+        width: 100%;
+        max-width: 250px;
+    }
+
+    .details-info {
+        width: 100%;
+        text-align: center; /* Center align on mobile for cleaner look */
+    }
+
+    /* Re-align grid text for centered mobile view */
+    .metadata-grid {
+        justify-content: center;
+        text-align: left; /* Keep values readable */
+    }
+
+    .action-bar {
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .details-download-btn,
+    .direct-link-btn {
+        width: 100%;
+    }
+}
