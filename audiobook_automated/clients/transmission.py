@@ -92,8 +92,7 @@ class Strategy(TorrentClientStrategy):
             if category in labels:
                 # transmission-rpc 'progress' property returns percentage (0.0-100.0)
                 # NOT 0.0-1.0 like qBittorrent.
-                # FIX: Handle None explicitly to prevent test failures and runtime crashes.
-                # Pyright might verify this based on type stubs, but runtime can vary.
+                # FIX: Explicitly handle None to prevent runtime crashes (Pyright strictness)
                 progress = tx_torrent.progress or 0.0
 
                 results.append(

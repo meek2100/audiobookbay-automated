@@ -9,7 +9,7 @@ def test_health_check_route(client: Any) -> None:
     """Test the /health endpoint returns a 200 OK JSON response."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json == {"status": "ok"}
+    assert response.json == {"status": "ok", "client": "connected"}
     assert response.content_type == "application/json"
 
 

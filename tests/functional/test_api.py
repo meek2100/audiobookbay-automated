@@ -18,7 +18,7 @@ def test_health_check(client: FlaskClient) -> None:
     """Test the health check endpoint."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json == {"status": "ok"}
+    assert response.json == {"status": "ok", "client": "connected"}
 
 
 def test_search_endpoint_valid(client: FlaskClient) -> None:
@@ -200,7 +200,6 @@ def test_send_sanitization_warning(client: FlaskClient, caplog: Any) -> None:
         "audiobook_automated.routes.extract_magnet_link",
         return_value=("magnet:?xt=urn:btih:123", None),
     ):
-        # FIX: Removed unused 'as mock_tm' to satisfy Ruff
         with patch("audiobook_automated.routes.torrent_manager"):
             client.post("/send", json={"link": "http://example.com", "title": "..."})
             # Updated expectation to match the new log message format in routes.py

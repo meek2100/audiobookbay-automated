@@ -21,6 +21,10 @@ def test_gunicorn_logger_inheritance() -> None:
     """
     mock_gunicorn_logger = logging.getLogger("gunicorn.error")
     mock_handler = MagicMock()
+    # CRITICAL FIX: Set the handler level to an integer.
+    # Flask's has_level_handler compares handler.level <= logger.level.
+    # If handler.level is a MagicMock, this raises TypeError.
+    mock_handler.level = logging.INFO
     mock_gunicorn_logger.handlers = [mock_handler]
     mock_gunicorn_logger.setLevel(logging.ERROR)
 
