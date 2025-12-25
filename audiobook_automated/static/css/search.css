@@ -20,7 +20,9 @@
     border-radius: 50px;
     background: rgba(255, 255, 255, 0.95);
     color: #050505;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 188, 212, 0.2);
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.5),
+        0 0 15px rgba(0, 188, 212, 0.2);
     transition: all 0.3s ease;
 }
 
@@ -28,7 +30,9 @@
     outline: none;
     transform: translateY(-2px);
     border-color: rgba(0, 188, 212, 0.6);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 188, 212, 0.3);
+    box-shadow:
+        0 8px 25px rgba(0, 0, 0, 0.6),
+        0 0 20px rgba(0, 188, 212, 0.3);
 }
 
 .search-button {
@@ -171,13 +175,13 @@
     display: flex;
     justify-content: flex-end;
     margin-top: 15px;
-    border-top: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     padding-top: 15px;
 }
 
 .view-toggle-container {
     display: flex;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
     padding: 4px;
     border-radius: 12px;
     gap: 5px;
@@ -198,9 +202,9 @@
 }
 
 .view-btn.active {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     color: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .view-btn:hover:not(.active) {
@@ -301,7 +305,9 @@ td.col-info {
 
 .view-grid tr.result-row:hover {
     transform: translateY(-8px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 15px rgba(0, 188, 212, 0.15); /* Iridescent Glow */
+    box-shadow:
+        0 15px 40px rgba(0, 0, 0, 0.6),
+        0 0 15px rgba(0, 188, 212, 0.15); /* Iridescent Glow */
     border-color: rgba(0, 188, 212, 0.3);
     background: rgba(40, 40, 55, 0.8);
 }
@@ -369,7 +375,7 @@ td.col-info {
 
 .view-grid .property-results-container span {
     display: block;
-    color: rgba(255,255,255,0.6);
+    color: rgba(255, 255, 255, 0.6);
 }
 
 /* Grid Actions */

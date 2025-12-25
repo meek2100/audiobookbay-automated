@@ -29,7 +29,7 @@
 }
 
 .splash-text {
-    font-family: 'Montserrat', sans-serif;
+    font-family: "Montserrat", sans-serif;
     font-size: clamp(1.5rem, 4vw, 2.5rem);
     font-weight: 300;
     line-height: 1.6;
