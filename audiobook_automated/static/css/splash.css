@@ -1,0 +1,52 @@
+/* File: audiobook_automated/static/css/splash.css */
+
+#splash-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #020202 0%, #0a0a14 100%);
+    z-index: 99999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1.5s ease-out;
+}
+
+#splash-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#splash-content {
+    text-align: center;
+    max-width: 800px;
+    padding: 40px;
+    color: var(--text-main, #ffffff);
+}
+
+.splash-text {
+    font-family: 'Montserrat', sans-serif;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 300;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#splash-overlay.active .splash-text {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Iridescent accent for key words if we wrap them in spans later, or just general glow */
+.splash-text strong {
+    color: var(--accent-color, #00bcd4);
+    font-weight: 600;
+    text-shadow: 0 0 15px rgba(0, 188, 212, 0.4);
+}

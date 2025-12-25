@@ -1,20 +1,20 @@
 /* File: audiobook_automated/static/css/style.css */
 :root {
-    /* --- Color Palette --- */
-    --primary-bg: linear-gradient(135deg, #2e003e 0%, #3d1053 100%);
-    --accent-color: #ffd740; /* Amber accent for highlights */
-    --accent-hover: #ffecb3;
+    /* --- Color Palette: Midnight Iridescent (Crow Theme) --- */
+    --primary-bg: linear-gradient(135deg, #050505 0%, #0a0a12 100%); /* Deep Midnight */
+    --accent-color: #00bcd4; /* Cyan/Teal (Shiny Object) */
+    --accent-hover: #b2ebf2;
     --text-main: #ffffff;
-    --text-muted: #e1bee7; /* Soft purple-white for secondary text */
+    --text-muted: #cfd8dc; /* Silver/Gray */
 
-    /* --- Glassmorphism Theme --- */
-    --glass-bg: rgba(255, 255, 255, 0.08);
-    --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-    --shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    /* --- Glassmorphism Theme: Obsidian --- */
+    --glass-bg: rgba(20, 20, 25, 0.7);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+    --shadow-soft: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
 
     /* --- Brand Buttons --- */
-    --btn-primary-bg: linear-gradient(135deg, #6200ea, #7c4dff);
-    --btn-primary-hover: linear-gradient(135deg, #7c4dff, #9965f4);
+    --btn-primary-bg: linear-gradient(135deg, #311b92, #0097a7); /* Deep Purple to Teal */
+    --btn-primary-hover: linear-gradient(135deg, #4527a0, #00acc1);
 
     /* --- Spacing & Dimensions --- */
     --max-content-width: 1800px;

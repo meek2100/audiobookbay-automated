@@ -6,7 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#2e003e" />
         <meta name="csrf-token" content="{{ csrf_token() }}" />
-        <title>{% block title %}AudiobookBay Automated{% endblock %}</title>
+        <title>{% block title %}The Crow's Nest{% endblock %}</title>
         <script>
             window.APP_VERSION = "{{ static_version }}";
         </script>
@@ -19,11 +19,21 @@
             href="{{ url_for('static', filename='images/favicon.ico', v=static_version) }}"
         />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_version) }}" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/splash.css', v=static_version) }}" />
         {% block extra_css %}{% endblock %} {% block extra_js %}{% endblock %}
         <script src="{{ url_for('static', filename='js/actions.js', v=static_version) }}" defer></script>
     </head>
 
     <body>
+        <div id="splash-overlay">
+            <div id="splash-content">
+                <p class="splash-text">
+                    Merry Christmas Kimber and welcome to <strong>The Crow's Nest</strong>,<br>
+                    where you can snuggle up and read or listen to any book.
+                </p>
+            </div>
+        </div>
+
         <div class="navbar">
             <div class="nav-container">
                 <a href="{{ url_for('main.search') }}" class="nav-logo">
