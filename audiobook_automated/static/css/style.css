@@ -154,7 +154,12 @@ body {
 }
 
 /* --- Global Typography --- */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-family: "Montserrat", sans-serif;
     margin-top: 0;
 }
@@ -339,7 +344,7 @@ a:hover {
         transform: translateY(-150%);
         transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
 
     .nav-links.active {
@@ -351,11 +356,12 @@ a:hover {
         text-align: center;
         padding: 15px;
         font-size: 1.1rem;
-        background: rgba(255,255,255,0.05);
+        background: rgba(255, 255, 255, 0.05);
     }
 
-    .navbar .nav-links a:hover, .navbar .nav-links a.active {
-        background: rgba(255,255,255,0.15);
+    .navbar .nav-links a:hover,
+    .navbar .nav-links a.active {
+        background: rgba(255, 255, 255, 0.15);
     }
 
     .nav-logo img {

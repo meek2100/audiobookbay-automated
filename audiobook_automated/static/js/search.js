@@ -28,46 +28,52 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // Initialize View Mode
-    const savedView = localStorage.getItem('viewMode') || 'list';
+    const savedView = localStorage.getItem("viewMode") || "list";
     setViewMode(savedView);
 
     // Bind Toggle Buttons
-    const listBtn = document.getElementById('view-list-btn');
-    const gridBtn = document.getElementById('view-grid-btn');
+    const listBtn = document.getElementById("view-list-btn");
+    const gridBtn = document.getElementById("view-grid-btn");
 
-    if (listBtn) listBtn.addEventListener('click', function() { setViewMode('list'); });
-    if (gridBtn) gridBtn.addEventListener('click', function() { setViewMode('grid'); });
+    if (listBtn)
+        listBtn.addEventListener("click", function () {
+            setViewMode("list");
+        });
+    if (gridBtn)
+        gridBtn.addEventListener("click", function () {
+            setViewMode("grid");
+        });
 
     // Search Form Handler
-    const searchForm = document.getElementById('search-form');
+    const searchForm = document.getElementById("search-form");
     if (searchForm) {
-        searchForm.addEventListener('submit', function() {
+        searchForm.addEventListener("submit", function () {
             showLoadingSpinner();
         });
     }
 });
 
 function setViewMode(mode) {
-    const container = document.getElementById('results-container');
-    const listBtn = document.getElementById('view-list-btn');
-    const gridBtn = document.getElementById('view-grid-btn');
+    const container = document.getElementById("results-container");
+    const listBtn = document.getElementById("view-list-btn");
+    const gridBtn = document.getElementById("view-grid-btn");
 
     if (!container || !listBtn || !gridBtn) return;
 
     // Update localStorage
-    localStorage.setItem('viewMode', mode);
+    localStorage.setItem("viewMode", mode);
 
     // Update Container Class
-    container.classList.remove('view-list', 'view-grid');
-    container.classList.add('view-' + mode);
+    container.classList.remove("view-list", "view-grid");
+    container.classList.add("view-" + mode);
 
     // Update Buttons
-    if (mode === 'list') {
-        listBtn.classList.add('active');
-        gridBtn.classList.remove('active');
+    if (mode === "list") {
+        listBtn.classList.add("active");
+        gridBtn.classList.remove("active");
     } else {
-        gridBtn.classList.add('active');
-        listBtn.classList.remove('active');
+        gridBtn.classList.add("active");
+        listBtn.classList.remove("active");
     }
 }
 
