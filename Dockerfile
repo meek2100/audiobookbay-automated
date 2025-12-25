@@ -58,5 +58,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # ENTRYPOINT handles the switch to 'appuser' via gosu
 ENTRYPOINT ["./entrypoint.sh"]
 
-# CMD provides the default execution arguments
-CMD ["gunicorn", "-c", "python:audiobook_automated.config", "audiobook_automated.app:app"]
+# CMD is empty by default; entrypoint.sh constructs the gunicorn command.
+# Users can override this to pass extra flags to gunicorn (e.g., CMD ["--workers", "4"])
+CMD []
