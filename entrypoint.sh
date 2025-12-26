@@ -58,5 +58,5 @@ exec gosu appuser gunicorn --preload \
     --workers 1 \
     --threads "$THREADS" \
     --timeout "$TIMEOUT" \
-    audiobook_automated.app:app \
-    "$@"
+    "$@" \
+    audiobook_automated.app:app

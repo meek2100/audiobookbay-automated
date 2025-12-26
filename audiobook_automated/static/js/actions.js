@@ -10,6 +10,49 @@ window.deleteTorrent = deleteTorrent;
 window.sendTorrent = sendTorrent;
 window.openExternalLink = openExternalLink;
 
+document.addEventListener("DOMContentLoaded", function () {
+    initSplashScreen();
+
+    // Mobile Menu Toggle Logic
+    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+    const navLinks = document.getElementById("nav-links");
+
+    if (mobileMenuBtn && navLinks) {
+        mobileMenuBtn.addEventListener("click", function () {
+            navLinks.classList.toggle("active");
+        });
+    }
+});
+
+/**
+ * Initializes the splash screen logic.
+ * Shows only on first visit (sessionStorage).
+ */
+function initSplashScreen() {
+    const splashOverlay = document.getElementById("splash-overlay");
+    if (!splashOverlay) return;
+
+    // Check if already shown in this session
+    if (sessionStorage.getItem("splashShown")) {
+        splashOverlay.style.display = "none";
+        return;
+    }
+
+    // Show splash
+    splashOverlay.classList.add("active");
+
+    // Fade out after delay
+    setTimeout(() => {
+        splashOverlay.classList.remove("active");
+
+        // Wait for CSS transition to finish before hiding/removing
+        setTimeout(() => {
+            splashOverlay.style.display = "none";
+            sessionStorage.setItem("splashShown", "true");
+        }, 1500); // Matches CSS opacity transition time
+    }, 4500); // Time to read the message
+}
+
 /**
  * Displays a toast notification.
  * @param {string} message - The message to display.
