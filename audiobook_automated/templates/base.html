@@ -21,6 +21,7 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_version) }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/splash.css', v=static_version) }}" />
         {% block extra_css %}{% endblock %} {% block extra_js %}{% endblock %}
+        <script src="{{ url_for('static', filename='js/theme.js', v=static_version) }}"></script>
         <script src="{{ url_for('static', filename='js/actions.js', v=static_version) }}" defer></script>
     </head>
 
@@ -57,6 +58,7 @@
                         class="{% if request.endpoint == 'main.status' %}active{% endif %}"
                         >Status</a
                     >
+                    <a href="#" id="theme-toggle-btn">🌙 Crow</a>
                     {% if nav_link_name and nav_link_url %}
                     <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
                     {% endif %} {% if library_reload_enabled %}
