@@ -50,6 +50,10 @@ def inject_global_vars() -> dict[str, Any]:
         "library_reload_enabled": library_reload_enabled,
         "static_version": static_version,
         "default_cover_filename": DEFAULT_COVER_FILENAME,
+        "splash_enabled": current_app.config.get("SPLASH_ENABLED", True),
+        "splash_title": current_app.config.get("SPLASH_TITLE", ""),
+        "splash_message": current_app.config.get("SPLASH_MESSAGE", ""),
+        "splash_duration": current_app.config.get("SPLASH_DURATION", 4500),
     }
 
 

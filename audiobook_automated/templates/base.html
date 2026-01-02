@@ -26,14 +26,20 @@
     </head>
 
     <body>
-        <div id="splash-overlay">
+        {% if splash_enabled %}
+        <div
+            id="splash-overlay"
+            data-splash-duration="{{ splash_duration }}"
+            data-splash-enabled="{{ splash_enabled }}"
+        >
             <div id="splash-content">
-                <p class="splash-text">
-                    Merry Christmas Kimber and welcome to <strong>The Crow's Nest</strong>,<br />
-                    where you can snuggle up and read or listen to any book.
-                </p>
+                {% if splash_title %}
+                <h1 class="splash-title">{{ splash_title }}</h1>
+                {% endif %}
+                <p class="splash-text">{{ splash_message | safe }}</p>
             </div>
         </div>
+        {% endif %}
 
         <div class="navbar">
             <div class="nav-container">
@@ -58,7 +64,18 @@
                         class="{% if request.endpoint == 'main.status' %}active{% endif %}"
                         >Status</a
                     >
-                    <a href="#" id="theme-toggle-btn">🌙 Crow</a>
+                    <select id="theme-selector" class="theme-select">
+                        <option value="crow">🌙 Crow</option>
+                        <option value="purple">🔮 Purple</option>
+                        <option value="forest">🌲 Forest</option>
+                        <option value="ocean">🌊 Ocean</option>
+                        <option value="sunset">🌅 Sunset</option>
+                        <option value="dracula">🧛 Dracula</option>
+                        <option value="cyberpunk">🦾 Cyberpunk</option>
+                        <option value="light">☀️ Light</option>
+                        <option value="royal">👑 Royal</option>
+                        <option value="slate">🗿 Slate</option>
+                    </select>
                     {% if nav_link_name and nav_link_url %}
                     <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
                     {% endif %} {% if library_reload_enabled %}

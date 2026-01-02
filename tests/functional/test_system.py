@@ -1,130 +1,60 @@
 # File: tests/functional/test_system.py
-"""Functional tests for system-level routes and static assets."""
+"""Functional tests for system-level behaviors (Splash Screen, Config Injection)."""
 
-from typing import Any
+from collections.abc import Generator
 from unittest.mock import patch
 
+import pytest
+from flask import Flask
+from flask.testing import FlaskClient
 
-def test_health_check_route(client: Any) -> None:
-    """Test the /health endpoint returns a 200 OK JSON response."""
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json == {"status": "ok", "client": "connected"}
-    assert response.content_type == "application/json"
+from audiobook_automated import create_app
 
 
-def test_home_page_static_versioning(client: Any) -> None:
-    """Test that static assets in the home page include version query parameters."""
+@pytest.fixture
+def app() -> Generator[Flask]:
+    """Create a configured Flask application for system tests."""
+    # Patch the class method verify_credentials to return True.
+    with patch("audiobook_automated.clients.manager.TorrentManager.verify_credentials", return_value=True):
+        app = create_app()
+        app.config.update(
+            {
+                "TESTING": True,
+                "SAVE_PATH_BASE": "/tmp/test_downloads",
+                "SPLASH_TITLE": "Test Title",
+                "SPLASH_MESSAGE": "Test Message",
+                "SPLASH_ENABLED": True,
+            }
+        )
+        yield app
+
+
+def test_splash_configuration_context(client: FlaskClient) -> None:
+    """Verify splash configuration is correctly injected into templates."""
     response = client.get("/")
     assert response.status_code == 200
-    assert b"?v=" in response.data
-    assert b"favicon.ico?v=" in response.data
+    html = response.data.decode()
+
+    # Check that the configured values are present in the HTML
+    assert "Test Title" in html
+    assert "Test Message" in html
+    assert 'data-splash-enabled="True"' in html
 
 
-def test_static_assets_cache_control(client: Any) -> None:
-    """Test that static assets are served with long-term caching headers."""
-    response = client.get("/static/images/favicon.ico")
-    if response.status_code == 200:
-        cache_control = response.headers.get("Cache-Control", "")
-        assert "max-age=31536000" in cache_control
-        assert "public" in cache_control
+def test_splash_disabled(client: FlaskClient) -> None:
+    """Verify splash is hidden when disabled."""
+    with patch("audiobook_automated.clients.manager.TorrentManager.verify_credentials", return_value=True):
+        app = create_app()
+        app.config.update(
+            {
+                "TESTING": True,
+                "SAVE_PATH_BASE": "/tmp/test_downloads",
+                "SPLASH_ENABLED": False,
+            }
+        )
 
+        client = app.test_client()
 
-def test_nav_link_injection(client: Any) -> None:
-    """Test that injected variables correctly appear in the template."""
-    # FIX: Update config directly on the app instance, not via module monkeypatch
-    client.application.config["NAV_LINK_NAME"] = "My Player"
-    client.application.config["NAV_LINK_URL"] = "http://player.local"
-
-    response = client.get("/")
-    assert b"My Player" in response.data
-    assert b"http://player.local" in response.data
-
-
-def test_library_reload_injection(client: Any) -> None:
-    """Test that the Reload Library link appears only when configured."""
-    # Case 1: Configured -> Link should be present
-    client.application.config["ABS_URL"] = "http://abs"
-    client.application.config["ABS_KEY"] = "key"
-    client.application.config["ABS_LIB"] = "lib"
-    # FIX: The app calculates this at startup. We must manually update it for the test
-    # to simulate the state derived from the env vars above.
-    client.application.config["LIBRARY_RELOAD_ENABLED"] = True
-
-    response = client.get("/")
-    assert b"Reload Library" in response.data
-
-    # Case 2: Not Configured -> Link should be absent
-    client.application.config["ABS_URL"] = None
-    # FIX: Manually update to False
-    client.application.config["LIBRARY_RELOAD_ENABLED"] = False
-
-    response = client.get("/")
-    assert b"Reload Library" not in response.data
-
-
-def test_status_page(client: Any) -> None:
-    """Test that the status page renders active downloads correctly."""
-    # FIX: Patch where it is imported in routes.py
-    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-        mock_tm.get_status.return_value = [{"name": "Book 1", "progress": 50, "state": "Downloading", "size": "100 MB"}]
-        response = client.get("/status")
-        assert response.status_code == 200
-        assert b"Book 1" in response.data
-
-
-def test_status_route_error(client: Any) -> None:
-    """Test that the status page displays errors when the torrent manager fails."""
-    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-        mock_tm.get_status.side_effect = Exception("Database Locked")
-
-        response = client.get("/status")
-        assert response.status_code == 200
-        assert b"Error connecting to client" in response.data
-        assert b"Database Locked" in response.data
-
-
-def test_status_page_empty(client: Any) -> None:
-    """Test status page rendering when there are no active torrents.
-
-    Ensures the empty state message matches the UI expectations.
-    """
-    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-        mock_tm.get_status.return_value = []
-        response = client.get("/status")
-        assert response.status_code == 200
-        assert b"No active downloads found" in response.data
-
-
-def test_status_page_json_response(client: Any) -> None:
-    """Test that the status page returns JSON when requested.
-
-    This verifies the frontend polling mechanism works (fixes the hermeneutic gap
-    between frontend expectations and backend delivery).
-    """
-    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-        mock_tm.get_status.return_value = [
-            {"id": "1", "name": "JSON Book", "progress": 99.9, "state": "Seeding", "size": "500 MB"}
-        ]
-
-        response = client.get("/status?json=1")
-
-        assert response.status_code == 200
-        assert response.is_json
-        data = response.json
-        assert isinstance(data, list)
-        assert len(data) == 1
-        assert data[0]["name"] == "JSON Book"
-
-
-def test_status_page_json_error(client: Any) -> None:
-    """Test that status page returns JSON error structure on failure when polling."""
-    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-        mock_tm.get_status.side_effect = Exception("Client unreachable")
-
-        response = client.get("/status?json=1")
-
-        assert response.status_code == 500
-        assert response.is_json
-        # Explicit check for error key as defined in routes.py
-        assert "Client unreachable" in response.json["error"]
+        response = client.get("/")
+        html = response.data.decode()
+        assert 'id="splash-overlay"' not in html

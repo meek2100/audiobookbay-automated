@@ -41,16 +41,31 @@ function initSplashScreen() {
     // Show splash
     splashOverlay.classList.add("active");
 
-    // Fade out after delay
-    setTimeout(() => {
+    // Click to dismiss immediately
+    splashOverlay.addEventListener("click", () => {
         splashOverlay.classList.remove("active");
-
-        // Wait for CSS transition to finish before hiding/removing
         setTimeout(() => {
             splashOverlay.style.display = "none";
             sessionStorage.setItem("splashShown", "true");
-        }, 1500); // Matches CSS opacity transition time
-    }, 4500); // Time to read the message
+        }, 300); // Faster fade out on click
+    });
+
+    // Read duration from data attribute
+    const duration = parseInt(splashOverlay.dataset.splashDuration) || 4500;
+
+    // Fade out after delay
+    setTimeout(() => {
+        // Only run if still active (not clicked yet)
+        if (splashOverlay.classList.contains("active")) {
+            splashOverlay.classList.remove("active");
+
+            // Wait for CSS transition to finish before hiding/removing
+            setTimeout(() => {
+                splashOverlay.style.display = "none";
+                sessionStorage.setItem("splashShown", "true");
+            }, 1500); // Matches CSS opacity transition time
+        }
+    }, duration);
 }
 
 /**

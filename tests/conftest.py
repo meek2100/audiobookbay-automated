@@ -44,29 +44,6 @@ class TestConfig(Config):
 
 
 @pytest.fixture(autouse=True)
-def mock_global_dependencies() -> Generator[None]:
-    """Isolate the test suite from the real world.
-
-    This fixture runs automatically for every test. It mocks the heavy
-    lifters (TorrentManager) to prevent the application from trying to
-    connect to a real torrent client during startup (verify_credentials)
-    or request handling.
-    """
-    # CRITICAL FIX: Patch 'audiobook_automated.extensions.torrent_manager' specifically.
-    # This is the source of truth used by __init__.py and routes.py. Patching it here
-    # ensures that when create_app imports 'from .extensions import torrent_manager',
-    # it gets our mock.
-    with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
-        # Ensure startup check passes without network
-        mock_tm.verify_credentials.return_value = True
-
-        # Configure standard methods to behave 'normally'
-        mock_tm.get_status.return_value = []
-        mock_tm.add_magnet.return_value = "OK"
-        yield
-
-
-@pytest.fixture(autouse=True)
 def mock_sleep() -> Generator[Any]:
     """Globally mock time.sleep for ALL tests to speed up execution.
 
@@ -83,7 +60,14 @@ def app() -> Generator[Flask]:
 
     Uses TestConfig to ensure configuration is present before extension initialization.
     """
-    app = create_app(TestConfig)
+    # CRITICAL FIX: Patch verify_credentials ONLY during creation.
+    # This bypasses the startup connection check (init_app) so creating the app is safe.
+    # We use a context manager so the patch is removed after create_app returns.
+    # This allows unit tests (which rely on this app fixture) to subsequently test
+    # the REAL TorrentManager logic without being globally mocked.
+    with patch("audiobook_automated.clients.manager.TorrentManager.verify_credentials", return_value=True):
+        app = create_app(TestConfig)
+
     yield app
 
 

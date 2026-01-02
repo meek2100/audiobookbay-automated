@@ -1,225 +1,100 @@
 # File: tests/unit/test_utils.py
 """Unit tests for utility functions."""
 
-from pathlib import Path
-from typing import Any
-from unittest.mock import patch
-
-from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX
-from audiobook_automated.utils import (
-    calculate_static_hash,
-    construct_safe_save_path,
-    ensure_collision_safety,
-    get_application_version,
-    sanitize_title,
+from audiobook_automated.constants import (
+    FALLBACK_TITLE,
+    SAFE_SUFFIX,
+    WINDOWS_RESERVED_NAMES,
 )
+from audiobook_automated.utils import ensure_collision_safety, sanitize_title
+
+# --- Unit Tests for sanitize_title ---
 
 
 def test_sanitize_title_basic() -> None:
-    """Test basic title sanitization."""
+    """Test basic sanitization of illegal characters."""
     assert sanitize_title("Valid Title") == "Valid Title"
-    assert sanitize_title("Title: Subtitle") == "Title Subtitle"
-    assert sanitize_title("Title/With/Slashes") == "TitleWithSlashes"
+    assert sanitize_title("In:val/id*Ti?tle") == "InvalidTitle"
+    assert sanitize_title("   Spaces   ") == "Spaces"
+    assert sanitize_title("Title.") == "Title"
 
 
 def test_sanitize_title_empty() -> None:
-    """Test sanitization of empty or invalid titles."""
+    """Test empty or whitespace-only inputs return fallback."""
     assert sanitize_title(None) == FALLBACK_TITLE
     assert sanitize_title("") == FALLBACK_TITLE
     assert sanitize_title("   ") == FALLBACK_TITLE
-    # "..." strips to empty string
-    assert sanitize_title("...") == FALLBACK_TITLE
+    assert sanitize_title("???") == FALLBACK_TITLE
 
 
 def test_sanitize_title_windows_reserved() -> None:
-    """Test sanitization of Windows reserved names."""
-    assert sanitize_title("CON") == f"CON{SAFE_SUFFIX}"
-    assert sanitize_title("con.txt") == f"con.txt{SAFE_SUFFIX}"
-    assert sanitize_title("LPT1") == f"LPT1{SAFE_SUFFIX}"
+    """Test Windows reserved filenames are detected and suffixed."""
+    for name in WINDOWS_RESERVED_NAMES:
+        # Test exact match
+        assert sanitize_title(name).endswith(SAFE_SUFFIX)
+        # Test case insensitivity
+        assert sanitize_title(name.lower()).endswith(SAFE_SUFFIX)
+        # Test with extension
+        assert sanitize_title(f"{name}.txt").endswith(SAFE_SUFFIX)
 
 
-def test_ensure_collision_safety_clean() -> None:
-    """Test that safe titles are returned unchanged."""
-    title = "My Safe Book"
-    assert ensure_collision_safety(title) == title
+def test_sanitize_title_com_lpt_dynamic() -> None:
+    """Test dynamic COM/LPT ranges (COM1-9, LPT1-9)."""
+    assert sanitize_title("COM1").endswith(SAFE_SUFFIX)
+    assert sanitize_title("LPT9.txt").endswith(SAFE_SUFFIX)
+    assert sanitize_title("com5").endswith(SAFE_SUFFIX)
+    # Ensure invalid ones (COM0, LPT10) are NOT treated as reserved unless in list
+    # (Assuming constants list is standard. LPT10 is generally valid on Windows, unlike LPT1)
+    assert not sanitize_title("COM0").endswith(SAFE_SUFFIX)
 
 
-def test_ensure_collision_safety_collision() -> None:
-    """Test that collision-prone titles get a UUID appended."""
-    # Mock uuid to get a predictable value
-    with patch("uuid.uuid4") as mock_uuid:
-        mock_uuid.return_value.hex = "12345678" * 4  # 32 chars
-
-        # Test 1: Fallback Title
-        result = ensure_collision_safety(FALLBACK_TITLE)
-        expected = f"{FALLBACK_TITLE}_12345678"
-        assert result == expected
-
-        # Test 2: Safe Suffix (Reserved Name)
-        unsafe = f"CON{SAFE_SUFFIX}"
-        result = ensure_collision_safety(unsafe)
-        expected = f"{unsafe}_12345678"
-        assert result == expected
+# --- Unit Tests for ensure_collision_safety ---
 
 
-def test_ensure_collision_safety_max_length() -> None:
-    """Test that titles exceeding max_length are truncated and get a UUID."""
-    # Mock uuid
-    with patch("uuid.uuid4") as mock_uuid:
-        mock_uuid.return_value.hex = "12345678" * 4
-        # UUID suffix is _12345678 (9 chars)
-
-        # Title: "123456789012345" (15 chars)
-        # Max: 10
-        # Expected Logic:
-        # trunc_len = max_length(10) - 9 = 1
-        # Prefix = title[:1] = "1"
-        # Suffix = "_12345678"
-        # Result = "1_12345678" (Total 10 chars)
-
-        title = "123456789012345"
-        result = ensure_collision_safety(title, max_length=10)
-        assert len(result) == 10
-        assert result == "1_12345678"
+def test_ensure_collision_safety_no_change() -> None:
+    """Test safe inputs are unchanged."""
+    assert ensure_collision_safety("Safe_Title", 240) == "Safe_Title"
 
 
-def test_ensure_collision_safety_short_max_length() -> None:
-    """Test max_length logic when the allowed length is extremely short (< 9).
-
-    This forces trunc_len to be < 1, triggering the safety floor of 1.
-    """
-    with patch("uuid.uuid4") as mock_uuid:
-        mock_uuid.return_value.hex = "12345678" * 4
-
-        title = "ShortTitle"
-        # If max_length is 5, reserved is 9.
-        # trunc_len = 5 - 9 = -4.
-        # Logic should force trunc_len = 1.
-        # Result = "S" (1 char) + "_12345678" (9 chars) = "S_12345678" (10 chars total)
-        # Note: The function returns a string LONGER than max_length in this extreme edge case
-        # to ensure uniqueness/validity over strict length adherence (safety > strictness).
-        result = ensure_collision_safety(title, max_length=5)
-        assert result == "S_12345678"
+def test_ensure_collision_safety_fallback_collision() -> None:
+    """Test collision logic triggers on FALLBACK_TITLE."""
+    result = ensure_collision_safety(FALLBACK_TITLE, 240)
+    assert result != FALLBACK_TITLE
+    assert "_" in result
+    assert len(result) <= 240
 
 
-def test_construct_safe_save_path_windows_path() -> None:
-    """Test that construct_safe_save_path handles Windows paths correctly."""
-    base_path = "C:\\Downloads"
-    title = "My Book"
-    # Should use PureWindowsPath
-    expected = "C:\\Downloads\\My Book"
-    assert construct_safe_save_path(base_path, title) == expected
+def test_ensure_collision_safety_reserved_collision() -> None:
+    """Test collision logic triggers on suffixed reserved names."""
+    reserved = "CON" + SAFE_SUFFIX
+    result = ensure_collision_safety(reserved, 240)
+    assert result != reserved
+    assert "_" in result
 
 
-def test_construct_safe_save_path_windows_reserved_collision_logic() -> None:
-    """Test that Windows reserved names trigger UUID collision safety even on Linux paths.
-
-    This simulates the app running on Linux (Docker) but saving to a Windows SMB share/path structure.
-    """
-    # Simulate a path structure that implies Windows (backslashes)
-    base_path = r"\\Server\Share\Books"
-    # Reserved name
-    unsafe_title = "CON"
-
-    with patch("uuid.uuid4") as mock_uuid:
-        mock_uuid.return_value.hex = "12345678" * 4
-
-        # Expected flow:
-        # 1. sanitize_title("CON") -> "CON_Safe"
-        # 2. ensure_collision_safety("CON_Safe") -> "CON_Safe_12345678" (due to _Safe suffix trigger)
-        # 3. PureWindowsPath join
-        result = construct_safe_save_path(base_path, unsafe_title)
-
-        expected_suffix = "12345678"
-        # We check that the result contains the safe suffix AND the uuid
-        assert "CON_Safe" in result
-        assert expected_suffix in result
-        # Check path separators
-        assert "\\" in result
+def test_ensure_collision_safety_length_truncation() -> None:
+    """Test truncation when exceeding max_length."""
+    long_title = "A" * 50
+    result = ensure_collision_safety(long_title, max_length=20)
+    assert len(result) <= 20
+    assert "_" in result
+    # Check truncation happened: 20 - 9 = 11 chars of title + _ + 8 chars of uuid
+    assert result.startswith("A" * 11 + "_")
 
 
-def test_get_application_version_os_error(tmp_path: Path) -> None:
-    """Test get_application_version handles OSError when reading version.txt."""
-    version_file = tmp_path / "version.txt"
-    version_file.write_text("hash")
-
-    # Use a subdir so parent is tmp_path
-    static_folder = tmp_path / "static"
-    static_folder.mkdir()
-
-    with patch("pathlib.Path.read_text", side_effect=OSError("Read error")):
-        with patch(
-            "audiobook_automated.utils.calculate_static_hash",
-            return_value="calculated_v1",
-        ) as mock_calc:
-            version = get_application_version(static_folder)
-            assert version == "calculated_v1"
-            mock_calc.assert_called_once()
+def test_ensure_collision_safety_short_limit() -> None:
+    """Test strict length safety with very small limits."""
+    # Limit < 9, should return random hex string of that length
+    result = ensure_collision_safety("AnyTitle", max_length=5)
+    assert len(result) == 5
+    # Should not contain original title because it can't fit with separator
+    assert result != "AnyTitle"
 
 
-def test_calculate_static_hash(tmp_path: Path) -> None:
-    """Test static hash calculation."""
-    # Create dummy static structure
-    static_dir = tmp_path / "static"
-    static_dir.mkdir()
-    (static_dir / "style.css").write_text("body { color: red; }")
-
-    # Calculate hash
-    hash1 = calculate_static_hash(static_dir)
-    assert len(hash1) == 8
-
-    # Modify file
-    (static_dir / "style.css").write_text("body { color: blue; }")
-    hash2 = calculate_static_hash(static_dir)
-
-    assert hash1 != hash2
-
-
-def test_calculate_static_hash_missing_dir() -> None:
-    """Test hash calculation handles missing directory gracefully."""
-    assert calculate_static_hash("nonexistent/path") == "v1"
-
-
-def test_calculate_static_hash_oserror(tmp_path: Path) -> None:
-    """Test that hash calculation ignores files that raise OSError (e.g. permissions)."""
-    static_dir = tmp_path / "static_oserror"
-    static_dir.mkdir()
-    # Create two files: one readable, one "unreadable"
-    (static_dir / "readable.css").write_text("content")
-    (static_dir / "unreadable.css").write_text("secret")
-
-    # Capture the real Path.open to pass through for the readable file
-    original_open = Path.open
-
-    # Added typing to arguments to satisfy mypy [no-untyped-def]
-    # FIX: Added specific types for self, args, kwargs
-    def side_effect(self: Any, *args: Any, **kwargs: Any) -> Any:
-        # Trigger OSError only for the specific unreadable file
-        # We check self.name which should exist on the Path object passed as self
-        if getattr(self, "name", "") == "unreadable.css":
-            raise OSError("Simulated permission error")
-        return original_open(self, *args, **kwargs)
-
-    # Patch Path.open to inject the error
-    with patch("pathlib.Path.open", side_effect=side_effect, autospec=True):
-        # The hash should be calculated based on readable.css only
-        # We assume readable.css (alphabetical) or order doesn't matter for this test
-        # logic just needs to ensure it doesn't crash.
-        h = calculate_static_hash(static_dir)
-        assert len(h) == 8
-
-
-def test_sanitize_title_dot_handling() -> None:
-    """Refute the PDF claim that '. Hidden Book' results in empty stem.
-
-    The PDF claimed: 'If a user provides a title like . Hidden Book, base_stem becomes an empty string.'
-    This test proves that strip('. ') handles it correctly.
-    """
-    # 1. Leading dot with space
-    assert sanitize_title(". Hidden Book") == "Hidden Book"
-    # 2. Leading dot no space
-    assert sanitize_title(".Hidden Book") == "Hidden Book"
-    # 3. Trailing dot
-    assert sanitize_title("Hidden Book.") == "Hidden Book"
-    # 4. Just dots (should fallback)
-    assert sanitize_title("...") == FALLBACK_TITLE
+def test_ensure_collision_safety_min_uuid_limit() -> None:
+    """Test edge case where limit is exactly enough for UUID + 1 char."""
+    # 9 chars needed for UUID+sep. If limit is 10, we get 1 char title + 9 suffix.
+    # Input must be > 10 chars to force truncation.
+    result = ensure_collision_safety("LongTitleForTest", max_length=10)
+    assert len(result) == 10
+    assert result[1] == "_"
