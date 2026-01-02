@@ -2,6 +2,7 @@
 """Routes module handling all web endpoints."""
 
 import logging
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, cast
 
@@ -293,7 +294,10 @@ def status() -> str | Response | tuple[Response, int]:
         torrent_list = torrent_manager.get_status()
 
         if is_json:
-            return jsonify(torrent_list)
+            # FIX: Suppress Pyright error because TorrentStatus is TypedDict (dict), but runtime objects might be dataclasses
+            # if strategies are updated in the future.
+            # Pyright sees unnecessary isinstance; MyPy is fine. Use pyright-specific ignore.
+            return jsonify([asdict(t) if not isinstance(t, dict) else t for t in torrent_list])  # pyright: ignore[reportUnnecessaryIsInstance]
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
         return render_template("status.html", torrents=torrent_list)

@@ -1,4 +1,5 @@
 # File: tests/scraper/test_parser.py
+# pyright: reportPrivateUsage=false
 """Unit tests for the HTML parser module."""
 
 import re
@@ -10,6 +11,9 @@ from bs4 import BeautifulSoup, Tag
 from audiobook_automated.scraper.parser import (
     BookDetails,
     BookMetadata,
+    _extract_table_data,
+    _normalize_metadata,
+    _sanitize_description,
     get_text_after_label,
     normalize_cover_url,
     parse_book_details,
@@ -318,3 +322,37 @@ def test_parse_book_details_robustness() -> None:
     assert result["info_hash"] == "Unknown"
     assert result["description"] == "No description available."
     assert result["language"] == "Unknown"
+
+
+def test_normalize_metadata_complex_cases() -> None:
+    """Test explicit normalization logic for tricky strings (starting with '? ')."""
+    meta = BookMetadata(file_size="? 100 MB", bitrate="  ?  ")
+    _normalize_metadata(meta)
+    assert meta.file_size == "Unknown"
+    assert meta.bitrate == "Unknown"
+
+
+def test_sanitize_description_merging() -> None:
+    """Test that sanitization doesn't merge words when unwrapping tags."""
+    html = "<div><div class='custom'>Hello</div><div class='custom'>World</div></div>"
+    soup = BeautifulSoup(html, "lxml").find("div")
+    assert isinstance(soup, Tag)
+    res = _sanitize_description(soup)
+    assert "Hello World" in res
+
+
+def test_extract_table_data_empty_values() -> None:
+    """Test that '?' or empty strings in table data become 'Unknown'."""
+    html = """
+    <table class="torrent_info">
+        <tr><td>Tracker:</td><td>?</td></tr>
+        <tr><td>Info Hash:</td><td></td></tr>
+        <tr><td>File Size:</td><td>   </td></tr>
+    </table>
+    """
+    table = BeautifulSoup(html, "lxml").find("table")
+    assert isinstance(table, Tag)
+    trackers, size, info_hash = _extract_table_data(table, "Fallback")
+    assert trackers == ["Unknown"]
+    assert info_hash == "Unknown"
+    assert size == "Fallback"

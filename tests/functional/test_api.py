@@ -21,6 +21,18 @@ def test_health_check(client: FlaskClient) -> None:
     assert response.json == {"status": "ok", "client": "connected"}
 
 
+def test_health_check_failure(client: FlaskClient) -> None:
+    """Test the health check endpoint when client is disconnected."""
+    from audiobook_automated.extensions import torrent_manager
+    from unittest.mock import patch
+
+    # We patch the instance that is already imported
+    with patch.object(torrent_manager, "verify_credentials", return_value=False):
+        response = client.get("/health")
+        assert response.status_code == 503
+        assert response.json == {"status": "degraded", "client": "disconnected"}
+
+
 def test_search_endpoint_valid(client: FlaskClient) -> None:
     """Test a valid search request."""
     mock_results = [{"title": "Test Book", "link": "http://test", "file_size": "100MB"}]

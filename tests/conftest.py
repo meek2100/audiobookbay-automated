@@ -19,6 +19,7 @@ from flask.testing import FlaskClient, FlaskCliRunner
 
 from audiobook_automated import create_app
 from audiobook_automated.config import Config
+from audiobook_automated.extensions import torrent_manager
 
 
 class TestConfig(Config):
@@ -52,18 +53,18 @@ def mock_global_dependencies() -> Generator[None]:
     connect to a real torrent client during startup (verify_credentials)
     or request handling.
     """
-    # CRITICAL FIX: Patch 'audiobook_automated.extensions.torrent_manager' specifically.
-    # This is the source of truth used by __init__.py and routes.py. Patching it here
-    # ensures that when create_app imports 'from .extensions import torrent_manager',
-    # it gets our mock.
-    with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
-        # Ensure startup check passes without network
-        mock_tm.verify_credentials.return_value = True
-
-        # Configure standard methods to behave 'normally'
-        mock_tm.get_status.return_value = []
-        mock_tm.add_magnet.return_value = "OK"
-        yield
+    # CRITICAL FIX: Patch the methods on the REAL instance object directly.
+    # Patching the module attribute ("audiobook_automated.extensions.torrent_manager")
+    # fails because other modules (like __init__.py and routes.py) have already
+    # imported the real instance reference before this fixture runs.
+    # By modifying the instance in-place, all references see the mocks.
+    with patch.object(torrent_manager, "verify_credentials", return_value=True):
+        with patch.object(torrent_manager, "get_status", return_value=[]):
+            with patch.object(torrent_manager, "add_magnet", return_value="OK"):
+                with patch.object(torrent_manager, "remove_torrent", return_value="OK"):
+                    # Mock init_app to prevent real connection attempts
+                    with patch.object(torrent_manager, "init_app"):
+                        yield
 
 
 @pytest.fixture(autouse=True)

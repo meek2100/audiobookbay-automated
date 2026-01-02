@@ -33,7 +33,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Gunicorn creates its own logger ('gunicorn.error'), and without this,
     # Flask application logs might not appear in the container stdout/stderr.
     gunicorn_logger = logging.getLogger("gunicorn.error")
-    if gunicorn_logger.handlers:
+    if gunicorn_logger.handlers:  # pragma: no cover
         app.logger.handlers = gunicorn_logger.handlers
         # Sync level to match Gunicorn (unless overridden by config)
         if configured_level is not None:

@@ -30,13 +30,17 @@ def test_search_audiobookbay_success(mock_sleep: Any) -> None:
 def test_search_caching(mock_sleep: Any) -> None:
     """Test that search results are returned from cache if available."""
     query = "cached_query"
+    max_pages = 1
+    cache_key = f"{query}::{max_pages}"
+
     # FIX: Explicitly typed list of BookSummary
     expected_result = cast(list[BookSummary], [{"title": "Cached Book"}])
-    search_cache[query] = expected_result
+    search_cache[cache_key] = expected_result
 
     # Ensure no network calls are made
     with patch("audiobook_automated.scraper.core.find_best_mirror") as mock_mirror:
-        results = search_audiobookbay(query)
+        # We must pass max_pages to match the cache key exactly
+        results = search_audiobookbay(query, max_pages=max_pages)
         assert results == expected_result
         mock_mirror.assert_not_called()
 

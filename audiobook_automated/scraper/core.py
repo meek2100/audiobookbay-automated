@@ -152,17 +152,19 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
     Raises:
         ConnectionError: If no mirrors are reachable.
     """
-    # SAFETY: Wrap cache read in lock for thread safety
-    with CACHE_LOCK:
-        if query in search_cache:
-            cached_result: list[BookSummary] = search_cache[query]
-            return cached_result
-
     # Load configuration dynamically
     if max_pages is None:
         # FIX: Force integer cast to prevent 'Operator + not supported for None' pyright error
         # in the range() loop below, even though 'None' is impossible here.
         max_pages = int(current_app.config.get("PAGE_LIMIT", 3))
+
+    cache_key = f"{query}::{max_pages}"
+
+    # SAFETY: Wrap cache read in lock for thread safety
+    with CACHE_LOCK:
+        if cache_key in search_cache:
+            cached_result: list[BookSummary] = search_cache[cache_key]
+            return cached_result
 
     active_hostname = find_best_mirror()
     if not active_hostname:
@@ -220,7 +222,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
     logger.info(f"Search for '{query}' completed. Found {len(results)} results.")
 
     with CACHE_LOCK:
-        search_cache[query] = results
+        search_cache[cache_key] = results
 
     return results
 

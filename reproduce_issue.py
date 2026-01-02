@@ -1,4 +1,6 @@
 # File: reproduce_issue.py
+"""Verification script for reproducing issues and checking production prep."""
+
 import os
 import subprocess
 import sys
@@ -6,8 +8,11 @@ import time
 
 from playwright.sync_api import sync_playwright
 
+TOLERANCE = 50
 
-def verify_production_prep():
+
+def verify_production_prep() -> None:  # noqa: PLR0915
+    """Verify the production preparation logic including splash screen and layout."""
     # Start the server with specific SPLASH config
     env = {
         **os.environ,
@@ -17,7 +22,7 @@ def verify_production_prep():
         "FLASK_DEBUG": "1",
     }
 
-    server = subprocess.Popen(
+    server = subprocess.Popen(  # noqa: S603
         [sys.executable, "-m", "audiobook_automated.app"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
     )
 
@@ -75,7 +80,6 @@ def verify_production_prep():
             page.reload()  # Reload to bring back splash (but we don't care about it now)
 
             # Wait for content
-            grid = page.locator(".metadata-grid").first
             # (Note: Search page might be empty if no search, but .metadata-grid usually wraps results.
             # If search is empty, the grid might not be there. Let's force a search or check CSS file presence)
 
@@ -88,7 +92,6 @@ def verify_production_prep():
             time.sleep(1)
 
             content_width = page.evaluate("document.querySelector('.content').clientWidth")
-            body_width = page.evaluate("document.body.clientWidth")
 
             # Max width is 95vw. 95% of 2500 = 2375.
             # Allow some scrollbar variance.
@@ -96,7 +99,7 @@ def verify_production_prep():
 
             print(f"Viewport: {viewport_width}, Content Width: {content_width}, Expected ~{expected}")
 
-            if abs(content_width - expected) < 50:
+            if abs(content_width - expected) < TOLERANCE:
                 print("SUCCESS: Content width is approximately 95vw (Ultra-wide supported).")
             else:
                 print("WARNING: Content width mismatch. Ensure CSS updated correctly.")

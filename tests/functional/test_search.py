@@ -9,7 +9,7 @@ def test_home_page_load(client: Any) -> None:
     """Test that the home page loads successfully and displays the search form."""
     response = client.get("/")
     assert response.status_code == 200
-    assert b"Search AudiobookBay" in response.data
+    assert b"Search The Crow's Nest" in response.data
 
 
 def test_search_via_get(client: Any) -> None:
@@ -36,7 +36,7 @@ def test_search_whitespace_query(client: Any) -> None:
         response = client.get("/?query=%20%20%20")
         assert response.status_code == 200
         mock_search.assert_not_called()
-        assert b"Search AudiobookBay" in response.data
+        assert b"Search The Crow's Nest" in response.data
 
 
 def test_search_exception_handling(client: Any) -> None:

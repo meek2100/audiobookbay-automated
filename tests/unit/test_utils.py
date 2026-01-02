@@ -1,15 +1,19 @@
 # File: tests/unit/test_utils.py
 """Unit tests for utility functions."""
 
+import logging
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
+
+from pytest import LogCaptureFixture
 
 from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX
 from audiobook_automated.utils import (
     calculate_static_hash,
     construct_safe_save_path,
     ensure_collision_safety,
+    format_size,
     get_application_version,
     sanitize_title,
 )
@@ -223,3 +227,23 @@ def test_sanitize_title_dot_handling() -> None:
     assert sanitize_title("Hidden Book.") == "Hidden Book"
     # 4. Just dots (should fallback)
     assert sanitize_title("...") == FALLBACK_TITLE
+
+
+def test_construct_safe_save_path_deep_path_warning(caplog: LogCaptureFixture) -> None:
+    """Test that a warning is logged if SAVE_PATH_BASE is excessively deep."""
+    # Ensure base path exceeds threshold (249 - 10 = 239). 245 > 239.
+    deep_path = "/" + "a" * 245
+    with caplog.at_level(logging.WARNING):
+        construct_safe_save_path(deep_path, "Short Title")
+    assert "SAVE_PATH_BASE is extremely deep" in caplog.text
+
+
+def test_format_size() -> None:
+    """Test the format_size utility (human readable bytes)."""
+    assert format_size(None) == "Unknown"
+    assert format_size("invalid") == "Unknown"
+    assert format_size(500) == "500.00 B"
+    assert format_size(1024) == "1.00 KB"
+    assert format_size(1024 * 1024) == "1.00 MB"
+    assert format_size(1024 * 1024 * 1024) == "1.00 GB"
+    assert format_size("2048") == "2.00 KB"
