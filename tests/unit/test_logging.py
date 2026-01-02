@@ -12,6 +12,7 @@ class TestConfig(Config):
     """Minimal test config."""
 
     TESTING = True
+    LOG_LEVEL: int | None = None
 
 
 def test_gunicorn_logger_inheritance() -> None:
@@ -38,4 +39,25 @@ def test_gunicorn_logger_inheritance() -> None:
         assert app.logger.level == logging.ERROR
 
     # Cleanup: Remove handlers from the global logger to avoid pollution
+    mock_gunicorn_logger.handlers = []
+
+
+def test_gunicorn_logger_override() -> None:
+    """Test that explicit LOG_LEVEL overrides Gunicorn level."""
+
+    class OverrideConfig(TestConfig):
+        LOG_LEVEL = logging.DEBUG
+
+    mock_gunicorn_logger = logging.getLogger("gunicorn.error")
+    mock_handler = MagicMock()
+    mock_handler.level = logging.INFO
+    mock_gunicorn_logger.handlers = [mock_handler]
+    mock_gunicorn_logger.setLevel(logging.ERROR)
+
+    with patch("audiobook_automated.logging.getLogger", return_value=mock_gunicorn_logger):
+        app = create_app(OverrideConfig)
+
+        # Verify level was set to DEBUG (10), ignoring Gunicorn's ERROR (40)
+        assert app.logger.level == logging.DEBUG
+
     mock_gunicorn_logger.handlers = []

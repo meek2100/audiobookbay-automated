@@ -22,27 +22,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     config_class.validate(app.logger)
 
     # PRODUCTION FIX: Log Level Inheritance
-    # Priority:
-    # 1. Configured LOG_LEVEL (if set in env)
-    # 2. Gunicorn Logger Level (if running in Gunicorn)
-    # 3. Default (INFO)
-
     configured_level = app.config.get("LOG_LEVEL")
-
-    # DEPLOYMENT FIX: Attach Gunicorn handlers if running in production
-    # Gunicorn creates its own logger ('gunicorn.error'), and without this,
-    # Flask application logs might not appear in the container stdout/stderr.
-    gunicorn_logger = logging.getLogger("gunicorn.error")
-    if gunicorn_logger.handlers:  # pragma: no cover
-        app.logger.handlers = gunicorn_logger.handlers
-        # Sync level to match Gunicorn (unless overridden by config)
-        if configured_level is not None:
-            app.logger.setLevel(configured_level)
-        else:
-            app.logger.setLevel(gunicorn_logger.level)
-    else:
-        # Local/Dev mode or non-Gunicorn runner
-        app.logger.setLevel(configured_level if configured_level is not None else logging.INFO)
+    _configure_logging(app, configured_level)
 
     # OPTIMIZATION: Static Asset Versioning Strategy
     # Priority:
@@ -118,3 +99,29 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         return response
 
     return app
+
+
+def _configure_logging(app: Flask, configured_level: int | None) -> None:
+    """Configure application logging, inheriting from Gunicorn if available.
+
+    Args:
+        app: The Flask application instance.
+        configured_level: The explicitly configured log level (or None).
+    """
+    # Priority:
+    # 1. Configured LOG_LEVEL (if set in env)
+    # 2. Gunicorn Logger Level (if running in Gunicorn)
+    # 3. Default (INFO)
+
+    # DEPLOYMENT FIX: Attach Gunicorn handlers if running in production
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    if gunicorn_logger.handlers:
+        app.logger.handlers = gunicorn_logger.handlers
+        # Sync level to match Gunicorn (unless overridden by config)
+        if configured_level is not None:
+            app.logger.setLevel(configured_level)
+        else:
+            app.logger.setLevel(gunicorn_logger.level)
+    else:
+        # Local/Dev mode or non-Gunicorn runner
+        app.logger.setLevel(configured_level if configured_level is not None else logging.INFO)
