@@ -144,6 +144,14 @@ def construct_safe_save_path(base_path: str | None, title: str) -> str:
         # Use constant for calculation: 260 - 10 - 1 = 249
         calculated_limit = WINDOWS_PATH_SAFE_LIMIT - base_len
 
+        # SAFETY: Explicitly fail if the base path is too deep to support even minimal filenames.
+        # This prevents silent failures where the truncation logic would produce unusable names.
+        if calculated_limit < MIN_FILENAME_LENGTH:
+            raise ValueError(
+                f"SAVE_PATH_BASE is too deep ({base_len} chars). "
+                f"Remaining limit {calculated_limit} is less than MIN_FILENAME_LENGTH ({MIN_FILENAME_LENGTH})."
+            )
+
         if calculated_limit < DEEP_PATH_WARNING_THRESHOLD:
             logger.warning(
                 f"SAVE_PATH_BASE is extremely deep ({base_len} chars). "

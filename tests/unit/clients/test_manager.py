@@ -487,3 +487,14 @@ def test_load_strategy_missing_plugin_vs_dependency(app: Flask, setup_manager: A
             with pytest.raises(ModuleNotFoundError) as exc:
                 manager._load_strategy_class(client_name)  # pyright: ignore[reportPrivateUsage]
             assert exc.value.name == "some_lib"
+
+
+def test_load_strategy_fake_module(app: Flask, setup_manager: Any) -> None:
+    """Test loading a strategy that definitely does not exist."""
+    manager = setup_manager(app)
+    # This should return None and log an error (handled by _load_strategy_class logic)
+    with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+        result = manager._load_strategy_class("non_existent_fake_strategy")  # pyright: ignore[reportPrivateUsage]
+        assert result is None
+        mock_logger.error.assert_called()
+        assert "Client plugin 'non_existent_fake_strategy' not found" in mock_logger.error.call_args[0][0]

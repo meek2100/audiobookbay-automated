@@ -68,3 +68,14 @@ class TorrentClientStrategy(ABC):
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Retrieve status of torrents in the given category."""
         pass  # pragma: no cover
+
+    def __del__(self) -> None:
+        """Ensure resources are released when the strategy instance is garbage collected.
+
+        This acts as a safety net for thread-local instances that might not be explicitly closed.
+        """
+        try:
+            self.close()
+        except Exception:  # noqa: S110
+            # Swallow errors during GC to prevent noisy stderr output
+            pass

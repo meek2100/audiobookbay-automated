@@ -2,7 +2,7 @@
 """Strategy implementation for Transmission."""
 
 import logging
-from typing import Any, Literal, cast
+from typing import Any, Literal, cast, override
 
 from transmission_rpc import Client as TxClient
 
@@ -23,6 +23,7 @@ class Strategy(TorrentClientStrategy):
         super().__init__(*args, **kwargs)
         self.client: TxClient | None = None
 
+    @override
     def connect(self) -> None:
         """Connect to the Transmission client."""
         # transmission-rpc expects 'http' or 'https' specifically
@@ -36,12 +37,14 @@ class Strategy(TorrentClientStrategy):
             timeout=30,
         )
 
+    @override
     def close(self) -> None:
         """Close the Transmission client session."""
         # transmission-rpc Client manages its own session, but doesn't expose a clear close.
         # Dropping the reference is sufficient.
         self.client = None
 
+    @override
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to Transmission."""
         if not self.client:
@@ -63,6 +66,7 @@ class Strategy(TorrentClientStrategy):
                 # Re-raise unexpected errors (e.g. ConnectionError, DuplicateTorrent)
                 raise e
 
+    @override
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Transmission."""
         if not self.client:
@@ -75,6 +79,7 @@ class Strategy(TorrentClientStrategy):
             logger.debug(f"Transmission: ID {torrent_id} is not an integer, using as string hash.")
         self.client.remove_torrent(ids=[tid], delete_data=False)
 
+    @override
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Get torrent status from Transmission."""
         if not self.client:

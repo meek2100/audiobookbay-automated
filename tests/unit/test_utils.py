@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+import pytest
 from pytest import LogCaptureFixture
 
 from audiobook_automated.constants import FALLBACK_TITLE, SAFE_SUFFIX
@@ -230,12 +231,26 @@ def test_sanitize_title_dot_handling() -> None:
 
 
 def test_construct_safe_save_path_deep_path_warning(caplog: LogCaptureFixture) -> None:
-    """Test that a warning is logged if SAVE_PATH_BASE is excessively deep."""
-    # Ensure base path exceeds threshold (249 - 10 = 239). 245 > 239.
-    deep_path = "/" + "a" * 245
+    """Test that a warning is logged if SAVE_PATH_BASE is deep but valid."""
+    # 249 - 235 = 14 (safe, > 10). Wait, warning threshold is < 10.
+    # We want a path that triggers warning (limit < 10) but NOT exception (limit >= 5).
+    # 249 - x < 10 => x > 239.
+    # 249 - x >= 5 => x <= 244.
+    # So length 240 is perfect. (249-240 = 9).
+    deep_path = "/" + "a" * 239  # +1 slash = 240 chars
     with caplog.at_level(logging.WARNING):
         construct_safe_save_path(deep_path, "Short Title")
     assert "SAVE_PATH_BASE is extremely deep" in caplog.text
+
+
+def test_construct_safe_save_path_raises_if_too_deep() -> None:
+    """Test that ValueError is raised if SAVE_PATH_BASE leaves no room for filename."""
+    # Calculated limit = 249 - base_len.
+    # We want limit < MIN_FILENAME_LENGTH (5).
+    # 249 - x < 5 => x > 244.
+    deep_path = "/" + "a" * 245  # 246 chars
+    with pytest.raises(ValueError, match="SAVE_PATH_BASE is too deep"):
+        construct_safe_save_path(deep_path, "Short Title")
 
 
 def test_format_size() -> None:

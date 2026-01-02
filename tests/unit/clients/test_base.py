@@ -1,11 +1,37 @@
 # File: tests/unit/clients/test_base.py
 """Unit tests for base client logic."""
 
-from typing import Any
+from typing import Any, override
+from unittest.mock import MagicMock
 
 import pytest
 
+from audiobook_automated.clients.base import TorrentClientStrategy, TorrentStatus
 from audiobook_automated.utils import format_size
+
+
+class MockStrategy(TorrentClientStrategy):
+    """Minimal implementation of abstract base class for testing."""
+
+    @override
+    def connect(self) -> None:
+        pass
+
+    @override
+    def close(self) -> None:
+        pass
+
+    @override
+    def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
+        pass
+
+    @override
+    def remove_torrent(self, torrent_id: str) -> None:
+        pass
+
+    @override
+    def get_status(self, category: str) -> list[TorrentStatus]:
+        return []
 
 
 def test_format_size_logic() -> None:
@@ -46,3 +72,23 @@ def test_format_size_logic() -> None:
 def test_format_size_parameterized(input_bytes: Any, expected: str) -> None:
     """Cover all branches of format_size including recursion/loop and exceptions."""
     assert format_size(input_bytes) == expected
+
+
+def test_strategy_cleanup() -> None:
+    """Test that __del__ calls close()."""
+    strategy = MockStrategy("host", 80, "u", "p")
+    strategy.close = MagicMock()  # type: ignore
+
+    # Simulate garbage collection
+    strategy.__del__()
+    strategy.close.assert_called_once()
+
+
+def test_strategy_cleanup_error() -> None:
+    """Test that errors in __del__ are suppressed."""
+    strategy = MockStrategy("host", 80, "u", "p")
+    strategy.close = MagicMock(side_effect=Exception("Close Error"))  # type: ignore
+
+    # Should not raise
+    strategy.__del__()
+    strategy.close.assert_called_once()

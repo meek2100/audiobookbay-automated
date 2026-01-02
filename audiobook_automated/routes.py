@@ -15,6 +15,7 @@ from audiobook_automated.constants import (
     ERROR_HASH_NOT_FOUND,
     MIN_SEARCH_QUERY_LENGTH,
 )
+from audiobook_automated.errors import AppError, InvalidRequestError, TorrentClientError
 
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
@@ -25,6 +26,13 @@ logger = logging.getLogger(__name__)
 
 # Create the Blueprint
 main_bp = Blueprint("main", __name__)
+
+
+@main_bp.errorhandler(AppError)
+def handle_app_error(error: AppError) -> tuple[Response, int]:
+    """Handle custom application errors and return JSON response."""
+    logger.error(f"AppError: {error.message}")
+    return jsonify({"message": error.message}), error.status_code
 
 
 @main_bp.context_processor
@@ -166,7 +174,7 @@ def send() -> Response | tuple[Response, int]:
 
     if not isinstance(data, dict):
         logger.warning("Invalid send request: JSON body is not a dictionary.")
-        return jsonify({"message": "Invalid JSON format"}), 400
+        raise InvalidRequestError("Invalid JSON format")
 
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
@@ -174,13 +182,13 @@ def send() -> Response | tuple[Response, int]:
     # TYPE SAFETY: Ensure title is a string before calling string methods.
     if title is not None and not isinstance(title, str):
         logger.warning(f"Invalid send request: Title is not a string (Type: {type(title)}).")
-        return jsonify({"message": "Invalid request: Title must be a string"}), 400
+        raise InvalidRequestError("Invalid request: Title must be a string")
 
     # Check raw title existence. We must allow titles that sanitize to FALLBACK_TITLE (e.g. "...")
     # to proceed to the collision handler, rather than blocking them as "Invalid".
     if not details_url or not title or not title.strip():
         logger.warning("Invalid send request received: missing link or valid title")
-        return jsonify({"message": "Invalid request: Title or Link missing"}), 400
+        raise InvalidRequestError("Invalid request: Title or Link missing")
 
     # Logging raw title before processing
     logger.info(f"Received download request for '{sanitize_title(title)}'")
@@ -192,7 +200,7 @@ def send() -> Response | tuple[Response, int]:
             logger.error(f"Failed to extract magnet link for '{title}': {error}")
             # Map specific errors to 404/400 to avoid alerting on 500s
             status_code = 404 if error == ERROR_HASH_NOT_FOUND else 400
-            return jsonify({"message": f"Download failed: {error}"}), status_code
+            raise TorrentClientError(f"Download failed: {error}", status_code=status_code)
 
         # DELEGATION: Path construction logic moved to utils.py
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
@@ -209,9 +217,12 @@ def send() -> Response | tuple[Response, int]:
             ),
             200,
         )
+    except AppError:
+        # Re-raise known app errors to be handled by the error handler
+        raise
     except Exception as e:
         logger.error(f"Send failed: {e}", exc_info=True)
-        return jsonify({"message": str(e)}), 500
+        raise TorrentClientError(str(e)) from e
 
 
 @main_bp.route("/delete", methods=["POST"])
@@ -229,19 +240,19 @@ def delete_torrent() -> Response | tuple[Response, int]:
     data = request.json
 
     if not isinstance(data, dict):
-        return jsonify({"message": "Invalid JSON format"}), 400
+        raise InvalidRequestError("Invalid JSON format")
 
     torrent_id = data.get("id") if data else None
 
     if not torrent_id:
-        return jsonify({"message": "Torrent ID is required"}), 400
+        raise InvalidRequestError("Torrent ID is required")
 
     try:
         torrent_manager.remove_torrent(torrent_id)
         return jsonify({"message": "Torrent removed successfully."})
     except Exception as e:
         logger.error(f"Failed to remove torrent: {e}", exc_info=True)
-        return jsonify({"message": f"Failed to remove torrent: {str(e)}"}), 500
+        raise TorrentClientError(f"Failed to remove torrent: {str(e)}") from e
 
 
 @main_bp.route("/reload_library", methods=["POST"])

@@ -10,7 +10,7 @@ Instructions for Developers:
 """
 
 import logging
-from typing import Any
+from typing import Any, override
 
 from .base import TorrentClientStrategy, TorrentStatus
 
@@ -34,6 +34,7 @@ class Strategy(TorrentClientStrategy):
         super().__init__(*args, **kwargs)
         self.client: Any = None  # Replace 'Any' with your actual client library type
 
+    @override
     def connect(self) -> None:
         """Establish connection to the torrent client.
 
@@ -49,6 +50,7 @@ class Strategy(TorrentClientStrategy):
         #     raise ConnectionError(f"Failed to connect: {e}")
         raise NotImplementedError("Implement the connect method.")
 
+    @override
     def close(self) -> None:
         """Close the connection and release resources."""
         # if self.client:
@@ -56,6 +58,7 @@ class Strategy(TorrentClientStrategy):
         # self.client = None
         pass
 
+    @override
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to the client.
 
@@ -76,6 +79,7 @@ class Strategy(TorrentClientStrategy):
         # If the client does NOT support categories, you may ignore that argument.
         raise NotImplementedError("Implement add_magnet.")
 
+    @override
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent by ID.
 
@@ -92,6 +96,7 @@ class Strategy(TorrentClientStrategy):
         # IMPORTANT: Ensure you set delete_data=False (remove only the .torrent task).
         raise NotImplementedError("Implement remove_torrent.")
 
+    @override
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Retrieve status of torrents in the given category.
 

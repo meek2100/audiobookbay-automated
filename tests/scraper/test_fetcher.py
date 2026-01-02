@@ -97,6 +97,7 @@ def test_fetch_and_parse_page_mixed_validity() -> None:
     <div class="post"><div>Broken Info</div></div>
     <div class="post">
         <div class="postTitle"><h2><a href="/valid">Valid Book</a></h2></div>
+        <div class="postContent"><p>Valid Content</p></div>
     </div>
     """
     mock_session = requests.Session()
@@ -134,6 +135,7 @@ def test_fetch_and_parse_page_language_fallback() -> None:
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
         <div class="postInfo">Languages: English</div>
+        <div class="postContent"><p>Content</p></div>
     </div>
     """
     mock_session = requests.Session()
@@ -152,6 +154,7 @@ def test_fetch_and_parse_page_missing_regex_matches() -> None:
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
         <div class="postInfo">No recognizable labels here</div>
+        <div class="postContent"><p>Content</p></div>
     </div>
     """
     mock_session = requests.Session()
@@ -247,6 +250,7 @@ def test_fetch_and_parse_page_missing_cover_image() -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">No Cover</a></h2></div>
+        <div class="postContent"><p>Content</p></div>
     </div>
     """
     mock_session = requests.Session()
@@ -264,6 +268,7 @@ def test_fetch_and_parse_page_missing_post_info() -> None:
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">No Info</a></h2></div>
+        <div class="postContent"><p>Content</p></div>
     </div>
     """
     mock_session = requests.Session()
@@ -272,6 +277,7 @@ def test_fetch_and_parse_page_missing_post_info() -> None:
         mock_get.return_value.status_code = 200
         with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
             results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+    # Even if content exists, without info it might be partial, but logic allows it.
     assert results[0]["language"] == "Unknown"
 
 
@@ -294,6 +300,26 @@ def test_fetch_and_parse_page_remote_default_cover_optimization() -> None:
             results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     # Assert it was converted to None
     assert results[0]["cover"] is None
+
+
+def test_fetch_and_parse_page_missing_content_div(caplog: Any) -> None:
+    """Test that posts missing the content div are skipped (Guard Clause coverage)."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h2><a href="/link">Empty</a></h2></div>
+        <!-- Missing postContent -->
+    </div>
+    """
+    mock_session = requests.Session()
+    with patch.object(mock_session, "get") as mock_get:
+        mock_get.return_value.text = html
+        mock_get.return_value.status_code = 200
+        with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
+            with caplog.at_level(logging.WARNING):
+                results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+
+    assert results == []
+    assert "Post missing content" in caplog.text
 
 
 # --- From Integration ---

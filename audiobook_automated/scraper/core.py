@@ -109,6 +109,12 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
 
                 post_info = post.select_one(".postInfo")
                 content_div = post.select_one(".postContent")
+
+                # GUARD: Skip posts with missing content
+                if not content_div:
+                    logger.warning(f"Post missing content: {title}. Skipping.")
+                    continue
+
                 meta = parse_post_content(content_div, post_info)
 
                 page_results.append(
@@ -145,6 +151,8 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
     Args:
         query: The search string.
         max_pages: Maximum number of pages to scrape. If None, uses configured limit.
+                   This parameter is part of the cache key to prevent collision between
+                   shallow and deep searches.
 
     Returns:
         list[BookSummary]: A list of book dictionaries found across all pages.
