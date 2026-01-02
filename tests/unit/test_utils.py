@@ -214,6 +214,31 @@ def test_calculate_static_hash_oserror(tmp_path: Path) -> None:
         assert len(h) == 8
 
 
+def test_calculate_static_hash_os_error_read(tmp_path: Path) -> None:
+    """Test that hash calculation handles OSError during file reading.
+
+    This ensures full coverage for the `except OSError: pass` block in calculate_static_hash,
+    specifically when `f.read()` fails.
+    """
+    static_dir = tmp_path / "static_os_read_error"
+    static_dir.mkdir()
+    file_path = static_dir / "test.txt"
+    file_path.write_text("some content")
+
+    # Mock the file object returned by open
+    with patch("pathlib.Path.open") as mock_open:
+        mock_file = mock_open.return_value.__enter__.return_value
+        # Simulate OSError on read
+        mock_file.read.side_effect = OSError("Simulated read error")
+
+        # The function should ignore the error and return a hash (of nothing/empty/other files)
+        # Since this is the only file, it might result in a hash of empty or initial state
+        # but crucial part is: it must not raise.
+        h = calculate_static_hash(static_dir)
+        assert isinstance(h, str)
+        assert len(h) > 0
+
+
 def test_sanitize_title_dot_handling() -> None:
     """Refute the PDF claim that '. Hidden Book' results in empty stem.
 

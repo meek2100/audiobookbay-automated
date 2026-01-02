@@ -19,6 +19,9 @@ from audiobook_automated.constants import (
 
 logger = logging.getLogger(__name__)
 
+# OPTIMIZATION: Pre-compile regex for faster execution
+ILLEGAL_CHARS_RE = re.compile(r'[<>:"/\\|?*]')
+
 
 def sanitize_title(title: str | None) -> str:
     r"""Sanitize a string to be safe for use as a directory name.
@@ -42,7 +45,7 @@ def sanitize_title(title: str | None) -> str:
         return FALLBACK_TITLE
 
     # Remove illegal characters
-    cleaned = re.sub(r'[<>:"/\\|?*]', "", title)
+    cleaned = ILLEGAL_CHARS_RE.sub("", title)
 
     # Remove trailing periods and spaces which are invalid in Windows folder names
     sanitized = cleaned.strip(". ")

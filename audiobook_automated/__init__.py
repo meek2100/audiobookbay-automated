@@ -2,7 +2,7 @@
 """Main application package for AudiobookBay Automated."""
 
 import logging
-import os
+from pathlib import Path
 
 from flask import Flask, Response, request
 
@@ -10,7 +10,7 @@ from .config import Config
 from .extensions import csrf, executor, limiter, talisman, torrent_manager
 from .routes import main_bp
 from .scraper import network
-from .utils import calculate_static_hash
+from .utils import get_application_version
 
 
 def create_app(config_class: type[Config] = Config) -> Flask:
@@ -32,18 +32,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # 3. Dynamic Calculation (Local Development Fallback)
 
     if not app.config.get("STATIC_VERSION"):
-        version_file = os.path.join(app.root_path, "version.txt")
-        if os.path.exists(version_file):
-            try:
-                with open(version_file, encoding="utf-8") as f:
-                    app.config["STATIC_VERSION"] = f.read().strip()
-            except OSError:
-                app.logger.warning("Failed to read version.txt, falling back to calculation.")
-                static_folder = os.path.join(app.root_path, "static")
-                app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
-        else:
-            static_folder = os.path.join(app.root_path, "static")
-            app.config["STATIC_VERSION"] = calculate_static_hash(static_folder)
+        static_folder = Path(app.root_path) / "static"
+        app.config["STATIC_VERSION"] = get_application_version(static_folder)
 
     # Initialize Extensions
     limiter.init_app(app)

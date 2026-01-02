@@ -3,7 +3,6 @@
 
 import logging
 from dataclasses import asdict
-from pathlib import Path
 from typing import Any, cast
 
 import requests
@@ -20,7 +19,7 @@ from audiobook_automated.errors import AppError, InvalidRequestError, TorrentCli
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .scraper.parser import BookSummary
-from .utils import construct_safe_save_path, get_application_version, parse_bool, sanitize_title
+from .utils import construct_safe_save_path, parse_bool, sanitize_title
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +43,8 @@ def inject_global_vars() -> dict[str, Any]:
     Returns:
         dict[str, Any]: A dictionary of context variables available to templates.
     """
-    # Retrieve version hash from version.txt (prod) or calculation (dev)
-    # Using Path(current_app.root_path) ensures we look in the correct package location
-    static_folder = Path(current_app.root_path) / "audiobook_automated" / "static"
-    static_version = get_application_version(static_folder)
+    # Retrieve version hash from app config (calculated at startup)
+    static_version = current_app.config.get("STATIC_VERSION", "v1")
 
     # OPTIMIZATION: Retrieve pre-calculated flag from config instead of re-evaluating
     # Now uses the property defined in Config class

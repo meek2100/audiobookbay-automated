@@ -179,7 +179,7 @@ def test_get_strategy_missing_class(app: Flask, setup_manager: Any) -> None:
             # Scan all error calls for the specific message
             found = False
             for call in mock_logger.error.call_args_list:
-                if "does not export a 'Strategy' class" in call[0][0]:
+                if "found, but it does not export a 'Strategy' class" in call[0][0]:
                     found = True
                     break
             assert found, "Expected error message about missing Strategy class not found."

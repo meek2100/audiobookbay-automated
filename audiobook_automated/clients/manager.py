@@ -18,7 +18,10 @@ class ClientLocal(threading.local):
     """Thread-local storage for client strategies with strict typing."""
 
     def __init__(self) -> None:
-        """Initialize thread-local attributes."""
+        """Initialize thread-local attributes.
+
+        Sets the strategy attribute to None initially.
+        """
         super().__init__()
         self.strategy: TorrentClientStrategy | None = None
 
@@ -124,7 +127,7 @@ class TorrentManager:
             module = importlib.import_module(f".{client_name}", package=package_name)
             strategy_class = getattr(module, "Strategy", None)
 
-            if strategy_class and issubclass(strategy_class, TorrentClientStrategy):
+            if isinstance(strategy_class, type) and issubclass(strategy_class, TorrentClientStrategy):
                 # FIX: Assign to explicitly typed variable to satisfy both Mypy (no-any-return)
                 # and Pyright (redundant-cast). Mypy allows Any->Typed assignment; Pyright allows Typed->Typed.
                 validated_class: type[TorrentClientStrategy] = strategy_class
