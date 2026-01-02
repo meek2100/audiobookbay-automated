@@ -1,8 +1,13 @@
 # File: verification/verify_theme.py
+"""Verification script for theme toggling functionality."""
+
+import sys
+
 from playwright.sync_api import Page, expect, sync_playwright
 
 
-def verify_theme_toggle(page: Page):
+def verify_theme_toggle(page: Page) -> None:
+    """Verify that the theme toggle button works correctly and persists state."""
     # Load the page
     page.goto("http://localhost:5078/")
 
@@ -55,6 +60,6 @@ if __name__ == "__main__":
             verify_theme_toggle(page)
         except Exception as e:
             print(f"Verification failed: {e}")
-            exit(1)
+            sys.exit(1)
         finally:
             browser.close()

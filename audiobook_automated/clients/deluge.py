@@ -2,7 +2,7 @@
 """Strategy implementation for Deluge."""
 
 import logging
-from typing import Any
+from typing import Any, override
 
 from deluge_web_client import DelugeWebClient
 from deluge_web_client.schema import TorrentOptions
@@ -32,6 +32,7 @@ class Strategy(TorrentClientStrategy):
         self.client: DelugeWebClient | None = None
         self.label_plugin_enabled: bool = False
 
+    @override
     def connect(self) -> None:
         """Connect to the Deluge client."""
         # DelugeWebClient uses the full URL
@@ -59,11 +60,13 @@ class Strategy(TorrentClientStrategy):
             logger.warning(f"Could not verify Deluge plugins: {e}. Defaulting to no labels.")
             self.label_plugin_enabled = False
 
+    @override
     def close(self) -> None:
         """Close the Deluge client session."""
         # DelugeWebClient doesn't hold a persistent socket, just release the object
         self.client = None
 
+    @override
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to Deluge."""
         if not self.client:
@@ -96,12 +99,14 @@ class Strategy(TorrentClientStrategy):
 
             raise
 
+    @override
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Deluge."""
         if not self.client:
             raise ConnectionError("Deluge client not connected")
         self.client.remove_torrent(torrent_id, remove_data=False)
 
+    @override
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Get torrent status from Deluge."""
         if not self.client:
@@ -136,14 +141,14 @@ class Strategy(TorrentClientStrategy):
                         progress = 0.0
 
                     results.append(
-                        {
-                            "id": key,
-                            "name": deluge_data.get("name", "Unknown"),
-                            "progress": progress,
-                            "state": deluge_data.get("state", "Unknown"),
+                        TorrentStatus(
+                            id=key,
+                            name=deluge_data.get("name", "Unknown"),
+                            progress=progress,
+                            state=deluge_data.get("state", "Unknown"),
                             # FIX: Use public utility format_size
-                            "size": format_size(deluge_data.get("total_size")),
-                        }
+                            size=format_size(deluge_data.get("total_size")),
+                        )
                     )
             else:
                 logger.warning(f"Deluge returned unexpected data type: {type(deluge_torrents.result)}")

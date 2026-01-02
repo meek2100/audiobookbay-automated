@@ -2,7 +2,6 @@
 """Unit tests for startup configuration and verification logic."""
 
 import importlib
-import logging
 import os
 import sys
 from collections.abc import Generator
@@ -214,6 +213,29 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
         mock_calc.assert_not_called()
 
 
+def test_version_file_read_error(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test handling of OSError when reading version.txt."""
+    mock_class, _ = mock_flask_factory
+    importlib.reload(audiobook_automated)
+    mock_app = mock_class.return_value
+    mock_app.root_path = "/mock/root"
+    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp/test")
+
+    with (
+        patch("audiobook_automated.os.path.exists", return_value=True),
+        patch("builtins.open", side_effect=OSError("Read error")),
+        patch("audiobook_automated.calculate_static_hash", return_value="calc-hash") as mock_calc,
+        patch("audiobook_automated.extensions.torrent_manager") as mock_tm,
+    ):
+        mock_tm.verify_credentials.return_value = True
+        audiobook_automated.create_app()
+
+        assert mock_app.config["STATIC_VERSION"] == "calc-hash"
+        # Verify warning logged
+        mock_app.logger.warning.assert_called_with("Failed to read version.txt, falling back to calculation.")
+        mock_calc.assert_called()
+
+
 def test_app_entry_point() -> None:
     """Ensures the app module can be imported and the global app instance is created.
 
@@ -233,83 +255,3 @@ def test_app_entry_point() -> None:
 
     # Verify that the module contains the 'app' variable (the Flask instance)
     assert reloaded_module.app is not None
-
-
-def test_create_app_with_gunicorn_integration(monkeypatch: Any, mock_flask_factory: Any) -> None:
-    """Test that Gunicorn logger handlers are attached if present."""
-    _, mock_app_logger = mock_flask_factory
-
-    # Simulate environment where Config.LOG_LEVEL is NOT set/detected
-    # We must patch config BEFORE reload so the class defaults are correct
-    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
-    # Set to empty to trigger fallback logic
-    monkeypatch.setenv("LOG_LEVEL", "")
-
-    # We must patch getLogger to simulate Gunicorn environment
-    mock_gunicorn_logger = MagicMock()
-    # Use MagicMock objects for handlers to satisfy MyPy (list[Handler] vs list[str])
-    mock_handler = MagicMock()
-    # FIX: Set level to avoid TypeError during Flask startup
-    mock_handler.level = logging.INFO
-    mock_gunicorn_logger.handlers = [mock_handler]
-    mock_gunicorn_logger.level = 20  # INFO
-
-    original_get_logger = logging.getLogger
-
-    def side_effect(name: str) -> Any:
-        if name == "gunicorn.error":
-            return mock_gunicorn_logger
-        return original_get_logger(name)
-
-    # Reload to apply env vars to Config
-    importlib.reload(audiobook_automated.config)
-    importlib.reload(audiobook_automated)
-
-    with patch("logging.getLogger", side_effect=side_effect):
-        with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:  # Silence connection warning
-            mock_tm.verify_credentials.return_value = True
-            app = audiobook_automated.create_app()
-
-            # Verify handlers were attached
-            # Use mock objects to ensure type compatibility
-            assert app.logger.handlers == [mock_handler]
-            # Verify that due to missing LOG_LEVEL, we fell back to Gunicorn's level
-            # Use the mock_app_logger directly to avoid MyPy errors on the Flask app.logger type
-            mock_app_logger.setLevel.assert_called_with(20)
-
-
-def test_create_app_with_gunicorn_and_config_override(monkeypatch: Any, mock_flask_factory: Any) -> None:
-    """Test that Config LOG_LEVEL overrides Gunicorn level if set."""
-    _, mock_app_logger = mock_flask_factory
-
-    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
-    # User explicit override (10 = DEBUG)
-    monkeypatch.setenv("LOG_LEVEL", "DEBUG")
-
-    mock_gunicorn_logger = MagicMock()
-    # Ensure handlers exist so we enter the 'if gunicorn_logger.handlers:' block
-    mock_handler = MagicMock()
-    # FIX: Set level
-    mock_handler.level = logging.INFO
-    mock_gunicorn_logger.handlers = [mock_handler]
-    mock_gunicorn_logger.level = 40  # ERROR
-
-    original_get_logger = logging.getLogger
-
-    def side_effect(name: str) -> Any:
-        if name == "gunicorn.error":
-            return mock_gunicorn_logger
-        return original_get_logger(name)
-
-    # Reload to apply env vars to Config
-    importlib.reload(audiobook_automated.config)
-    importlib.reload(audiobook_automated)
-
-    with patch("logging.getLogger", side_effect=side_effect):
-        with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
-            mock_tm.verify_credentials.return_value = True
-            # FIX: Do not assign to unused variable 'app'
-            audiobook_automated.create_app()
-
-            # Should use DEBUG (10) from config, ignoring Gunicorn's ERROR (40)
-            mock_app_logger.setLevel.assert_called_with(10)

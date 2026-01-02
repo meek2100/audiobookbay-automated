@@ -4,6 +4,8 @@
 import logging
 import os
 
+from .utils import parse_bool
+
 
 def parse_env_int(key: str, default: int) -> int:
     """Parse an integer environment variable safely.
@@ -27,24 +29,6 @@ def parse_env_int(key: str, default: int) -> int:
         return default
 
 
-def parse_env_bool(key: str, default: bool = False) -> bool:
-    """Parse a boolean environment variable safely.
-
-    Supports '1', 'true', 'yes', 'on' (case-insensitive) as True.
-
-    Args:
-        key: The environment variable key.
-        default: The default value if missing.
-
-    Returns:
-        bool: The parsed boolean.
-    """
-    val = os.getenv(key)
-    if val is None:
-        return default
-    return val.strip().lower() in ("1", "true", "yes", "on")
-
-
 class Config:
     """Centralized configuration for the Flask application.
 
@@ -55,8 +39,8 @@ class Config:
     # nosec B105: Default key is intentional for development; validation logic handles warning user.
     # noqa: S105  # Ruff flag for hardcoded password
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
-    FLASK_DEBUG: bool = parse_env_bool("FLASK_DEBUG", False)
-    TESTING: bool = parse_env_bool("TESTING", False)
+    FLASK_DEBUG: bool = parse_bool(os.getenv("FLASK_DEBUG"), False)
+    TESTING: bool = parse_bool(os.getenv("TESTING"), False)
 
     # Static Asset Caching (1 Year)
     SEND_FILE_MAX_AGE_DEFAULT: int = 31536000
@@ -119,7 +103,7 @@ class Config:
     SCRAPER_TIMEOUT: int = parse_env_int("SCRAPER_TIMEOUT", 30)
 
     # Splash Screen Configuration
-    SPLASH_ENABLED: bool = parse_env_bool("SPLASH_ENABLED", True)
+    SPLASH_ENABLED: bool = parse_bool(os.getenv("SPLASH_ENABLED"), True)
     SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", "The Crow's Nest")
     SPLASH_MESSAGE: str = os.getenv(
         "SPLASH_MESSAGE",

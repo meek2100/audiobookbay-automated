@@ -2,7 +2,7 @@
 """Strategy implementation for qBittorrent."""
 
 import logging
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, cast, override
 
 from qbittorrentapi import Client as QbClient
 
@@ -33,6 +33,7 @@ class Strategy(TorrentClientStrategy):
         super().__init__(*args, **kwargs)
         self.client: QbClient | None = None
 
+    @override
     def connect(self) -> None:
         """Connect to the qBittorrent client."""
         self.client = QbClient(
@@ -44,6 +45,7 @@ class Strategy(TorrentClientStrategy):
         )
         self.client.auth_log_in()
 
+    @override
     def close(self) -> None:
         """Close the qBittorrent client session."""
         if self.client:
@@ -54,6 +56,7 @@ class Strategy(TorrentClientStrategy):
                 logger.debug(f"Error closing qBittorrent connection: {e}")
             self.client = None
 
+    @override
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
         """Add a magnet link to qBittorrent."""
         if not self.client:
@@ -66,12 +69,14 @@ class Strategy(TorrentClientStrategy):
         if isinstance(result, str) and result.lower() == "fails.":
             logger.warning(f"qBittorrent returned failure response: {result}")
 
+    @override
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from qBittorrent."""
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
         self.client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)
 
+    @override
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Get torrent status from qBittorrent."""
         if not self.client:
@@ -81,13 +86,13 @@ class Strategy(TorrentClientStrategy):
         qb_torrents = cast(list[QbTorrentProtocol], self.client.torrents_info(category=category))
         for qb_torrent in qb_torrents:
             results.append(
-                {
-                    "id": qb_torrent.hash,
-                    "name": qb_torrent.name,
+                TorrentStatus(
+                    id=qb_torrent.hash,
+                    name=qb_torrent.name,
                     # qB API returns progress as 0.0-1.0 float, normalize to 0.0-100.0
-                    "progress": round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
-                    "state": qb_torrent.state,
-                    "size": format_size(qb_torrent.total_size),
-                }
+                    progress=round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
+                    state=qb_torrent.state,
+                    size=format_size(qb_torrent.total_size),
+                )
             )
         return results

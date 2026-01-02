@@ -17,7 +17,12 @@ from requests.adapters import HTTPAdapter
 from requests.sessions import Session
 from urllib3.util.retry import Retry
 
-from audiobook_automated.constants import DEFAULT_MIRRORS, DEFAULT_TRACKERS, USER_AGENTS
+from audiobook_automated.constants import (
+    DEFAULT_MIRRORS,
+    DEFAULT_TRACKERS,
+    MIRROR_CHECK_THREADS,
+    USER_AGENTS,
+)
 from audiobook_automated.scraper.parser import BookDetails, BookSummary
 
 logger = logging.getLogger(__name__)
@@ -26,7 +31,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_CONCURRENT_REQUESTS = 3
 _semaphore: threading.BoundedSemaphore = threading.BoundedSemaphore(DEFAULT_CONCURRENT_REQUESTS)
 # Executor for mirror availability checks to prevent thread churn
-_mirror_executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(max_workers=5)
+_mirror_executor: concurrent.futures.ThreadPoolExecutor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=MIRROR_CHECK_THREADS
+)
 CACHE_LOCK = threading.Lock()
 
 
@@ -98,8 +105,8 @@ def get_trackers() -> list[str]:
         return result
 
     try:
-        base_dir = Path(__file__).resolve().parents[2]
-        json_path = base_dir / "trackers.json"
+        # Use CWD (Container Workdir /app) to resolve trackers.json reliably in production
+        json_path = Path.cwd() / "trackers.json"
 
         if json_path.exists():
             with open(json_path, encoding="utf-8") as f:

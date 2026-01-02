@@ -145,7 +145,7 @@ def test_get_status_deluge() -> None:
         results = strategy.get_status("cat")
 
         assert len(results) == 1
-        assert results[0]["name"] == "D Book"
+        assert results[0].name == "D Book"
 
 
 def test_get_status_deluge_with_label_plugin() -> None:
@@ -366,7 +366,7 @@ def test_get_status_deluge_invalid_item_type() -> None:
 
         # Should skip the bad one and process the good one
         assert len(results) == 1
-        assert results[0]["name"] == "Good Book"
+        assert results[0].name == "Good Book"
 
 
 def test_get_status_deluge_robustness() -> None:
@@ -386,9 +386,9 @@ def test_get_status_deluge_robustness() -> None:
         results = strategy.get_status("cat")
 
         assert len(results) == 1
-        assert results[0]["name"] == "Broken Book"
-        assert results[0]["progress"] == 0.0
-        assert results[0]["size"] == "Unknown"
+        assert results[0].name == "Broken Book"
+        assert results[0].progress == 0.0
+        assert results[0].size == "Unknown"
 
 
 def test_get_status_deluge_malformed_data() -> None:
@@ -408,9 +408,9 @@ def test_get_status_deluge_malformed_data() -> None:
         results = strategy.get_status("cat")
 
         assert len(results) == 1
-        assert results[0]["name"] == "Bad Data"
-        assert results[0]["progress"] == 0.0
-        assert results[0]["size"] == "100.00 B"
+        assert results[0].name == "Bad Data"
+        assert results[0].progress == 0.0
+        assert results[0].size == "100.00 B"
 
 
 def test_get_status_deluge_unexpected_data_type() -> None:
