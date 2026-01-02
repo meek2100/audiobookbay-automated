@@ -213,6 +213,7 @@ def test_calculate_static_hash_oserror(tmp_path: Path) -> None:
         h = calculate_static_hash(static_dir)
         assert len(h) == 8
 
+
 def test_calculate_static_hash_os_error_read(tmp_path: Path) -> None:
     """Test that hash calculation handles OSError during file reading.
 

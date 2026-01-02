@@ -6,7 +6,7 @@ import os
 import sys
 from collections.abc import Generator
 from typing import Any
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

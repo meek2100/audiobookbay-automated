@@ -1,11 +1,10 @@
 # File: tests/unit/clients/test_base.py
 """Unit tests for base client logic."""
 
-from typing import Any
+from typing import Any, override
 from unittest.mock import MagicMock
 
 import pytest
-from typing_extensions import override
 
 from audiobook_automated.clients.base import TorrentClientStrategy, TorrentStatus
 from audiobook_automated.utils import format_size

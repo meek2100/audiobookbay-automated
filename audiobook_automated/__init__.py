@@ -2,7 +2,6 @@
 """Main application package for AudiobookBay Automated."""
 
 import logging
-import os
 from pathlib import Path
 
 from flask import Flask, Response, request

@@ -3,7 +3,6 @@
 
 import logging
 from dataclasses import asdict
-from pathlib import Path
 from typing import Any, cast
 
 import requests
