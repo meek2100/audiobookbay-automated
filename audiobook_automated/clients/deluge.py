@@ -2,10 +2,9 @@
 """Strategy implementation for Deluge."""
 
 import logging
-from typing import Any
+from typing import Any, override
 
 from deluge_web_client import DelugeWebClient
-from typing_extensions import override
 from deluge_web_client.schema import TorrentOptions
 
 from audiobook_automated.utils import format_size
