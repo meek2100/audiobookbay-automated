@@ -79,7 +79,7 @@ filterwarnings = ["ignore::DeprecationWarning:bs4.*"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["B", "D", "E", "F", "I", "S", "UP", "PL"]

@@ -323,3 +323,24 @@ def test_shutdown_network() -> None:
 
         # Verify it called shutdown with correct params for Python 3.9+ behavior
         mock_executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+
+
+def test_get_trackers_json_invalid_syntax(mock_app_context: Any) -> None:
+    """Test when trackers.json exists but contains invalid JSON syntax."""
+    network.tracker_cache.clear()
+    mock_app_context.config["MAGNET_TRACKERS"] = []
+
+    with patch("pathlib.Path.exists", return_value=True):
+        # Use mock_open but make the read return invalid JSON text
+        with patch("builtins.open", mock_open(read_data="{invalid_json")):
+            with patch("audiobook_automated.scraper.network.logger") as mock_logger:
+                trackers = network.get_trackers()
+
+                # Should fallback to defaults
+                assert trackers == DEFAULT_TRACKERS
+
+                # Verify warning was logged
+                args, _ = mock_logger.warning.call_args
+                # The actual message depends on the implementation, but it usually catches JSONDecodeError
+                # checking for "Failed to load" or similar
+                assert "Failed to load trackers.json" in args[0]

@@ -2,9 +2,10 @@
 """Strategy implementation for Transmission."""
 
 import logging
-from typing import Any, Literal, cast, override
+from typing import Any, Literal, cast
 
 from transmission_rpc import Client as TxClient
+from typing_extensions import override
 
 from audiobook_automated.utils import format_size
 

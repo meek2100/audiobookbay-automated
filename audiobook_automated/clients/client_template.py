@@ -10,7 +10,9 @@ Instructions for Developers:
 """
 
 import logging
-from typing import Any, override
+from typing import Any
+
+from typing_extensions import override
 
 from .base import TorrentClientStrategy, TorrentStatus
 
