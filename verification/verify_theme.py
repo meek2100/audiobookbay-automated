@@ -1,4 +1,6 @@
+# File: verification/verify_theme.py
 from playwright.sync_api import Page, expect, sync_playwright
+
 
 def verify_theme_toggle(page: Page):
     # Load the page
@@ -42,6 +44,7 @@ def verify_theme_toggle(page: Page):
     expect(html).to_have_attribute("data-theme", "purple")
 
     print("Theme verification passed!")
+
 
 if __name__ == "__main__":
     with sync_playwright() as p:

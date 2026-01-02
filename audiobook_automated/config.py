@@ -118,6 +118,15 @@ class Config:
     # Separated from Gunicorn timeout to ensure internal requests fail faster than the worker kill timer.
     SCRAPER_TIMEOUT: int = parse_env_int("SCRAPER_TIMEOUT", 30)
 
+    # Splash Screen Configuration
+    SPLASH_ENABLED: bool = parse_env_bool("SPLASH_ENABLED", True)
+    SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", "The Crow's Nest")
+    SPLASH_MESSAGE: str = os.getenv(
+        "SPLASH_MESSAGE",
+        "Merry Christmas Kimber and welcome to The Crow's Nest,<br>where you can snuggle up and read or listen to any book.",
+    )
+    SPLASH_DURATION: int = parse_env_int("SPLASH_DURATION", 4500)
+
     @property
     def LIBRARY_RELOAD_ENABLED(self) -> bool:
         """Determine if Audiobookshelf integration is enabled.

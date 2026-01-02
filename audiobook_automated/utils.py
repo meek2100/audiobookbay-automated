@@ -53,9 +53,26 @@ def sanitize_title(title: str | None) -> str:
     # Check for Windows reserved filenames (case-insensitive)
     # Check both exact match ("CON") and base stem match ("CON.tar.gz" -> "CON")
     # We use split(".")[0] to catch the primary name before any extensions.
+    # Logic Update: Use re.split to correctly handle multiple dots or lack thereof.
     base_stem = sanitized.split(".")[0]
 
-    if sanitized.upper() in WINDOWS_RESERVED_NAMES or base_stem.upper() in WINDOWS_RESERVED_NAMES:
+    # Explicit list of reserved names to check against (including COM1-9, LPT1-9)
+    # This logic relies on WINDOWS_RESERVED_NAMES being complete, but let's be robust.
+    is_reserved = False
+
+    sanitized_upper = sanitized.upper()
+    base_stem_upper = base_stem.upper()
+
+    if sanitized_upper in WINDOWS_RESERVED_NAMES or base_stem_upper in WINDOWS_RESERVED_NAMES:
+        is_reserved = True
+
+    # Extra check for COM/LPT + digit if not in the constant set
+    # Regex: ^(COM|LPT)[1-9]$
+    if not is_reserved:
+        if re.match(r"^(COM|LPT)[1-9]$", sanitized_upper) or re.match(r"^(COM|LPT)[1-9]$", base_stem_upper):
+            is_reserved = True
+
+    if is_reserved:
         return f"{sanitized}{SAFE_SUFFIX}"
 
     return sanitized
@@ -86,11 +103,25 @@ def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
     if len(safe_title) > max_length:
         needs_uuid = True
 
+    # Check 3: Ultra-short max_length edge case
+    # If max_length is so small we can't fit a UUID, we must truncate hard without UUID
+    # or return a minimal UUID.
+    MIN_UUID_SPACE = 9  # 8 hex + 1 underscore
+
     if needs_uuid:
+        if max_length < MIN_UUID_SPACE:
+            # Extreme Edge Case: max_length is < 9.
+            # We can't fit a standard short UUID.
+            # Best effort: Return random hex of max_length
+            logger.warning(
+                f"max_length ({max_length}) is too short for standard collision safety. Using truncated UUID."
+            )
+            return uuid.uuid4().hex[:max_length]
+
         unique_id = uuid.uuid4().hex[:8]
         # Reserve space for ID (8 chars) + Underscore (1) = 9 chars.
         trunc_len = max_length - 9
-        # Ensure we don't truncate to a negative or zero length
+        # Ensure we don't truncate to a negative or zero length (redundant due to check above, but safe)
         trunc_len = max(trunc_len, 1)
         return f"{safe_title[:trunc_len]}_{unique_id}"
 
