@@ -96,12 +96,12 @@ class Strategy(TorrentClientStrategy):
                 progress = tx_torrent.progress or 0.0
 
                 results.append(
-                    {
-                        "id": str(tx_torrent.id),
-                        "name": tx_torrent.name,
-                        "progress": progress,
-                        "state": tx_torrent.status.name,
-                        "size": format_size(tx_torrent.total_size),
-                    }
+                    TorrentStatus(
+                        id=str(tx_torrent.id),
+                        name=tx_torrent.name,
+                        progress=progress,
+                        state=tx_torrent.status.name,
+                        size=format_size(tx_torrent.total_size),
+                    )
                 )
         return results

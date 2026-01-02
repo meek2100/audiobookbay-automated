@@ -65,9 +65,13 @@ def test_library_reload_injection(client: Any) -> None:
 
 def test_status_page(client: Any) -> None:
     """Test that the status page renders active downloads correctly."""
+    from audiobook_automated.clients.base import TorrentStatus
+
     # FIX: Patch where it is imported in routes.py
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-        mock_tm.get_status.return_value = [{"name": "Book 1", "progress": 50, "state": "Downloading", "size": "100 MB"}]
+        mock_tm.get_status.return_value = [
+            TorrentStatus(id="1", name="Book 1", progress=50, state="Downloading", size="100 MB")
+        ]
         response = client.get("/status")
         assert response.status_code == 200
         assert b"Book 1" in response.data
@@ -102,9 +106,11 @@ def test_status_page_json_response(client: Any) -> None:
     This verifies the frontend polling mechanism works (fixes the hermeneutic gap
     between frontend expectations and backend delivery).
     """
+    from audiobook_automated.clients.base import TorrentStatus
+
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [
-            {"id": "1", "name": "JSON Book", "progress": 99.9, "state": "Seeding", "size": "500 MB"}
+            TorrentStatus(id="1", name="JSON Book", progress=99.9, state="Seeding", size="500 MB")
         ]
 
         response = client.get("/status?json=1")

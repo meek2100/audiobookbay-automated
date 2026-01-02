@@ -2,7 +2,7 @@
 """Unit tests for the TorrentManager."""
 
 import importlib
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -308,10 +308,12 @@ def test_add_magnet_retry_coverage(app: Flask, setup_manager: Any) -> None:
 
 def test_get_status_retry_coverage(app: Flask, setup_manager: Any) -> None:
     """Test retry logic in get_status."""
+    from audiobook_automated.clients.base import TorrentStatus
+
     manager = setup_manager(app)
 
     strategy_mock = MagicMock()
-    mock_status = cast(list[TorrentStatus], [{"name": "test"}])
+    mock_status = [TorrentStatus(id="1", name="test", progress=0.0, state="ok", size="10MB")]
     strategy_mock.get_status.return_value = mock_status
 
     with patch.object(manager, "_get_strategy") as mock_get_strat:  # pyright: ignore[reportPrivateUsage]
@@ -324,9 +326,12 @@ def test_get_status_retry_coverage(app: Flask, setup_manager: Any) -> None:
             status = manager.get_status()
 
             assert len(status) == 1
-            assert status[0]["name"] == "test"
+            assert status[0].name == "test"
+
             assert mock_logger.warning.called
             assert "Reconnecting" in str(mock_logger.warning.call_args[0][0])
+
+    assert manager._local.strategy is None  # pyright: ignore[reportPrivateUsage]
 
 
 def test_force_disconnect_exception_handling(app: Flask, setup_manager: Any) -> None:

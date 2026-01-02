@@ -111,12 +111,12 @@ class Strategy(TorrentClientStrategy):
 
         # Example Loop:
         # for t in torrents:
-        #     results.append({
-        #         "id": t.hash,
-        #         "name": t.name,
-        #         "progress": t.progress_percent,  # Must be 0.0 - 100.0
-        #         "state": t.state,                # e.g., 'Downloading', 'Seeding'
-        #         "size": format_size(t.size_bytes)
-        #     })
+        #     results.append(TorrentStatus(
+        #         id=t.hash,
+        #         name=t.name,
+        #         progress=t.progress_percent,  # Must be 0.0 - 100.0
+        #         state=t.state,                # e.g., 'Downloading', 'Seeding'
+        #         size=format_size(t.size_bytes)
+        #     ))
 
         return results

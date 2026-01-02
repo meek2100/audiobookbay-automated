@@ -136,14 +136,14 @@ class Strategy(TorrentClientStrategy):
                         progress = 0.0
 
                     results.append(
-                        {
-                            "id": key,
-                            "name": deluge_data.get("name", "Unknown"),
-                            "progress": progress,
-                            "state": deluge_data.get("state", "Unknown"),
+                        TorrentStatus(
+                            id=key,
+                            name=deluge_data.get("name", "Unknown"),
+                            progress=progress,
+                            state=deluge_data.get("state", "Unknown"),
                             # FIX: Use public utility format_size
-                            "size": format_size(deluge_data.get("total_size")),
-                        }
+                            size=format_size(deluge_data.get("total_size")),
+                        )
                     )
             else:
                 logger.warning(f"Deluge returned unexpected data type: {type(deluge_torrents.result)}")

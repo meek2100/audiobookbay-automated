@@ -23,8 +23,9 @@ def test_health_check(client: FlaskClient) -> None:
 
 def test_health_check_failure(client: FlaskClient) -> None:
     """Test the health check endpoint when client is disconnected."""
-    from audiobook_automated.extensions import torrent_manager
     from unittest.mock import patch
+
+    from audiobook_automated.extensions import torrent_manager
 
     # We patch the instance that is already imported
     with patch.object(torrent_manager, "verify_credentials", return_value=False):
@@ -198,12 +199,16 @@ def test_reload_library_success(client: FlaskClient) -> None:
 
 def test_status_json(client: FlaskClient) -> None:
     """Test status endpoint returning JSON."""
-    mock_status = [{"id": "1", "name": "Book", "progress": 50.0}]
+    from audiobook_automated.clients.base import TorrentStatus
+
+    mock_status = [TorrentStatus(id="1", name="Book", progress=50.0, state="Downloading", size="100 MB")]
+    expected_json = [{"id": "1", "name": "Book", "progress": 50.0, "state": "Downloading", "size": "100 MB"}]
+
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = mock_status
         response = client.get("/status?json=1")
         assert response.status_code == 200
-        assert response.json == mock_status
+        assert response.json == expected_json
 
 
 def test_send_sanitization_warning(client: FlaskClient, caplog: Any) -> None:

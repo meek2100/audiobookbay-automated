@@ -95,6 +95,9 @@ DEFAULT_MIRRORS: Final[list[str]] = [
     "audiobookbay.pl",
 ]
 
+# Concurrency setting for mirror availability checks
+MIRROR_CHECK_THREADS: Final[int] = 5
+
 # Default public trackers to ensure magnet links have connectivity.
 DEFAULT_TRACKERS: Final[list[str]] = [
     "udp://tracker.openbittorrent.com:80",

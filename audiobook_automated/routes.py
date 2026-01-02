@@ -19,7 +19,7 @@ from audiobook_automated.constants import (
 from .extensions import limiter, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .scraper.parser import BookSummary
-from .utils import construct_safe_save_path, get_application_version, sanitize_title
+from .utils import construct_safe_save_path, get_application_version, parse_bool, sanitize_title
 
 logger = logging.getLogger(__name__)
 
@@ -287,17 +287,14 @@ def status() -> str | Response | tuple[Response, int]:
         str | Response: Rendered HTML, JSON data, or Error Response.
     """
     # Robust boolean parsing
-    json_arg = request.args.get("json", "").lower()
-    is_json = json_arg in ("1", "true", "yes", "on")
+    is_json = parse_bool(request.args.get("json", ""))
 
     try:
         torrent_list = torrent_manager.get_status()
 
         if is_json:
-            # FIX: Suppress Pyright error because TorrentStatus is TypedDict (dict), but runtime objects might be dataclasses
-            # if strategies are updated in the future.
-            # Pyright sees unnecessary isinstance; MyPy is fine. Use pyright-specific ignore.
-            return jsonify([asdict(t) if not isinstance(t, dict) else t for t in torrent_list])  # pyright: ignore[reportUnnecessaryIsInstance]
+            # Assumes torrent_manager.get_status returns Dataclasses as per architectural requirements.
+            return jsonify([asdict(t) for t in torrent_list])
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
         return render_template("status.html", torrents=torrent_list)

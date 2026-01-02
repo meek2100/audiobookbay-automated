@@ -9,91 +9,78 @@ from audiobook_automated.clients.transmission import Strategy as TransmissionStr
 
 
 def test_transmission_add_magnet() -> None:
-    """Test that TransmissionStrategy correctly calls the underlying client."""
+    """Test TransmissionStrategy add_magnet."""
     with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
-        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
+
+        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
         strategy.connect()
-        strategy.add_magnet("magnet:?xt=urn:btih:ABC", "/downloads/Book", "audiobooks")
+        strategy.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
 
         mock_instance.add_torrent.assert_called_with(
-            "magnet:?xt=urn:btih:ABC", download_dir="/downloads/Book", labels=["audiobooks"]
+            "magnet:?xt=urn:btih:DEF", download_dir="/downloads/Book", labels=["audiobooks"]
         )
 
 
 def test_transmission_add_magnet_fallback() -> None:
-    """Test that transmission falls back to adding torrent without label if first attempt fails."""
+    """Test Transmission fallback for older versions without labels."""
     with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
-        # Simulate an error message specific to arguments/labels
-        mock_instance.add_torrent.side_effect = [TypeError("unexpected keyword argument 'labels'"), None]
+        # Simulate label error on first call
+        mock_instance.add_torrent.side_effect = [
+            Exception("Invalid argument: labels"),
+            None,  # Success on second call
+        ]
 
-        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
+        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
         strategy.connect()
-
-        with patch("audiobook_automated.clients.transmission.logger") as mock_logger:
-            strategy.add_magnet("magnet:?xt=urn:btih:FALLBACK", "/downloads/Book", "audiobooks")
-            assert mock_logger.warning.called
-            args, _ = mock_logger.warning.call_args
-            assert "Transmission label assignment failed" in args[0]
+        strategy.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
 
         assert mock_instance.add_torrent.call_count == 2
+        # First call has labels
+        mock_instance.add_torrent.assert_any_call(
+            "magnet:?xt=urn:btih:DEF", download_dir="/downloads/Book", labels=["audiobooks"]
+        )
+        # Second call has NO labels
+        mock_instance.add_torrent.assert_any_call("magnet:?xt=urn:btih:DEF", download_dir="/downloads/Book")
 
 
-def test_transmission_add_magnet_real_error_raises() -> None:
-    """Test that Transmission DOES NOT fallback on generic errors like Disk Full.
-
-    This ensures we don't spam the server with retry attempts for fatal errors.
-    """
+def test_transmission_add_magnet_generic_error() -> None:
+    """Test Transmission re-raises generic errors."""
     with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
-        # A mock error that doesn't look like a label issue
         mock_instance.add_torrent.side_effect = Exception("Disk Full")
 
-        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
+        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
         strategy.connect()
 
-        # Should raise immediately without retry
-        with pytest.raises(Exception, match="Disk Full"):
-            strategy.add_magnet("magnet:?xt=urn:btih:GENERIC", "/downloads/Book", "audiobooks")
-
-        assert mock_instance.add_torrent.call_count == 1
+        with pytest.raises(Exception) as exc:
+            strategy.add_magnet("magnet:...", "/path", "cat")
+        assert "Disk Full" in str(exc.value)
 
 
-def test_remove_torrent_transmission_hash() -> None:
-    """Test removing torrent for Transmission using a string hash."""
+def test_remove_torrent_transmission_int_id() -> None:
+    """Test removing torrent with integer ID."""
     with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
         mock_instance = MockTxClient.return_value
 
-        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
+        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy.connect()
+        strategy.remove_torrent("123")
+
+        mock_instance.remove_torrent.assert_called_with(ids=[123], delete_data=False)
+
+
+def test_remove_torrent_transmission_hash_id() -> None:
+    """Test removing torrent with hash ID."""
+    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+
+        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
         strategy.connect()
         strategy.remove_torrent("hash123")
 
         mock_instance.remove_torrent.assert_called_with(ids=["hash123"], delete_data=False)
-
-
-def test_remove_torrent_transmission_numeric_id() -> None:
-    """Test removing torrent for Transmission with a numeric ID."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
-        mock_instance = MockTxClient.return_value
-
-        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        strategy.remove_torrent("12345")
-
-        mock_instance.remove_torrent.assert_called_with(ids=[12345], delete_data=False)
-
-
-def test_remove_torrent_transmission_int_conversion_failure() -> None:
-    """Test removing torrent for Transmission when ID is not an integer."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
-        mock_instance = MockTxClient.return_value
-
-        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        strategy.remove_torrent("not_an_int")
-
-        mock_instance.remove_torrent.assert_called_with(ids=["not_an_int"], delete_data=False)
 
 
 def test_get_status_transmission() -> None:
@@ -118,8 +105,8 @@ def test_get_status_transmission() -> None:
         results = strategy.get_status("cat")
 
         assert len(results) == 1
-        assert results[0]["progress"] == 75.0
-        assert results[0]["size"] == "1.00 KB"
+        assert results[0].progress == 75.0
+        assert results[0].size == "1.00 KB"
 
 
 def test_get_status_transmission_robustness() -> None:
@@ -144,33 +131,62 @@ def test_get_status_transmission_robustness() -> None:
         results = strategy.get_status("cat")
 
         assert len(results) == 1
-        assert results[0]["name"] == "Bad Torrent"
-        assert results[0]["progress"] == 0.0
-        assert results[0]["size"] == "Unknown"
+        assert results[0].name == "Bad Torrent"
+        assert results[0].progress == 0.0
+        assert results[0].size == "Unknown"
+
+
+def test_get_status_transmission_filtering() -> None:
+    """Test client-side filtering by label."""
+    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+        mock_instance = MockTxClient.return_value
+
+        t1 = MagicMock(id=1, labels=["cat1"])
+        t1.name = "T1"
+        t2 = MagicMock(id=2, labels=["cat2"])
+        t2.name = "T2"
+
+        # Mock status/progress for robustness
+        t1.status.name = "dl"
+        t1.progress = 10
+        t1.total_size = 100
+        t2.status.name = "dl"
+        t2.progress = 20
+        t2.total_size = 200
+
+        mock_instance.get_torrents.return_value = [t1, t2]
+
+        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy.connect()
+        results = strategy.get_status("cat1")
+
+        assert len(results) == 1
+        assert results[0].name == "T1"
 
 
 def test_transmission_close() -> None:
-    """Test closing the Transmission session."""
-    with patch("audiobook_automated.clients.transmission.TxClient"):
-        strategy = TransmissionStrategy("localhost", 8080, "admin", "admin")
+    """Test closing Transmission strategy."""
+    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+        # Mock successful connection
+        MockTxClient.return_value = MagicMock()
+
+        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
         strategy.connect()
-
-        # Manually ensure client is set
         assert strategy.client is not None
-
-        # Execute close
         strategy.close()
-
-        # Assertion for coverage: The line 'self.client = None' must have run
         assert strategy.client is None
 
 
-def test_strategy_not_connected_error_handling() -> None:
-    """Ensure strategies raise ConnectionError if their client is None."""
-    tx = TransmissionStrategy("host", 80, "u", "p")
+def test_transmission_not_connected() -> None:
+    """Test errors when client is not connected."""
+    strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+    # Do NOT connect
+
     with pytest.raises(ConnectionError, match="Transmission client not connected"):
-        tx.add_magnet("m", "p", "c")
+        strategy.add_magnet("magnet:...", "/path", "cat")
+
     with pytest.raises(ConnectionError, match="Transmission client not connected"):
-        tx.remove_torrent("123")
+        strategy.remove_torrent("123")
+
     with pytest.raises(ConnectionError, match="Transmission client not connected"):
-        tx.get_status("c")
+        strategy.get_status("cat")

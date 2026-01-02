@@ -2,11 +2,13 @@
 """Base classes and types for torrent clients."""
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, TypedDict
+from dataclasses import dataclass
+from typing import Any, ClassVar
 
 
-class TorrentStatus(TypedDict):
-    """TypedDict representing a standardized torrent status object."""
+@dataclass
+class TorrentStatus:
+    """Dataclass representing a standardized torrent status object."""
 
     id: str | int
     name: str

@@ -252,6 +252,23 @@ def format_size(size_bytes: int | float | str | None) -> str:
         return "Unknown"
 
 
+def parse_bool(value: str | None, default: bool = False) -> bool:
+    """Parse a boolean value safely from string or None.
+
+    Supports '1', 'true', 'yes', 'on' (case-insensitive) as True.
+
+    Args:
+        value: The string value to parse (e.g. from environment variable).
+        default: The default value if the input is None.
+
+    Returns:
+        bool: The parsed boolean.
+    """
+    if value is None:
+        return default
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
+
 if __name__ == "__main__":  # pragma: no cover
     # Script entry point for Docker build time optimization.
     # Calculates the hash of the static directory relative to this file

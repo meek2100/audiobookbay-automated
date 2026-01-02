@@ -81,13 +81,13 @@ class Strategy(TorrentClientStrategy):
         qb_torrents = cast(list[QbTorrentProtocol], self.client.torrents_info(category=category))
         for qb_torrent in qb_torrents:
             results.append(
-                {
-                    "id": qb_torrent.hash,
-                    "name": qb_torrent.name,
+                TorrentStatus(
+                    id=qb_torrent.hash,
+                    name=qb_torrent.name,
                     # qB API returns progress as 0.0-1.0 float, normalize to 0.0-100.0
-                    "progress": round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
-                    "state": qb_torrent.state,
-                    "size": format_size(qb_torrent.total_size),
-                }
+                    progress=round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
+                    state=qb_torrent.state,
+                    size=format_size(qb_torrent.total_size),
+                )
             )
         return results
