@@ -4,13 +4,22 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from audiobook_automated.clients.qbittorrent import Strategy as QbittorrentStrategy
 
 
-def test_qbittorrent_add_magnet() -> None:
+def test_qbittorrent_add_magnet(app: Flask) -> None:
     """Test QbittorrentStrategy add_magnet."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        # Explicitly set config for test
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
+
         mock_instance = MockQbClient.return_value
         # Mock add return (modern API returns JSON/Dict usually)
         mock_instance.torrents_add.return_value = "Ok."
@@ -27,9 +36,16 @@ def test_qbittorrent_add_magnet() -> None:
         )
 
 
-def test_qbittorrent_add_magnet_legacy_fail() -> None:
+def test_qbittorrent_add_magnet_legacy_fail(app: Flask) -> None:
     """Test that qBittorrent legacy 'Fails.' response raises ConnectionError."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
+
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Fails."
 
@@ -40,9 +56,16 @@ def test_qbittorrent_add_magnet_legacy_fail() -> None:
             strategy.add_magnet("magnet:...", "/path", "cat")
 
 
-def test_remove_torrent_qbittorrent() -> None:
+def test_remove_torrent_qbittorrent(app: Flask) -> None:
     """Test removing torrent for qBittorrent."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
+
         mock_instance = MockQbClient.return_value
 
         strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
@@ -52,9 +75,16 @@ def test_remove_torrent_qbittorrent() -> None:
         mock_instance.torrents_delete.assert_called_with(torrent_hashes="hash123", delete_files=False)
 
 
-def test_get_status_qbittorrent() -> None:
+def test_get_status_qbittorrent(app: Flask) -> None:
     """Test fetching status from qBittorrent."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
+
         mock_instance = MockQbClient.return_value
 
         mock_torrent = MagicMock()
@@ -76,9 +106,16 @@ def test_get_status_qbittorrent() -> None:
         assert results[0].size == "1.00 MB"
 
 
-def test_qbittorrent_close() -> None:
+def test_qbittorrent_close(app: Flask) -> None:
     """Test closing the qBittorrent strategy."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
+
         mock_instance = MockQbClient.return_value
 
         strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
@@ -90,9 +127,16 @@ def test_qbittorrent_close() -> None:
         assert strategy.client is None
 
 
-def test_qbittorrent_close_exception() -> None:
+def test_qbittorrent_close_exception(app: Flask) -> None:
     """Test closing qBittorrent with exception (should be swallowed/logged)."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
+
         mock_instance = MockQbClient.return_value
         mock_instance.auth_log_out.side_effect = Exception("Logout Failed")
 
@@ -107,9 +151,16 @@ def test_qbittorrent_close_exception() -> None:
         assert strategy.client is None
 
 
-def test_get_status_qbittorrent_robustness() -> None:
+def test_get_status_qbittorrent_robustness(app: Flask) -> None:
     """Test qBittorrent handling of None progress."""
-    with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
+
         mock_instance = MockQbClient.return_value
 
         mock_torrent = MagicMock()

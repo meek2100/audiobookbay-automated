@@ -98,7 +98,7 @@
             default_cover_filename, v=static_version) %}
             <tr
                 class="result-row"
-                data-category="{{ book.category|join(', ') }}"
+                data-category="{{ book.category|join('|') }}"
                 data-language="{{ book.language }}"
                 data-bitrate="{{ book.bitrate }}"
                 data-format="{{ book.format }}"

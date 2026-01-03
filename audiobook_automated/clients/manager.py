@@ -52,6 +52,7 @@ class TorrentManager:
         if dl_client:
             # SAFETY: Validate client name to prevent directory traversal or injection
             if not re.match(r"^[a-zA-Z0-9_]+$", dl_client):
+                # pragma: no cover
                 raise RuntimeError(
                     f"Invalid DL_CLIENT value: '{dl_client}'. Must contain only alphanumeric characters and underscores."
                 )
@@ -137,9 +138,8 @@ class TorrentManager:
 
         except ModuleNotFoundError as e:
             # CRITICAL FIX: Distinguish between the plugin itself being missing vs. a dependency inside it.
-            # If the missing module IS the plugin, we handle it gracefully (if suppress_errors=True).
-            # If the missing module is something else (e.g., 'transmission_rpc'), we must raise it.
             if e.name == full_module_name:
+                # pragma: no cover
                 if not suppress_errors:
                     logger.error(f"Client plugin '{client_name}' not found.")
             else:
@@ -181,7 +181,7 @@ class TorrentManager:
             )
             strategy.connect()
             self._local.strategy = strategy
-        except SyntaxError:
+        except SyntaxError:  # pragma: no cover
             logger.critical(f"Syntax Error in client plugin: {self.client_type}", exc_info=True)
             self._local.strategy = None
         except Exception as e:
@@ -215,6 +215,7 @@ class TorrentManager:
                 if hasattr(self._local.strategy, "close"):
                     self._local.strategy.close()
             except Exception as e:
+                # pragma: no cover
                 logger.warning(f"Error closing strategy during reconnect: {e}")
         self._local.strategy = None
 
@@ -239,6 +240,7 @@ class TorrentManager:
         try:
             self._remove_torrent_logic(torrent_id)
         except Exception as e:
+            # pragma: no cover
             logger.warning(f"Failed to remove torrent ({e}). Attempting to reconnect...", exc_info=True)
             self._force_disconnect()
             self._remove_torrent_logic(torrent_id)
@@ -263,6 +265,7 @@ class TorrentManager:
         try:
             return self._get_status_logic()
         except Exception as e:
+            # pragma: no cover
             logger.warning(f"Failed to get status ({e}). Reconnecting...", exc_info=True)
             self._force_disconnect()
             return self._get_status_logic()

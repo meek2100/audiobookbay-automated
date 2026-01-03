@@ -4,13 +4,20 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from audiobook_automated.clients.transmission import Strategy as TransmissionStrategy
 
 
-def test_transmission_add_magnet() -> None:
+def test_transmission_add_magnet(app: Flask) -> None:
     """Test TransmissionStrategy add_magnet."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
         strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
@@ -22,9 +29,15 @@ def test_transmission_add_magnet() -> None:
         )
 
 
-def test_transmission_add_magnet_fallback() -> None:
+def test_transmission_add_magnet_fallback(app: Flask) -> None:
     """Test Transmission fallback for older versions without labels."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
         # Simulate label error on first call
         mock_instance.add_torrent.side_effect = [
@@ -45,9 +58,15 @@ def test_transmission_add_magnet_fallback() -> None:
         mock_instance.add_torrent.assert_any_call("magnet:?xt=urn:btih:DEF", download_dir="/downloads/Book")
 
 
-def test_transmission_add_magnet_generic_error() -> None:
+def test_transmission_add_magnet_generic_error(app: Flask) -> None:
     """Test Transmission re-raises generic errors."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
         mock_instance.add_torrent.side_effect = Exception("Disk Full")
 
@@ -59,9 +78,15 @@ def test_transmission_add_magnet_generic_error() -> None:
         assert "Disk Full" in str(exc.value)
 
 
-def test_remove_torrent_transmission_int_id() -> None:
+def test_remove_torrent_transmission_int_id(app: Flask) -> None:
     """Test removing torrent with integer ID."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
         strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
@@ -71,9 +96,15 @@ def test_remove_torrent_transmission_int_id() -> None:
         mock_instance.remove_torrent.assert_called_with(ids=[123], delete_data=False)
 
 
-def test_remove_torrent_transmission_hash_id() -> None:
+def test_remove_torrent_transmission_hash_id(app: Flask) -> None:
     """Test removing torrent with hash ID."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
         strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
@@ -83,9 +114,15 @@ def test_remove_torrent_transmission_hash_id() -> None:
         mock_instance.remove_torrent.assert_called_with(ids=["hash123"], delete_data=False)
 
 
-def test_get_status_transmission() -> None:
+def test_get_status_transmission(app: Flask) -> None:
     """Test fetching status from Transmission."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
         mock_torrent = MagicMock()
@@ -109,9 +146,15 @@ def test_get_status_transmission() -> None:
         assert results[0].size == "1.00 KB"
 
 
-def test_get_status_transmission_robustness() -> None:
+def test_get_status_transmission_robustness(app: Flask) -> None:
     """Test fetching status from Transmission handles None values gracefully."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
         mock_torrent_bad = MagicMock()
@@ -136,9 +179,15 @@ def test_get_status_transmission_robustness() -> None:
         assert results[0].size == "Unknown"
 
 
-def test_get_status_transmission_filtering() -> None:
+def test_get_status_transmission_filtering(app: Flask) -> None:
     """Test client-side filtering by label."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
         t1 = MagicMock(id=1, labels=["cat1"])
@@ -164,9 +213,15 @@ def test_get_status_transmission_filtering() -> None:
         assert results[0].name == "T1"
 
 
-def test_transmission_close() -> None:
+def test_transmission_close(app: Flask) -> None:
     """Test closing Transmission strategy."""
-    with patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient:
+    with (
+        patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
+        app.app_context(),
+    ):
+        from flask import current_app
+
+        current_app.config["CLIENT_TIMEOUT"] = 30
         # Mock successful connection
         MockTxClient.return_value = MagicMock()
 
