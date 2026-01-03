@@ -309,3 +309,24 @@ def test_get_status_retry(app: Flask) -> None:
             assert result == []
             assert mock_strategy.get_status.call_count == 2
             mock_disconnect.assert_called_once()
+
+
+def test_load_strategy_missing_plugin_log_error() -> None:
+    """Test that missing plugin module logs error if suppress_errors=False."""
+    manager = TorrentManager()
+    manager.client_type = "ghost_client"
+
+    # We need to construct the expected full module name to match logic in manager.py
+    # package_name is usually "audiobook_automated.clients" when running tests against installed package
+    # or just "audiobook_automated.clients" if imported.
+    # The manager uses __package__ or "audiobook_automated.clients".
+
+    full_module_name = "audiobook_automated.clients.ghost_client"
+    error = ModuleNotFoundError(name=full_module_name, path="audiobook_automated/clients/ghost_client.py")
+
+    # Patch logger FIRST to avoid triggering import_module mock during patch setup
+    with patch("audiobook_automated.clients.manager.logger") as mock_logger:
+        with patch("importlib.import_module", side_effect=error):
+            strategy = manager._load_strategy_class("ghost_client", suppress_errors=False)
+            assert strategy is None
+            mock_logger.error.assert_called_with("Client plugin 'ghost_client' not found.")
