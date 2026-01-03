@@ -1,6 +1,7 @@
 # File: tests/scraper/test_integration.py
 """Integration tests for the scraper module."""
 
+from collections.abc import Generator
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -8,13 +9,13 @@ import pytest
 import requests
 import requests_mock
 from flask import Flask
-from collections.abc import Generator
 
 from audiobook_automated.scraper import search_audiobookbay
 from audiobook_automated.scraper.network import search_cache
 from audiobook_automated.scraper.parser import BookSummary
 
 # --- Search & Flow Tests ---
+
 
 @pytest.fixture(autouse=True)
 def clear_search_cache_fixture() -> Generator[None, None, None]:
