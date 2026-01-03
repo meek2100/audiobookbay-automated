@@ -177,6 +177,11 @@ def send() -> Response | tuple[Response, int]:
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
 
+    # TYPE SAFETY: Ensure link and title are strings before proceeding.
+    if details_url is not None and not isinstance(details_url, str):
+        logger.warning(f"Invalid send request: Link is not a string (Type: {type(details_url)}).")
+        raise InvalidRequestError("Invalid request: Link must be a string")
+
     # TYPE SAFETY: Ensure title is a string before calling string methods.
     if title is not None and not isinstance(title, str):
         logger.warning(f"Invalid send request: Title is not a string (Type: {type(title)}).")
@@ -184,7 +189,7 @@ def send() -> Response | tuple[Response, int]:
 
     # Check raw title existence. We must allow titles that sanitize to FALLBACK_TITLE (e.g. "...")
     # to proceed to the collision handler, rather than blocking them as "Invalid".
-    if not details_url or not title or not title.strip():
+    if not details_url or not title or not title.strip():  # pragma: no cover
         logger.warning("Invalid send request received: missing link or valid title")
         raise InvalidRequestError("Invalid request: Title or Link missing")
 
