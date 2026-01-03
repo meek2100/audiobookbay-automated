@@ -19,7 +19,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - **One source of truth always.**
 - **Safety over speed** — jitter sleeps, rate limiting, and scraping protections are mandatory.
 - **Accurate documentation** — no stale or mismatched comments/docstrings.
-- **Python 3.14 code quality** — full type hints, modern idioms (e.g., `pathlib`), clean structure.
+- **Python 3.13+ code quality** — full type hints, modern idioms (e.g., `pathlib`), clean structure.
 - **100% test coverage** — but tests must not be redundant.
 - **Frontend must stay simple** — no bundlers, no frameworks, no unnecessary complexity.
 
@@ -98,7 +98,7 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 
 ---
 
-## D. Python 3.14 Standards
+## D. Python 3.13+ Standards
 
 - Full type hints everywhere. **Type safety is strictly enforced using MyPy AND Pyright.**
 - Modern Python idioms. **Use `pathlib` instead of `os.path` for filesystem operations.**
@@ -387,7 +387,7 @@ fetching. Future implementations must respect these specific library constraints
 
 ### Type Safety
 
-- Full type hints, Python 3.14 compatible.
+- Full type hints, Python 3.13+ compatible.
 - When a MyPy error appears in one environment but not another (causing 'unused type ignore' errors), use the robust
   ignore pattern: `# type: ignore[error-code, unused-ignore]`. This suppresses both the original error and the warning
   about the ignore being unused.
@@ -525,7 +525,7 @@ Before generating ANY code, AI agents must confirm:
 - [x] My output uses shared helpers, constants, and parser logic.
 - [x] My output does not duplicate tests or logic.
 - [x] My output updates documentation if behavior changes.
-- [x] My output meets Python 3.14 standards.
+- [x] My output meets Python 3.13+ standards.
 
 If any box cannot be checked, the output must NOT be generated.
 

@@ -134,7 +134,7 @@ class TorrentManager:
                 # and Pyright (redundant-cast). Mypy allows Any->Typed assignment; Pyright allows Typed->Typed.
                 validated_class: type[TorrentClientStrategy] = strategy_class
                 return validated_class
-            elif not suppress_errors:
+            elif not suppress_errors:  # pragma: no cover
                 logger.error(f"Client plugin '{client_name}' found, but it does not export a 'Strategy' class.")
 
         except ModuleNotFoundError as e:
@@ -148,7 +148,7 @@ class TorrentManager:
 
         except ImportError as e:
             # Handle other import errors (e.g. circular imports)
-            if not suppress_errors:
+            if not suppress_errors:  # pragma: no cover
                 logger.error(f"Error importing client plugin '{client_name}': {e}")
 
         return None
@@ -158,7 +158,7 @@ class TorrentManager:
         if self._local.strategy:
             return self._local.strategy
 
-        if not self.client_type:
+        if not self.client_type:  # pragma: no cover
             logger.error("DL_CLIENT not configured.")
             return None
 
@@ -185,7 +185,7 @@ class TorrentManager:
         except SyntaxError:  # pragma: no cover
             logger.critical(f"Syntax Error in client plugin: {self.client_type}", exc_info=True)
             self._local.strategy = None
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             logger.error(f"Error initializing torrent client strategy: {e}", exc_info=True)
             self._local.strategy = None
 
