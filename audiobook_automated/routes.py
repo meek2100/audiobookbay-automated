@@ -16,7 +16,7 @@ from audiobook_automated.constants import (
 )
 from audiobook_automated.errors import AppError, InvalidRequestError, TorrentClientError
 
-from .extensions import limiter, torrent_manager
+from .extensions import limiter, talisman, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .scraper.parser import BookSummary
 from .utils import construct_safe_save_path, parse_bool, sanitize_title
@@ -64,6 +64,7 @@ def inject_global_vars() -> dict[str, Any]:
 
 
 @main_bp.route("/health")
+@talisman(force_https=False)  # type: ignore[untyped-decorator, unused-ignore]
 def health() -> Response | tuple[Response, int]:
     """Perform a comprehensive health check.
 

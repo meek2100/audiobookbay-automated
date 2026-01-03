@@ -39,6 +39,7 @@ class TorrentManager:
         self.category: str = "abb-automated"
         self.scheme: str = "http"
         self.dl_url: str | None = None
+        self.client_timeout: int = 30
 
         # Thread-local storage for client instances
         self._local = ClientLocal()
@@ -46,6 +47,7 @@ class TorrentManager:
     def init_app(self, app: Flask) -> None:
         """Initialize the TorrentManager with configuration from the Flask app."""
         config = app.config
+        self.client_timeout = config.get("CLIENT_TIMEOUT", 30)
 
         dl_client = config.get("DL_CLIENT")
 
@@ -176,6 +178,7 @@ class TorrentManager:
                 password=self.password,
                 scheme=self.scheme,
                 dl_url=self.dl_url,
+                timeout=self.client_timeout,
             )
             strategy.connect()
             self._local.strategy = strategy

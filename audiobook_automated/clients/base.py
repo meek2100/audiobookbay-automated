@@ -24,13 +24,14 @@ class TorrentClientStrategy(ABC):
     # Subclasses should override this to define their default port.
     DEFAULT_PORT: ClassVar[int] = 8080
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         host: str,
         port: int,
         username: str | None,
         password: str | None,
         scheme: str = "http",
+        timeout: int = 30,
         **kwargs: Any,
     ) -> None:
         """Initialize the client strategy configuration.
@@ -43,6 +44,7 @@ class TorrentClientStrategy(ABC):
         self.username = username
         self.password = password
         self.scheme = scheme
+        self.timeout = timeout
 
     @abstractmethod
     def connect(self) -> None:

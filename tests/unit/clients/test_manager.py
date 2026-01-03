@@ -64,6 +64,7 @@ def test_init_app_valid(app: Flask) -> None:
     app.config["DL_CLIENT"] = "test_client"
     app.config["DL_HOST"] = "localhost"
     app.config["DL_PORT"] = 1234
+    app.config["CLIENT_TIMEOUT"] = 45
 
     manager = TorrentManager()
 
@@ -77,6 +78,7 @@ def test_init_app_valid(app: Flask) -> None:
 
         assert manager.client_type == "test_client"
         assert manager.port == 1234
+        assert manager.client_timeout == 45
         # Should call speculative check
         mock_load.assert_called()
 
@@ -99,6 +101,7 @@ def test_init_app_url_parsing(app: Flask) -> None:
 def test_get_strategy_success(app: Flask) -> None:
     """Test successful strategy retrieval and connection."""
     app.config["DL_CLIENT"] = "mock_client"
+    app.config["CLIENT_TIMEOUT"] = 30
     manager = TorrentManager()
     manager.init_app(app)
 
