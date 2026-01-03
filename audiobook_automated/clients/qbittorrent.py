@@ -4,7 +4,6 @@
 import logging
 from typing import Any, Protocol, cast
 
-from flask import current_app
 from qbittorrentapi import Client as QbClient
 from typing_extensions import override
 
@@ -47,7 +46,7 @@ class Strategy(TorrentClientStrategy):
             port=self.port,
             username=self.username or "",
             password=self.password or "",
-            REQUESTS_ARGS={"timeout": current_app.config["CLIENT_TIMEOUT"]},
+            REQUESTS_ARGS={"timeout": self.timeout},
         )
         self.client.auth_log_in()
 
