@@ -137,7 +137,11 @@
                 </td>
                 <td>
                     <a href="{{ url_for('main.details', link=book.link) }}" class="details-button">Details</a>
-                    <button onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)">
+                    <button
+                        class="send-torrent-btn"
+                        data-link="{{ book.link|escape }}"
+                        data-title="{{ book.title|escape }}"
+                    >
                         Download to Server
                     </button>
                 </td>

@@ -356,3 +356,55 @@ def test_extract_table_data_empty_values() -> None:
     assert trackers == ["Unknown"]
     assert info_hash == "Unknown"
     assert size == "Fallback"
+
+
+# File: tests/scraper/test_parser_utils.py
+"""Tests for parser utility functions, specifically focusing on edge cases."""
+
+
+def test_get_text_after_label_simple() -> None:
+    """Test simple case: Label: Value in text node."""
+    html = "<p>Format: MP3</p>"
+    soup = BeautifulSoup(html, "lxml")
+    container = soup.find("p")
+    # Cast to Tag for type checker safety (soup.find returns Tag | NavigableString | None)
+    assert isinstance(container, Tag)
+
+    pattern = re.compile(r"Format:")
+    assert get_text_after_label(container, pattern) == "MP3"
+
+
+def test_get_text_after_label_with_span() -> None:
+    """Test case where value is in a sibling span."""
+    html = "<p>Format: <span>MP3</span></p>"
+    soup = BeautifulSoup(html, "lxml")
+    container = soup.find("p")
+    assert isinstance(container, Tag)
+    assert isinstance(container, Tag)
+
+    pattern = re.compile(r"Format:")
+    assert get_text_after_label(container, pattern) == "MP3"
+
+
+def test_get_text_after_label_nested_label() -> None:
+    """Test case where label is nested in a bold tag."""
+    html = "<p><b>Format:</b> <span>MP3</span></p>"
+    soup = BeautifulSoup(html, "lxml")
+    container = soup.find("p")
+    assert isinstance(container, Tag)
+
+    pattern = re.compile(r"Format:")
+    assert get_text_after_label(container, pattern) == "MP3"
+
+
+def test_get_text_after_label_file_size() -> None:
+    """Test file size extraction with unit."""
+    html = "<p>File Size: <span>100</span> MB</p>"
+    # Note: unit is a text sibling of span
+    soup = BeautifulSoup(html, "lxml")
+    container = soup.find("p")
+    assert isinstance(container, Tag)
+
+    pattern = re.compile(r"File Size:")
+    # The logic `is_file_size=True` handles `next_elem.next_sibling`.
+    assert get_text_after_label(container, pattern, is_file_size=True) == "100 MB"

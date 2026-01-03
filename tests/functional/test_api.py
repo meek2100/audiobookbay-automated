@@ -415,3 +415,18 @@ def test_send_no_save_path_base(client: FlaskClient) -> None:
             assert response.status_code == 200
             # Verify add_magnet was called with just the title (no base path)
             mock_tm.add_magnet.assert_called_with("magnet:?xt=urn:btih:123", "Book")
+
+
+def test_send_hash_not_found(client: FlaskClient) -> None:
+    """Test POST /send when extract_magnet_link fails with ERROR_HASH_NOT_FOUND (404)."""
+    from audiobook_automated.constants import ERROR_HASH_NOT_FOUND
+
+    with patch("audiobook_automated.routes.extract_magnet_link") as mock_extract:
+        mock_extract.return_value = (None, ERROR_HASH_NOT_FOUND)
+        response = client.post(
+            "/send",
+            json={"link": "https://audiobookbay.lu/missing-hash", "title": "No Hash Book"},
+        )
+        assert response.status_code == 404
+        assert response.json is not None
+        assert "Download failed" in response.json["message"]
