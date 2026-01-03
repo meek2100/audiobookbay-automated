@@ -402,6 +402,34 @@ def test_reload_library_request_exception_with_response(client: FlaskClient) -> 
         assert "503 Service Unavailable: Maintenance" in response.json["message"]
 
 
+def test_reload_library_http_error(client: FlaskClient) -> None:
+    """Test reload_library handling HTTPError (upstream status forwarding)."""
+    client.application.config["ABS_URL"] = "http://abs"
+    client.application.config["ABS_KEY"] = "key"
+    client.application.config["ABS_LIB"] = "lib"
+
+    from unittest.mock import Mock
+
+    import requests
+
+    mock_resp = Mock()
+    mock_resp.status_code = 404
+    mock_resp.reason = "Not Found"
+    mock_resp.text = "Library ID invalid"
+
+    # Raise HTTPError specifically to hit the new except block
+    err = requests.exceptions.HTTPError("404 Client Error")
+    err.response = mock_resp
+
+    with patch("audiobook_automated.routes.requests.post", side_effect=err):
+        response = client.post("/reload_library")
+        # Should return upstream status code (404) not 500
+        assert response.status_code == 404
+        assert response.json is not None
+        assert "Library scan failed" in response.json["message"]
+        assert "404 Not Found: Library ID invalid" in response.json["message"]
+
+
 def test_send_no_save_path_base(client: FlaskClient) -> None:
     """Test send endpoint when SAVE_PATH_BASE is not configured."""
     client.application.config["SAVE_PATH_BASE"] = None
@@ -415,3 +443,18 @@ def test_send_no_save_path_base(client: FlaskClient) -> None:
             assert response.status_code == 200
             # Verify add_magnet was called with just the title (no base path)
             mock_tm.add_magnet.assert_called_with("magnet:?xt=urn:btih:123", "Book")
+
+
+def test_send_hash_not_found(client: FlaskClient) -> None:
+    """Test POST /send when extract_magnet_link fails with ERROR_HASH_NOT_FOUND (404)."""
+    from audiobook_automated.constants import ERROR_HASH_NOT_FOUND
+
+    with patch("audiobook_automated.routes.extract_magnet_link") as mock_extract:
+        mock_extract.return_value = (None, ERROR_HASH_NOT_FOUND)
+        response = client.post(
+            "/send",
+            json={"link": "https://audiobookbay.lu/missing-hash", "title": "No Hash Book"},
+        )
+        assert response.status_code == 404
+        assert response.json is not None
+        assert "Download failed" in response.json["message"]

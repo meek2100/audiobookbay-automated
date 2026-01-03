@@ -22,6 +22,50 @@ document.addEventListener("DOMContentLoaded", function () {
             navLinks.classList.toggle("active");
         });
     }
+
+    // Event Delegation for Buttons
+    document.body.addEventListener("click", function (event) {
+        const target = event.target;
+
+        // Send Torrent
+        if (target.matches(".send-torrent-btn")) {
+            const link = target.dataset.link;
+            const title = target.dataset.title;
+            if (link && title) {
+                sendTorrent(link, title, target);
+            }
+        }
+
+        // Remove Torrent
+        if (target.matches(".remove-torrent-btn")) {
+            const id = target.dataset.torrentId;
+            if (id) {
+                deleteTorrent(id, target);
+            }
+        }
+
+        // Download (Details Page)
+        if (target.matches(".details-download-btn")) {
+            const link = target.dataset.link;
+            const title = target.dataset.title;
+            if (link && title) {
+                sendTorrent(link, title, target);
+            }
+        }
+
+        // External Link
+        if (target.matches(".direct-link-btn")) {
+            const link = target.dataset.externalLink;
+            if (link) {
+                openExternalLink(link);
+            }
+        }
+
+        // Back Button
+        if (target.matches(".back-link-btn")) {
+            history.back();
+        }
+    });
 });
 
 /**
@@ -160,8 +204,9 @@ function reloadLibrary() {
 /**
  * Deletes a torrent from the client (soft delete).
  * @param {string} torrentId - The ID or Hash of the torrent.
+ * @param {HTMLElement} [buttonElement] - The button that triggered the action (optional).
  */
-function deleteTorrent(torrentId) {
+function deleteTorrent(torrentId, buttonElement) {
     if (!confirm("Are you sure you want to remove this torrent? The downloaded files will NOT be deleted.")) {
         return;
     }
@@ -181,8 +226,18 @@ function deleteTorrent(torrentId) {
         .then((data) => {
             showNotification(data.message, "success");
             if (data.message.includes("successfully")) {
-                // Delay reload slightly to let user see the toast
-                setTimeout(() => location.reload(), 1000);
+                // Remove the row from the DOM if buttonElement is provided
+                if (buttonElement) {
+                    const row = buttonElement.closest("tr");
+                    if (row) {
+                        row.remove();
+                    } else {
+                        // Fallback if no row found (unlikely in status table)
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                } else {
+                    setTimeout(() => location.reload(), 1000);
+                }
             }
         })
         .catch((error) => {

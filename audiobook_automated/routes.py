@@ -274,6 +274,12 @@ def reload_library() -> Response | tuple[Response, int]:
         response.raise_for_status()
         logger.info("Audiobookshelf library scan initiated successfully.")
         return jsonify({"message": "Audiobookshelf library scan initiated."})
+    except requests.exceptions.HTTPError as e:
+        # Pass upstream errors (4xx/5xx) directly to the user
+        status_code = e.response.status_code if e.response is not None else 500
+        error_message = f"{status_code} {e.response.reason}: {e.response.text}" if e.response is not None else str(e)
+        logger.error(f"ABS Scan Failed (Upstream Error): {error_message}", exc_info=True)
+        return jsonify({"message": f"Library scan failed: {error_message}"}), status_code
     except requests.exceptions.RequestException as e:
         error_message = str(e)
         if e.response is not None:

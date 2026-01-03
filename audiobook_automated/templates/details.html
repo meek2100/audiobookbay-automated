@@ -5,7 +5,14 @@ extra_css %}
 {% endblock %} {% block content %} {% if error %}
 <div class="error-message">
     <p>{{ error }}</p>
-    <p><a href="javascript:history.back()" style="color: inherit; font-weight: bold">← Back to Search</a></p>
+    <p>
+        <button
+            class="back-link-btn"
+            style="color: inherit; font-weight: bold; background: none; border: none; cursor: pointer; padding: 0"
+        >
+            ← Back to Search
+        </button>
+    </p>
 </div>
 {% elif book %}
 
@@ -21,7 +28,12 @@ extra_css %}
     </div>
 
     <div class="details-info">
-        <a href="javascript:history.back()" class="back-link">← Back to results</a>
+        <button
+            class="back-link back-link-btn"
+            style="background: none; border: none; cursor: pointer; color: inherit; font: inherit; padding: 0"
+        >
+            ← Back to results
+        </button>
 
         <h2>{{ book.title }}</h2>
 
@@ -65,12 +77,13 @@ extra_css %}
         <div class="action-bar">
             <button
                 class="btn-primary details-download-btn"
-                onclick="sendTorrent('{{ book.link|escape }}', '{{ book.title|escape }}', this)"
+                data-link="{{ book.link|escape }}"
+                data-title="{{ book.title|escape }}"
             >
                 Download
             </button>
 
-            <button class="btn-glass direct-link-btn" onclick="openExternalLink('{{ book.link|escape }}')">
+            <button class="btn-glass direct-link-btn" data-external-link="{{ book.link|escape }}">
                 Open External Page
             </button>
         </div>
