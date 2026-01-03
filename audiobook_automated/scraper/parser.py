@@ -191,6 +191,8 @@ def _normalize_metadata(meta: BookMetadata) -> None:
             clean_val = value.strip()
             if not clean_val or clean_val == "?" or clean_val.startswith("? "):
                 setattr(meta, f.name, "Unknown")
+            else:
+                setattr(meta, f.name, clean_val)
 
 
 def _parse_body_content(content_div: Tag, meta: BookMetadata) -> None:

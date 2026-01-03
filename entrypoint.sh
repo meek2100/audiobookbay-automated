@@ -42,7 +42,7 @@ usermod -o -u "$PUID" appuser
 # Fix permissions for the download directory if it is mounted
 if [ -n "$SAVE_PATH_BASE" ] && [ -d "$SAVE_PATH_BASE" ]; then
     echo "Fixing permissions for SAVE_PATH_BASE: $SAVE_PATH_BASE"
-    chown -R appuser:appuser "$SAVE_PATH_BASE"
+    chown appuser:appuser "$SAVE_PATH_BASE"
 fi
 
 echo "Starting Gunicorn with 1 worker and $THREADS threads at log level $LOG_LEVEL."

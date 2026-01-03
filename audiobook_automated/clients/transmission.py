@@ -4,6 +4,7 @@
 import logging
 from typing import Any, Literal, cast
 
+from flask import current_app
 from transmission_rpc import Client as TxClient
 from typing_extensions import override
 
@@ -35,7 +36,7 @@ class Strategy(TorrentClientStrategy):
             protocol=safe_scheme,
             username=self.username,
             password=self.password,
-            timeout=30,
+            timeout=current_app.config["CLIENT_TIMEOUT"],
         )
 
     @override

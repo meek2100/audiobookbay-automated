@@ -242,10 +242,17 @@ function populateSelectFilters() {
     document.querySelectorAll(".result-row").forEach((row) => {
         // Split categories for filtering by single keyword
         const categoryString = row.dataset.category;
-        categoryString.split(/\s+/).forEach((term) => {
+        categoryString.split("|").forEach((term) => {
+            const cleanTerm = term.trim();
             // Filter out meaningless tokens like "&", empty strings, or "Unknown"
-            if (term && term.length > 1 && term !== "Unknown" && term !== "None" && /[a-zA-Z0-9]/.test(term)) {
-                categories.add(term);
+            if (
+                cleanTerm &&
+                cleanTerm.length > 1 &&
+                cleanTerm !== "Unknown" &&
+                cleanTerm !== "None" &&
+                /[a-zA-Z0-9]/.test(cleanTerm)
+            ) {
+                categories.add(cleanTerm);
             }
         });
 
@@ -296,7 +303,7 @@ function applyFilters() {
 
         // Exact Token Match for Category
         if (category) {
-            const rowCategories = row.dataset.category.split(/\s+/);
+            const rowCategories = row.dataset.category.split("|").map((t) => t.trim());
             if (!rowCategories.includes(category)) {
                 visible = false;
             }

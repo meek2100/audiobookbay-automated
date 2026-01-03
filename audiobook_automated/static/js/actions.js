@@ -294,9 +294,14 @@ function sendTorrent(link, title, buttonElement) {
             // Improve UX: Show "Sent!" state temporarily
             if (buttonElement) {
                 buttonElement.innerText = "Sent!";
+                // Keep disabled to prevent re-submission
+                buttonElement.disabled = true;
                 setTimeout(() => {
-                    buttonElement.disabled = false;
-                    buttonElement.innerText = originalBtnText;
+                    // Reset text but keep disabled state or allow re-enable if desired logic changes.
+                    // Per request: "prevent double-submissions (disable or change state to 'Added' after success)"
+                    // We keep it as "Sent!" and disabled.
+                    // buttonElement.disabled = false;
+                    // buttonElement.innerText = originalBtnText;
                 }, 2000);
             }
         })

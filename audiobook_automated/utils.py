@@ -7,6 +7,8 @@ import re
 import uuid
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
+from flask import current_app
+
 from audiobook_automated.constants import (
     DEEP_PATH_WARNING_THRESHOLD,
     FALLBACK_TITLE,
@@ -20,7 +22,8 @@ from audiobook_automated.constants import (
 logger = logging.getLogger(__name__)
 
 # OPTIMIZATION: Pre-compile regex for faster execution
-ILLEGAL_CHARS_RE = re.compile(r'[<>:"/\\|?*]')
+# Includes standard illegal chars AND control characters (\x00-\x1f)
+ILLEGAL_CHARS_RE = re.compile(r'[\x00-\x1f<>:"/\\|?*]')
 
 
 def sanitize_title(title: str | None) -> str:
@@ -178,7 +181,7 @@ def construct_safe_save_path(base_path: str | None, title: str) -> str:
     if base_path:
         # Heuristic: If base path contains backslash, assume Windows path structure.
         # This handles cases where the Torrent Client is on Windows but the App is on Linux/Docker.
-        if "\\" in base_path:
+        if current_app.config.get("DL_CLIENT_OS") == "windows" or "\\" in base_path:
             return str(PureWindowsPath(base_path).joinpath(safe_title))
         return str(PurePosixPath(base_path).joinpath(safe_title))
 

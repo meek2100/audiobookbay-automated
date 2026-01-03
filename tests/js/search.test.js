@@ -63,8 +63,8 @@ const setup = () => {
 
     // Add mock result rows to the DOM
     const tbody = document.getElementById("results-table-body");
-    // Changed category to a compound name to test the new split logic
-    tbody.appendChild(createResultRow("Fiction Science", "English", "128 Kbps", "500 MB", "01 Jan 2024", "M4B"));
+    // Changed category to a compound name to test the new split logic (pipe delimiter)
+    tbody.appendChild(createResultRow("Fiction|Science", "English", "128 Kbps", "500 MB", "01 Jan 2024", "M4B"));
     tbody.appendChild(createResultRow("Non-Fiction", "Spanish", "64 Kbps", "1.5 GB", "15 Feb 2024", "MP3"));
     tbody.appendChild(createResultRow("Fiction", "English", "128 Kbps", "100 MB", "20 Dec 2023", "M4B"));
     tbody.appendChild(createResultRow("Fiction", "English", "Unknown", "10 GB", "Unknown", "MP3")); // Max size row: 10240 MB

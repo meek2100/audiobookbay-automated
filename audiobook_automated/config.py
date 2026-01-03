@@ -70,6 +70,7 @@ class Config:
     DL_CATEGORY: str = os.getenv("DL_CATEGORY", "abb-automated")
     DL_SCHEME: str = os.getenv("DL_SCHEME", "http")
     DL_URL: str | None = os.getenv("DL_URL")
+    DL_CLIENT_OS: str = os.getenv("DL_CLIENT_OS", "posix").lower()
 
     # Logging
     # We allow LOG_LEVEL to be None if unset to support Gunicorn level inheritance in __init__.py.
@@ -101,6 +102,9 @@ class Config:
     # Scraper Request Timeout (Default 30)
     # Separated from Gunicorn timeout to ensure internal requests fail faster than the worker kill timer.
     SCRAPER_TIMEOUT: int = parse_env_int("SCRAPER_TIMEOUT", 30)
+
+    # Torrent Client Timeout (Default 30)
+    CLIENT_TIMEOUT: int = parse_env_int("CLIENT_TIMEOUT", 30)
 
     # Splash Screen Configuration
     SPLASH_ENABLED: bool = parse_bool(os.getenv("SPLASH_ENABLED"), True)
