@@ -186,7 +186,7 @@ def construct_safe_save_path(base_path: str | None, title: str) -> str:
 
 
 def calculate_static_hash(static_folder: str | Path) -> str:
-    """Calculate a short MD5 hash of the contents of the static folder.
+    """Calculate a short SHA256 hash of the contents of the static folder.
 
     Args:
         static_folder: Path to the static assets directory.
@@ -194,7 +194,7 @@ def calculate_static_hash(static_folder: str | Path) -> str:
     Returns:
         str: An 8-character hex string representing the content hash.
     """
-    hash_md5 = hashlib.md5()  # nosec B324  # noqa: S324
+    hash_sha256 = hashlib.sha256()
     folder_path = Path(static_folder)
 
     if not folder_path.exists():
@@ -208,12 +208,12 @@ def calculate_static_hash(static_folder: str | Path) -> str:
                 with path.open("rb") as f:
                     # Read in chunks to handle large files efficiently
                     for chunk in iter(lambda: f.read(4096), b""):
-                        hash_md5.update(chunk)
+                        hash_sha256.update(chunk)
             except OSError:
                 # If we can't read a file (permissions?), ignore it for the hash
                 pass
 
-    return hash_md5.hexdigest()[:8]
+    return hash_sha256.hexdigest()[:8]
 
 
 def get_application_version(static_folder: str | Path) -> str:

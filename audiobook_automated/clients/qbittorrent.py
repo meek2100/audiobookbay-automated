@@ -2,9 +2,10 @@
 """Strategy implementation for qBittorrent."""
 
 import logging
-from typing import Any, Protocol, cast, override
+from typing import Any, Protocol, cast
 
 from qbittorrentapi import Client as QbClient
+from typing_extensions import override
 
 from audiobook_automated.utils import format_size
 
@@ -35,7 +36,11 @@ class Strategy(TorrentClientStrategy):
 
     @override
     def connect(self) -> None:
-        """Connect to the qBittorrent client."""
+        """Connect to the qBittorrent client.
+
+        Raises:
+            ConnectionError: If authentication fails or the host is unreachable.
+        """
         self.client = QbClient(
             host=self.host,
             port=self.port,
@@ -58,7 +63,16 @@ class Strategy(TorrentClientStrategy):
 
     @override
     def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
-        """Add a magnet link to qBittorrent."""
+        """Add a magnet link to qBittorrent.
+
+        Args:
+            magnet_link: The magnet link URI.
+            save_path: The filesystem path where the torrent should be downloaded.
+            category: The category label to apply to the torrent.
+
+        Raises:
+            ConnectionError: If the client is not connected or returns a failure response.
+        """
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
 
@@ -67,18 +81,35 @@ class Strategy(TorrentClientStrategy):
 
         # Check for legacy string failure response
         if isinstance(result, str) and result.lower() == "fails.":
-            logger.warning(f"qBittorrent returned failure response: {result}")
+            raise ConnectionError(f"qBittorrent returned failure response: {result}")
 
     @override
     def remove_torrent(self, torrent_id: str) -> None:
-        """Remove a torrent from qBittorrent."""
+        """Remove a torrent from qBittorrent.
+
+        Args:
+            torrent_id: The hash of the torrent to remove.
+
+        Raises:
+            ConnectionError: If the client is not connected.
+        """
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
         self.client.torrents_delete(torrent_hashes=torrent_id, delete_files=False)
 
     @override
     def get_status(self, category: str) -> list[TorrentStatus]:
-        """Get torrent status from qBittorrent."""
+        """Get torrent status from qBittorrent.
+
+        Args:
+            category: The category label to filter by.
+
+        Returns:
+            list[TorrentStatus]: A list of torrent status objects.
+
+        Raises:
+            ConnectionError: If the client is not connected.
+        """
         if not self.client:
             raise ConnectionError("qBittorrent client not connected")
         results: list[TorrentStatus] = []

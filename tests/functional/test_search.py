@@ -53,6 +53,7 @@ def test_search_connection_error(client: Any) -> None:
 
     This covers the explicit exception handler added to routes.py for
     user-friendly error messages when mirrors are down.
+    Also satisfies Task 5: Verify search failure handling.
     """
     with patch("audiobook_automated.routes.search_audiobookbay") as mock_search:
         mock_search.side_effect = ConnectionError("No mirrors reachable")

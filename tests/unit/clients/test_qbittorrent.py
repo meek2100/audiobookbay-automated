@@ -28,7 +28,7 @@ def test_qbittorrent_add_magnet() -> None:
 
 
 def test_qbittorrent_add_magnet_legacy_fail() -> None:
-    """Test that qBittorrent legacy 'Fails.' response is logged."""
+    """Test that qBittorrent legacy 'Fails.' response raises ConnectionError."""
     with patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient:
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Fails."
@@ -36,9 +36,8 @@ def test_qbittorrent_add_magnet_legacy_fail() -> None:
         strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
         strategy.connect()
 
-        with patch("audiobook_automated.clients.qbittorrent.logger") as mock_logger:
+        with pytest.raises(ConnectionError, match="qBittorrent returned failure response: Fails."):
             strategy.add_magnet("magnet:...", "/path", "cat")
-            mock_logger.warning.assert_called_with("qBittorrent returned failure response: Fails.")
 
 
 def test_remove_torrent_qbittorrent() -> None:
