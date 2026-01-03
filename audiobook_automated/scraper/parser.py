@@ -8,7 +8,7 @@ It encapsulates parsing strategies to keep core.py focused on networking and flo
 
 import re
 from dataclasses import dataclass, field, fields
-from typing import TypedDict
+from typing import Any, TypedDict
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
@@ -107,7 +107,7 @@ def get_text_after_label(container: Tag, label_pattern: re.Pattern[str], is_file
 
         # Strategy 1: The value is in the next sibling element (e.g., <span>MP3</span>)
         # Robustness: Check recursively up to parent if direct sibling is missing
-        current_node = label_node
+        current_node: Tag | Any = label_node
         next_elem = current_node.find_next_sibling()
 
         if not next_elem and current_node.parent and current_node.parent.name not in ["div", "p", "td", "li"]:
