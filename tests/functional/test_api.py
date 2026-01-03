@@ -402,6 +402,34 @@ def test_reload_library_request_exception_with_response(client: FlaskClient) -> 
         assert "503 Service Unavailable: Maintenance" in response.json["message"]
 
 
+def test_reload_library_http_error(client: FlaskClient) -> None:
+    """Test reload_library handling HTTPError (upstream status forwarding)."""
+    client.application.config["ABS_URL"] = "http://abs"
+    client.application.config["ABS_KEY"] = "key"
+    client.application.config["ABS_LIB"] = "lib"
+
+    from unittest.mock import Mock
+
+    import requests
+
+    mock_resp = Mock()
+    mock_resp.status_code = 404
+    mock_resp.reason = "Not Found"
+    mock_resp.text = "Library ID invalid"
+
+    # Raise HTTPError specifically to hit the new except block
+    err = requests.exceptions.HTTPError("404 Client Error")
+    err.response = mock_resp
+
+    with patch("audiobook_automated.routes.requests.post", side_effect=err):
+        response = client.post("/reload_library")
+        # Should return upstream status code (404) not 500
+        assert response.status_code == 404
+        assert response.json is not None
+        assert "Library scan failed" in response.json["message"]
+        assert "404 Not Found: Library ID invalid" in response.json["message"]
+
+
 def test_send_no_save_path_base(client: FlaskClient) -> None:
     """Test send endpoint when SAVE_PATH_BASE is not configured."""
     client.application.config["SAVE_PATH_BASE"] = None
