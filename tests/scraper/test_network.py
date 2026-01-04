@@ -305,6 +305,7 @@ def test_find_best_mirror_negative_cache_hit(mock_app_context: Any) -> None:
         assert result is None
         mock_get.assert_not_called()
 
+
 def test_negative_caching_flow(mock_app_context: Any) -> None:
     """Test the full negative caching flow: Failure -> Cache Set -> Negative Hit."""
     network.mirror_cache.clear()

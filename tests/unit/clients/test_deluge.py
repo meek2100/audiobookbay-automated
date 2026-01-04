@@ -434,13 +434,15 @@ def test_get_status_deluge_unexpected_data_type() -> None:
         assert "Deluge returned unexpected data type" in args[0]
         assert "list" in args[0]
 
+
 def test_deluge_connect_plugin_invalid_format() -> None:
     """Test that Deluge handles get_plugins returning invalid data (not list/dict)."""
     with patch("audiobook_automated.clients.deluge.DelugeWebClient") as MockDeluge:
         mock_instance = MockDeluge.return_value
         mock_instance.login.return_value = Response(result=True)
         # Return invalid type (e.g. integer) instead of expected list/dict
-        mock_instance.get_plugins.return_value = Response(result=12345, error=None)
+        # pyright: ignore[reportArgumentType]
+        mock_instance.get_plugins.return_value = Response(result=12345, error=None)  # type: ignore[arg-type]
 
         strategy = DelugeStrategy("http://deluge:8112", "localhost", 8112, "admin", "pass")
 
