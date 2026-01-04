@@ -4,7 +4,6 @@
 import atexit
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import ParamSpec, TypeVar
 
 from flask import Flask
 from flask_limiter import Limiter
@@ -60,10 +59,7 @@ class ScraperExecutor:
         # NOTE: Semaphore initialization has been moved to app/__init__.py
         # to prevent circular imports between extensions.py and scraper/network.py
 
-    _T = TypeVar("_T")
-    _P = ParamSpec("_P")
-
-    def submit(self, fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]:
+    def submit[T, **P](self, fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Future[T]:  # noqa: D102
         """Submit a callable to be executed with the given arguments.
 
         Proxies the call to the underlying ThreadPoolExecutor.
