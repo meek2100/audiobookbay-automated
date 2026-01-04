@@ -101,7 +101,8 @@ Any lower-priority source conflicting with a higher one must be updated or remov
 ## D. Python 3.14 Compliance
 
 - Full type hints everywhere. **Type safety is strictly enforced using MyPy AND Pyright.**
-- **Generics:** Use **Python 3.12+ generic syntax** (e.g., `def fn[T](x: T) -> T`) exclusively. Remove legacy `TypeVar` and `ParamSpec`.
+- **Generics:** Use **Python 3.12+ generic syntax** (e.g., `def fn[T](x: T) -> T`) exclusively. Remove legacy `TypeVar`
+  and `ParamSpec`.
 - Modern Python idioms. **Use `pathlib` instead of `os.path` for filesystem operations.**
 - Avoid deprecated patterns.
 - Code must be Pylance/MyPy-friendly.
@@ -248,9 +249,11 @@ For self-hosted setups using Docker, users can "drop in" a new client:
 - **Static Asset Versioning:** The `Dockerfile` MUST execute
   `python3 -m audiobook_automated.utils > audiobook_automated/version.txt` during the build process. The application
   logic must prioritize reading this file at startup to prevent expensive filesystem traversal.
-- **Graceful Shutdown:** Background executors (e.g. `_mirror_executor`) MUST use **`signal.SIGTERM` handlers** (not `atexit`) to ensure they shutdown cleanly in containerized environments.
+- **Graceful Shutdown:** Background executors (e.g. `_mirror_executor`) MUST use **`signal.SIGTERM` handlers** (not
+  `atexit`) to ensure they shutdown cleanly in containerized environments.
 - **Configuration:** All configuration MUST use **`pydantic-settings`** (replacing manual `os.getenv` parsing).
-- **Logging:** Application MUST support **Structured JSON Logging** via `python-json-logger`, toggled by an environment variable.
+- **Logging:** Application MUST support **Structured JSON Logging** via `python-json-logger`, toggled by an environment
+  variable.
 
 ### Rate Limiting & Scraping
 
