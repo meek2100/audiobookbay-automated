@@ -261,11 +261,12 @@ function sendTorrent(link, title, buttonElement) {
     const csrfToken = csrfMeta.getAttribute("content");
 
     // Disable specific button to prevent double-clicks
-    let originalBtnText = "";
+    let originalBtnHTML = "";
     if (buttonElement) {
         buttonElement.disabled = true;
-        originalBtnText = buttonElement.innerText;
-        buttonElement.innerText = "Sending...";
+        originalBtnHTML = buttonElement.innerHTML;
+        // Use innerHTML to include the spinner div
+        buttonElement.innerHTML = '<span class="spinner"></span> Sending...';
     }
 
     fetch("/send", {
@@ -301,7 +302,7 @@ function sendTorrent(link, title, buttonElement) {
                     // Per request: "prevent double-submissions (disable or change state to 'Added' after success)"
                     // We keep it as "Sent!" and disabled.
                     // buttonElement.disabled = false;
-                    // buttonElement.innerText = originalBtnText;
+                    // buttonElement.innerHTML = originalBtnHTML;
                 }, 2000);
             }
         })
@@ -311,7 +312,7 @@ function sendTorrent(link, title, buttonElement) {
             // Reset button immediately on error
             if (buttonElement) {
                 buttonElement.disabled = false;
-                buttonElement.innerText = originalBtnText;
+                buttonElement.innerHTML = originalBtnHTML;
             }
         });
 }
