@@ -4,6 +4,7 @@
 import hashlib
 import logging
 import re
+import unicodedata
 import uuid
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
@@ -46,6 +47,10 @@ def sanitize_title(title: str | None) -> str:
     """
     if not title:
         return FALLBACK_TITLE
+
+    # Normalize Unicode characters to NFKC form (compatibility decomposition)
+    # This converts things like '½' to '1/2' (then '/' is removed) or accents to standard chars.
+    title = unicodedata.normalize("NFKC", title)
 
     # Remove illegal characters
     cleaned = ILLEGAL_CHARS_RE.sub("", title)

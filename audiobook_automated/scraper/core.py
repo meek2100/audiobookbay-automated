@@ -211,6 +211,15 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
         for future in concurrent.futures.as_completed(futures):
             try:
                 page_data = future.result()
+                if not page_data:
+                    # OPTIMIZATION: Stop pagination if a page returns 0 results
+                    # This prevents fetching deeper pages when results are exhausted.
+                    logger.debug("Page returned 0 results. Stopping pagination.")
+                    # Cancel remaining futures to save resources
+                    for f in futures:
+                        f.cancel()
+                    break
+
                 results.extend(page_data)
             except (requests.ConnectionError, requests.Timeout) as exc:
                 logger.error(f"Network error during scrape: {exc}")

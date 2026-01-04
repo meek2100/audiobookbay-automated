@@ -182,6 +182,11 @@ def send() -> Response | tuple[Response, int]:
         logger.warning(f"Invalid send request: Link is not a string (Type: {type(details_url)}).")
         raise InvalidRequestError("Invalid request: Link must be a string")
 
+    # VALIDATION: Ensure link starts with http:// or https://
+    if details_url and not (details_url.startswith("http://") or details_url.startswith("https://")):
+        logger.warning(f"Invalid send request: Link has invalid protocol ({details_url}).")
+        raise InvalidRequestError("Invalid request: Link must start with http:// or https://")
+
     # TYPE SAFETY: Ensure title is a string before calling string methods.
     if title is not None and not isinstance(title, str):
         logger.warning(f"Invalid send request: Title is not a string (Type: {type(title)}).")

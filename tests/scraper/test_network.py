@@ -305,6 +305,23 @@ def test_find_best_mirror_negative_cache_hit(mock_app_context: Any) -> None:
         assert result is None
         mock_get.assert_not_called()
 
+def test_negative_caching_flow(mock_app_context: Any) -> None:
+    """Test the full negative caching flow: Failure -> Cache Set -> Negative Hit."""
+    network.mirror_cache.clear()
+    network.failure_cache.clear()
+
+    # Phase 1: Fail all mirrors
+    with patch("audiobook_automated.scraper.network.check_mirror", return_value=None):
+        result1 = network.find_best_mirror()
+        assert result1 is None
+        assert "failure" in network.failure_cache
+
+    # Phase 2: Call again, ensure check_mirror is NOT called due to negative cache
+    with patch("audiobook_automated.scraper.network.check_mirror") as mock_check:
+        result2 = network.find_best_mirror()
+        assert result2 is None
+        mock_check.assert_not_called()
+
 
 def test_get_random_user_agent_returns_string() -> None:
     """Test that the user agent generator returns a string from the known list."""
