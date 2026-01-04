@@ -458,3 +458,20 @@ def test_send_hash_not_found(client: FlaskClient) -> None:
         assert response.status_code == 404
         assert response.json is not None
         assert "Download failed" in response.json["message"]
+
+
+def test_search_audiobookbay_exception_handling(client: FlaskClient) -> None:
+    """Test search endpoint handling generic exceptions from scraper."""
+    with patch("audiobook_automated.routes.search_audiobookbay", side_effect=Exception("Unexpected Error")):
+        response = client.get("/?query=test")
+        assert response.status_code == 200
+        assert b"Search Failed: Unexpected Error" in response.data
+
+
+def test_send_invalid_link_type(client: FlaskClient) -> None:
+    """Test send endpoint with a non-string link to ensure type safety."""
+    # Sending an integer as link should trigger the type check error
+    response = client.post("/send", json={"link": 12345, "title": "Some Book"})
+    assert response.status_code == 400
+    assert response.json is not None
+    assert "Invalid request: Link must be a string" in response.json["message"]

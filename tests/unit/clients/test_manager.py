@@ -377,3 +377,16 @@ def test_get_status_not_connected(app: Flask) -> None:
     with patch.object(manager, "_get_strategy", return_value=None):
         with pytest.raises(ConnectionError, match="Torrent client is not connected"):
             manager.get_status()
+
+
+def test_dl_client_import_error() -> None:
+    """Test TorrentManager logs error on valid name but missing module."""
+    from audiobook_automated.clients.manager import logger as manager_logger
+
+    manager = TorrentManager()
+    # Mock logger to verify error is logged
+    with patch.object(manager_logger, "error") as mock_log:
+        # Simulate ImportError during module load
+        with patch("importlib.import_module", side_effect=ImportError("Import broken")):
+            manager._load_strategy_class("valid_but_broken")
+            mock_log.assert_called_with("Error importing client plugin 'valid_but_broken': Import broken")

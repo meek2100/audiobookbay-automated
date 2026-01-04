@@ -287,3 +287,12 @@ def test_format_size() -> None:
     assert format_size(1024 * 1024) == "1.00 MB"
     assert format_size(1024 * 1024 * 1024) == "1.00 GB"
     assert format_size("2048") == "2.00 KB"
+
+
+def test_construct_safe_save_path_very_long_base() -> None:
+    """Test construct_safe_save_path with base path > 250 chars."""
+    long_base = "/" + "a" * 255
+    # Calculated limit = 260 - 10 - 255 = -5.
+    # This should raise ValueError because it's less than MIN_FILENAME_LENGTH (5).
+    with pytest.raises(ValueError, match="SAVE_PATH_BASE is too deep"):
+        construct_safe_save_path(long_base, "Any Title")
