@@ -155,7 +155,9 @@ describe("actions.js - API Interactions", () => {
 
         sendTorrent("http://link", "Book Title", mockButton);
 
-        expect(mockButton.innerText).toBe("Sending...");
+        // Check for substring because innerHTML now contains a spinner span
+        expect(mockButton.innerHTML).toContain("Sending...");
+        expect(mockButton.innerHTML).toContain('class="spinner"');
         expect(mockButton.disabled).toBe(true);
 
         await flushPromises();
@@ -176,6 +178,8 @@ describe("actions.js - API Interactions", () => {
     test("sendTorrent should show error on non-ok status code", async () => {
         const mockButton = document.createElement("button");
         mockButton.innerText = "Download to Server";
+        // innerHTML is used to restore the original state, so we check innerHTML or ensure initial innerHTML matches innerText
+        const originalHTML = mockButton.innerHTML;
 
         mockFetch.mockResolvedValue({
             ok: false,
@@ -194,7 +198,8 @@ describe("actions.js - API Interactions", () => {
 
         expect(consoleErrorSpy).toHaveBeenCalled();
         expect(mockButton.disabled).toBe(false);
-        expect(mockButton.innerText).toBe("Download to Server");
+        // The implementation restores innerHTML
+        expect(mockButton.innerHTML).toBe(originalHTML);
     });
 
     test("sendTorrent should show error on fetch rejection", async () => {
