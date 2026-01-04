@@ -2,10 +2,9 @@
 """Strategy implementation for qBittorrent."""
 
 import logging
-from typing import Any, Protocol, cast
+from typing import Any, Protocol, cast, override
 
 from qbittorrentapi import Client as QbClient
-from typing_extensions import override
 
 from audiobook_automated.utils import format_size
 

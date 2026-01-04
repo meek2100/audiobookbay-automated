@@ -18,7 +18,7 @@ from audiobook_automated.scraper.parser import BookSummary
 
 
 @pytest.fixture(autouse=True)
-def clear_search_cache_fixture() -> Generator[None, None, None]:
+def clear_search_cache_fixture() -> Generator[None]:
     """Clear the search cache before each test."""
     search_cache.clear()
     yield

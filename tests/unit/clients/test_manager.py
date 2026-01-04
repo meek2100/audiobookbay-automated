@@ -330,3 +330,64 @@ def test_load_strategy_missing_plugin_log_error() -> None:
             strategy = manager._load_strategy_class("ghost_client", suppress_errors=False)
             assert strategy is None
             mock_logger.error.assert_called_with("Client plugin 'ghost_client' not found.")
+
+
+# --- Additional Coverage Tests ---
+
+
+def test_get_strategy_load_returns_none(app: Flask) -> None:
+    """Test _get_strategy when loader returns None (e.g. valid name but logic failure)."""
+    app.config["DL_CLIENT"] = "dummy"
+    manager = TorrentManager()
+    manager.init_app(app)
+
+    with patch.object(manager, "_load_strategy_class", return_value=None):
+        assert manager._get_strategy() is None
+
+
+def test_add_magnet_not_connected(app: Flask) -> None:
+    """Test add_magnet raises ConnectionError when not connected."""
+    app.config["DL_CLIENT"] = "dummy"
+    manager = TorrentManager()
+    manager.init_app(app)
+
+    with patch.object(manager, "_get_strategy", return_value=None):
+        # We must expect ConnectionError to be raised eventually
+        # logic: add_magnet -> _add_magnet_logic (raises) -> catch -> _force_disconnect -> _add_magnet_logic (raises) -> Propagates
+        with pytest.raises(ConnectionError, match="Torrent client is not connected"):
+            manager.add_magnet("magnet:...", "/path")
+
+
+def test_remove_torrent_not_connected(app: Flask) -> None:
+    """Test remove_torrent raises ConnectionError when not connected."""
+    app.config["DL_CLIENT"] = "dummy"
+    manager = TorrentManager()
+    manager.init_app(app)
+
+    with patch.object(manager, "_get_strategy", return_value=None):
+        with pytest.raises(ConnectionError, match="Torrent client is not connected"):
+            manager.remove_torrent("123")
+
+
+def test_get_status_not_connected(app: Flask) -> None:
+    """Test get_status raises ConnectionError when not connected."""
+    app.config["DL_CLIENT"] = "dummy"
+    manager = TorrentManager()
+    manager.init_app(app)
+
+    with patch.object(manager, "_get_strategy", return_value=None):
+        with pytest.raises(ConnectionError, match="Torrent client is not connected"):
+            manager.get_status()
+
+
+def test_dl_client_import_error() -> None:
+    """Test TorrentManager logs error on valid name but missing module."""
+    from audiobook_automated.clients.manager import logger as manager_logger
+
+    manager = TorrentManager()
+    # Mock logger to verify error is logged
+    with patch.object(manager_logger, "error") as mock_log:
+        # Simulate ImportError during module load
+        with patch("importlib.import_module", side_effect=ImportError("Import broken")):
+            manager._load_strategy_class("valid_but_broken")
+            mock_log.assert_called_with("Error importing client plugin 'valid_but_broken': Import broken")
