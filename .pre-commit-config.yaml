@@ -66,13 +66,6 @@ repos:
       - id: ruff-check
         args: ["--fix"]
 
-  # Documentation Linter
-  - repo: https://github.com/PyCQA/pydocstyle
-    rev: "6.3.0"
-    hooks:
-      - id: pydocstyle
-        exclude: "(tests/)"
-
   # Markdown Linter
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.46.0

@@ -32,7 +32,6 @@ dependencies = [
     "Flask-WTF==1.2.2",
     "Flask-Limiter==4.1.1",
     "Flask-Talisman==1.1.0",
-    "typing-extensions==4.15.0",
 ]
 [project.optional-dependencies]
 dev = [
@@ -104,7 +103,7 @@ convention = "google"
 "audiobook_automated/scraper/network.py" = ["PLW0603"]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 warn_unused_configs = true
 ignore_missing_imports = true
 strict = true
@@ -124,7 +123,7 @@ ignore_missing_imports = true
 disable_error_code = ["import-untyped"]
 
 [tool.pyright]
-pythonVersion = "3.13"
+pythonVersion = "3.14"
 include = ["audiobook_automated", "tests"]
 typeCheckingMode = "strict"
 # Reduce noise from untyped libraries (handled by mypy overrides mostly)
