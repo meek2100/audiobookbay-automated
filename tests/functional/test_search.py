@@ -85,3 +85,29 @@ def test_details_route_missing_link(client: Any) -> None:
     response = client.get("/details")
     assert response.status_code == 302
     assert "/" in response.location
+
+
+def test_rate_limit_search(client: Any) -> None:
+    """Test that hitting the search endpoint too frequently triggers a 429."""
+    # Note: RATELIMIT_ENABLED and RATELIMIT_HEADERS_ENABLED are set to True in TestConfig
+
+    # Hit the limit (30 per minute)
+    # We loop 30 times, which is the limit. The 31st request should fail.
+    # Note: Rate limits use a fixed window. If previous tests ran within the same minute,
+    # this might be flaky if we don't ensure a fresh limiter storage.
+    # Flask-Limiter with memory storage usually resets per test if app is recreated,
+    # but let's be aggressive.
+
+    # Important: Since we are using the 'client' fixture which uses 'app' fixture,
+    # and 'app' is recreated for each test (function scope), the limiter memory storage
+    # should be fresh for this test function.
+
+    with patch("audiobook_automated.routes.search_audiobookbay", return_value=[]):
+        for _ in range(30):
+            response = client.get("/?query=test")
+            assert response.status_code == 200
+
+        # The 31st request should be rate limited
+        response = client.get("/?query=test")
+        assert response.status_code == 429
+        assert b"Too Many Requests" in response.data

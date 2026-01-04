@@ -475,3 +475,11 @@ def test_send_invalid_link_type(client: FlaskClient) -> None:
     assert response.status_code == 400
     assert response.json is not None
     assert "Invalid request: Link must be a string" in response.json["message"]
+
+
+def test_send_invalid_protocol(client: FlaskClient) -> None:
+    """Test send endpoint with a link that does not start with http:// or https://."""
+    response = client.post("/send", json={"link": "ftp://example.com/book", "title": "Some Book"})
+    assert response.status_code == 400
+    assert response.json is not None
+    assert "Link must start with http:// or https://" in response.json["message"]
