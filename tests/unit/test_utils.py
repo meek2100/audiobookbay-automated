@@ -89,7 +89,7 @@ def test_ensure_collision_safety_max_length() -> None:
 
 
 def test_ensure_collision_safety_short_max_length() -> None:
-    """Test max_length logic when the allowed length is extremely short (< 9).
+    """Test max_length logic when the allowed length is extremely short (< 10).
 
     This forces trunc_len to be < 1, triggering the safety floor of 1.
     """
@@ -97,14 +97,12 @@ def test_ensure_collision_safety_short_max_length() -> None:
         mock_uuid.return_value.hex = "12345678" * 4
 
         title = "ShortTitle"
-        # If max_length is 5, reserved is 9.
-        # trunc_len = 5 - 9 = -4.
-        # Logic should force trunc_len = 1.
-        # Result = "S" (1 char) + "_12345678" (9 chars) = "S_12345678" (10 chars total)
-        # Note: The function returns a string LONGER than max_length in this extreme edge case
-        # to ensure uniqueness/validity over strict length adherence (safety > strictness).
+        # With new logic: if max_length < 10, truncate strictly.
+        # max_length = 5
+        # Result = "Short" (5 chars)
         result = ensure_collision_safety(title, max_length=5)
-        assert result == "S_12345678"
+        assert result == "Short"
+        assert len(result) == 5
 
 
 def test_construct_safe_save_path_windows_path() -> None:
@@ -296,3 +294,24 @@ def test_construct_safe_save_path_very_long_base() -> None:
     # This should raise ValueError because it's less than MIN_FILENAME_LENGTH (5).
     with pytest.raises(ValueError, match="SAVE_PATH_BASE is too deep"):
         construct_safe_save_path(long_base, "Any Title")
+
+
+def test_ensure_collision_safety_short_max_length_extra() -> None:
+    """Test that collision safety truncates without UUID if max_length is very small."""
+    title = "A" * 20
+    # max_length < 10, so it should just truncate to max_length
+    safe = ensure_collision_safety(title, max_length=5)
+    assert len(safe) == 5
+    assert safe == "AAAAA"
+    assert "_" not in safe  # UUID separator shouldn't be there
+
+
+def test_ensure_collision_safety_uuid_appended() -> None:
+    """Test that UUID is appended when length exceeds limit (normal case)."""
+    title = "A" * 50
+    safe = ensure_collision_safety(title, max_length=20)
+    assert len(safe) <= 20
+    assert "_" in safe
+    # UUID suffix is 8 chars + 1 underscore = 9 chars
+    # So suffix should be present
+    assert safe.endswith(safe.split("_")[-1])

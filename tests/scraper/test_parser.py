@@ -308,6 +308,46 @@ def test_parse_fallback_hash_regex() -> None:
     assert result["info_hash"] == "cccccccccccccccccccccccccccccccccccccccc"
 
 
+def test_language_parsing_multi_word() -> None:
+    """Test parsing of multi-word languages."""
+    # Mock HTML snippet
+    html = """
+    <div class="postInfo">
+        Category: Audiobooks Language: English (UK) Format: MP3
+    </div>
+    <div class="postContent">
+        <p>Some content</p>
+    </div>
+    """
+    soup = BeautifulSoup(html, "lxml")
+    post_info = soup.select_one(".postInfo")
+    content_div = soup.select_one(".postContent")
+
+    # Cast to Tag for MyPy
+    assert isinstance(post_info, Tag)
+    assert isinstance(content_div, Tag)
+
+    meta = parse_post_content(content_div, post_info)
+    assert meta.language == "English (UK)"
+
+
+def test_language_parsing_multi_word_end_of_string() -> None:
+    """Test parsing of multi-word languages at end of string."""
+    html = """
+    <div class="postInfo">
+        Category: Audiobooks Language: English (US)
+    </div>
+    """
+    soup = BeautifulSoup(html, "lxml")
+    post_info = soup.select_one(".postInfo")
+
+    # Cast to Tag for MyPy
+    assert isinstance(post_info, Tag)
+
+    meta = parse_post_content(None, post_info)
+    assert meta.language == "English (US)"
+
+
 def test_parse_book_details_cover_normalization() -> None:
     """Test cover URL normalization integration within parse_book_details."""
     soup = BeautifulSoup(HTML_STANDARD_DETAILS, "lxml")

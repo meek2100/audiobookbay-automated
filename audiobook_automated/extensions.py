@@ -59,7 +59,7 @@ class ScraperExecutor:
         # NOTE: Semaphore initialization has been moved to app/__init__.py
         # to prevent circular imports between extensions.py and scraper/network.py
 
-    def submit[T, **P](self, fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Future[T]:  # noqa: D102
+    def submit[T, **P](self, fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Future[T]:
         """Submit a callable to be executed with the given arguments.
 
         Proxies the call to the underlying ThreadPoolExecutor.

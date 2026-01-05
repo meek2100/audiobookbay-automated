@@ -66,6 +66,8 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
 
     # PERFORMANCE: Use thread-local session to reuse connections across pages
     session = get_thread_session()
+    # SECURITY: Clear cookies to prevent state leakage between unrelated requests
+    session.cookies.clear()
 
     try:
         # OPTIMIZATION: Sleep outside the semaphore.
