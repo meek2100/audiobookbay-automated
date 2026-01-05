@@ -2,7 +2,6 @@
 """Entry point for the application."""
 
 import logging
-import os
 
 from . import create_app
 
@@ -15,13 +14,4 @@ app = create_app()
 if __name__ == "__main__":  # pragma: no cover
     # NOTE: This block is for local debugging only. Production uses entrypoint.sh.
     # Local Development Entry Point
-    host = os.getenv("LISTEN_HOST", "0.0.0.0")  # noqa: S104
-
-    port_str = os.getenv("LISTEN_PORT", "5078")
-    try:
-        port = int(port_str)
-    except ValueError:
-        logger.warning(f"Invalid LISTEN_PORT '{port_str}'. Defaulting to 5078.")
-        port = 5078
-
-    app.run(host=host, port=port)
+    app.run(host=app.config["LISTEN_HOST"], port=app.config["LISTEN_PORT"])
