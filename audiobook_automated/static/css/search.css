@@ -76,6 +76,16 @@
     gap: 15px;
 }
 
+/* Generic filter row container for flexible layouts */
+.filter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
 .filter-row-bottom {
     display: flex;
     align-items: center;
@@ -454,9 +464,23 @@ td.col-actions {
 
 .action-buttons {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
     justify-content: flex-end;
+    align-items: center;
+}
+
+/* Standardized Buttons in Results */
+.action-buttons .btn-glass,
+.action-buttons .btn-primary {
+    height: 42px;
+    padding: 0 20px;
+    border-radius: var(--btn-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 600;
 }
 
 .action-stack {
