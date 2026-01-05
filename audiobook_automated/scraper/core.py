@@ -219,21 +219,24 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
         # If multiple pages fail, we only invalidate the mirror once per search request.
         mirror_invalidated = False
 
-        for future in concurrent.futures.as_completed(futures):
+        # PROCESSING FIX: Iterate futures in order to handle pagination correctly.
+        # Previously using as_completed() caused a race condition where an empty result
+        # from a fast (but later) page would cancel earlier pages that were still loading.
+        for i, future in enumerate(futures):
             try:
                 page_data = future.result()
                 if not page_data:
                     # OPTIMIZATION: Stop pagination if a page returns 0 results
                     # This prevents fetching deeper pages when results are exhausted.
-                    logger.debug("Page returned 0 results. Stopping pagination.")
-                    # Cancel remaining futures to save resources
-                    for f in futures:
+                    logger.debug(f"Page {i + 1} returned 0 results. Stopping pagination.")
+                    # Cancel only remaining futures (pages > i+1) to save resources
+                    for f in futures[i + 1 :]:
                         f.cancel()
                     break
 
                 results.extend(page_data)
             except (requests.ConnectionError, requests.Timeout) as exc:
-                logger.error(f"Network error during scrape: {exc}")
+                logger.error(f"Network error during scrape on page {i + 1}: {exc}")
                 # Only clear cache once per search loop to prevent lock contention/thrashing
                 if not mirror_invalidated:
                     logger.warning(f"Invalidating mirror cache due to network failure: {active_hostname}")
