@@ -118,8 +118,12 @@ def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
     # or return a minimal UUID.
 
     if needs_uuid:
-        # Note: If max_length < 9, we purposely exceed the length limit to ensure uniqueness.
-        # Safety (preventing collisions) > Strict Length Adherence in this edge case.
+        # Edge Case: If the max length is too short to reasonably fit a UUID (< 10 chars),
+        # we strictly truncate without the UUID to respect the filesystem limit,
+        # accepting the collision risk rather than causing an "File name too long" IO error.
+        if max_length < 10:  # noqa: PLR2004
+            return safe_title[:max_length]
+
         unique_id = uuid.uuid4().hex[:8]
         # Reserve space for ID (8 chars) + Underscore (1) = 9 chars.
         trunc_len = max_length - 9

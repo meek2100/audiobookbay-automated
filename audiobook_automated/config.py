@@ -61,6 +61,10 @@ class Config:
     NAV_LINK_NAME: str | None = os.getenv("NAV_LINK_NAME")
     NAV_LINK_URL: str | None = os.getenv("NAV_LINK_URL")
 
+    # HTTPS Configuration
+    # Defaults to False to ensure local deployments work out-of-the-box.
+    FORCE_HTTPS: bool = parse_bool(os.getenv("FORCE_HTTPS"), False)
+
     # Torrent Client Configuration
     DL_CLIENT: str | None = os.getenv("DL_CLIENT")
     DL_HOST: str | None = os.getenv("DL_HOST")

@@ -27,7 +27,15 @@ RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b")
 
 # OPTIMIZATION: Module-level compilation for frequently used patterns in loops
-RE_LANGUAGE = re.compile(r"Language:\s*(\S+)", re.IGNORECASE)
+# Updated regex to capture multi-word languages (e.g. "English (UK)") by matching non-whitespace
+# sequence OR checking until the next delimiter if structured differently.
+# But for now, just matching until the next new line or tag is safer, but (\S+) only matched one word.
+# We change it to match until the end of the line or a delimiter.
+# Actually, the 'postInfo' usually looks like "Category: ... Language: ...".
+# So we capture until the end of the string or a known delimiter if any.
+# However, Language is usually the last item.
+# FIX: Added "Keywords:" as a delimiter because some posts include keywords after the language.
+RE_LANGUAGE = re.compile(r"Language:\s*(.+?)(?:\s*$|\s+Format:|\s+Bitrate:|\s+Keywords:)", re.IGNORECASE)
 # Why: The Category field is sometimes followed by "Language:", sometimes by end of line.
 # This regex uses a non-capturing group to robustly handle both terminators.
 RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|\s*$)", re.IGNORECASE)

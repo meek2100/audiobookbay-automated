@@ -224,8 +224,8 @@ def check_mirror(hostname: str) -> str | None:
     except (requests.Timeout, requests.ConnectionError):
         # FAIL FAST: If HEAD times out, do NOT try GET.
         return None
-    except requests.RequestException:
-        pass
+    except requests.RequestException as e:
+        logger.debug(f"Mirror check HEAD failed for {hostname}: {e}")
 
     try:
         response = session.get(url, headers=headers, timeout=5, stream=True)

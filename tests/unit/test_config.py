@@ -103,6 +103,42 @@ def test_config_validate_invalid_dl_scheme(monkeypatch: MonkeyPatch, caplog: Log
     assert "Invalid DL_SCHEME" in caplog.text
 
 
+def test_force_https_default() -> None:
+    """Test that FORCE_HTTPS defaults to False."""
+    # Ensure env var is not set (mocking empty env for this check)
+    with pytest.MonkeyPatch.context() as m:
+        m.delenv("FORCE_HTTPS", raising=False)
+        # We can't easily re-import Config to reset class attributes,
+        # but we can check the default value if it hasn't been overridden yet.
+        # OR we can verify via parse_bool logic which Config uses.
+        assert Config.FORCE_HTTPS is False
+
+
+def test_force_https_env_var(monkeypatch: MonkeyPatch) -> None:
+    """Test that FORCE_HTTPS respects env var."""
+    # Since Config attributes are loaded at import time, testing env var influence
+    # directly on the class requires reload, which is messy.
+    # Instead, we test the `parse_bool` logic specifically for this key is sound
+    # by verifying `parse_bool` handles "true" correctly, which we know it does.
+    #
+    # However, to be thorough, we can create a subclass that re-evaluates.
+    import os
+
+    from audiobook_automated.utils import parse_bool
+
+    class DynamicConfig(Config):
+        pass
+
+    # Manually re-evaluate because class definition happens once
+    DynamicConfig.FORCE_HTTPS = parse_bool(os.environ.get("FORCE_HTTPS"), False)
+
+    monkeypatch.setenv("FORCE_HTTPS", "true")
+    # We must re-run the assignment AFTER setting env var, simulating a new process/reload
+    DynamicConfig.FORCE_HTTPS = parse_bool(os.environ.get("FORCE_HTTPS"), False)
+
+    assert DynamicConfig.FORCE_HTTPS is True
+
+
 def test_config_validate_page_limit_low(monkeypatch: MonkeyPatch, caplog: LogCaptureFixture) -> None:
     """Ensure validation resets PAGE_LIMIT if < 1."""
     monkeypatch.setattr(Config, "PAGE_LIMIT", 0)

@@ -252,6 +252,43 @@ def test_init_deluge_auth_failure(app: Flask, setup_manager: Any) -> None:
             assert "Failed to login to Deluge" in str(args[0])
 
 
+def test_get_plugins_invalid_response() -> None:
+    """Test get_plugins returning None or invalid result."""
+    strategy = DelugeStrategy(
+        host="localhost",
+        port=8112,
+        username="user",
+        password="password",
+        dl_url="http://localhost:8112",
+    )
+
+    with patch("audiobook_automated.clients.deluge.DelugeWebClient") as mock_client_cls:
+        mock_client = mock_client_cls.return_value
+        # Mock login success
+        # We need a proper Response object here since it's used by the real code?
+        # The real code uses `response.error`.
+        # The test uses `Response` from `deluge_web_client.schema`? No, likely mocked or imported.
+        # Let's check imports in test_deluge.py.
+        # It imports Response from somewhere... likely confusingly mocked or from client code.
+        # Ah, test_deluge.py uses `Response` directly in `test_init_deluge_auth_failure`.
+        # Wait, I don't see `Response` imported in the snippet I read.
+        # I'll rely on the existing pattern.
+
+        # Simulating Response object structure
+        mock_client.login.return_value = MagicMock(result=True, error=None)
+
+        # Mock get_plugins returning None (unexpected)
+        mock_client.get_plugins.return_value = MagicMock(result=None)
+
+        strategy.connect()
+        assert strategy.label_plugin_enabled is False
+
+        # Mock get_plugins returning not a list/dict (unexpected)
+        mock_client.get_plugins.return_value = MagicMock(result="invalid")
+        strategy.connect()
+        assert strategy.label_plugin_enabled is False
+
+
 def test_init_deluge_constructor_failure(app: Flask, setup_manager: Any) -> None:
     """Test handling of DelugeWebClient constructor failure."""
     with patch("audiobook_automated.clients.deluge.DelugeWebClient", side_effect=Exception("Init Error")):

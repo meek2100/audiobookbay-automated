@@ -55,7 +55,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         app,
         content_security_policy=csp,
         # Allow HTTP in dev/test, force HTTPS in prod if needed (usually handled by proxy)
-        force_https=not (app.config["TESTING"] or app.config["FLASK_DEBUG"]),
+        force_https=app.config["FORCE_HTTPS"],
     )
 
     # Initialize TorrentManager with app configuration
