@@ -1,53 +1,73 @@
 # File: tests/unit/test_extensions.py
 """Unit tests for the Extensions module."""
 
-from unittest.mock import MagicMock
+# pyright: reportPrivateUsage=false
 
-import pytest
+import signal
+import unittest
+from unittest.mock import MagicMock, patch
+
 from flask import Flask
 
-from audiobook_automated.extensions import ScraperExecutor
+from audiobook_automated.extensions import ScraperExecutor, register_shutdown_handlers
+
+# Import the module where the function to be patched lives
+from audiobook_automated.scraper import network as network_module
 
 
-def test_executor_submit_without_init_raises() -> None:
-    """Test that submitting a task before initialization raises RuntimeError."""
-    executor = ScraperExecutor()
-    with pytest.raises(RuntimeError) as exc:
-        executor.submit(print, "hello")
-    assert "Executor not initialized" in str(exc.value)
+class TestExtensions(unittest.TestCase):
+    """Test suite for extensions module."""
 
+    def test_scraper_executor_lifecycle(self) -> None:
+        """Test ScraperExecutor init and shutdown."""
+        executor = ScraperExecutor()
+        app = MagicMock(spec=Flask)
+        app.config = {"SCRAPER_THREADS": 2}
 
-def test_executor_init_and_submit() -> None:
-    """Test that the executor initializes and accepts tasks."""
-    app = Flask(__name__)
-    app.config["SCRAPER_THREADS"] = 1
+        # Test submit before init raises
+        with self.assertRaises(RuntimeError):
+            executor.submit(print, "fail")
 
-    executor = ScraperExecutor()
-    executor.init_app(app)
+        executor.init_app(app)
+        self.assertIsNotNone(executor._executor)
 
-    # Simple callable to test execution
-    def simple_task(x: int) -> int:
-        return x * 2
+        # Test submit works
+        def task(x: int) -> int:
+            return x * 2
 
-    future = executor.submit(simple_task, 5)
-    assert future.result() == 10
+        future = executor.submit(task, 10)
+        self.assertEqual(future.result(), 20)
 
-    executor.shutdown()
+        executor.shutdown()
+        # Verify executor is present (shutdown doesn't delete it, just closes it)
+        self.assertIsNotNone(executor._executor)
 
+    @patch("signal.signal")
+    def test_register_shutdown_handlers(self, mock_signal: MagicMock) -> None:
+        """Test that SIGINT and SIGTERM handlers are registered."""
+        app = MagicMock(spec=Flask)
 
-def test_executor_shutdown() -> None:
-    """Test that shutdown is proxied to the internal ThreadPoolExecutor."""
-    app = Flask(__name__)
-    executor = ScraperExecutor()
-    executor.init_app(app)
+        # Patch the network shutdown function using patch.object on the imported module
+        # This is more robust than string patching if the module is already loaded
+        with patch.object(network_module, "shutdown_network") as mock_network_shutdown:
+            register_shutdown_handlers(app)
 
-    # Mock the internal executor to verify shutdown call
-    # We ignore the type error because we are strictly testing the proxy behavior here
-    # Robust ignore pattern used to handle environments where MagicMock assignment isn't flagged
-    executor._executor = MagicMock()  # type: ignore[assignment, unused-ignore]
+            # Check that signal.signal was called exactly twice
+            self.assertEqual(mock_signal.call_count, 2)
 
-    executor.shutdown(wait=False)
+            # Verify specific signals were registered
+            registered_signals = [call[0][0] for call in mock_signal.call_args_list]
+            self.assertIn(signal.SIGTERM, registered_signals)
+            self.assertIn(signal.SIGINT, registered_signals)
 
-    # Verify the underlying shutdown was called with correct args
-    # We suppress reportPrivateUsage here because we are white-box testing the internal proxy logic
-    executor._executor.shutdown.assert_called_once_with(wait=False)  # pyright: ignore[reportPrivateUsage]
+            # Extract handler and verify its logic
+            handler = mock_signal.call_args_list[0][0][1]
+            self.assertTrue(callable(handler))
+
+            with patch("audiobook_automated.extensions.executor.shutdown") as mock_shutdown:
+                with patch("sys.exit") as mock_exit:
+                    handler(signal.SIGTERM, None)
+
+                    mock_shutdown.assert_called_with(wait=False)
+                    mock_network_shutdown.assert_called_once()
+                    mock_exit.assert_called_with(0)

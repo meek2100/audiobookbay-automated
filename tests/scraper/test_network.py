@@ -19,6 +19,7 @@ from audiobook_automated.scraper.network import (
     get_ping_session,
     get_trackers,
     mirror_cache,
+    shutdown_network,
     tracker_cache,
 )
 
@@ -187,12 +188,11 @@ def test_find_best_mirror_negative_cache(app: Flask) -> None:
 
 def test_shutdown_executors() -> None:
     """Test shutdown of executors."""
-    # Use the private shutdown function exposed via module access or just ensure it exists/runs
-    # The function is _shutdown_network and is registered with atexit
-    # We can invoke it manually for coverage
-    if hasattr(network, "_shutdown_network"):
-        network._shutdown_network()  # pyright: ignore[reportPrivateUsage]
-    # It just calls shutdown, so just ensure no error
+    # Use the public shutdown function directly
+    # Mock the internal executor to ensure it gets called
+    with patch("audiobook_automated.scraper.network._mirror_executor.shutdown") as mock_shutdown:
+        shutdown_network()
+        mock_shutdown.assert_called_with(wait=False, cancel_futures=True)
 
 
 def test_get_ping_session_configuration() -> None:
