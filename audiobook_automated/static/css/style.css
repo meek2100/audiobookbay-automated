@@ -18,7 +18,7 @@
 
     /* --- Spacing & Dimensions --- */
     --max-content-width: 95vw;
-    --header-height: 70px; /* Increased slightly for logo balance */
+    --header-height: 80px; /* Increased slightly for logo balance */
     --border-radius: 16px;
     --btn-radius: 50px;
 }
@@ -226,12 +226,13 @@ body {
     align-items: center;
     padding: 0;
     margin-right: 20px;
+    gap: 15px;
     text-decoration: none;
     border: none; /* Reset link border */
 }
 
 .nav-logo img {
-    height: 40px; /* Optimal height for this header */
+    height: 50px; /* Optimal height for this header */
     width: auto;
     display: block;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -239,6 +240,15 @@ body {
 
 .nav-logo:hover img {
     transform: scale(1.08);
+}
+
+.brand-text {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--text-main);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
 }
 
 /* Hamburger Button (Hidden on Desktop) */
@@ -439,6 +449,27 @@ a:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.3);
     transform: translateY(-1px);
+}
+
+/* Icon Button (e.g., Reload Library) */
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* --- Utilities --- */

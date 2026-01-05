@@ -420,3 +420,41 @@ def test_normalize_cover_url_empty() -> None:
     """Test normalize_cover_url with empty input."""
     assert normalize_cover_url("http://base.com", "") is None
     assert normalize_cover_url("http://base.com", None) is None  # type: ignore
+
+
+def test_parse_details_format_in_desc() -> None:
+    """Test parsing Format and Bitrate when they appear in the description div."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Desc Format Book</h1></div>
+        <div class="desc">
+            <p>Description line.</p>
+            <p>Format: M4B</p>
+            <p>Bitrate: 64 Kbps</p>
+        </div>
+        <div class="postContent">
+            <p>Posted: 01 Jan 2024</p>
+        </div>
+        <div class="postInfo">Category: Audiobooks Language: English</div>
+    </div>
+    """
+    soup = BeautifulSoup(html, "lxml")
+    result: BookDetails = parse_book_details(soup, "http://test.com/book")
+
+    assert result["format"] == "M4B"
+    assert result["bitrate"] == "64 Kbps"
+
+
+def test_garbage_html_parsing() -> None:
+    """Test robustness against completely garbage HTML."""
+    from bs4 import BeautifulSoup
+
+    from audiobook_automated.scraper.parser import parse_book_details
+
+    html = "<div><p>Random Text</p> @#%*&^ </div>"
+    soup = BeautifulSoup(html, "lxml")
+    result = parse_book_details(soup, "http://test.com")
+
+    assert result["title"] == "Unknown Title"
+    assert result["info_hash"] == "Unknown"
+    assert result["description"] == "No description available."

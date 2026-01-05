@@ -169,7 +169,15 @@ def test_send_connection_error(client: FlaskClient) -> None:
 
 def test_delete_success(client: FlaskClient) -> None:
     """Test successful torrent deletion."""
+    from audiobook_automated.clients.base import TorrentStatus
+
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        # Mock get_status to return the torrent we want to delete
+        mock_tm.get_status.return_value = [
+            TorrentStatus(
+                id="hash123", name="Book", progress=100.0, state="Seeding", size="1GB", category="abb-automated"
+            )
+        ]
         response = client.post("/delete", json={"id": "hash123"})
         assert response.status_code == 200
         mock_tm.remove_torrent.assert_called_with("hash123")
@@ -200,8 +208,19 @@ def test_status_json(client: FlaskClient) -> None:
     """Test status endpoint returning JSON."""
     from audiobook_automated.clients.base import TorrentStatus
 
-    mock_status = [TorrentStatus(id="1", name="Book", progress=50.0, state="Downloading", size="100 MB")]
-    expected_json = [{"id": "1", "name": "Book", "progress": 50.0, "state": "Downloading", "size": "100 MB"}]
+    mock_status = [
+        TorrentStatus(id="1", name="Book", progress=50.0, state="Downloading", size="100 MB", category="audiobooks")
+    ]
+    expected_json = [
+        {
+            "id": "1",
+            "name": "Book",
+            "progress": 50.0,
+            "state": "Downloading",
+            "size": "100 MB",
+            "category": "audiobooks",
+        }
+    ]
 
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = mock_status
@@ -338,7 +357,13 @@ def test_delete_json_list(client: FlaskClient) -> None:
 
 def test_delete_exception(client: FlaskClient) -> None:
     """Test delete endpoint handling exceptions."""
+    from audiobook_automated.clients.base import TorrentStatus
+
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        # Mock get_status so it passes the check
+        mock_tm.get_status.return_value = [
+            TorrentStatus(id="123", name="Book", progress=100.0, state="Seeding", size="1GB", category="abb-automated")
+        ]
         mock_tm.remove_torrent.side_effect = Exception("Delete failed")
         response = client.post("/delete", json={"id": "123"})
         assert response.status_code == 500
@@ -483,3 +508,43 @@ def test_send_invalid_protocol(client: FlaskClient) -> None:
     assert response.status_code == 400
     assert response.json is not None
     assert "Link must start with http:// or https://" in response.json["message"]
+
+
+def test_delete_wrong_category(client: FlaskClient) -> None:
+    """Test that deletion is aborted if the category/label does not match the app's configuration."""
+    from audiobook_automated.clients.base import TorrentStatus
+
+    # Mock status with wrong category
+    mock_status = TorrentStatus(
+        id="123",
+        name="Movie",
+        progress=100.0,
+        state="Seeding",
+        size="1 GB",
+        category="movies",  # Wrong category
+    )
+
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        mock_tm.get_status.return_value = [mock_status]
+
+        response = client.post("/delete", json={"id": "123"})
+
+        assert response.status_code == 403
+        assert response.json is not None
+        assert "does not match current app category" in response.json["message"]
+        mock_tm.remove_torrent.assert_not_called()
+
+
+def test_rate_limit_loop(client: FlaskClient) -> None:
+    """Test that excessive requests (over limit) return 429."""
+    # Hit the /search endpoint 32 times (limit is 30 per minute)
+    # We patch search_audiobookbay to avoid actual network calls and ensure speed
+    with patch("audiobook_automated.routes.search_audiobookbay", return_value=[]):
+        # Consume the 30 allowed requests
+        for _ in range(30):
+            response = client.get("/?query=test")
+            assert response.status_code == 200
+
+        # The 31st request should fail
+        response = client.get("/?query=test")
+        assert response.status_code == 429
