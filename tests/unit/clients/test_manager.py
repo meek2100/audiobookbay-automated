@@ -33,19 +33,24 @@ def test_load_strategy_missing_plugin() -> None:
     """Test that missing plugin module is handled based on suppress_errors."""
     manager = TorrentManager()
 
-    with patch(
-        "importlib.import_module",
-        side_effect=ModuleNotFoundError(
-            name="audiobook_automated.clients.ghost_client", path="audiobook_automated/clients/ghost_client.py"
-        ),
-    ):
-        # Should return None and log error if suppress_errors=False
-        strategy = manager._load_strategy_class("ghost_client", suppress_errors=False)
-        assert strategy is None
+    # The manager constructs full_module_name as "audiobook_automated.clients.{client_name}"
+    # We must match this name for the "plugin missing" path.
+    name = "audiobook_automated.clients.ghost_client"
 
-        # Test direct call with suppress=True
-        strategy = manager._load_strategy_class("ghost_client", suppress_errors=True)
-        assert strategy is None
+    # Patch logger FIRST to avoid triggering import_module mock during patch setup
+    with patch("audiobook_automated.clients.manager.logger.error") as mock_error:
+        with patch(
+            "importlib.import_module",
+            side_effect=ModuleNotFoundError(name=name, path="audiobook_automated/clients/ghost_client.py"),
+        ):
+            # Should return None and log error if suppress_errors=False
+            strategy = manager._load_strategy_class("ghost_client", suppress_errors=False)
+            assert strategy is None
+            mock_error.assert_called_with("Client plugin 'ghost_client' not found.")
+
+            # Test direct call with suppress=True
+            strategy = manager._load_strategy_class("ghost_client", suppress_errors=True)
+            assert strategy is None
 
 
 def test_load_strategy_missing_dependency() -> None:
@@ -332,9 +337,6 @@ def test_load_strategy_missing_plugin_log_error() -> None:
             mock_logger.error.assert_called_with("Client plugin 'ghost_client' not found.")
 
 
-# --- Additional Coverage Tests ---
-
-
 def test_get_strategy_load_returns_none(app: Flask) -> None:
     """Test _get_strategy when loader returns None (e.g. valid name but logic failure)."""
     app.config["DL_CLIENT"] = "dummy"
@@ -391,3 +393,42 @@ def test_dl_client_import_error() -> None:
         with patch("importlib.import_module", side_effect=ImportError("Import broken")):
             manager._load_strategy_class("valid_but_broken")
             mock_log.assert_called_with("Error importing client plugin 'valid_but_broken': Import broken")
+
+
+def test_teardown_request() -> None:
+    """Test teardown_request closes and clears the strategy."""
+    manager = TorrentManager()
+    mock_strategy = MagicMock()
+    manager._local.strategy = mock_strategy
+
+    manager.teardown_request(None)
+
+    mock_strategy.close.assert_called_once()
+    assert manager._local.strategy is None
+
+
+def test_teardown_request_no_strategy() -> None:
+    """Test teardown_request does nothing if no strategy exists."""
+    manager = TorrentManager()
+    manager._local.strategy = None
+
+    # Should not raise
+    manager.teardown_request(None)
+    assert manager._local.strategy is None
+
+
+def test_teardown_request_close_error() -> None:
+    """Test teardown_request handles close exceptions gracefully."""
+    manager = TorrentManager()
+    mock_strategy = MagicMock()
+    mock_strategy.close.side_effect = Exception("Close failure")
+    manager._local.strategy = mock_strategy
+
+    # Should log warning but not raise
+    with patch("audiobook_automated.clients.manager.logger.warning") as mock_warn:
+        manager.teardown_request(None)
+        mock_warn.assert_called()
+        assert "Error closing strategy" in mock_warn.call_args[0][0]
+
+    # Strategy should still be cleared
+    assert manager._local.strategy is None

@@ -5,7 +5,7 @@ import importlib
 import logging
 import re
 import threading
-from typing import Any, TypeGuard
+from typing import Any, TypeIs
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -110,7 +110,7 @@ class TorrentManager:
         # Reset thread local
         self._local = ClientLocal()
 
-    def _is_strategy(self, cls: Any) -> TypeGuard[type[TorrentClientStrategy]]:
+    def _is_strategy(self, cls: Any) -> TypeIs[type[TorrentClientStrategy]]:
         """Check if a class is a valid TorrentClientStrategy subclass using TypeGuard."""
         return isinstance(cls, type) and issubclass(cls, TorrentClientStrategy)
 
@@ -146,7 +146,7 @@ class TorrentManager:
         except ModuleNotFoundError as e:
             # CRITICAL FIX: Distinguish between the plugin itself being missing vs. a dependency inside it.
             if e.name == full_module_name:
-                if not suppress_errors:  # pragma: no cover
+                if not suppress_errors:
                     logger.error(f"Client plugin '{client_name}' not found.")
             else:
                 # This is a missing dependency inside the plugin (e.g. user forgot pip install transmission-rpc)
@@ -287,3 +287,19 @@ class TorrentManager:
         if not strategy:
             raise ConnectionError("Torrent client is not connected.")
         return strategy.get_status(self.category)
+
+    def teardown_request(self, exception: BaseException | None = None) -> None:
+        """Close thread-local resources at the end of a request.
+
+        Args:
+            exception: The exception that caused the request to fail, if any.
+        """
+        if self._local.strategy:
+            try:
+                # EAFP: Strategy might not have close method or might fail
+                if hasattr(self._local.strategy, "close"):
+                    self._local.strategy.close()
+            except Exception as e:  # pragma: no cover
+                logger.warning(f"Error closing strategy during teardown: {e}")
+            finally:
+                self._local.strategy = None

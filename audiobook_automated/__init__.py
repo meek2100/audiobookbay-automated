@@ -7,7 +7,7 @@ from pathlib import Path
 from flask import Flask, Response, request
 
 from .config import Config
-from .extensions import csrf, executor, limiter, talisman, torrent_manager
+from .extensions import csrf, executor, limiter, register_shutdown_handlers, talisman, torrent_manager
 from .routes import main_bp
 from .scraper import network
 from .utils import get_application_version
@@ -64,6 +64,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(app)
+    # RESOURCE SAFETY: Ensure thread-local sessions are closed after each request
+    app.teardown_appcontext(torrent_manager.teardown_request)
 
     # HEALTH CHECK: Verify torrent client connection at startup.
     # This allows admins to see immediate feedback in logs if the client is unreachable.
@@ -73,6 +75,9 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Initialize Scraper Executor
     executor.init_app(app)
+
+    # GRACEFUL SHUTDOWN: Register signal handlers
+    register_shutdown_handlers(app)
 
     # SYNCHRONIZATION: Initialize Global Request Semaphore
     # This must be done here to avoid circular imports in extensions.py

@@ -1,9 +1,12 @@
 # File: audiobook_automated/extensions.py
 """Extensions module initializing Flask extensions."""
 
-import atexit
+import logging
+import signal
+import sys
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from types import FrameType
 
 from flask import Flask
 from flask_limiter import Limiter
@@ -53,9 +56,6 @@ class ScraperExecutor:
         max_workers = app.config.get("SCRAPER_THREADS", 3)
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
 
-        # RESOURCE SAFETY: Register shutdown to ensure clean exit in Docker/Gunicorn
-        atexit.register(self.shutdown)
-
         # NOTE: Semaphore initialization has been moved to app/__init__.py
         # to prevent circular imports between extensions.py and scraper/network.py
 
@@ -80,3 +80,19 @@ class ScraperExecutor:
 # GLOBAL EXECUTOR: Shared thread pool for concurrent scraping.
 # Initialized in create_app via init_app().
 executor = ScraperExecutor()
+
+
+def register_shutdown_handlers(app: Flask) -> None:  # noqa: ARG001
+    """Register signal handlers for graceful shutdown."""
+    from audiobook_automated.scraper.network import shutdown_network  # noqa: PLC0415
+
+    def shutdown_handler(signum: int, frame: FrameType | None) -> None:
+        """Handle shutdown signals."""
+        logging.info(f"Received signal {signum}. Shutting down...")
+        executor.shutdown(wait=False)
+        shutdown_network()
+        sys.exit(0)
+
+    # Register handlers for SIGTERM and SIGINT
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
