@@ -19,7 +19,7 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - **One source of truth always.**
 - **Safety over speed** — jitter sleeps, rate limiting, and scraping protections are mandatory.
 - **Accurate documentation** — no stale or mismatched comments/docstrings.
-- **Python 3.13+ code quality** — full type hints, modern idioms (e.g., `pathlib`), clean structure.
+- **Python 3.13 & 3.14 Code Quality** — full type hints, modern idioms (e.g., `pathlib`), clean structure.
 - **100% test coverage** — but tests must not be redundant.
 - **Frontend must stay simple** — no bundlers, no frameworks, no unnecessary complexity.
 
@@ -38,6 +38,8 @@ These rules apply to all code, all files, all tests, all refactors, and all cont
 - Do NOT alter scraper safety mechanisms or request limits.
 - Do NOT optimize for multi-user throughput.
 - Do NOT reorganize directories or create new top-level modules without explicit user instruction.
+- Do NOT use `print()` — use the configured logger.
+- Do NOT use `requests` directly — use the `network` module or client classes.
 
 ### Markdown Formatting Rule (CRITICAL)
 
@@ -520,22 +522,21 @@ These outputs are invalid and must be rejected.
 
 Before generating ANY code, AI agents must confirm:
 
-- [x] I have read the entire AGENTS.md file in this session.
-- [x] My output does not propose new architecture.
-- [x] My output does not optimize performance or concurrency.
-- [x] My output does not remove sleeps, jitter, or safety checks.
-- [x] My output does not add global rate limits.
-- [x] My output does not modify or remove the request semaphore.
-- [x] My output does not introduce persistent state or caches.
-- [x] My output respects DRY and centralization.
-- [x] My output uses shared helpers, constants, and parser logic.
-- [x] My output does not duplicate tests or logic.
-- [x] My output updates documentation if behavior changes.
-- [x] My output meets Python 3.13+ standards.
+- [ ] I have read the entire AGENTS.md file in this session.
+- [ ] My output does not propose new architecture.
+- [ ] My output does not optimize performance or concurrency.
+- [ ] My output does not remove sleeps, jitter, or safety checks.
+- [ ] My output does not add global rate limits.
+- [ ] My output does not modify or remove the request semaphore.
+- [ ] My output does not introduce persistent state or caches.
+- [ ] My output respects DRY and centralization.
+- [ ] My output uses shared helpers, constants, and parser logic.
+- [ ] My output does not duplicate tests or logic.
+- [ ] My output updates documentation if behavior changes.
+- [ ] **My output meets Python 3.13 AND 3.14 standards.**
+- [ ] **I have verified strict typing (no `Any` without cast).**
 
 If any box cannot be checked, the output must NOT be generated.
-
----
 
 ### 9.C User Override Clarification
 
@@ -543,5 +544,3 @@ If a user requests something that violates AGENTS.md:
 
 - The AI must warn the user.
 - The AI must require explicit confirmation before proceeding.
-
----
