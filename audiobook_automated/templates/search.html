@@ -117,8 +117,8 @@
                 <td>
                     <p class="book-title">{{ book.title }}</p>
 
-                    <div class="categories-container" style="margin-bottom: 8px">
-                        {% for cat in book.category %}
+                    <div class="categories-container">
+                        {# Render individual pills for both Grid and List views #} {% for cat in book.category %}
                         <span class="category-tag">{{ cat }}</span>
                         {% endfor %}
                     </div>
