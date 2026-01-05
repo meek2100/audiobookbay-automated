@@ -19,6 +19,7 @@ from audiobook_automated.scraper.parser import (
     _normalize_metadata,
     _sanitize_description,
     get_text_after_label,
+    normalize_cover_url,
     parse_book_details,
     parse_post_content,
 )
@@ -371,3 +372,51 @@ def test_normalize_metadata_strings() -> None:
     _normalize_metadata(meta)
     assert meta.format == "Unknown"
     assert meta.bitrate == "Unknown"
+
+
+def test_get_text_after_label_not_found() -> None:
+    """Test when the label pattern is not found in the container."""
+    html = "<div><p>Other Content</p></div>"
+    soup = BeautifulSoup(html, "lxml")
+    container = soup.find("div")
+    assert isinstance(container, Tag)
+    # Pattern that doesn't exist
+    assert get_text_after_label(container, re.compile(r"Missing:")) == "Unknown"
+
+
+def test_get_text_after_label_strategy2_fallback() -> None:
+    """Test Strategy 2 (text split) fallbacks."""
+    # Case 1: No colon
+    html_no_colon = "<p>Format MP3</p>"
+    soup = BeautifulSoup(html_no_colon, "lxml")
+    container = soup.find("p")
+    assert isinstance(container, Tag)
+    assert get_text_after_label(container, re.compile(r"Format")) == "Unknown"
+
+    # Case 2: Colon but empty value
+    html_empty = "<p>Format: </p>"
+    soup = BeautifulSoup(html_empty, "lxml")
+    container = soup.find("p")
+    assert isinstance(container, Tag)
+    assert get_text_after_label(container, re.compile(r"Format")) == "Unknown"
+
+
+def test_get_text_after_label_exception() -> None:
+    """Test exception handling in get_text_after_label."""
+    # Pass a Mock that raises an exception when .find() is called
+    mock_container = Tag(name="div")
+    # We can't easily mock BeautifulSoup Tag methods directly without side effects,
+    # but we can pass something that is NOT a tag but acts like one until it breaks.
+    # Or rely on the fact that `container.find` might raise if container is None (but type hint says Tag).
+    # Easier: Mock the find method of a real tag instance.
+    from unittest.mock import MagicMock
+
+    mock_container.find = MagicMock(side_effect=Exception("Boom"))  # type: ignore
+
+    assert get_text_after_label(mock_container, RE_LABEL_FORMAT) == "Unknown"
+
+
+def test_normalize_cover_url_empty() -> None:
+    """Test normalize_cover_url with empty input."""
+    assert normalize_cover_url("http://base.com", "") is None
+    assert normalize_cover_url("http://base.com", None) is None  # type: ignore
