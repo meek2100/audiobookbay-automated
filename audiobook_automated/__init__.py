@@ -58,8 +58,10 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         app,
         content_security_policy=csp,
         content_security_policy_nonce_in=["script-src"],
-        # Allow HTTP in dev/test, force HTTPS in prod if needed (usually handled by proxy)
+        # FIX: Allow HTTP in dev/test, force HTTPS in prod if needed (usually handled by proxy)
         force_https=app.config["FORCE_HTTPS"],
+        # FIX: Ensure Talisman respects the config for Secure cookies (needed for HTTP access)
+        session_cookie_secure=app.config["SESSION_COOKIE_SECURE"],
     )
 
     # Initialize TorrentManager with app configuration
