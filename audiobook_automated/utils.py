@@ -56,7 +56,8 @@ def sanitize_title(title: str | None) -> str:
     cleaned = ILLEGAL_CHARS_RE.sub("", title)
 
     # Remove trailing periods and spaces which are invalid in Windows folder names
-    sanitized = cleaned.rstrip(". ")
+    # Core Task 2: Strip BOTH leading and trailing dots/spaces to prevent hidden files on Linux
+    sanitized = cleaned.strip(". ")
 
     if not sanitized:
         return FALLBACK_TITLE

@@ -402,7 +402,15 @@ def parse_book_details(soup: BeautifulSoup, url: str) -> BookDetails:
     meta = parse_post_content(content_div, post_info, author_tag, narrator_tag)
 
     # Helper 1: Sanitize Description
-    description = _sanitize_description(soup.select_one("div.desc"))
+    desc_tag = soup.select_one("div.desc")
+    description = _sanitize_description(desc_tag)
+
+    # Core Task 1: Check description for Format/Bitrate if missing
+    # Details pages sometimes move these fields into the description block.
+    if desc_tag and (meta.format == "Unknown" or meta.bitrate == "Unknown"):
+        _parse_body_content(desc_tag, meta)
+        # Re-apply normalization to handle potential new values
+        _normalize_metadata(meta)
 
     # Helper 2: Extract Table Data
     trackers, file_size, info_hash = _extract_table_data(

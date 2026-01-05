@@ -209,3 +209,13 @@ def test_config_page_limit_cap(caplog: LogCaptureFixture) -> None:
 
     assert TestConfig.PAGE_LIMIT == 10
     assert "PAGE_LIMIT '20' is too high" in caplog.text
+
+
+def test_parse_env_int_overflow() -> None:
+    """Test parse_env_int handles OverflowError (infinity)."""
+    from unittest.mock import patch
+
+    # Mock float() to raise OverflowError
+    with patch("builtins.float", side_effect=OverflowError("Inf")):
+        val = config.parse_env_int("ANY_KEY", 100)
+        assert val == 100
