@@ -4,6 +4,8 @@
 import logging
 from pathlib import Path
 
+from typing import Any
+
 from flask import Flask, Response, request, session
 
 from .config import Config
@@ -88,6 +90,18 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Register Blueprints
     app.register_blueprint(main_bp)
+
+    @app.context_processor
+    def inject_global_vars() -> dict[str, Any]:
+        """Inject global configuration variables into all templates."""
+        return {
+            "site_title": app.config["SITE_TITLE"],
+            "site_logo": app.config.get("SITE_LOGO"),
+            "splash_enabled": app.config["SPLASH_ENABLED"],
+            "splash_title": app.config["SPLASH_TITLE"],
+            "splash_message": app.config["SPLASH_MESSAGE"],
+            "splash_duration": app.config["SPLASH_DURATION"],
+        }
 
     # OPTIMIZATION: Aggressive caching for static assets
     # Since we use versioning (?v=hash) in templates, we can safely tell
