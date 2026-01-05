@@ -280,6 +280,7 @@ def parse_bool(value: str | None, default: bool = False) -> bool:
     """Parse a boolean value safely from string or None.
 
     Supports '1', 'true', 'yes', 'on' (case-insensitive) as True.
+    Robustly handles quoted strings from Docker environment variables.
 
     Args:
         value: The string value to parse (e.g. from environment variable).
@@ -290,7 +291,7 @@ def parse_bool(value: str | None, default: bool = False) -> bool:
     """
     if value is None:
         return default
-    return value.strip().lower() in ("1", "true", "yes", "on")
+    return value.strip().strip("'\"").lower() in ("1", "true", "yes", "on")
 
 
 if __name__ == "__main__":  # pragma: no cover

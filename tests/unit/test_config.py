@@ -1,13 +1,17 @@
 # File: tests/unit/test_config.py
 """Unit tests for configuration validation."""
 
+import importlib
 import logging
+import os
+from unittest.mock import patch
 
 import pytest
 from pytest import LogCaptureFixture, MonkeyPatch
 
 from audiobook_automated import config
 from audiobook_automated.config import Config
+from audiobook_automated.constants import DEFAULT_SITE_TITLE, DEFAULT_SPLASH_MESSAGE
 
 
 def test_config_validate_success(monkeypatch: MonkeyPatch) -> None:
@@ -213,9 +217,70 @@ def test_config_page_limit_cap(caplog: LogCaptureFixture) -> None:
 
 def test_parse_env_int_overflow() -> None:
     """Test parse_env_int handles OverflowError (infinity)."""
-    from unittest.mock import patch
-
     # Mock float() to raise OverflowError
     with patch("builtins.float", side_effect=OverflowError("Inf")):
         val = config.parse_env_int("ANY_KEY", 100)
         assert val == 100
+
+
+def test_parse_env_int_quoted() -> None:
+    """Test parse_env_int handles quoted strings."""
+    with patch.dict(os.environ, {"TEST_INT": '"123"', "TEST_FLOAT": '"12.3"'}, clear=True):
+        assert config.parse_env_int("TEST_INT", 0) == 123
+        assert config.parse_env_int("TEST_FLOAT", 0) == 12
+        assert config.parse_env_int("MISSING", 5) == 5
+
+
+def test_config_parsing_quoted() -> None:
+    """Test that Config strips quotes from all string variables."""
+    # Since Config attributes are loaded at import time, testing env var influence
+    # requires reload.
+    env_vars = {
+        "SECRET_KEY": '"secret"',
+        "STATIC_VERSION": '"v123"',
+        "SAVE_PATH_BASE": '"/tmp/data"',
+        "ABS_URL": '"http://abs.local"',
+        "NAV_LINK_NAME": '"My Link"',
+        "DL_CLIENT": '"deluge"',
+        "DL_PORT": '"8080"',
+        "LOG_LEVEL": '"DEBUG"',
+        "ABB_MIRRORS": '"mirror1, mirror2"',
+        "MAGNET_TRACKERS": '"tracker1, tracker2"',
+        "SITE_TITLE": '"Quoted Title"',
+        "SPLASH_MESSAGE": "'Quoted Message'",
+        "SITE_LOGO": '"/path/to/logo.png"',
+        "SPLASH_TITLE": "'Quoted Splash Title'",
+    }
+
+    with patch.dict(os.environ, env_vars, clear=True):
+        importlib.reload(config)
+        from audiobook_automated.config import Config as ReloadedConfig
+
+        assert ReloadedConfig.SECRET_KEY == "secret"
+        assert ReloadedConfig.STATIC_VERSION == "v123"
+        assert ReloadedConfig.SAVE_PATH_BASE == "/tmp/data"
+        assert ReloadedConfig.ABS_URL == "http://abs.local"
+        assert ReloadedConfig.NAV_LINK_NAME == "My Link"
+        assert ReloadedConfig.DL_CLIENT == "deluge"
+        assert ReloadedConfig.DL_PORT == "8080"
+        assert ReloadedConfig.LOG_LEVEL_STR == "DEBUG"
+        assert ReloadedConfig.ABB_MIRRORS == ["mirror1", "mirror2"]
+        assert ReloadedConfig.MAGNET_TRACKERS == ["tracker1", "tracker2"]
+        assert ReloadedConfig.SITE_TITLE == "Quoted Title"
+        assert ReloadedConfig.SPLASH_MESSAGE == "Quoted Message"
+        assert ReloadedConfig.SITE_LOGO == "/path/to/logo.png"
+        assert ReloadedConfig.SPLASH_TITLE == "Quoted Splash Title"
+
+
+def test_config_parsing_defaults() -> None:
+    """Test defaults when env vars are missing."""
+    with patch.dict(os.environ, {"SAVE_PATH_BASE": "/tmp", "DL_CLIENT": "test"}, clear=True):
+        importlib.reload(config)
+        from audiobook_automated.config import Config as ReloadedConfig
+
+        assert ReloadedConfig.ABS_URL is None
+        assert ReloadedConfig.NAV_LINK_NAME is None
+        assert ReloadedConfig.DL_PORT is None
+        assert ReloadedConfig.SITE_TITLE == DEFAULT_SITE_TITLE
+        assert ReloadedConfig.SPLASH_MESSAGE == DEFAULT_SPLASH_MESSAGE
+        assert ReloadedConfig.SITE_LOGO is None
