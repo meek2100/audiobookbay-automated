@@ -548,3 +548,14 @@ def test_rate_limit_loop(client: FlaskClient) -> None:
         # The 31st request should fail
         response = client.get("/?query=test")
         assert response.status_code == 429
+
+
+def test_delete_torrent_not_found(client: FlaskClient, app: Flask) -> None:
+    """Test that deleting a non-existent torrent returns 404."""
+    with patch("audiobook_automated.routes.torrent_manager.get_status", return_value=[]):
+        # We need to simulate the torrent check failure
+        response = client.post("/delete", json={"id": "nonexistent"})
+        assert response.status_code == 404
+        json_data = response.json
+        assert json_data is not None
+        assert json_data["message"] == "Torrent not found"
