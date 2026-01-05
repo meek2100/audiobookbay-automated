@@ -11,14 +11,14 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    opacity: 0;
-    pointer-events: none;
+    opacity: 1;
+    pointer-events: auto;
     transition: opacity 1.5s ease-out;
 }
 
-#splash-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
+#splash-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
 }
 
 #splash-content {
@@ -34,14 +34,9 @@
     font-weight: 300;
     line-height: 1.6;
     letter-spacing: 0.5px;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-#splash-overlay.active .splash-text {
     opacity: 1;
     transform: translateY(0);
+    transition: all 1.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Iridescent accent for key words if we wrap them in spans later, or just general glow */

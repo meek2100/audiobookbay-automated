@@ -7,6 +7,11 @@ from typing import Final
 FALLBACK_TITLE: Final[str] = "Unknown_Title_Fallback"
 DEFAULT_COVER_FILENAME: Final[str] = "default_cover.jpg"
 SAFE_SUFFIX: Final[str] = "_Safe"
+DEFAULT_SITE_TITLE: Final[str] = "The Crow's Nest"
+DEFAULT_SPLASH_MESSAGE: Final[str] = (
+    "Merry Christmas Kimber and welcome to The Crow's Nest,<br>"
+    "where you can snuggle up and read or listen to any book."
+)
 
 # --- Error Constants ---
 ERROR_HASH_NOT_FOUND: Final[str] = "Info Hash could not be found on the page."

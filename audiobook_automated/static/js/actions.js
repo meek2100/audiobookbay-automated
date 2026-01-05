@@ -113,22 +113,24 @@ function initSplashScreen() {
     const splashOverlay = document.getElementById("splash-overlay");
     if (!splashOverlay) return;
 
-    // Check if already shown in this session
-    if (sessionStorage.getItem("splashShown")) {
+    // If "no-splash" is present on HTML (handled by inline script),
+    // we ensure overlay is hidden and return.
+    if (document.documentElement.classList.contains("no-splash")) {
+        splashOverlay.classList.add("hidden");
         splashOverlay.style.display = "none";
         return;
     }
 
-    // Show splash
-    splashOverlay.classList.add("active");
+    // Also double-check sessionStorage here (redundant but safe)
+    if (sessionStorage.getItem("splashShown")) {
+        splashOverlay.classList.add("hidden");
+        splashOverlay.style.display = "none";
+        return;
+    }
 
     // Click to dismiss immediately
     splashOverlay.addEventListener("click", () => {
-        splashOverlay.classList.remove("active");
-        setTimeout(() => {
-            splashOverlay.style.display = "none";
-            sessionStorage.setItem("splashShown", "true");
-        }, 300); // Faster fade out on click
+        dismissSplash(splashOverlay);
     });
 
     // Read duration from data attribute
@@ -136,17 +138,21 @@ function initSplashScreen() {
 
     // Fade out after delay
     setTimeout(() => {
-        // Only run if still active (not clicked yet)
-        if (splashOverlay.classList.contains("active")) {
-            splashOverlay.classList.remove("active");
-
-            // Wait for CSS transition to finish before hiding/removing
-            setTimeout(() => {
-                splashOverlay.style.display = "none";
-                sessionStorage.setItem("splashShown", "true");
-            }, 1500); // Matches CSS opacity transition time
-        }
+        dismissSplash(splashOverlay);
     }, duration);
+}
+
+function dismissSplash(overlay) {
+    if (overlay.classList.contains("hidden")) return;
+
+    overlay.classList.add("hidden");
+    sessionStorage.setItem("splashShown", "true");
+
+    // Wait for CSS transition to finish before hiding display
+    setTimeout(() => {
+        overlay.style.display = "none";
+        document.documentElement.classList.add("no-splash");
+    }, 1500); // Matches CSS opacity transition time
 }
 
 /**

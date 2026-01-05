@@ -4,6 +4,7 @@
 import logging
 import os
 
+from .constants import DEFAULT_SITE_TITLE, DEFAULT_SPLASH_MESSAGE
 from .utils import parse_bool
 
 
@@ -117,13 +118,15 @@ class Config:
     # Torrent Client Timeout (Default 30)
     CLIENT_TIMEOUT: int = parse_env_int("CLIENT_TIMEOUT", 30)
 
+    # Site Identity
+    SITE_TITLE: str = os.getenv("SITE_TITLE", DEFAULT_SITE_TITLE)
+    SITE_LOGO: str | None = os.getenv("SITE_LOGO")
+
     # Splash Screen Configuration
     SPLASH_ENABLED: bool = parse_bool(os.getenv("SPLASH_ENABLED"), True)
-    SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", "The Crow's Nest")
-    SPLASH_MESSAGE: str = os.getenv(
-        "SPLASH_MESSAGE",
-        "Merry Christmas Kimber and welcome to The Crow's Nest,<br>where you can snuggle up and read or listen to any book.",
-    )
+    # Fallback to SITE_TITLE if SPLASH_TITLE is not explicitly set
+    SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", SITE_TITLE)
+    SPLASH_MESSAGE: str = os.getenv("SPLASH_MESSAGE", DEFAULT_SPLASH_MESSAGE)
     SPLASH_DURATION: int = parse_env_int("SPLASH_DURATION", 4500)
 
     @property
