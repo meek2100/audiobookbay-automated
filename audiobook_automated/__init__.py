@@ -4,7 +4,7 @@
 import logging
 from pathlib import Path
 
-from flask import Flask, Response, request
+from flask import Flask, Response, request, session
 
 from .config import Config
 from .extensions import csrf, executor, limiter, talisman, torrent_manager
@@ -90,6 +90,16 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         """Add Cache-Control headers to static files."""
         if request.path.startswith("/static"):
             response.headers["Cache-Control"] = "public, max-age=31536000"
+        return response
+
+    # FIX: CSRF 400 Error - Zero Cookies Issue
+    # Force Flask to set the session cookie on the first request if it's missing.
+    # This addresses cases where the browser doesn't send the cookie back (e.g. IP access).
+    @app.after_request
+    def ensure_session_cookie(response: Response) -> Response:  # pyright: ignore[reportUnusedFunction]
+        """Ensure session cookie is set if missing."""
+        if not request.cookies.get(app.config["SESSION_COOKIE_NAME"]):
+            session.modified = True
         return response
 
     return app

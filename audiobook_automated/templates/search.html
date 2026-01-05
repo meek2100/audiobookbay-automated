@@ -47,9 +47,6 @@
             </select>
             <input type="text" id="date-range-filter" placeholder="Select Date Range" />
         </div>
-        <div class="filter-buttons">
-            <button id="filter-button" class="btn-primary">Filter</button>
-        </div>
     </div>
     <div class="filter-row">
         <div class="filter-controls">
@@ -59,6 +56,7 @@
             </div>
         </div>
         <div class="filter-buttons">
+            <button id="filter-button" class="btn-primary">Filter</button>
             <button id="clear-button" class="btn-glass">Clear</button>
         </div>
     </div>
@@ -106,21 +104,24 @@
                 data-post-date="{{ book.post_date }}"
             >
                 <td>
-                    <img
-                        src="{{ book.cover if book.cover else default_cover_url }}"
-                        alt="Cover Art"
-                        class="cover"
-                        width="100"
-                        data-default-cover="{{ url_for('static', filename='images/' + default_cover_filename, v=static_version) }}"
-                    />
+                    <a href="{{ url_for('main.details', link=book.link) }}">
+                        <img
+                            src="{{ book.cover if book.cover else default_cover_url }}"
+                            alt="Cover Art"
+                            class="cover"
+                            width="100"
+                            data-default-cover="{{ url_for('static', filename='images/' + default_cover_filename, v=static_version) }}"
+                        />
+                    </a>
                 </td>
                 <td>
                     <p class="book-title">{{ book.title }}</p>
 
                     <div class="categories-container">
-                        {# Render individual pills for both Grid and List views #} {% for cat in book.category %}
-                        <span class="category-tag">{{ cat }}</span>
-                        {% endfor %}
+                        {# Render individual pills for both Grid and List views #} {% for raw_cat in book.category %} {%
+                        for cat in raw_cat.split(',') %} {% if cat.strip() %}
+                        <span class="category-tag">{{ cat.strip() }}</span>
+                        {% endif %} {% endfor %} {% endfor %}
                     </div>
 
                     <div class="property-results-container">
@@ -132,14 +133,18 @@
                     </div>
                 </td>
                 <td>
-                    <a href="{{ url_for('main.details', link=book.link) }}" class="btn-glass details-button">Details</a>
-                    <button
-                        class="btn-primary send-torrent-btn"
-                        data-link="{{ book.link|escape }}"
-                        data-title="{{ book.title|escape }}"
-                    >
-                        Download to Server
-                    </button>
+                    <div class="action-buttons">
+                        <a href="{{ url_for('main.details', link=book.link) }}" class="btn-glass details-button"
+                            >Details</a
+                        >
+                        <button
+                            class="btn-primary send-torrent-btn"
+                            data-link="{{ book.link|escape }}"
+                            data-title="{{ book.title|escape }}"
+                        >
+                            Download
+                        </button>
+                    </div>
                 </td>
             </tr>
             {% endfor %} {% else %} {% if query %}
