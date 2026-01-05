@@ -173,7 +173,9 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
         # in the range() loop below, even though 'None' is impossible here.
         max_pages = int(current_app.config.get("PAGE_LIMIT", 3))
 
-    cache_key = f"{query}::{max_pages}"
+    # Core Task 5: Use optimized cache key format
+    # Using ::page_{max_pages} allows distinguishing between different pagination limits for the same query
+    cache_key = f"{query}::page_{max_pages}"
 
     # SAFETY: Wrap cache read in lock for thread safety
     with CACHE_LOCK:

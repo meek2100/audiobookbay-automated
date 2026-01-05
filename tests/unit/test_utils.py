@@ -238,18 +238,18 @@ def test_calculate_static_hash_os_error_read(tmp_path: Path) -> None:
 
 
 def test_sanitize_title_dot_handling() -> None:
-    """Verify dot handling with new rstrip behavior.
+    """Verify dot handling.
 
-    Previously we stripped leading dots, now we preserve them if intentional stylization.
+    We now strip BOTH leading and trailing dots to prevent hidden files on Linux.
     """
-    # 1. Leading dot with space -> preserved
-    assert sanitize_title(". Hidden Book") == ". Hidden Book"
-    # 2. Leading dot no space -> preserved
-    assert sanitize_title(".Hidden Book") == ".Hidden Book"
+    # 1. Leading dot with space -> stripped
+    assert sanitize_title(". Hidden Book") == "Hidden Book"
+    # 2. Leading dot no space -> stripped
+    assert sanitize_title(".Hidden Book") == "Hidden Book"
     # 3. Trailing dot -> stripped (Windows compat)
     assert sanitize_title("Hidden Book.") == "Hidden Book"
-    # 4. Just dots (should fallback as it becomes empty or just dots which are stripped if trailing?)
-    # "..." rstrip(". ") -> "" -> FALLBACK
+    # 4. Just dots (should fallback as it becomes empty)
+    # "..." strip(". ") -> "" -> FALLBACK
     assert sanitize_title("...") == FALLBACK_TITLE
 
 
@@ -315,3 +315,10 @@ def test_ensure_collision_safety_uuid_appended() -> None:
     # UUID suffix is 8 chars + 1 underscore = 9 chars
     # So suffix should be present
     assert safe.endswith(safe.split("_")[-1])
+
+
+def test_sanitize_title_strip_trailing_dots() -> None:
+    """Test that trailing dots and spaces are stripped."""
+    assert sanitize_title("Book Title.") == "Book Title"
+    assert sanitize_title("Book Title .") == "Book Title"
+    assert sanitize_title("Book Title. ") == "Book Title"

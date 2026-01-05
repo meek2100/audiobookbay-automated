@@ -25,7 +25,7 @@ def parse_env_int(key: str, default: int) -> int:
         return default
     try:
         return int(float(raw.strip()))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return default
 
 

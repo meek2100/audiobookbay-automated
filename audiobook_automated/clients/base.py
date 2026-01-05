@@ -15,6 +15,8 @@ class TorrentStatus:
     progress: float
     state: str
     size: str
+    # Core Task 4: Add category field to allow validation before deletion
+    category: str | None = None
 
 
 class TorrentClientStrategy(ABC):

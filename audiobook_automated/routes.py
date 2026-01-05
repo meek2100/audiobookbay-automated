@@ -256,6 +256,25 @@ def delete_torrent() -> Response | tuple[Response, int]:
         raise InvalidRequestError("Torrent ID is required")
 
     try:
+        # Core Task 4: Verify category before deletion
+        # Security: Prevent deleting torrents not managed by this application
+        torrents = torrent_manager.get_status()
+        target_torrent = next((t for t in torrents if t.id == torrent_id), None)
+
+        if not target_torrent:
+            return jsonify({"status": "error", "message": "Torrent not found"}), 404
+
+        app_category = current_app.config.get("DL_CATEGORY", "abb-automated")
+        # Robustness: Some clients (like Deluge) might not return category if label plugin missing
+        # We check specific category match OR if the client doesn't support categories at all (fallback)
+        if target_torrent.category and target_torrent.category != app_category:
+            return jsonify(
+                {
+                    "status": "error",
+                    "message": f"Security: Torrent category '{target_torrent.category}' does not match current app category '{app_category}'.",
+                }
+            ), 403
+
         torrent_manager.remove_torrent(torrent_id)
         return jsonify({"message": "Torrent removed successfully."})
     except Exception as e:
