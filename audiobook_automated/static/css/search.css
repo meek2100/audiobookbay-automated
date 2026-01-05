@@ -148,6 +148,7 @@
     display: flex;
     gap: 8px;
     flex-shrink: 0;
+    justify-content: flex-end;
 }
 
 .filter-buttons button {
@@ -525,7 +526,7 @@ td.col-actions {
         align-items: stretch;
         gap: 25px;
     }
-    .filter-actions {
+    .filter-buttons {
         justify-content: flex-end;
     }
     thead {
