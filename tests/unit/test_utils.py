@@ -16,6 +16,7 @@ from audiobook_automated.utils import (
     ensure_collision_safety,
     format_size,
     get_application_version,
+    parse_bool,
     sanitize_title,
 )
 
@@ -322,3 +323,17 @@ def test_sanitize_title_strip_trailing_dots() -> None:
     assert sanitize_title("Book Title.") == "Book Title"
     assert sanitize_title("Book Title .") == "Book Title"
     assert sanitize_title("Book Title. ") == "Book Title"
+
+
+def test_parse_bool_quoted() -> None:
+    """Test parse_bool handles quoted strings."""
+    assert parse_bool('"true"') is True
+    assert parse_bool("'true'") is True
+    assert parse_bool('"True"') is True
+    assert parse_bool("'TRUE'") is True
+    assert parse_bool('"1"') is True
+    assert parse_bool("'1'") is True
+    assert parse_bool('"false"') is False
+    assert parse_bool("'0'") is False
+    assert parse_bool(None) is False
+    assert parse_bool(None, default=True) is True
