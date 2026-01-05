@@ -21,6 +21,7 @@ export LISTEN_PORT="${LISTEN_PORT:-5078}"
 # CONCURRENCY SETTINGS
 export THREADS="${THREADS:-8}"
 export TIMEOUT="${TIMEOUT:-60}"
+export PYTHONOPTIMIZE=1
 
 # LOGGING
 LOG_LEVEL_VAL="$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')"
@@ -58,5 +59,7 @@ exec gosu appuser gunicorn --preload \
     --workers 1 \
     --threads "$THREADS" \
     --timeout "$TIMEOUT" \
+    --worker-class gthread \
+    --worker-tmp-dir /dev/shm \
     "$@" \
     audiobook_automated.app:app
