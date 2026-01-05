@@ -91,7 +91,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(main_bp)
 
     @app.context_processor
-    def inject_global_vars() -> dict[str, Any]:
+    def inject_global_vars() -> dict[str, Any]:  # pyright: ignore[reportUnusedFunction]
         """Inject global configuration variables into all templates."""
         return {
             "site_title": app.config["SITE_TITLE"],
