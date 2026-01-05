@@ -34,7 +34,7 @@ RUN mkdir -p audiobook_automated && \
     useradd -m appuser
 
 # 3. Copy source code
-COPY audiobook_automated audiobook_automated/
+COPY --chown=appuser:appuser audiobook_automated audiobook_automated/
 
 # 4. Re-install package to include the actual source files
 # The --no-deps flag ensures we don't re-check dependencies, keeping it fast.

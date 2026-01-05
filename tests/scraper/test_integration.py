@@ -42,14 +42,17 @@ def test_search_caching(mock_sleep: Any) -> None:
     """Test that search results are returned from cache if available."""
     query = "cached_query"
     max_pages = 1
-    cache_key = f"{query}::{max_pages}"
+    # Fixed cache key format to match core.py logic
+    cache_key = f"{query}::page_{max_pages}"
 
     # FIX: Explicitly typed list of BookSummary
     expected_result = cast(list[BookSummary], [{"title": "Cached Book"}])
     search_cache[cache_key] = expected_result
 
     # Ensure no network calls are made
-    with patch("audiobook_automated.scraper.core.find_best_mirror") as mock_mirror:
+    # Provide a return value for find_best_mirror to avoid MagicMock in URL errors
+    # if the cache key doesn't match for some reason (fail safe)
+    with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="audiobookbay.lu") as mock_mirror:
         # We must pass max_pages to match the cache key exactly
         results = search_audiobookbay(query, max_pages=max_pages)
         assert results == expected_result

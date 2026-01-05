@@ -78,7 +78,12 @@ class Config:
     SESSION_COOKIE_SAMESITE: str = "Lax"
     # Force Secure=False to allow cookies over HTTP/IP as requested
     SESSION_COOKIE_SECURE: bool = False
-    WTF_CSRF_SSL_STRICT: bool = False
+    WTF_CSRF_SSL_STRICT: bool = FORCE_HTTPS
+
+    # Listen Host/Port
+    # nosec B104: Default to all interfaces for Docker container usage
+    LISTEN_HOST: str = os.getenv("LISTEN_HOST", "0.0.0.0").strip(" \"'")  # noqa: S104
+    LISTEN_PORT: int = parse_env_int("LISTEN_PORT", 5078)
 
     # Torrent Client Configuration
     _dl_client: str | None = os.getenv("DL_CLIENT")

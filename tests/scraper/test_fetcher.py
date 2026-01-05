@@ -23,8 +23,10 @@ def test_fetch_and_parse_page_real_structure(real_world_html: str, mock_sleep: A
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
 
-    # Page 1 now uses root URL
-    adapter.register_uri("GET", f"https://{hostname}/?s={query}", text=real_world_html, status_code=200)
+    # Page 1 now uses explicit pagination
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=real_world_html, status_code=200)
+    # Page 1 now uses explicit pagination
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=real_world_html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page(hostname, query, page, user_agent, 30)
@@ -51,7 +53,7 @@ def test_fetch_and_parse_page_unknown_bitrate() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", "https://host/?s=q", text=html, status_code=200)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua", 30)
@@ -63,7 +65,7 @@ def test_fetch_and_parse_page_malformed() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", "https://host/?s=q", text="<html><body></body></html>", status_code=200)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text="<html><body></body></html>", status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua", 30)
@@ -84,7 +86,7 @@ def test_fetch_and_parse_page_zero_results(mock_sleep: Any) -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", "https://host/?s=nonexistent", text=html, status_code=200)
+    adapter.register_uri("GET", "https://host/page/1/?s=nonexistent", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "nonexistent", 1, "ua", 30)
@@ -103,7 +105,7 @@ def test_fetch_and_parse_page_mixed_validity() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", "https://host/?s=q", text=mixed_html, status_code=200)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=mixed_html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua", 30)
@@ -122,7 +124,7 @@ def test_parsing_structure_change() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", "https://host/?s=q", text=html, status_code=200)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua", 30)
@@ -141,7 +143,7 @@ def test_fetch_and_parse_page_language_fallback() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", "https://host/?s=q", text=html, status_code=200)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua", 30)
@@ -160,7 +162,7 @@ def test_fetch_and_parse_page_missing_regex_matches() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", "https://host/?s=q", text=html, status_code=200)
+    adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page("host", "q", 1, "ua", 30)
@@ -186,7 +188,7 @@ def test_fetch_and_parse_page_no_posted_date() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", f"https://{hostname}/?s={query}", text=html, status_code=200)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page(hostname, query, 1, "UA", 30)
@@ -208,7 +210,7 @@ def test_fetch_and_parse_page_missing_title() -> None:
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
-    adapter.register_uri("GET", f"https://{hostname}/?s={query}", text=html, status_code=200)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
         results = fetch_and_parse_page(hostname, query, 1, "UA", 30)
@@ -356,7 +358,7 @@ def test_fetch_page_timeout(mock_sleep: Any) -> None:
     session = requests.Session()
     adapter = requests_mock.Adapter()
     session.mount("https://", adapter)
-    adapter.register_uri("GET", f"https://{hostname}/?s={query}", exc=requests.exceptions.Timeout)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", exc=requests.exceptions.Timeout)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
         with pytest.raises(requests.exceptions.Timeout):
@@ -379,7 +381,7 @@ def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
     session = requests.Session()
     adapter = requests_mock.Adapter()
     session.mount("https://", adapter)
-    adapter.register_uri("GET", f"https://{hostname}/?s={query}", text=html, status_code=200)
+    adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=session):
         results = fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0", 30)
