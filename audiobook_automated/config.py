@@ -119,14 +119,15 @@ class Config:
     CLIENT_TIMEOUT: int = parse_env_int("CLIENT_TIMEOUT", 30)
 
     # Site Identity
-    SITE_TITLE: str = os.getenv("SITE_TITLE", DEFAULT_SITE_TITLE)
-    SITE_LOGO: str | None = os.getenv("SITE_LOGO")
+    SITE_TITLE: str = os.getenv("SITE_TITLE", DEFAULT_SITE_TITLE).strip(" \"'")
+    _site_logo: str | None = os.getenv("SITE_LOGO")
+    SITE_LOGO: str | None = _site_logo.strip(" \"'") if _site_logo else None
 
     # Splash Screen Configuration
     SPLASH_ENABLED: bool = parse_bool(os.getenv("SPLASH_ENABLED"), True)
     # Fallback to SITE_TITLE if SPLASH_TITLE is not explicitly set
-    SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", SITE_TITLE)
-    SPLASH_MESSAGE: str = os.getenv("SPLASH_MESSAGE", DEFAULT_SPLASH_MESSAGE)
+    SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", SITE_TITLE).strip(" \"'")
+    SPLASH_MESSAGE: str = os.getenv("SPLASH_MESSAGE", DEFAULT_SPLASH_MESSAGE).strip(" \"'")
     SPLASH_DURATION: int = parse_env_int("SPLASH_DURATION", 4500)
 
     @property
