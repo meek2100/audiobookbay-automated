@@ -196,3 +196,16 @@ def test_parse_env_int_invalid(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("TEST_INT", "not-a-number")
     # Updated: Use public function name
     assert config.parse_env_int("TEST_INT", 10) == 10
+
+
+def test_config_page_limit_cap(caplog: LogCaptureFixture) -> None:
+    """Test that PAGE_LIMIT is capped at 10."""
+
+    class TestConfig(Config):
+        PAGE_LIMIT = 20
+
+    with caplog.at_level(logging.WARNING):
+        TestConfig.validate(logging.getLogger())
+
+    assert TestConfig.PAGE_LIMIT == 10
+    assert "PAGE_LIMIT '20' is too high" in caplog.text

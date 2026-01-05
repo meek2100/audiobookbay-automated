@@ -37,7 +37,9 @@ from audiobook_automated.scraper.parser import (
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, timeout: int) -> list[BookSummary]:
+def fetch_and_parse_page(  # noqa: PLR0915
+    hostname: str, query: str, page: int, user_agent: str, timeout: int
+) -> list[BookSummary]:
     """Fetch a single search result page and parse it into a list of books.
 
     Enforces a global semaphore to limit concurrent scraping requests.
@@ -140,6 +142,9 @@ def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, 
     except requests.exceptions.RequestException as e:
         logger.error(f"Failed to fetch page {page}. Reason: {e}")
         raise e
+    except Exception as e:
+        logger.error(f"Unexpected error fetching page {page}: {e}")
+        raise RuntimeError(f"Unexpected error fetching page {page}") from e
     # NOTE: Do NOT close session here; it is thread-local and reused.
 
     return page_results
@@ -305,7 +310,7 @@ def get_book_details(details_url: str) -> BookDetails:
 
     except Exception as e:
         logger.error(f"Failed to fetch book details: {e}", exc_info=True)
-        raise e
+        raise RuntimeError(f"Failed to fetch book details: {e}") from e
     # NOTE: Do NOT close session here; it is thread-local and reused.
 
 

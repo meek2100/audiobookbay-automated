@@ -197,7 +197,7 @@ body {
 /* --- Navigation (New Logo Layout) --- */
 .navbar {
     width: 100%;
-    background: rgba(20, 0, 30, 0.85);
+    background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: var(--glass-border);
@@ -494,7 +494,7 @@ a:hover {
         top: var(--header-height);
         left: 0;
         right: 0;
-        background: rgba(30, 0, 45, 0.98);
+        background: var(--primary-bg);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         flex-direction: column;

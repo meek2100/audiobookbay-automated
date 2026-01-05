@@ -23,7 +23,7 @@ extra_css %}
             src="{{ book.cover if book.cover else default_cover_url }}"
             alt="Cover"
             class="details-cover"
-            onerror="this.src='{{ default_cover_url }}'"
+            data-default-cover="{{ default_cover_url }}"
         />
     </div>
 

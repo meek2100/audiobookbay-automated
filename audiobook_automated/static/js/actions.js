@@ -23,6 +23,31 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Reload Library Button
+    const reloadBtn = document.getElementById("reload-library-btn");
+    if (reloadBtn) {
+        reloadBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            reloadLibrary();
+        });
+    }
+
+    // Global Error Handler for Images (Capture Phase)
+    window.addEventListener(
+        "error",
+        function (event) {
+            if (event.target && event.target.tagName === "IMG") {
+                const img = event.target;
+                const defaultCover = img.getAttribute("data-default-cover");
+                if (defaultCover && img.src !== defaultCover) {
+                    // Prevent infinite loops if default cover is also broken
+                    img.src = defaultCover;
+                }
+            }
+        },
+        true // Capture phase to catch error events which don't bubble
+    );
+
     // Event Delegation for Buttons
     document.body.addEventListener("click", function (event) {
         const target = event.target;

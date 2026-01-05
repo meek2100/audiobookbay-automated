@@ -178,6 +178,9 @@ class Config:
         if cls.PAGE_LIMIT < 1:
             logger.warning(f"Invalid PAGE_LIMIT '{cls.PAGE_LIMIT}'. Resetting to 3.")
             cls.PAGE_LIMIT = 3
+        elif cls.PAGE_LIMIT > 10:  # noqa: PLR2004
+            logger.warning(f"PAGE_LIMIT '{cls.PAGE_LIMIT}' is too high. Capping at 10 to prevent DoS.")
+            cls.PAGE_LIMIT = 10
 
         # Validate DL_SCHEME
         if cls.DL_SCHEME not in ("http", "https"):

@@ -118,9 +118,16 @@ def get_text_after_label(container: Tag, label_pattern: re.Pattern[str], is_file
         current_node: Tag | Any = label_node
         next_elem = current_node.find_next_sibling()
 
-        if not next_elem and current_node.parent and current_node.parent.name not in ["div", "p", "td", "li"]:
-            current_node = current_node.parent
-            next_elem = current_node.find_next_sibling()
+        # Iterate up to 3 levels to find a sibling, skipping block-level parents
+        # This handles cases like <span><b>Label:</b></span> <span>Value</span>
+        for _ in range(3):
+            if next_elem:
+                break
+            if current_node.parent and current_node.parent.name not in ["div", "p", "td", "li"]:
+                current_node = current_node.parent
+                next_elem = current_node.find_next_sibling()
+            else:
+                break
 
         # COMPLIANCE: Python 3.13+ / Pylance strict type check
         if next_elem and isinstance(next_elem, Tag) and next_elem.name == "span":

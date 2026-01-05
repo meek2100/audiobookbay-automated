@@ -5,6 +5,7 @@ import importlib
 import logging
 import re
 import threading
+from typing import Any, TypeGuard
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -109,6 +110,10 @@ class TorrentManager:
         # Reset thread local
         self._local = ClientLocal()
 
+    def _is_strategy(self, cls: Any) -> TypeGuard[type[TorrentClientStrategy]]:
+        """Check if a class is a valid TorrentClientStrategy subclass using TypeGuard."""
+        return isinstance(cls, type) and issubclass(cls, TorrentClientStrategy)
+
     def _load_strategy_class(
         self, client_name: str | None, suppress_errors: bool = False
     ) -> type[TorrentClientStrategy] | None:
@@ -120,7 +125,8 @@ class TorrentManager:
         if not client_name:
             return None
 
-        # REFACTOR: Use package relative logic to make it robust against renames.
+        # SECURITY: Prevent importing arbitrary standard library modules by enforcing package path
+        # This ensures DL_CLIENT="json" or DL_CLIENT="os" fails unless they exist as plugins
         package_name = __package__ or "audiobook_automated.clients"
         full_module_name = f"{package_name}.{client_name}"
 
@@ -129,7 +135,7 @@ class TorrentManager:
             module = importlib.import_module(f".{client_name}", package=package_name)
             strategy_class = getattr(module, "Strategy", None)
 
-            if isinstance(strategy_class, type) and issubclass(strategy_class, TorrentClientStrategy):
+            if self._is_strategy(strategy_class):
                 # FIX: Assign to explicitly typed variable to satisfy both Mypy (no-any-return)
                 # and Pyright (redundant-cast). Mypy allows Any->Typed assignment; Pyright allows Typed->Typed.
                 validated_class: type[TorrentClientStrategy] = strategy_class

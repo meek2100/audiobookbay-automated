@@ -11,6 +11,22 @@ import requests
 from audiobook_automated.scraper.core import fetch_and_parse_page, search_audiobookbay
 
 
+def test_fetch_and_parse_page_unexpected_exception() -> None:
+    """Test that unexpected exceptions are chained as RuntimeError."""
+    mock_session = MagicMock()
+    # Simulate a generic exception (not RequestException)
+    mock_session.get.side_effect = ValueError("Something unexpected")
+
+    with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
+        with patch("audiobook_automated.scraper.core.get_semaphore"):  # Mock semaphore
+            with pytest.raises(RuntimeError) as exc:
+                # Use module constant or mock if needed, but here simple strings suffice
+                fetch_and_parse_page("example.com", "query", 1, "agent", 10)
+
+            assert "Unexpected error fetching page 1" in str(exc.value)
+            assert isinstance(exc.value.__cause__, ValueError)
+
+
 def test_fetch_page_missing_href() -> None:
     """Test fetch_and_parse_page handles post title missing href attribute gracefully."""
     # This covers lines 97-98 in scraper/core.py where we check if href exists
