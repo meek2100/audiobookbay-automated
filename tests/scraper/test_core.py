@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from flask import Flask
 
 from audiobook_automated.scraper.core import fetch_and_parse_page, search_audiobookbay
 

@@ -98,7 +98,7 @@ function initializeFilters() {
         return;
     }
 
-    populateSelectFilters();
+    // Optimization: populateSelectFilters() removed. Filters are now populated server-side.
     initializeFileSizeSlider();
     initializeDateRangePicker();
 }
@@ -228,63 +228,6 @@ function initializeFileSizeSlider() {
         tooltips: [formatter, formatter],
         range: { min: minSize, max: maxSize },
     });
-}
-
-/**
- * Populates filter dropdowns (Category, Language, etc.) from unique values in the results.
- */
-function populateSelectFilters() {
-    const categories = new Set();
-    const languages = new Set();
-    const bitrates = new Set();
-    const formats = new Set();
-
-    document.querySelectorAll(".result-row").forEach((row) => {
-        // Split categories for filtering by single keyword
-        const categoryString = row.dataset.category;
-        categoryString.split("|").forEach((term) => {
-            const cleanTerm = term.trim();
-            // Filter out meaningless tokens like "&", empty strings, or "Unknown"
-            if (
-                cleanTerm &&
-                cleanTerm.length > 1 &&
-                cleanTerm !== "Unknown" &&
-                cleanTerm !== "None" &&
-                /[a-zA-Z0-9]/.test(cleanTerm)
-            ) {
-                categories.add(cleanTerm);
-            }
-        });
-
-        languages.add(row.dataset.language);
-        bitrates.add(row.dataset.bitrate);
-        formats.add(row.dataset.format);
-    });
-
-    const appendOptions = (id, set) => {
-        const select = document.getElementById(id);
-        while (select.options.length > 1) {
-            select.remove(1);
-        }
-
-        const sortedValues = Array.from(set).sort((a, b) =>
-            a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
-        );
-
-        sortedValues.forEach((val) => {
-            if (val && val !== "Unknown" && val !== "None") {
-                const option = document.createElement("option");
-                option.value = val;
-                option.textContent = val;
-                select.appendChild(option);
-            }
-        });
-    };
-
-    appendOptions("category-filter", categories);
-    appendOptions("language-filter", languages);
-    appendOptions("bitrate-filter", bitrates);
-    appendOptions("format-filter", formats);
 }
 
 /**

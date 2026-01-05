@@ -32,15 +32,27 @@
         <div class="filter-controls">
             <select id="category-filter">
                 <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
             </select>
             <select id="language-filter">
                 <option value="">All Languages</option>
+                {% for lang in languages %}
+                <option value="{{ lang }}">{{ lang }}</option>
+                {% endfor %}
             </select>
             <select id="bitrate-filter">
                 <option value="">All Bitrates</option>
+                {% for bitrate in bitrates %}
+                <option value="{{ bitrate }}">{{ bitrate }}</option>
+                {% endfor %}
             </select>
             <select id="format-filter">
                 <option value="">All Formats</option>
+                {% for fmt in formats %}
+                <option value="{{ fmt }}">{{ fmt }}</option>
+                {% endfor %}
             </select>
             <input type="text" id="date-range-filter" placeholder="Select Date Range" />
         </div>
@@ -89,8 +101,8 @@
 <div class="table-wrapper" id="results-container">
     <table>
         <tbody id="results-table-body">
-            {% if books %} {% for book in books %} {% set default_cover_url = url_for('static', filename='images/' +
-            default_cover_filename, v=static_version) %}
+            {% if books %} {% set default_cover_url = url_for('static', filename='images/' + default_cover_filename,
+            v=static_version) %} {% for book in books %}
             <tr
                 class="result-row"
                 data-category="{{ book.category|join('|') }}"
