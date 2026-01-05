@@ -114,7 +114,36 @@ def search() -> str | Response:
             logger.info(f"Received search query: '{query}' (normalized to '{search_query}')")
             books = search_audiobookbay(search_query)
 
-        return render_template("search.html", books=books, query=query)
+        # Optimization: Pre-calculate filter lists to avoid slow client-side DOM scraping
+        categories: set[str] = set()
+        languages: set[str] = set()
+        formats: set[str] = set()
+        bitrates: set[str] = set()
+
+        for book in books:
+            for cat in book["category"]:
+                clean_cat = cat.strip()
+                if len(clean_cat) > 1 and clean_cat not in ("Unknown", "None") and any(c.isalnum() for c in clean_cat):
+                    categories.add(clean_cat)
+
+            if book["language"] and book["language"] not in ("Unknown", "None"):
+                languages.add(book["language"])
+
+            if book["format"] and book["format"] not in ("Unknown", "None"):
+                formats.add(book["format"])
+
+            if book["bitrate"] and book["bitrate"] not in ("Unknown", "None"):
+                bitrates.add(book["bitrate"])
+
+        return render_template(
+            "search.html",
+            books=books,
+            query=query,
+            categories=sorted(categories),
+            languages=sorted(languages),
+            formats=sorted(formats),
+            bitrates=sorted(bitrates),
+        )
 
     except ConnectionError as ce:
         # Specific handling for when mirrors are unreachable
