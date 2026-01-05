@@ -11,6 +11,7 @@ from pytest import LogCaptureFixture, MonkeyPatch
 
 from audiobook_automated import config
 from audiobook_automated.config import Config
+from audiobook_automated.constants import DEFAULT_SITE_TITLE, DEFAULT_SPLASH_MESSAGE
 
 
 def test_config_validate_success(monkeypatch: MonkeyPatch) -> None:
@@ -245,6 +246,10 @@ def test_config_parsing_quoted() -> None:
         "LOG_LEVEL": '"DEBUG"',
         "ABB_MIRRORS": '"mirror1, mirror2"',
         "MAGNET_TRACKERS": '"tracker1, tracker2"',
+        "SITE_TITLE": '"Quoted Title"',
+        "SPLASH_MESSAGE": "'Quoted Message'",
+        "SITE_LOGO": '"/path/to/logo.png"',
+        "SPLASH_TITLE": "'Quoted Splash Title'",
     }
 
     with patch.dict(os.environ, env_vars, clear=True):
@@ -261,6 +266,10 @@ def test_config_parsing_quoted() -> None:
         assert ReloadedConfig.LOG_LEVEL_STR == "DEBUG"
         assert ReloadedConfig.ABB_MIRRORS == ["mirror1", "mirror2"]
         assert ReloadedConfig.MAGNET_TRACKERS == ["tracker1", "tracker2"]
+        assert ReloadedConfig.SITE_TITLE == "Quoted Title"
+        assert ReloadedConfig.SPLASH_MESSAGE == "Quoted Message"
+        assert ReloadedConfig.SITE_LOGO == "/path/to/logo.png"
+        assert ReloadedConfig.SPLASH_TITLE == "Quoted Splash Title"
 
 
 def test_config_parsing_defaults() -> None:
@@ -272,3 +281,6 @@ def test_config_parsing_defaults() -> None:
         assert ReloadedConfig.ABS_URL is None
         assert ReloadedConfig.NAV_LINK_NAME is None
         assert ReloadedConfig.DL_PORT is None
+        assert ReloadedConfig.SITE_TITLE == DEFAULT_SITE_TITLE
+        assert ReloadedConfig.SPLASH_MESSAGE == DEFAULT_SPLASH_MESSAGE
+        assert ReloadedConfig.SITE_LOGO is None
