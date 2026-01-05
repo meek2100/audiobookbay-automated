@@ -56,10 +56,12 @@ def fetch_and_parse_page(  # noqa: PLR0915
         list[BookSummary]: A list of dictionaries, each representing a book found on the page.
     """
     base_url = f"https://{hostname}"
-    if page == 1:
-        url = f"{base_url}/"
-    else:
-        url = f"{base_url}/page/{page}/"
+
+    # FIX: Always use the explicit paginated URL structure.
+    # Previously, page 1 used f"{base_url}/" which caused results to be empty
+    # due to inconsistencies in how the site handles the root search URL vs /page/X/.
+    url = f"{base_url}/page/{page}/"
+
     params = {"s": query}
     referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
     headers = get_headers(user_agent, referer)
