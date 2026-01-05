@@ -48,7 +48,7 @@
             <input type="text" id="date-range-filter" placeholder="Select Date Range" />
         </div>
         <div class="filter-buttons">
-            <button id="filter-button">Filter</button>
+            <button id="filter-button" class="btn-primary">Filter</button>
         </div>
     </div>
     <div class="filter-row">
@@ -59,7 +59,7 @@
             </div>
         </div>
         <div class="filter-buttons">
-            <button id="clear-button">Clear</button>
+            <button id="clear-button" class="btn-glass">Clear</button>
         </div>
     </div>
 
@@ -132,9 +132,9 @@
                     </div>
                 </td>
                 <td>
-                    <a href="{{ url_for('main.details', link=book.link) }}" class="details-button">Details</a>
+                    <a href="{{ url_for('main.details', link=book.link) }}" class="btn-glass details-button">Details</a>
                     <button
-                        class="send-torrent-btn"
+                        class="btn-primary send-torrent-btn"
                         data-link="{{ book.link|escape }}"
                         data-title="{{ book.title|escape }}"
                     >
