@@ -65,6 +65,12 @@ class Config:
     # Defaults to False to ensure local deployments work out-of-the-box.
     FORCE_HTTPS: bool = parse_bool(os.getenv("FORCE_HTTPS"), False)
 
+    # Session & CSRF Configuration
+    SESSION_COOKIE_NAME: str = "audiobook_session"
+    SESSION_COOKIE_SAMESITE: str = "Lax"
+    SESSION_COOKIE_SECURE: bool = FORCE_HTTPS
+    WTF_CSRF_SSL_STRICT: bool = False
+
     # Torrent Client Configuration
     DL_CLIENT: str | None = os.getenv("DL_CLIENT")
     DL_HOST: str | None = os.getenv("DL_HOST")
