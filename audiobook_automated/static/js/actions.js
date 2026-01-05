@@ -60,41 +60,46 @@ document.addEventListener("DOMContentLoaded", function () {
         const target = event.target;
 
         // Send Torrent
-        if (target.matches(".send-torrent-btn")) {
-            const link = target.dataset.link;
-            const title = target.dataset.title;
+        const sendBtn = target.closest(".send-torrent-btn");
+        if (sendBtn) {
+            const link = sendBtn.dataset.link;
+            const title = sendBtn.dataset.title;
             if (link && title) {
-                sendTorrent(link, title, target);
+                sendTorrent(link, title, sendBtn);
             }
         }
 
         // Remove Torrent
-        if (target.matches(".remove-torrent-btn")) {
-            const id = target.dataset.torrentId;
+        const removeBtn = target.closest(".remove-torrent-btn");
+        if (removeBtn) {
+            const id = removeBtn.dataset.torrentId;
             if (id) {
-                deleteTorrent(id, target);
+                deleteTorrent(id, removeBtn);
             }
         }
 
         // Download (Details Page)
-        if (target.matches(".details-download-btn")) {
-            const link = target.dataset.link;
-            const title = target.dataset.title;
+        const detailsBtn = target.closest(".details-download-btn");
+        if (detailsBtn) {
+            const link = detailsBtn.dataset.link;
+            const title = detailsBtn.dataset.title;
             if (link && title) {
-                sendTorrent(link, title, target);
+                sendTorrent(link, title, detailsBtn);
             }
         }
 
         // External Link
-        if (target.matches(".direct-link-btn")) {
-            const link = target.dataset.externalLink;
+        const externalBtn = target.closest(".direct-link-btn");
+        if (externalBtn) {
+            const link = externalBtn.dataset.externalLink;
             if (link) {
                 openExternalLink(link);
             }
         }
 
         // Back Button
-        if (target.matches(".back-link-btn")) {
+        const backBtn = target.closest(".back-link-btn");
+        if (backBtn) {
             history.back();
         }
     });

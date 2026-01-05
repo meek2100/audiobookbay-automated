@@ -71,7 +71,10 @@ describe("status.js - UI Logic", () => {
         // Check action button
         const btn = rows[0].querySelector("button");
         expect(btn).not.toBeNull();
-        expect(btn.getAttribute("onclick")).toContain("deleteTorrent('123')");
+        expect(btn.classList.contains("remove-torrent-btn")).toBe(true);
+        expect(btn.dataset.torrentId).toBe("123");
+        // Ensure inline handler is gone
+        expect(btn.getAttribute("onclick")).toBeNull();
     });
 
     test("updateTable should escape XSS in names", () => {
