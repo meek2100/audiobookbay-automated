@@ -47,7 +47,7 @@ repos:
     hooks:
       - id: codespell
         exclude: ^(poetry\.lock|package-lock\.json)$
-        args: ["--ignore-words-list", "afterAll"]
+        args: ["--ignore-words-list", "afterAll, COo"]
 
   - repo: https://github.com/meek2100/pre-commit-context-header
     rev: v0.1.0
