@@ -1,11 +1,27 @@
 # File: tests/scraper/test_parser.py
+# pyright: reportPrivateUsage=false
 """Tests for the parser module."""
 
+import re
 from pathlib import Path
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
-from audiobook_automated.scraper.parser import parse_post_content
+from audiobook_automated.scraper.parser import (
+    RE_CATEGORY,
+    RE_HASH_STRING,
+    RE_LABEL_FORMAT,
+    RE_LABEL_SIZE,
+    RE_LANGUAGE,
+    BookDetails,
+    BookMetadata,
+    _extract_table_data,
+    _normalize_metadata,
+    _sanitize_description,
+    get_text_after_label,
+    parse_book_details,
+    parse_post_content,
+)
 
 
 def test_parse_post_content_integration() -> None:
@@ -29,23 +45,6 @@ def test_parse_post_content_integration() -> None:
 
 
 # --- Merged Coverage Tests from test_parser_coverage.py ---
-
-import re
-from bs4 import BeautifulSoup, Tag
-from audiobook_automated.scraper.parser import (
-    get_text_after_label,
-    _normalize_metadata,
-    BookMetadata,
-    RE_LABEL_FORMAT,
-    RE_LABEL_SIZE,
-    parse_book_details,
-    _sanitize_description,
-    _extract_table_data,
-    RE_LANGUAGE,
-    RE_CATEGORY,
-    RE_HASH_STRING,
-    BookDetails
-)
 
 HTML_STANDARD_DETAILS = """
 <div class="post">

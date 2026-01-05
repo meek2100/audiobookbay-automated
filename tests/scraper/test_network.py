@@ -1,12 +1,26 @@
 # File: tests/scraper/test_network.py
+# pyright: reportPrivateUsage=false
 """Tests for the network module."""
 
-from unittest.mock import MagicMock, patch
+from typing import cast
+from unittest.mock import MagicMock, mock_open, patch
 
 import requests
 from flask import Flask
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-from audiobook_automated.scraper.network import find_best_mirror, mirror_cache
+from audiobook_automated.constants import DEFAULT_TRACKERS, USER_AGENTS
+from audiobook_automated.scraper import network
+from audiobook_automated.scraper.network import (
+    CACHE_LOCK,
+    _local,
+    find_best_mirror,
+    get_ping_session,
+    get_trackers,
+    mirror_cache,
+    tracker_cache,
+)
 
 
 def test_find_best_mirror_failover(app: Flask) -> None:
@@ -39,21 +53,6 @@ def test_find_best_mirror_failover(app: Flask) -> None:
 
 
 # --- Merged Coverage Tests from test_network_coverage.py ---
-
-from unittest.mock import mock_open
-from typing import Any, cast
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-from audiobook_automated.scraper.network import (
-    get_ping_session,
-    get_trackers,
-    tracker_cache,
-    CACHE_LOCK,
-    DEFAULT_TRACKERS,
-    _local
-)
-from audiobook_automated.scraper import network
-from audiobook_automated.constants import USER_AGENTS
 
 
 def test_get_trackers_cache_hit(app: Flask) -> None:
@@ -154,7 +153,7 @@ def test_find_best_mirror_fallback_logic(app: Flask) -> None:
             # Case 2: HEAD raises RequestException, GET succeeds
             mock_session.head.side_effect = requests.RequestException("Error")
             assert find_best_mirror() == "mirror1.com"
-            mock_session.head.side_effect = None # Reset
+            mock_session.head.side_effect = None  # Reset
             # Restore HEAD return value
             mock_session.head.return_value = mock_head_resp
 
@@ -181,9 +180,9 @@ def test_find_best_mirror_negative_cache(app: Flask) -> None:
 
     # Now valid mirrors exist but cache should block
     with patch("audiobook_automated.scraper.network.get_mirrors", return_value=["valid.com"]):
-         # Negative cache logic uses time.time(), so we can't easily jump ahead without mocking time
-         # But we can verify it returns None immediately
-         assert find_best_mirror() is None
+        # Negative cache logic uses time.time(), so we can't easily jump ahead without mocking time
+        # But we can verify it returns None immediately
+        assert find_best_mirror() is None
 
 
 def test_shutdown_executors() -> None:
@@ -192,7 +191,7 @@ def test_shutdown_executors() -> None:
     # The function is _shutdown_network and is registered with atexit
     # We can invoke it manually for coverage
     if hasattr(network, "_shutdown_network"):
-        network._shutdown_network()  # type: ignore
+        network._shutdown_network()  # pyright: ignore[reportPrivateUsage]
     # It just calls shutdown, so just ensure no error
 
 
@@ -210,7 +209,7 @@ def test_get_ping_session_configuration() -> None:
 def test_get_ping_session_singleton() -> None:
     """Test that get_ping_session returns the same singleton instance."""
     # Reset thread-local singleton
-    network._local.ping_session = None  # pyright: ignore[reportPrivateUsage]
+    network._local.ping_session = None
 
     session1 = network.get_ping_session()
     session2 = network.get_ping_session()
@@ -222,7 +221,7 @@ def test_get_ping_session_singleton() -> None:
 def test_get_thread_session_initialization() -> None:
     """Test that get_thread_session creates a session and reuses it."""
     # Ensure we start with a clean state for this thread
-    network._local.session = None  # pyright: ignore[reportPrivateUsage]
+    network._local.session = None
 
     # First call: Should create a new session
     session1 = network.get_thread_session()
@@ -309,33 +308,6 @@ def test_check_mirror_timeout() -> None:
         mock_session.get.assert_not_called()
 
 
-def test_find_best_mirror_all_fail(app: Flask) -> None:
-    """Test that find_best_mirror returns None and caches failure if all mirrors fail."""
-    network.mirror_cache.clear()
-    network.failure_cache.clear()
-
-    with patch("audiobook_automated.scraper.network.check_mirror", return_value=None):
-        result = network.find_best_mirror()
-        assert result is None
-        # Verify negative cache was set
-        assert "failure" in network.failure_cache
-
-
-def test_find_best_mirror_success(app: Flask) -> None:
-    """Test successful mirror finding updates the cache."""
-    # Important: Clear caches to ensure we don't hit the negative cache from previous tests
-    network.mirror_cache.clear()
-    network.failure_cache.clear()
-
-    # Mock get_mirrors to return a controlled list
-    with patch("audiobook_automated.scraper.network.get_mirrors", return_value=["mirror1.com"]):
-        with patch("audiobook_automated.scraper.network.check_mirror", side_effect=["mirror1.com"]):
-            result = network.find_best_mirror()
-            assert result == "mirror1.com"
-            # Verify it was added to the positive cache
-            assert network.mirror_cache["active_mirror"] == "mirror1.com"
-
-
 def test_find_best_mirror_cached(app: Flask) -> None:
     """Test that find_best_mirror returns cached value directly."""
     # Clear caches to remove any negative cache
@@ -345,11 +317,12 @@ def test_find_best_mirror_cached(app: Flask) -> None:
     # Setup cache state manually
     network.mirror_cache["active_mirror"] = "cached-mirror.lu"
 
-    # Execute - should return immediately without calling get_mirrors or checking them
-    # We do NOT patch check_mirror here to prove it doesn't get called (would error if called)
-    result = network.find_best_mirror()
+    with app.app_context():
+        # Execute - should return immediately without calling get_mirrors or checking them
+        # We do NOT patch check_mirror here to prove it doesn't get called (would error if called)
+        result = network.find_best_mirror()
 
-    assert result == "cached-mirror.lu"
+        assert result == "cached-mirror.lu"
     # Clean up to avoid pollution
     network.mirror_cache.clear()
 
@@ -360,29 +333,12 @@ def test_find_best_mirror_negative_cache_hit(app: Flask) -> None:
     with network.CACHE_LOCK:
         network.failure_cache["failure"] = True
 
-    # Attempt to find mirror (should skip all network calls)
-    with patch("audiobook_automated.scraper.network.get_mirrors") as mock_get:
-        result = network.find_best_mirror()
-        assert result is None
-        mock_get.assert_not_called()
-
-
-def test_negative_caching_flow(app: Flask) -> None:
-    """Test the full negative caching flow: Failure -> Cache Set -> Negative Hit."""
-    network.mirror_cache.clear()
-    network.failure_cache.clear()
-
-    # Phase 1: Fail all mirrors
-    with patch("audiobook_automated.scraper.network.check_mirror", return_value=None):
-        result1 = network.find_best_mirror()
-        assert result1 is None
-        assert "failure" in network.failure_cache
-
-    # Phase 2: Call again, ensure check_mirror is NOT called due to negative cache
-    with patch("audiobook_automated.scraper.network.check_mirror") as mock_check:
-        result2 = network.find_best_mirror()
-        assert result2 is None
-        mock_check.assert_not_called()
+    with app.app_context():
+        # Attempt to find mirror (should skip all network calls)
+        with patch("audiobook_automated.scraper.network.get_mirrors") as mock_get:
+            result = network.find_best_mirror()
+            assert result is None
+            mock_get.assert_not_called()
 
 
 def test_get_random_user_agent_returns_string() -> None:
