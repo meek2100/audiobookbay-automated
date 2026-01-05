@@ -21,6 +21,9 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Validate critical configuration
     config_class.validate(app.logger)
 
+    if app.debug:
+        app.logger.warning("Running in DEBUG mode. Security checks may be bypassed.")
+
     # PRODUCTION FIX: Log Level Inheritance
     configured_level = app.config.get("LOG_LEVEL")
     _configure_logging(app, configured_level)
@@ -54,6 +57,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     talisman.init_app(
         app,
         content_security_policy=csp,
+        content_security_policy_nonce_in=["script-src"],
         # Allow HTTP in dev/test, force HTTPS in prod if needed (usually handled by proxy)
         force_https=app.config["FORCE_HTTPS"],
     )

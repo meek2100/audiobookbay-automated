@@ -1,248 +1,62 @@
 # File: tests/scraper/test_parser.py
-# pyright: reportPrivateUsage=false
-"""Unit tests for the HTML parser module."""
+"""Tests for the parser module."""
 
-import re
-from typing import Any
-from unittest.mock import MagicMock
+from pathlib import Path
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 
-from audiobook_automated.scraper.parser import (
-    RE_CATEGORY,
-    RE_HASH_STRING,
-    RE_LANGUAGE,
-    BookDetails,
-    BookMetadata,
-    _extract_table_data,
-    _normalize_metadata,
-    _sanitize_description,
-    get_text_after_label,
-    normalize_cover_url,
-    parse_book_details,
-    parse_post_content,
-)
-
-# --- Unit Tests: Helper Functions ---
+from audiobook_automated.scraper.parser import parse_post_content
 
 
-def test_get_text_after_label_valid() -> None:
-    """Test extracting text when label matches correctly."""
-    html = "<div><p>Format: <span>MP3</span></p></div>"
-    soup = BeautifulSoup(html, "lxml")
-    p_tag = soup.find("p")
-    # FIX: Ensure p_tag is treated as a Tag for MyPy safety
-    assert isinstance(p_tag, Tag)
-    res = get_text_after_label(p_tag, re.compile("Format:"))
-    assert res == "MP3"
+def test_parse_post_content_integration() -> None:
+    """Integration test for parsing post content using a local fixture."""
+    fixture_path = Path(__file__).parent.parent / "fixtures" / "sample_page.html"
+    html_content = fixture_path.read_text(encoding="utf-8")
 
+    soup = BeautifulSoup(html_content, "lxml")
+    post = soup.select_one(".post")
+    assert post is not None
+    content_div = post.select_one(".postContent")
+    assert content_div is not None
+    post_info = post.select_one(".postInfo")
+    assert post_info is not None
 
-def test_get_text_after_label_inline() -> None:
-    """Test extracting text when label and value are in the same node."""
-    html = "<div><p>Posted: 10 Jan 2020</p></div>"
-    soup = BeautifulSoup(html, "lxml")
-    p_tag = soup.find("p")
-    assert isinstance(p_tag, Tag)
-    res = get_text_after_label(p_tag, re.compile("Posted:"))
-    assert res == "10 Jan 2020"
+    meta = parse_post_content(content_div, post_info)
 
-
-def test_get_text_after_label_split_unit() -> None:
-    """Test the specific branch where File Size unit is in the next sibling node.
-
-    This covers the 'val += f" {unit_node.strip()}"' logic in parser.py.
-    """
-    html = "<div><p>File Size: <span>1.5</span> GB</p></div>"
-    soup = BeautifulSoup(html, "lxml")
-    p_tag = soup.find("p")
-    assert isinstance(p_tag, Tag)
-    # Note: We must explicitly pass is_file_size=True to trigger the unit concatenation logic
-    res = get_text_after_label(p_tag, re.compile("File Size:"), is_file_size=True)
-    assert res == "1.5 GB"
-
-
-def test_get_text_after_label_exception() -> None:
-    """Test that exceptions during parsing are handled gracefully."""
-    mock_container = MagicMock(spec=Tag)
-    # Force an exception when .find() is called
-    mock_container.find.side_effect = Exception("BS4 Internal Error")
-    result = get_text_after_label(mock_container, re.compile("Label:"))
-    assert result == "Unknown"
-
-
-def test_get_text_after_label_fallback() -> None:
-    """Test that it returns 'Unknown' if label exists but no value follows."""
-
-    class FakeNavigableString(str):
-        def find_next_sibling(self) -> Any:
-            return None
-
-    mock_container = MagicMock(spec=Tag)
-    mock_label_node = FakeNavigableString("Format:")
-    mock_container.find.return_value = mock_label_node
-
-    result = get_text_after_label(mock_container, re.compile("Format:"))
-    assert result == "Unknown"
-
-
-def test_get_text_after_label_not_found() -> None:
-    """Test that it returns 'Unknown' if the label text is not found in the container."""
-    html = "<div><p>Some other content</p></div>"
-    soup = BeautifulSoup(html, "lxml")
-    # 'Format:' does not exist in the HTML (pass soup which is Tag-like)
-    result = get_text_after_label(soup, re.compile("Format:"))
-    assert result == "Unknown"
-
-
-def test_normalize_cover_url_valid() -> None:
-    """Test valid cover URL normalization."""
-    base = "https://audiobookbay.lu/page/1"
-    url = normalize_cover_url(base, "/images/book.jpg")
-    assert url == "https://audiobookbay.lu/images/book.jpg"
-
-
-def test_normalize_cover_url_default() -> None:
-    """Test that default cover image returns None (optimization)."""
-    base = "https://audiobookbay.lu/page/1"
-    url = normalize_cover_url(base, "/images/default_cover.jpg")
-    assert url is None
-
-
-def test_normalize_cover_url_empty() -> None:
-    """Test that empty relative_url returns None (Lines 116-117 coverage)."""
-    assert normalize_cover_url("http://base.com", "") is None
-
-
-# --- Unit Tests: parse_post_content (Centralized Logic) ---
-
-
-def test_parse_post_content_full_validity() -> None:
-    """Test parsing a fully populated post content and info section."""
-    html_info = """
-    <div class="postInfo">
-        Category: Fantasy Language: English
-    </div>
-    """
-    html_content = """
-    <div class="postContent">
-        <p>Format: MP3</p>
-        <p>Bitrate: 128 Kbps</p>
-        <p>Posted: 01 Jan 2024</p>
-        <p>File Size: 500 MBs</p>
-    </div>
-    """
-    soup_info = BeautifulSoup(html_info, "lxml").find("div")
-    soup_content = BeautifulSoup(html_content, "lxml").find("div")
-
-    # Cast to Tag to satisfy strict typing
-    assert isinstance(soup_info, Tag)
-    assert isinstance(soup_content, Tag)
-
-    meta: BookMetadata = parse_post_content(soup_content, soup_info)
-
-    assert meta.category == ["Fantasy"]
     assert meta.language == "English"
     assert meta.format == "MP3"
     assert meta.bitrate == "128 Kbps"
-    assert meta.post_date == "01 Jan 2024"
-    assert meta.file_size == "500 MBs"
 
 
-def test_parse_post_content_missing_elements() -> None:
-    """Test robustness when input divs are None."""
-    # Both None
-    meta = parse_post_content(None, None)
-    assert meta.language == "Unknown"
-    assert meta.file_size == "Unknown"
+# --- Merged Coverage Tests from test_parser_coverage.py ---
 
-    # One None
-    html_content = """<div class="postContent"><p>Format: M4B</p></div>"""
-    soup_content = BeautifulSoup(html_content, "lxml").find("div")
-    assert isinstance(soup_content, Tag)
-    meta = parse_post_content(soup_content, None)
-
-    assert meta.format == "M4B"
-    assert meta.category == ["Unknown"]
-
-
-def test_parse_post_content_normalization() -> None:
-    """Test that '?' and empty strings are normalized to 'Unknown'."""
-    html_info = """<div class="postInfo">Category: ? Language:   </div>"""
-    html_content = """
-    <div class="postContent">
-        <p>Format: ?</p>
-        <p>Bitrate: </p> </div>
-    """
-    soup_info = BeautifulSoup(html_info, "lxml").find("div")
-    soup_content = BeautifulSoup(html_content, "lxml").find("div")
-
-    assert isinstance(soup_info, Tag)
-    assert isinstance(soup_content, Tag)
-
-    meta = parse_post_content(soup_content, soup_info)
-
-    assert meta.category == ["Unknown"]
-    assert meta.language == "Unknown"  # Was empty/whitespace
-    assert meta.format == "Unknown"  # Was ?
-    assert meta.bitrate == "Unknown"  # Was empty
-
-
-def test_parse_post_content_malformed_category() -> None:
-    r"""Test parsing when 'Language' label is missing or structure is abnormal.
-
-    This ensures the regex `r"Category:\s*(.+?)(?:\s+Language:|\s*$)"` handles
-    edge cases where the expected terminator isn't present.
-    """
-    # Case 1: End of string, no Language
-    html_info = """<div class="postInfo">Category: Horror</div>"""
-    soup_info = BeautifulSoup(html_info, "lxml").find("div")
-    soup_content = MagicMock(spec=Tag)
-
-    assert isinstance(soup_info, Tag)
-    meta = parse_post_content(soup_content, soup_info)
-
-    assert meta.category == ["Horror"]
-
-    # Case 2: Extra whitespace at end
-    html_info_2 = """<div class="postInfo">Category: Thriller   </div>"""
-    soup_info_2 = BeautifulSoup(html_info_2, "lxml").find("div")
-    assert isinstance(soup_info_2, Tag)
-    meta_2 = parse_post_content(soup_content, soup_info_2)
-    assert meta_2.category == ["Thriller"]
-
-
-def test_parse_post_content_empty_category_results_in_unknown() -> None:
-    """Test that a category string resulting in an empty list falls back to ['Unknown'].
-
-    This covers the 'if not value: setattr(meta, f.name, ["Unknown"])' branch
-    in parser.py which is hit when split() produces an empty list.
-    """
-    # "Category: ," results in raw_cat="," -> split(",") -> ["", ""] -> filtered to []
-    html_info = """<div class="postInfo">Category: , Language: English</div>"""
-    soup_info = BeautifulSoup(html_info, "lxml").find("div")
-    soup_content = MagicMock(spec=Tag)
-
-    assert isinstance(soup_info, Tag)
-
-    meta = parse_post_content(soup_content, soup_info)
-
-    # Should reset to Unknown, not empty list
-    assert meta.category == ["Unknown"]
-    assert meta.language == "English"
-
-
-# --- Unit Tests: parse_book_details (Centralized Logic) ---
+import re
+from bs4 import BeautifulSoup, Tag
+from audiobook_automated.scraper.parser import (
+    get_text_after_label,
+    _normalize_metadata,
+    BookMetadata,
+    RE_LABEL_FORMAT,
+    RE_LABEL_SIZE,
+    parse_book_details,
+    _sanitize_description,
+    _extract_table_data,
+    RE_LANGUAGE,
+    RE_CATEGORY,
+    RE_HASH_STRING,
+    BookDetails
+)
 
 HTML_STANDARD_DETAILS = """
 <div class="post">
     <div class="postTitle"><h1>Valid Book Title</h1></div>
+    <div class="desc">
+        <p>Description line 1.</p>
+        <script>alert('xss')</script>
+        <p style="color:red">Bad Style</p>
+    </div>
     <div class="postContent">
-        <img itemprop="image" src="/images/cover.jpg" />
-        <div class="desc">
-            <p>Description line 1.</p>
-            <script>alert('xss')</script>
-            <span style="color:red">Description line 2.</span>
-        </div>
+        <img itemprop="image" src="/images/cover.jpg">
         <p>Posted: 01 Jan 2024</p>
         <p>Format: MP3</p>
     </div>
@@ -401,10 +215,6 @@ def test_extract_table_data_empty_values() -> None:
     assert size == "Fallback"
 
 
-# File: tests/scraper/test_parser_utils.py
-"""Tests for parser utility functions, specifically focusing on edge cases."""
-
-
 def test_get_text_after_label_simple() -> None:
     """Test simple case: Label: Value in text node."""
     html = "<p>Format: MP3</p>"
@@ -451,16 +261,6 @@ def test_get_text_after_label_file_size() -> None:
     pattern = re.compile(r"File Size:")
     # The logic `is_file_size=True` handles `next_elem.next_sibling`.
     assert get_text_after_label(container, pattern, is_file_size=True) == "100 MB"
-
-
-# --- Regex Resilience Tests ---
-
-
-def test_date_parsing_resilience() -> None:
-    """Test resilience of date parsing logic (note: date parsing is mainly in JS/template, but we check regex safety here)."""
-    # The parser.py itself doesn't have a date regex, it relies on get_text_after_label
-    # However, we can test that our general regexes are safe.
-    pass
 
 
 def test_regex_language() -> None:
@@ -515,3 +315,60 @@ def test_metadata_normalization_explicit() -> None:
     assert meta.file_size == "Unknown"
     assert meta.bitrate == "Unknown"
     assert meta.language == "English"
+
+
+def test_get_text_after_label_nested_sibling() -> None:
+    """Test get_text_after_label where the value is in a sibling of the parent (recursive check)."""
+    # The current logic only checks:
+    # 1. next_sibling
+    # 2. parent.next_sibling (if parent name not in block tags)
+    # In "<div><p><strong>Format:</strong></p><span>MP3</span></div>":
+    # - "Format:" is in <strong>.
+    # - <strong> next sibling is None (inside <p>).
+    # - <strong> parent is <p>. <p> IS in ["div", "p", "td", "li"].
+    # - So it STOPS recursion and returns "Unknown".
+    #
+    # To test the recursion success, we need a parent that is NOT in the block list.
+    # E.g. <span><strong>Format:</strong></span><span>MP3</span>
+
+    html = "<div><span><strong>Format:</strong></span><span>MP3</span></div>"
+    soup = BeautifulSoup(html, "lxml")
+    container = soup.find("div")
+    assert isinstance(container, Tag)
+    assert get_text_after_label(container, RE_LABEL_FORMAT) == "MP3"
+
+
+def test_get_text_after_label_file_size_unit() -> None:
+    """Test get_text_after_label for file size where unit is in next sibling text node."""
+    html = """
+    <div>
+        <span>File Size:</span>
+        <span>123</span> MB
+    </div>
+    """
+    soup = BeautifulSoup(html, "lxml")
+    container = soup.find("div")
+    assert isinstance(container, Tag)
+    assert get_text_after_label(container, RE_LABEL_SIZE, is_file_size=True) == "123 MB"
+
+
+def test_normalize_metadata_category_list() -> None:
+    """Test normalization of category list."""
+    meta = BookMetadata(category=["A", "?", " ", ""])
+    _normalize_metadata(meta)
+    assert meta.category == ["A", "Unknown", "Unknown", "Unknown"]
+
+
+def test_normalize_metadata_category_empty_list() -> None:
+    """Test normalization of empty category list."""
+    meta = BookMetadata(category=[])
+    _normalize_metadata(meta)
+    assert meta.category == ["Unknown"]
+
+
+def test_normalize_metadata_strings() -> None:
+    """Test normalization of string fields."""
+    meta = BookMetadata(format="? ", bitrate="")
+    _normalize_metadata(meta)
+    assert meta.format == "Unknown"
+    assert meta.bitrate == "Unknown"

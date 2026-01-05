@@ -110,8 +110,10 @@ def test_get_book_details_failure(mock_sleep: Any) -> None:
     mock_session.get.side_effect = requests.exceptions.RequestException("Net Down")
 
     with patch("audiobook_automated.scraper.core.get_thread_session", return_value=mock_session):
-        with pytest.raises(requests.exceptions.RequestException):
+        # We now raise RuntimeError with exception chaining
+        with pytest.raises(RuntimeError) as exc:
             get_book_details("https://audiobookbay.lu/fail-book")
+        assert "Failed to fetch book details" in str(exc.value)
 
 
 def test_get_book_details_ssrf_protection() -> None:

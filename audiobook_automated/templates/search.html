@@ -112,10 +112,6 @@
                         class="cover"
                         width="100"
                         data-default-cover="{{ url_for('static', filename='images/' + default_cover_filename, v=static_version) }}"
-                        onerror="
-                            this.onerror = null;
-                            this.src = this.dataset.defaultCover;
-                        "
                     />
                 </td>
                 <td>
