@@ -68,7 +68,8 @@ class Config:
     # Session & CSRF Configuration
     SESSION_COOKIE_NAME: str = "audiobook_session"
     SESSION_COOKIE_SAMESITE: str = "Lax"
-    SESSION_COOKIE_SECURE: bool = FORCE_HTTPS
+    # Force Secure=False to allow cookies over HTTP/IP as requested
+    SESSION_COOKIE_SECURE: bool = False
     WTF_CSRF_SSL_STRICT: bool = False
 
     # Torrent Client Configuration
