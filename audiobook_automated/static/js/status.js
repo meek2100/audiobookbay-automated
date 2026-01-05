@@ -60,7 +60,7 @@ function updateTable(tbody, torrents) {
             <td>${escapeHtml(torrent.state)}</td>
             <td>${escapeHtml(torrent.size)}</td>
             <td>
-                <button class="remove-button" onclick="deleteTorrent('${torrent.id}')">Remove</button>
+                <button class="remove-button remove-torrent-btn" data-torrent-id="${torrent.id}">Remove</button>
             </td>
         </tr>
     `
