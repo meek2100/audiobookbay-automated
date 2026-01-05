@@ -6,7 +6,6 @@ test.describe('UI Layout & Alignment', () => {
     // Mock the homepage or search page to ensure predictable results for layout testing
     await page.route('/', async route => {
         const response = await route.fetch();
-        // Just return the original response for the home page
         await route.fulfill({ response });
     });
   });
@@ -56,9 +55,9 @@ test.describe('UI Layout & Alignment', () => {
 <head>
     <meta charset="UTF-8" />
     <title>Search</title>
-    <!-- Use versioned CSS links similar to real app, relying on server to serve them -->
     <link rel="stylesheet" href="/static/css/style.css" />
     <link rel="stylesheet" href="/static/css/search.css" />
+    <link rel="stylesheet" href="/static/vendor/css/nouislider.min.css" />
 </head>
 <body>
     <div class="navbar"></div>
@@ -66,7 +65,12 @@ test.describe('UI Layout & Alignment', () => {
         <div id="filter-container">
             <div class="filter-row"></div>
             <div class="filter-row filter-row-bottom">
-                 <div class="filter-controls"></div>
+                 <div class="filter-controls">
+                     <div class="file-size-filter-wrapper">
+                         <label>File Size:</label>
+                         <div id="file-size-slider" class="noUi-target noUi-ltr noUi-horizontal"></div>
+                     </div>
+                 </div>
                  <div class="filter-buttons">
                     <button id="filter-button" class="btn-primary">Filter</button>
                     <button id="clear-button" class="btn-glass">Clear</button>
@@ -79,6 +83,11 @@ test.describe('UI Layout & Alignment', () => {
                  </div>
             </div>
         </div>
+
+        <div class="message-scroller" id="message-scroller" style="display: block;">
+            <p id="scrolling-message">Searching...</p>
+        </div>
+
         <div class="table-wrapper" id="results-container">
             <table>
                 <tbody id="results-table-body">
@@ -114,6 +123,7 @@ test.describe('UI Layout & Alignment', () => {
     const resultRow = page.locator('.result-row').first();
     await expect(resultRow).toBeVisible();
 
+    // --- Search Button Alignment Check ---
     const actionButtons = resultRow.locator('.action-buttons');
     const detailsBtn = actionButtons.locator('.details-button').first();
     const downloadBtn = actionButtons.locator('.send-torrent-btn').first();
@@ -124,21 +134,35 @@ test.describe('UI Layout & Alignment', () => {
     const detailsBox = await detailsBtn.boundingBox();
     const downloadBox = await downloadBtn.boundingBox();
 
-    // Verify filter buttons
-    const filterContainer = page.locator('.filter-buttons');
-    await expect(filterContainer).toBeVisible();
-
-    // Check justify-content: flex-end
-    await expect(filterContainer).toHaveCSS('justify-content', 'flex-end'); // Check computed style from CSS
-
     if (detailsBox && downloadBox) {
-        // Strict Check: Assert that both buttons have the same height
-        // Using approximate check because of potential sub-pixel differences
         expect(Math.abs(detailsBox.height - downloadBox.height)).toBeLessThan(1);
-
-        // Vertical Alignment: They should be aligned on the same Y axis (top).
         expect(Math.abs(detailsBox.y - downloadBox.y)).toBeLessThan(1);
     }
+
+    // --- Filter Buttons Alignment Check ---
+    const filterContainer = page.locator('.filter-buttons');
+    await expect(filterContainer).toBeVisible();
+    await expect(filterContainer).toHaveCSS('justify-content', 'flex-end');
+
+    // --- New Check: Slider Visibility & Width ---
+    const slider = page.locator('#file-size-slider');
+    await expect(slider).toBeVisible();
+
+    const sliderBox = await slider.boundingBox();
+    expect(sliderBox).not.toBeNull();
+    if (sliderBox) {
+        // It should have a significant width, not 0 or collapsed
+        expect(sliderBox.width).toBeGreaterThan(50);
+    }
+
+    // --- New Check: Filter Controls Flex Growth ---
+    const filterControls = page.locator('.filter-controls').first();
+    await expect(filterControls).toHaveCSS('flex-grow', '1');
+
+    // --- New Check: Searching Message Alignment ---
+    const messageScroller = page.locator('#message-scroller');
+    await expect(messageScroller).toBeVisible();
+    await expect(messageScroller).toHaveCSS('text-align', 'center');
   });
 
   test('Test Case C: Functional Smoke Test', async ({ page }) => {
