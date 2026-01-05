@@ -9,9 +9,6 @@
 <script src="{{ url_for('static', filename='js/search.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
 
-<div class="title-container">
-    <h1>Search The Crow's Nest</h1>
-</div>
 <div class="search-container" id="search-container">
     <form method="get" class="search-form" id="search-form">
         <input type="text" name="query" placeholder="Enter book name" class="search-bar" value="{{ query }}" required />
@@ -48,7 +45,7 @@
             <input type="text" id="date-range-filter" placeholder="Select Date Range" />
         </div>
     </div>
-    <div class="filter-row">
+    <div class="filter-row filter-row-bottom">
         <div class="filter-controls">
             <div class="file-size-filter-wrapper">
                 <label>File Size:</label>
