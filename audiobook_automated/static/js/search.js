@@ -330,7 +330,7 @@ function applyFilters() {
                     if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(rowDateStr)) {
                         const formattedStr = rowDateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, "$2 $1, $3");
                         rowDate = new Date(formattedStr);
-                    } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    } else if (/^\d{4}-\d{2}-\d{2}$/.test(rowDateStr)) {
                         rowDate = new Date(rowDateStr);
                     } else {
                         rowDate = new Date(rowDateStr);

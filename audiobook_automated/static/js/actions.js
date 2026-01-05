@@ -21,6 +21,13 @@ document.addEventListener("DOMContentLoaded", function () {
         mobileMenuBtn.addEventListener("click", function () {
             navLinks.classList.toggle("active");
         });
+
+        // UX: Auto-close menu when a link is clicked
+        navLinks.addEventListener("click", function (event) {
+            if (event.target.tagName === "A") {
+                navLinks.classList.remove("active");
+            }
+        });
     }
 
     // Reload Library Button
@@ -223,6 +230,9 @@ function reloadLibrary() {
         .catch((error) => {
             console.error("Error:", error);
             showNotification("An error occurred while trying to reload the library.", "error");
+        })
+        .finally(() => {
+            // No specific UI state to reset here, but keeping consistent pattern
         });
 }
 
@@ -268,6 +278,9 @@ function deleteTorrent(torrentId, buttonElement) {
         .catch((error) => {
             console.error("Error:", error);
             showNotification("An error occurred while removing the torrent.", "error");
+        })
+        .finally(() => {
+            // Reset UI state if needed (currently delete removes row or reloads)
         });
 }
 
@@ -322,23 +335,19 @@ function sendTorrent(link, title, buttonElement) {
                 buttonElement.innerText = "Sent!";
                 // Keep disabled to prevent re-submission
                 buttonElement.disabled = true;
-                setTimeout(() => {
-                    // Reset text but keep disabled state or allow re-enable if desired logic changes.
-                    // Per request: "prevent double-submissions (disable or change state to 'Added' after success)"
-                    // We keep it as "Sent!" and disabled.
-                    // buttonElement.disabled = false;
-                    // buttonElement.innerHTML = originalBtnHTML;
-                }, 2000);
             }
         })
         .catch((error) => {
             console.error("Download failed:", error);
             showNotification("Failed to send download: " + error.message, "error");
-            // Reset button immediately on error
+            // Allow retry on error
             if (buttonElement) {
                 buttonElement.disabled = false;
                 buttonElement.innerHTML = originalBtnHTML;
             }
+        })
+        .finally(() => {
+            // Ensure any necessary cleanup happens here
         });
 }
 

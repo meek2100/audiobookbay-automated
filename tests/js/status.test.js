@@ -26,6 +26,10 @@ beforeAll(() => {
 // We access them dynamically in tests to ensure we get the evaluated versions
 const getUpdateTable = () => window.updateTable;
 
+async function flushPromises() {
+    return new Promise((resolve) => jest.requireActual("timers").setTimeout(resolve, 0));
+}
+
 describe("status.js - UI Logic", () => {
     let tbody;
 
@@ -98,7 +102,7 @@ describe("status.js - Polling Mechanism", () => {
     afterEach(() => {
         // CRITICAL: Stop the poll loop to prevent it from bleeding into the next test
         if (window.statusInterval) {
-            clearInterval(window.statusInterval);
+            clearTimeout(window.statusInterval);
             window.statusInterval = null;
         }
         jest.useRealTimers();
@@ -108,13 +112,16 @@ describe("status.js - Polling Mechanism", () => {
         // Trigger DOMContentLoaded to start the interval
         document.dispatchEvent(new Event("DOMContentLoaded"));
 
-        // Fast-forward 5 seconds
+        // Fast-forward 5 seconds to trigger first call
         jest.advanceTimersByTime(5000);
 
         expect(mockFetch).toHaveBeenCalledWith("/status?json=1");
         expect(mockFetch).toHaveBeenCalledTimes(1);
 
-        // Another 5 seconds
+        // Allow the async fetch to complete and schedule the next timeout
+        await flushPromises();
+
+        // Fast-forward another 5 seconds
         jest.advanceTimersByTime(5000);
         expect(mockFetch).toHaveBeenCalledTimes(2);
     });
