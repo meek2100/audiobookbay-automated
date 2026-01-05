@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tableBody) return;
 
     // Poll every 5 seconds
-    window.statusInterval = setInterval(async () => {
+    const pollStatus = async () => {
         try {
             const response = await fetch("/status?json=1");
             if (!response.ok) {
@@ -26,8 +26,12 @@ document.addEventListener("DOMContentLoaded", () => {
             updateTable(tableBody, torrents);
         } catch (error) {
             console.error("Failed to fetch status:", error);
+        } finally {
+            window.statusInterval = setTimeout(pollStatus, 5000);
         }
-    }, 5000);
+    };
+
+    pollStatus();
 });
 
 /**
@@ -79,5 +83,7 @@ function escapeHtml(text) {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(/'/g, "&#039;")
+        .replace(/`/g, "&#96;")
+        .replace(/\//g, "&#47;");
 }
