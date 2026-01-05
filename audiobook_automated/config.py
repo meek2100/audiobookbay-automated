@@ -25,7 +25,7 @@ def parse_env_int(key: str, default: int) -> int:
     if raw is None:
         return default
     try:
-        return int(float(raw.strip()))
+        return int(float(raw.strip().strip("'\"")))
     except (ValueError, TypeError, OverflowError):
         return default
 
@@ -39,7 +39,7 @@ class Config:
     # Core Flask Config
     # nosec B105: Default key is intentional for development; validation logic handles warning user.
     # noqa: S105  # Ruff flag for hardcoded password
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key")
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key").strip(" \"'")
     FLASK_DEBUG: bool = parse_bool(os.getenv("FLASK_DEBUG"), False)
     TESTING: bool = parse_bool(os.getenv("TESTING"), False)
 
@@ -48,19 +48,26 @@ class Config:
 
     # Static Version Override (Optional)
     # Allows developers to force a version string via .env, overriding the Docker build hash.
-    STATIC_VERSION: str | None = os.getenv("STATIC_VERSION")
+    _static_version: str | None = os.getenv("STATIC_VERSION")
+    STATIC_VERSION: str | None = _static_version.strip(" \"'") if _static_version else None
 
     # File System
-    SAVE_PATH_BASE: str | None = os.getenv("SAVE_PATH_BASE")
+    _save_path_base: str | None = os.getenv("SAVE_PATH_BASE")
+    SAVE_PATH_BASE: str | None = _save_path_base.strip(" \"'") if _save_path_base else None
 
     # Integrations
-    ABS_URL: str | None = os.getenv("ABS_URL")
-    ABS_KEY: str | None = os.getenv("ABS_KEY")
-    ABS_LIB: str | None = os.getenv("ABS_LIB")
+    _abs_url: str | None = os.getenv("ABS_URL")
+    ABS_URL: str | None = _abs_url.strip(" \"'") if _abs_url else None
+    _abs_key: str | None = os.getenv("ABS_KEY")
+    ABS_KEY: str | None = _abs_key.strip(" \"'") if _abs_key else None
+    _abs_lib: str | None = os.getenv("ABS_LIB")
+    ABS_LIB: str | None = _abs_lib.strip(" \"'") if _abs_lib else None
 
     # UI Customization
-    NAV_LINK_NAME: str | None = os.getenv("NAV_LINK_NAME")
-    NAV_LINK_URL: str | None = os.getenv("NAV_LINK_URL")
+    _nav_link_name: str | None = os.getenv("NAV_LINK_NAME")
+    NAV_LINK_NAME: str | None = _nav_link_name.strip(" \"'") if _nav_link_name else None
+    _nav_link_url: str | None = os.getenv("NAV_LINK_URL")
+    NAV_LINK_URL: str | None = _nav_link_url.strip(" \"'") if _nav_link_url else None
 
     # HTTPS Configuration
     # Defaults to False to ensure local deployments work out-of-the-box.
@@ -74,19 +81,26 @@ class Config:
     WTF_CSRF_SSL_STRICT: bool = False
 
     # Torrent Client Configuration
-    DL_CLIENT: str | None = os.getenv("DL_CLIENT")
-    DL_HOST: str | None = os.getenv("DL_HOST")
-    DL_PORT: str | None = os.getenv("DL_PORT")
-    DL_USERNAME: str | None = os.getenv("DL_USERNAME")
-    DL_PASSWORD: str | None = os.getenv("DL_PASSWORD")
-    DL_CATEGORY: str = os.getenv("DL_CATEGORY", "abb-automated")
-    DL_SCHEME: str = os.getenv("DL_SCHEME", "http")
-    DL_URL: str | None = os.getenv("DL_URL")
-    DL_CLIENT_OS: str = os.getenv("DL_CLIENT_OS", "posix").lower()
+    _dl_client: str | None = os.getenv("DL_CLIENT")
+    DL_CLIENT: str | None = _dl_client.strip(" \"'") if _dl_client else None
+    _dl_host: str | None = os.getenv("DL_HOST")
+    DL_HOST: str | None = _dl_host.strip(" \"'") if _dl_host else None
+    _dl_port: str | None = os.getenv("DL_PORT")
+    DL_PORT: str | None = _dl_port.strip(" \"'") if _dl_port else None
+    _dl_username: str | None = os.getenv("DL_USERNAME")
+    DL_USERNAME: str | None = _dl_username.strip(" \"'") if _dl_username else None
+    _dl_password: str | None = os.getenv("DL_PASSWORD")
+    DL_PASSWORD: str | None = _dl_password.strip(" \"'") if _dl_password else None
+    DL_CATEGORY: str = os.getenv("DL_CATEGORY", "abb-automated").strip(" \"'")
+    DL_SCHEME: str = os.getenv("DL_SCHEME", "http").strip(" \"'")
+    _dl_url: str | None = os.getenv("DL_URL")
+    DL_URL: str | None = _dl_url.strip(" \"'") if _dl_url else None
+    DL_CLIENT_OS: str = os.getenv("DL_CLIENT_OS", "posix").strip(" \"'").lower()
 
     # Logging
     # We allow LOG_LEVEL to be None if unset to support Gunicorn level inheritance in __init__.py.
-    _log_level_env: str | None = os.getenv("LOG_LEVEL")
+    _log_level_raw: str | None = os.getenv("LOG_LEVEL")
+    _log_level_env: str | None = _log_level_raw.strip(" \"'") if _log_level_raw else None
     LOG_LEVEL_STR: str = _log_level_env.upper() if _log_level_env else "INFO"
     # Logic: If Env is set, resolve it (defaulting to INFO if invalid string). If not set, leave as None.
     LOG_LEVEL: int | None = getattr(logging, LOG_LEVEL_STR, logging.INFO) if _log_level_env else None
@@ -97,11 +111,12 @@ class Config:
     ABB_HOSTNAME: str = _hostname if _hostname else "audiobookbay.lu"
 
     # Parse comma-separated mirrors into a list
-    _mirrors_str: str = os.getenv("ABB_MIRRORS", "")
+    # Strip the whole string first in case the list is quoted: "a.com,b.com"
+    _mirrors_str: str = os.getenv("ABB_MIRRORS", "").strip(" \"'")
     ABB_MIRRORS: list[str] = [m.strip() for m in _mirrors_str.split(",") if m.strip()]
 
     # Parse comma-separated trackers into a list
-    _trackers_str: str = os.getenv("MAGNET_TRACKERS", "")
+    _trackers_str: str = os.getenv("MAGNET_TRACKERS", "").strip(" \"'")
     MAGNET_TRACKERS: list[str] = [t.strip() for t in _trackers_str.split(",") if t.strip()]
 
     # Page Limit (Default 3)
