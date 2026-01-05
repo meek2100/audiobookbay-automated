@@ -1,3 +1,4 @@
+// File: tests/e2e/layout.spec.ts
 import { test, expect } from '@playwright/test';
 
 test.describe('UI Layout & Alignment', () => {
