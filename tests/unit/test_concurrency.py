@@ -1,12 +1,14 @@
+# File: tests/unit/test_concurrency.py
 """Unit tests for concurrency and thread safety."""
 
 import concurrent.futures
-import threading
 import time
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from bs4 import BeautifulSoup
+from flask import Flask
 
 from audiobook_automated.scraper.core import get_book_details, search_audiobookbay
 from audiobook_automated.scraper.network import (
@@ -20,7 +22,7 @@ from audiobook_automated.scraper.network import (
 
 
 @pytest.fixture
-def clean_caches():
+def clean_caches() -> Generator[None]:
     """Clear all caches before and after each test."""
     with CACHE_LOCK:
         search_cache.clear()
@@ -35,7 +37,7 @@ def clean_caches():
         mirror_cache.clear()
 
 
-def test_concurrent_cache_access(clean_caches, app):
+def test_concurrent_cache_access(clean_caches: None, app: Flask) -> None:
     """Test concurrent access to shared caches using multiple threads.
 
     Requires app fixture to ensure worker threads can access current_app.config.
@@ -44,7 +46,7 @@ def test_concurrent_cache_access(clean_caches, app):
     iterations = 5
 
     # Mock responses
-    mock_search_results = [
+    mock_search_results: list[dict[str, Any]] = [
         {
             "title": "Book 1",
             "link": "https://audiobookbay.lu/book1",
@@ -73,8 +75,6 @@ def test_concurrent_cache_access(clean_caches, app):
         "cover": "cover.jpg",
     }
 
-    mock_trackers = ["udp://tracker1"]
-
     # Mock the underlying network calls
     with patch("audiobook_automated.scraper.core.fetch_and_parse_page", return_value=mock_search_results):
         with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="audiobookbay.lu"):
@@ -94,7 +94,7 @@ def test_concurrent_cache_access(clean_caches, app):
                         return_value=False,
                     ):
                         # Define worker functions
-                        def worker_search():
+                        def worker_search() -> None:
                             with app.app_context():
                                 for _ in range(iterations):
                                     # Access search_cache
@@ -102,7 +102,7 @@ def test_concurrent_cache_access(clean_caches, app):
                                     assert res == mock_search_results
                                     time.sleep(0.01)
 
-                        def worker_details():
+                        def worker_details() -> None:
                             with app.app_context():
                                 for _ in range(iterations):
                                     # Access details_cache
@@ -110,7 +110,7 @@ def test_concurrent_cache_access(clean_caches, app):
                                     assert res == mock_details
                                     time.sleep(0.01)
 
-                        def worker_trackers():
+                        def worker_trackers() -> None:
                             with app.app_context():
                                 for _ in range(iterations):
                                     # Access tracker_cache

@@ -88,9 +88,7 @@ class Strategy(TorrentClientStrategy):
 
         # Transmission RPC does not support server-side filtering by label in get_torrents.
         # We must fetch all and filter client-side.
-        tx_torrents = self.client.get_torrents(
-            arguments=["id", "name", "percentDone", "status", "totalSize", "labels"]
-        )
+        tx_torrents = self.client.get_torrents(arguments=["id", "name", "percentDone", "status", "totalSize", "labels"])
 
         for tx_torrent in tx_torrents:
             # Safely get labels, ensuring it's a list
