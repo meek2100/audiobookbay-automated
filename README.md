@@ -11,10 +11,10 @@ search [**AudioBook Bay**](https://audiobookbay.lu/) for audiobooks and send mag
 - **Search Results**: Users search for audiobooks. The app grabs results from AudioBook Bay and displays results with
   the **title** and **cover image**, along with two action links:
   1. **More Details**: Opens the audiobook's page on AudioBook Bay for additional information.
-  2. **Download to Server**: Sends the audiobook to your configured torrent client for downloading.
+  2. **Download**: Sends the audiobook to your configured torrent client for downloading.
 
-- **Magnet Link Generation**: When a user selects "Download to Server," the app generates a magnet link from the
-  infohash displayed on AudioBook Bay and sends it to the torrent client. Along with the magnet link, the app assigns:
+- **Magnet Link Generation**: When a user selects "Download," the app generates a magnet link from the infohash
+  displayed on AudioBook Bay and sends it to the torrent client. Along with the magnet link, the app assigns:
   - A **category label** for organizational purposes.
   - A **save location** for downloaded files.
 

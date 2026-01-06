@@ -167,7 +167,7 @@ describe("actions.js - API Interactions", () => {
 
     test("sendTorrent should change button text to Sent! then revert", async () => {
         const mockButton = document.createElement("button");
-        mockButton.innerHTML = "Download to Server";
+        mockButton.innerHTML = "Download";
 
         expect(mockButton.disabled).toBe(false);
 
@@ -202,12 +202,12 @@ describe("actions.js - API Interactions", () => {
         // Updated logic: Button resets after 3 seconds
         expect(mockButton.disabled).toBe(false);
         // Use innerHTML to avoid JSDOM innerText visibility quirks on detached elements
-        expect(mockButton.innerHTML).toBe("Download to Server");
+        expect(mockButton.innerHTML).toBe("Download");
     });
 
     test("sendTorrent should show error on non-ok status code", async () => {
         const mockButton = document.createElement("button");
-        mockButton.innerText = "Download to Server";
+        mockButton.innerText = "Download";
         // innerHTML is used to restore the original state, so we check innerHTML or ensure initial innerHTML matches innerText
         const originalHTML = mockButton.innerHTML;
 
