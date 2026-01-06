@@ -96,6 +96,9 @@ def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
     reserved name collision), or exceeds the max_length, a UUID is appended/truncated
     to ensure uniqueness and filesystem safety.
 
+    NOTE: This function ONLY checks for reserved filenames/length and does NOT check
+    for actual file existence on disk.
+
     Args:
         safe_title: The already sanitized title string.
         max_length: The maximum allowed length for the directory name in BYTES (default 240).

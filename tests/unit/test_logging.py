@@ -1,63 +1,80 @@
 # File: tests/unit/test_logging.py
-"""Tests for logging configuration."""
+"""Unit tests for logging configuration."""
+
+# pyright: reportPrivateUsage=false
 
 import logging
+import unittest
 from unittest.mock import MagicMock, patch
 
-from audiobook_automated import create_app
-from audiobook_automated.config import Config
+from flask import Flask
+
+# Import the private function to be tested
+from audiobook_automated import _configure_logging
 
 
-class TestConfig(Config):
-    """Minimal test config."""
+class TestLoggingConfiguration(unittest.TestCase):
+    """Test suite for application logging configuration."""
 
-    TESTING = True
-    LOG_LEVEL: int | None = None
+    def test_configure_logging_inherits_gunicorn(self) -> None:
+        """Test that _configure_logging inherits Gunicorn handlers and level."""
+        app = Flask(__name__)
+        # Default flask logger usually has 1 handler or 0 depending on setup, reset it
+        app.logger.handlers = []
+        app.logger.setLevel(logging.INFO)
 
+        # Mock Gunicorn logger
+        mock_gunicorn = MagicMock()
+        mock_handler = MagicMock()
+        mock_handler.level = logging.INFO  # Ensure handler has a valid level
+        mock_gunicorn.handlers = [mock_handler]
+        mock_gunicorn.level = logging.ERROR
 
-def test_gunicorn_logger_inheritance() -> None:
-    """Test that app logger inherits handlers from gunicorn.error if present.
+        with patch("logging.getLogger") as mock_get_logger:
+            mock_get_logger.return_value = mock_gunicorn
 
-    This covers the Gunicorn integration logic in __init__.py.
-    """
-    mock_gunicorn_logger = logging.getLogger("gunicorn.error")
-    mock_handler = MagicMock()
-    # CRITICAL FIX: Set the handler level to an integer.
-    # Flask's has_level_handler compares handler.level <= logger.level.
-    # If handler.level is a MagicMock, this raises TypeError.
-    mock_handler.level = logging.INFO
-    mock_gunicorn_logger.handlers = [mock_handler]
-    mock_gunicorn_logger.setLevel(logging.ERROR)
+            # Call function under test
+            _configure_logging(app, configured_level=None)
 
-    # We must patch getLogger to return our pre-configured mock when called inside create_app
-    with patch("audiobook_automated.logging.getLogger", return_value=mock_gunicorn_logger):
-        app = create_app(TestConfig)
+            # Assertions
+            mock_get_logger.assert_called_with("gunicorn.error")
+            self.assertEqual(app.logger.handlers, [mock_handler])
+            self.assertEqual(app.logger.level, logging.ERROR)
 
-        # Verify handlers were copied
-        assert mock_handler in app.logger.handlers
-        # Verify level was synced (TestConfig doesn't set LOG_LEVEL, so it takes gunicorn's)
-        assert app.logger.level == logging.ERROR
+    def test_configure_logging_override_level(self) -> None:
+        """Test that configured_level overrides Gunicorn level."""
+        app = Flask(__name__)
+        app.logger.handlers = []
 
-    # Cleanup: Remove handlers from the global logger to avoid pollution
-    mock_gunicorn_logger.handlers = []
+        mock_gunicorn = MagicMock()
+        mock_handler = MagicMock()
+        mock_handler.level = logging.INFO  # Ensure handler has a valid level
+        mock_gunicorn.handlers = [mock_handler]
+        mock_gunicorn.level = logging.ERROR
 
+        with patch("logging.getLogger") as mock_get_logger:
+            mock_get_logger.return_value = mock_gunicorn
 
-def test_gunicorn_logger_override() -> None:
-    """Test that explicit LOG_LEVEL overrides Gunicorn level."""
+            # Call with explicit debug level
+            _configure_logging(app, configured_level=logging.DEBUG)
 
-    class OverrideConfig(TestConfig):
-        LOG_LEVEL = logging.DEBUG
+            self.assertEqual(app.logger.handlers, [mock_handler])
+            # Should be DEBUG (10) not ERROR (40)
+            self.assertEqual(app.logger.level, logging.DEBUG)
 
-    mock_gunicorn_logger = logging.getLogger("gunicorn.error")
-    mock_handler = MagicMock()
-    mock_handler.level = logging.INFO
-    mock_gunicorn_logger.handlers = [mock_handler]
-    mock_gunicorn_logger.setLevel(logging.ERROR)
+    def test_configure_logging_no_gunicorn(self) -> None:
+        """Test fallback when Gunicorn logger has no handlers (local dev)."""
+        app = Flask(__name__)
+        app.logger.handlers = []
 
-    with patch("audiobook_automated.logging.getLogger", return_value=mock_gunicorn_logger):
-        app = create_app(OverrideConfig)
+        mock_gunicorn = MagicMock()
+        mock_gunicorn.handlers = []  # No handlers
 
-        # Verify level was set to DEBUG (10), ignoring Gunicorn's ERROR (40)
-        assert app.logger.level == logging.DEBUG
+        with patch("logging.getLogger") as mock_get_logger:
+            mock_get_logger.return_value = mock_gunicorn
 
-    mock_gunicorn_logger.handlers = []
+            _configure_logging(app, configured_level=logging.WARNING)
+
+            # Handlers should remain empty (or default) - technically function doesn't touch handlers if gunicorn has none
+            # It just sets level
+            self.assertEqual(app.logger.level, logging.WARNING)

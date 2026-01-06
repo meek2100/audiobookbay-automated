@@ -117,3 +117,14 @@ jobs:
       - name: Run Jest Tests
         # Use npx jest to execute the tests configured in jest.config.js
         run: npx jest
+
+  # 4. Verify Docker Build
+  docker-build:
+    name: Docker Build
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build Docker Image
+        run: docker build .

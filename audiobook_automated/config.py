@@ -128,7 +128,7 @@ class Config:
     PAGE_LIMIT: int = parse_env_int("PAGE_LIMIT", 3)
 
     # Scraper Concurrency
-    # Defines the number of worker threads for the scraping executor.
+    # Defines the number of worker threads per worker for the scraping executor.
     SCRAPER_THREADS: int = parse_env_int("SCRAPER_THREADS", 3)
 
     # Scraper Request Timeout (Default 30)
