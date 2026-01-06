@@ -81,6 +81,51 @@ test.describe('UI Layout & Alignment', () => {
     expect(styleHeight).toContain('height: 50px');
   });
 
+  test('Test Case A2: Mobile Responsiveness', async ({ page }) => {
+    // Set viewport to mobile size
+    await page.setViewportSize({ width: 375, height: 667 }); // iPhone SE size
+
+    await page.route('/search-results', async route => {
+         const html = `
+<!doctype html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="/static/css/search.css" />
+</head>
+<body>
+    <div class="content">
+         <div class="table-wrapper">
+             <table>
+                 <thead><tr><th>Title</th><th>Size</th><th>Action</th></tr></thead>
+                 <tbody>
+                     <tr>
+                         <td>Very Long Book Title That Might Overflow If Not Handled Correctly In Mobile Viewport</td>
+                         <td>100 MB</td>
+                         <td><button>DL</button></td>
+                     </tr>
+                 </tbody>
+             </table>
+         </div>
+    </div>
+</body>
+</html>
+         `;
+         await route.fulfill({ status: 200, contentType: 'text/html', body: html });
+    });
+
+    await page.goto('/search-results');
+
+    const wrapper = page.locator('.table-wrapper');
+    await expect(wrapper).toBeVisible();
+
+    // Verify overflow handling
+    // The table wrapper should have overflow-x: auto (or scroll) to handle wide tables
+    const overflowX = await wrapper.evaluate(el => getComputedStyle(el).overflowX);
+    // Standard response is 'auto' or 'scroll'
+    expect(['auto', 'scroll']).toContain(overflowX);
+  });
+
   test('Test Case B: Search Results Consistency', async ({ page }) => {
     await page.route('**/?query=*', async route => {
         const html = `

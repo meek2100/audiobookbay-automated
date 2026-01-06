@@ -194,3 +194,37 @@ def test_search_fail_fast_cancellation() -> None:
                 # Verify failure handling logic was hit
                 # And verify future2 was cancelled
                 future2.cancel.assert_called_once()
+
+
+def test_search_pagination_failure_cancellation() -> None:
+    """Test that subsequent page requests are cancelled if an earlier page fails.
+
+    Scenario:
+    - Page 1: OK
+    - Page 2: Error (ConnectionError)
+    - Page 3: Pending (Should be cancelled)
+    """
+    # Page 1: Success
+    future1: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
+    future1.set_result([{"title": "B1", "link": "l1"}])
+
+    # Page 2: Failure
+    future2: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
+    future2.set_exception(requests.ConnectionError("Failed"))
+
+    # Page 3: Mock to check cancellation
+    future3 = MagicMock()
+
+    with patch("audiobook_automated.scraper.core.executor") as mock_executor:
+        mock_executor.submit.side_effect = [future1, future2, future3]
+
+        with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
+            with patch("audiobook_automated.scraper.core.mirror_cache"):
+                results = search_audiobookbay("query", max_pages=3)
+
+                # We expect results from page 1
+                assert len(results) == 1
+                assert results[0]["title"] == "B1"
+
+                # Verify Page 3 was cancelled
+                future3.cancel.assert_called_once()

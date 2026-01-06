@@ -307,6 +307,32 @@ def test_ensure_collision_safety_short_max_length_extra() -> None:
     assert "_" not in safe  # UUID separator shouldn't be there
 
 
+def test_construct_safe_save_path_extremely_long_path() -> None:
+    """Test construct_safe_save_path with an extremely long path (>250 chars).
+
+    This simulates a scenario where the base path plus the title far exceeds system limits.
+    """
+    # Create a base path that is already close to the limit (e.g., 200 chars)
+    # Then add a title that pushes it well over 260
+    # base = 200 chars
+    # title = 100 chars
+    # total = 300 chars > 260
+    # Expectation: It should truncate the title aggressively and still succeed (or warn)
+    # UNLESS the base path itself leaves too little room (<5 chars), then it raises.
+
+    long_base = "/" + "b" * 200  # 201 chars with leading slash
+    long_title = "t" * 100
+
+    # Limit = 260 - 10 - 201 = 49 chars available for title.
+    # So it should be able to truncate the title to ~49 chars and succeed.
+    result = construct_safe_save_path(long_base, long_title)
+
+    assert len(result) <= 260
+    assert long_base in result
+    # It should have truncated the title
+    assert len(result) < (len(long_base) + len(long_title))
+
+
 def test_ensure_collision_safety_uuid_appended() -> None:
     """Test that UUID is appended when length exceeds limit (normal case)."""
     title = "A" * 50
