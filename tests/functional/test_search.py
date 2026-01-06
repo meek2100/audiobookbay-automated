@@ -14,7 +14,18 @@ def test_home_page_load(client: Any) -> None:
 
 def test_search_via_get(client: Any) -> None:
     """Test performing a search via a standard GET request with query parameters."""
-    with patch("audiobook_automated.routes.search_audiobookbay", return_value=[{"title": "Book 1"}]) as mock_search:
+    mock_book = {
+        "title": "Book 1",
+        "category": ["Sci-Fi"],
+        "language": "English",
+        "format": "MP3",
+        "bitrate": "128",
+        "link": "http://test.com",
+        "cover": "cover.jpg",
+        "file_size": "100MB",
+        "post_date": "2024",
+    }
+    with patch("audiobook_automated.routes.search_audiobookbay", return_value=[mock_book]) as mock_search:
         response = client.get("/?query=test")
         assert response.status_code == 200
         assert b"Book 1" in response.data

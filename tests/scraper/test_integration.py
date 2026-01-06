@@ -31,7 +31,7 @@ def test_search_audiobookbay_success(mock_sleep: Any) -> None:
         # FIX: Patch get_thread_session as that is what core.py imports/uses
         with patch("audiobook_automated.scraper.core.get_thread_session"):
             # FIX: Explicitly cast mock return value to list[BookSummary]
-            mock_results = cast(list[BookSummary], [{"title": "Test Book"}])
+            mock_results = cast(list[BookSummary], [{"title": "Test Book", "link": "http://link1"}])
             with patch("audiobook_automated.scraper.core.fetch_and_parse_page", return_value=mock_results):
                 results = search_audiobookbay("query", max_pages=1)
                 assert len(results) == 1
@@ -46,7 +46,7 @@ def test_search_caching(mock_sleep: Any) -> None:
     cache_key = f"{query}::page_{max_pages}"
 
     # FIX: Explicitly typed list of BookSummary
-    expected_result = cast(list[BookSummary], [{"title": "Cached Book"}])
+    expected_result = cast(list[BookSummary], [{"title": "Cached Book", "link": "http://link2"}])
     search_cache[cache_key] = expected_result
 
     # Ensure no network calls are made
@@ -63,7 +63,7 @@ def test_search_audiobookbay_sync_coverage(mock_sleep: Any) -> None:
     """Mock ThreadPoolExecutor to run synchronously for coverage."""
     mock_future = MagicMock()
 
-    mock_future.result.return_value = cast(list[BookSummary], [{"title": "Sync Book"}])
+    mock_future.result.return_value = cast(list[BookSummary], [{"title": "Sync Book", "link": "http://link3"}])
 
     with patch("audiobook_automated.scraper.core.executor") as mock_executor_instance:
         mock_executor_instance.submit.return_value = mock_future

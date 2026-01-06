@@ -18,13 +18,15 @@ logger = logging.getLogger(__name__)
 class ClientLocal(threading.local):
     """Thread-local storage for client strategies with strict typing."""
 
+    strategy: TorrentClientStrategy | None
+
     def __init__(self) -> None:
         """Initialize thread-local attributes.
 
         Sets the strategy attribute to None initially.
         """
         super().__init__()
-        self.strategy: TorrentClientStrategy | None = None
+        self.strategy = None
 
 
 class TorrentManager:
