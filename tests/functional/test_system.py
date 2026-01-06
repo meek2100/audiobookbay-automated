@@ -2,7 +2,7 @@
 """Functional tests for system-level routes and static assets."""
 
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 def test_health_check_route(client: Any) -> None:
@@ -134,3 +134,58 @@ def test_status_page_json_error(client: Any) -> None:
         assert response.is_json
         # Explicit check for error key as defined in routes.py
         assert "Client unreachable" in response.json["error"]
+
+
+def test_reload_library_error(client: Any) -> None:
+    """Test that the reload_library endpoint handles upstream errors gracefully."""
+    # Ensure the feature is enabled
+    client.application.config["LIBRARY_RELOAD_ENABLED"] = True
+    client.application.config["ABS_URL"] = "http://abs"
+    client.application.config["ABS_KEY"] = "key"
+    client.application.config["ABS_LIB"] = "lib"
+
+    # Mock requests.post to raise an error or return non-200
+    with patch("audiobook_automated.routes.requests.post") as mock_post:
+        # Simulate a 500 error from Audiobookshelf
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_post.return_value = mock_response
+
+        # We need to wait for the background task if it's threaded.
+        # However, the route itself returns 200 immediately saying "Scan triggered".
+        # The error handling happens in the background thread (executor).
+        # To test the error handling branch, we usually inspect logs or use a synchronous executor.
+
+        # If the route logic puts it in a future, we need to mock the executor to run it synchronously
+        # OR just verify the route accepts the request and logs/handles it.
+
+        # Looking at routes.py (in memory): "reload_library endpoint operates asynchronously..."
+        # So the route just returns success.
+        # BUT the requirement says: "mock a non-200 response for reload_library to cover the error handling branch."
+        # This implies we want to verify the background logic handles the 500.
+
+        # To do this, we should invoke the target function directly if possible, or
+        # mock the executor to run inline.
+        # The route calls `executor.submit(trigger_scan, ...)`
+
+        # Let's mock executor.submit to run the function immediately so we can capture side effects (logging).
+        with patch("audiobook_automated.routes.executor") as mock_executor:
+            # We define a side effect that executes the function passed to submit
+            def run_immediately(fn: Any, *args: Any, **kwargs: Any) -> MagicMock:
+                fn(*args, **kwargs)
+                return MagicMock()
+
+            mock_executor.submit.side_effect = run_immediately
+
+            with patch("audiobook_automated.routes.logger") as mock_logger:
+                response = client.post("/reload_library")
+                assert response.status_code == 200
+
+                # Verify that the error was logged
+                # We expect something like "ABS Scan failed: 500"
+                mock_logger.error.assert_called()
+                # Check args of the error call
+                args, _ = mock_logger.error.call_args
+                assert "ABS Scan failed" in args[0]
+                assert "500" in args[0]
