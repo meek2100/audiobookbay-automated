@@ -79,10 +79,12 @@ def mock_sleep() -> Generator[Any]:
 
 
 @pytest.fixture
-def app() -> Generator[Flask]:
+def app(mock_global_dependencies: None) -> Generator[Flask]:
     """Create the 'World' for the tests: A Flask application instance.
 
     Uses TestConfig to ensure configuration is present before extension initialization.
+    Explicitly depends on mock_global_dependencies to ensure TorrentManager is mocked
+    before create_app triggers the startup connection check.
     """
     app = create_app(TestConfig)
     yield app

@@ -190,7 +190,7 @@ class TorrentManager:
             )
             strategy.connect()
             self._local.strategy = strategy
-        except SyntaxError:  # pragma: no cover
+        except SyntaxError:
             logger.critical(f"Syntax Error in client plugin: {self.client_type}", exc_info=True)
             self._local.strategy = None
         except Exception as e:  # pragma: no cover
