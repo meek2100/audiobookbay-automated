@@ -41,7 +41,7 @@ test.describe('UI Layout & Alignment', () => {
              </select>
         </div>
         <div class="nav-logo"><img src="logo.png" style="height: 50px;" /></div>
-        <span class="brand-text">The Crow's Nest</span>
+        <span class="brand-text">AudiobookBay Automated</span>
     </div>
 </body>
 </html>
@@ -56,7 +56,7 @@ test.describe('UI Layout & Alignment', () => {
     // Branding
     const navbar = page.locator('.navbar');
     await expect(navbar).toBeVisible();
-    await expect(navbar).toContainText("The Crow's Nest");
+    await expect(navbar).toContainText("AudiobookBay Automated");
 
     // Theme Selector Last Child
     const navLinks = page.locator('.nav-links');

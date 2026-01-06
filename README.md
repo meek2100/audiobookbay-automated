@@ -116,7 +116,7 @@ TZ=UTC                         # Timezone for logs (e.g. America/Los_Angeles). D
 NAV_LINK_NAME=Open Player      # Label for a custom link in the navbar.
 NAV_LINK_URL=http://...        # URL for the custom link.
 SPLASH_ENABLED=True            # Enable/Disable the welcome splash screen. Default: True.
-SPLASH_TITLE=The Crow's Nest   # Custom title for the splash screen.
+SPLASH_TITLE=AudiobookBay Automated   # Custom title for the splash screen.
 SPLASH_MESSAGE=Welcome...      # Custom HTML message for the splash screen.
 SPLASH_DURATION=4500           # Duration in ms before splash fades out. Default: 4500.
 ```
