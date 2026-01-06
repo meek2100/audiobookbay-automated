@@ -432,3 +432,21 @@ def test_teardown_request_close_error() -> None:
 
     # Strategy should still be cleared
     assert manager._local.strategy is None
+
+
+def test_manager_syntax_error_handling(app: Flask) -> None:
+    """Test that TorrentManager gracefully handles SyntaxError in plugins."""
+    # Configure app to use a dummy client name
+    app.config["DL_CLIENT"] = "broken_plugin"
+
+    manager = TorrentManager()
+    manager.init_app(app)
+
+    # Patch import_module to raise SyntaxError when loading the plugin
+    with patch("importlib.import_module", side_effect=SyntaxError("Invalid Syntax")):
+        # Attempt to get strategy, which triggers the load
+        strategy = manager._get_strategy()
+
+        # Should return None and log the error (handled in implementation)
+        assert strategy is None
+        # We also want to verify it didn't crash

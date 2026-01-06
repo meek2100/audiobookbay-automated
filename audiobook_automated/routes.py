@@ -223,7 +223,7 @@ def send() -> Response | tuple[Response, int]:
 
     # Check raw title existence. We must allow titles that sanitize to FALLBACK_TITLE (e.g. "...")
     # to proceed to the collision handler, rather than blocking them as "Invalid".
-    if not details_url or not title:  # pragma: no cover
+    if not details_url or not title:
         logger.warning("Invalid send request received: missing link or valid title")
         raise InvalidRequestError("Invalid request: Title or Link missing")
 

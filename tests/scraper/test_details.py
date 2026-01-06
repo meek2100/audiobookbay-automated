@@ -299,10 +299,11 @@ def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
 
 def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
     """Forces Strategy 3: Regex fallback."""
+    # Updated to match parser expectation: Regex search happens in .postContent
     html = """
     <div class="post">
         <div class="postTitle"><h1>Strategy 3 Book</h1></div>
-        <div class="desc">
+        <div class="postContent">
             Some text containing the hash 5555555555666666666677777777778888888888 in the body.
         </div>
     </div>

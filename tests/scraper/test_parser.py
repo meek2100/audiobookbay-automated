@@ -223,6 +223,7 @@ def test_fallback_hash_in_script_ignored() -> None:
     assert details["info_hash"] == real_hash
     assert details["info_hash"] != fake_hash
 
+
 def test_fallback_hash_no_post_content() -> None:
     """Test fallback behavior when .postContent is missing (should be robust)."""
     fake_hash = "1111111111111111111111111111111111111111"

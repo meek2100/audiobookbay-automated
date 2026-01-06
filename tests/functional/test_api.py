@@ -148,6 +148,14 @@ def test_send_missing_fields(client: FlaskClient) -> None:
     assert "Invalid request" in response.json["message"]
 
 
+def test_send_empty_payload(client: FlaskClient) -> None:
+    """Test send endpoint with an empty JSON payload."""
+    response = client.post("/send", json={})
+    assert response.status_code == 400
+    assert response.json is not None
+    assert "Invalid request: Title or Link missing" in response.json["message"]
+
+
 def test_send_extraction_failure(client: FlaskClient) -> None:
     """Test handling of magnet extraction failures."""
     with patch("audiobook_automated.routes.extract_magnet_link") as mock_extract:
