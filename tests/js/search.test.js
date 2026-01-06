@@ -40,6 +40,7 @@ const setup = () => {
     document.body.innerHTML = "";
 
     // Setup Filter Controls (required for initialization)
+    // FIX: Manually populate options to simulate server-side rendering, as auto-population was removed from search.js
     document.body.innerHTML = `
         <div id="search-container">
             <button class="search-button">
@@ -51,10 +52,27 @@ const setup = () => {
             <p id="scrolling-message"></p>
         </div>
         <div id="filter-container">
-            <select id="category-filter"><option value="">All Categories</option></select>
-            <select id="language-filter"><option value="">All Languages</option></select>
-            <select id="bitrate-filter"><option value="">All Bitrates</option></select>
-            <select id="format-filter"><option value="">All Formats</option></select>
+            <select id="category-filter">
+                <option value="">All Categories</option>
+                <option value="Fiction">Fiction</option>
+                <option value="Non-Fiction">Non-Fiction</option>
+                <option value="Science">Science</option>
+            </select>
+            <select id="language-filter">
+                <option value="">All Languages</option>
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+            </select>
+            <select id="bitrate-filter">
+                <option value="">All Bitrates</option>
+                <option value="64 Kbps">64 Kbps</option>
+                <option value="128 Kbps">128 Kbps</option>
+            </select>
+            <select id="format-filter">
+                <option value="">All Formats</option>
+                <option value="M4B">M4B</option>
+                <option value="MP3">MP3</option>
+            </select>
             <input type="text" id="date-range-filter" />
             <div class="filter-row"><div class="filter-controls"><div class="file-size-filter-wrapper"><div id="file-size-slider"></div></div></div><div class="filter-buttons"><button id="filter-button"></button><button id="clear-button"></button></div></div>
         </div>
@@ -185,22 +203,6 @@ describe("search.js Filter Logic (DOM dependent)", () => {
     });
 
     // --- initializeFilters Tests ---
-
-    test("initializeFilters should populate all select menus correctly", () => {
-        const categoryFilter = document.getElementById("category-filter");
-        const options = Array.from(categoryFilter.querySelectorAll("option"))
-            .map((opt) => opt.value)
-            .filter((v) => v !== "");
-
-        // Expect individual category terms, sorted alphabetically
-        expect(options).toEqual(["Fiction", "Non-Fiction", "Science"]);
-
-        const formatFilter = document.getElementById("format-filter");
-        const formatOptions = Array.from(formatFilter.querySelectorAll("option"))
-            .map((opt) => opt.value)
-            .filter((v) => v !== "");
-        expect(formatOptions).toEqual(["M4B", "MP3"]);
-    });
 
     test("initializeFilters should initialize date and size pickers correctly", () => {
         const { mockNoUiSlider } = setupData;
