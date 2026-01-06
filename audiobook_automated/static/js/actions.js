@@ -346,6 +346,12 @@ function sendTorrent(link, title, buttonElement) {
                 buttonElement.innerText = "Sent!";
                 // Keep disabled to prevent re-submission
                 buttonElement.disabled = true;
+
+                // Add timeout to reset button
+                setTimeout(() => {
+                    buttonElement.disabled = false;
+                    buttonElement.innerHTML = originalBtnHTML;
+                }, 3000);
             }
         })
         .catch((error) => {

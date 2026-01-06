@@ -22,6 +22,7 @@ export LISTEN_PORT="${LISTEN_PORT:-5078}"
 export THREADS="${THREADS:-8}"
 export TIMEOUT="${TIMEOUT:-60}"
 export PYTHONOPTIMIZE=1
+export PYTHON_GIL=0
 
 # LOGGING
 LOG_LEVEL_VAL="$(echo "${LOG_LEVEL:-info}" | tr '[:upper:]' '[:lower:]')"
