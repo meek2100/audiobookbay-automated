@@ -14,12 +14,10 @@ from ..constants import USER_AGENTS
 from ..utils import calculate_static_hash, safe_get
 from . import network, parser
 
+logger = logging.getLogger(__name__)
+
 # Used to synchronize access to the details cache across threads
 CACHE_LOCK: Any = network.threading.Lock()
-
-# In-memory cache for book details to avoid redundant fetching
-# Key: URL (string), Value: Book details dictionary
-details_cache: dict[str, dict[str, Any]] = {}
 
 
 def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
@@ -49,6 +47,13 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
     if not base_url:
         logger.error("Search: No working mirror found. Aborting.")
         return []
+
+    # Check Cache
+    cache_key = f"{query}::page_{max_pages}"
+    with network.CACHE_LOCK:
+        if cache_key in network.search_cache:
+            logger.debug("Search: Cache hit for '%s'", cache_key)
+            return network.search_cache[cache_key]
 
     results: list[dict[str, Any]] = []
     seen_links: set[str] = set()
@@ -100,6 +105,11 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
             logger.exception("Search: Error processing page result.")
 
     logger.info("Search: Completed. Found %d unique results.", len(results))
+
+    # Update Cache
+    with network.CACHE_LOCK:
+        network.search_cache[cache_key] = results
+
     return results
 
 
@@ -121,7 +131,7 @@ def fetch_page_results(url: str) -> list[dict[str, Any]]:
             response.raise_for_status()
 
             soup = parser.parse_html(response.text)
-            return parser.parse_search_results(soup)
+            return parser.parse_search_results(soup, url)
 
         except (network.requests.ConnectionError, network.requests.Timeout):
             # Do not expose raw URL in logs if it contains sensitive info (unlikely here)
@@ -149,11 +159,21 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
     # 1. Check Cache
     if not refresh:
         with CACHE_LOCK:
-            if url in details_cache:
+            if url in network.details_cache:
                 logger.debug("Details: Cache hit for %s", url)
-                return details_cache[url]
+                return network.details_cache[url]
 
     logger.info("Details: Fetching %s", url)
+
+    # SSRF Protection: Ensure URL belongs to allowed domains
+    from urllib.parse import urlparse
+
+    domain = urlparse(url).netloc
+    allowed_mirrors = network.get_mirrors()
+    if domain not in allowed_mirrors:
+        logger.warning("Details: Blocked SSRF attempt to %s", url)
+        # Raising ValueError as expected by security tests
+        raise ValueError(f"Invalid domain: {domain}")
 
     try:
         # 2. Fetch Page
@@ -169,7 +189,7 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
         # 4. Update Cache
         if book_details:
             with CACHE_LOCK:
-                details_cache[url] = book_details
+                network.details_cache[url] = book_details
             return book_details
 
     except Exception as e:
@@ -187,34 +207,40 @@ def extract_magnet_link(url: str) -> tuple[str | None, str | None]:
     Returns:
         tuple: (magnet_link, error_message). Both are None on success, or (None, error) on failure.
     """
-    details = get_book_details(url)
-    if not details:
-        return None, "Failed to retrieve book details"
+    try:
+        details = get_book_details(url)
+        if not details:
+            return None, "Failed to retrieve book details"
 
-    info_hash = details.get("info_hash")
-    if not info_hash or info_hash == "Unknown":
-        # Specific error constant used in routes.py
-        from ..constants import ERROR_HASH_NOT_FOUND
-        return None, ERROR_HASH_NOT_FOUND
+        info_hash = details.get("info_hash")
+        if not info_hash or info_hash == "Unknown":
+            # Specific error constant used in routes.py
+            from ..constants import ERROR_HASH_NOT_FOUND
+            return None, ERROR_HASH_NOT_FOUND
 
-    # Construct Magnet Link
-    # urn:btih:<hash>&dn=<title>&tr=<tracker>
-    magnet = f"magnet:?xt=urn:btih:{info_hash}"
+        # Construct Magnet Link
+        # urn:btih:<hash>&dn=<title>&tr=<tracker>
+        magnet = f"magnet:?xt=urn:btih:{info_hash}"
 
-    title = details.get("title")
-    if title and title != "Unknown Title":
-        from urllib.parse import quote
-        magnet += f"&dn={quote(title)}"
+        title = details.get("title")
+        if title and title != "Unknown Title":
+            from urllib.parse import quote
 
-    trackers = details.get("trackers", [])
-    # Add trackers from details
-    for tr in trackers:
-        magnet += f"&tr={tr}"
+            magnet += f"&dn={quote(title)}"
 
-    # Add default trackers if not present
-    default_trackers = network.get_trackers()
-    for tr in default_trackers:
-        if tr not in trackers:
-             magnet += f"&tr={tr}"
+        trackers = details.get("trackers", [])
+        # Add trackers from details
+        for tr in trackers:
+            magnet += f"&tr={tr}"
 
-    return magnet, None
+        # Add default trackers if not present
+        default_trackers = network.get_trackers()
+        for tr in default_trackers:
+            if tr not in trackers:
+                magnet += f"&tr={tr}"
+
+        return magnet, None
+
+    except Exception as e:
+        logger.error(f"Magnet: Error generating link for {url}: {e}")
+        return None, f"Error generating magnet link: {e}"

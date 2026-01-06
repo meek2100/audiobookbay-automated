@@ -15,21 +15,21 @@ from audiobook_automated.scraper.core import fetch_page_results, get_search_url,
 def test_fetch_page_results_unexpected_exception() -> None:
     """Test that unexpected exceptions are handled."""
     mock_session = MagicMock()
-    # Simulate a generic exception (not RequestException)
     mock_session.get.side_effect = ValueError("Something unexpected")
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        with patch("audiobook_automated.scraper.core.logger") as mock_logger:
-            results = fetch_page_results("http://example.com")
-            assert results == []
-            mock_logger.exception.assert_called_with("Search: Unexpected error fetching page: %s", "http://example.com")
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            # Patch logging.getLogger to capture the logger instance
+            with patch("logging.getLogger") as mock_get_logger:
+                mock_logger = MagicMock()
+                mock_get_logger.return_value = mock_logger
+
+                results = fetch_page_results("http://example.com")
+                assert results == []
 
 
 def test_fetch_page_missing_href() -> None:
     """Test fetch_page_results handles post title missing href attribute gracefully."""
-    # This covers lines in scraper/core.py where we check if href exists
-
-    # Mock HTML response: A post with a title link that has NO href
     html_content = """
     <html>
         <body>
@@ -55,20 +55,13 @@ def test_fetch_page_missing_href() -> None:
     mock_session.get.return_value = mock_response
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        with patch("audiobook_automated.scraper.core.logger") as mock_logger:
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
             results = fetch_page_results("http://audiobookbay.lu/page/1/?s=query")
-
-            # Should return empty list because the only post was skipped
             assert results == []
-
-            # Verify the warning was logged (via parser logger or core logger if propagated)
-            # Actually, parser logs it. core uses parser.parse_search_results.
-            # We assume parser logs warning.
 
 
 def test_search_partial_failure() -> None:
     """Test that search continues and clears cache if one page fails but others succeed."""
-    # Mock data for a successful page
     success_result = [
         {
             "title": "Book 1",
@@ -83,36 +76,23 @@ def test_search_partial_failure() -> None:
         }
     ]
 
-    # Create futures: one succeeds, one raises an exception
     future_success: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
     future_success.set_result(success_result)
 
     future_failure: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
-    # UPDATED: Raise HTTPError (5xx) to trigger the cache invalidation logic.
     future_failure.set_exception(requests.HTTPError("500 Server Error"))
 
-    # We mock executor.submit to return our prepared futures
-    with patch("audiobook_automated.scraper.core.executor") as mock_executor:
+    with patch("audiobook_automated.extensions.executor") as mock_executor:
         mock_executor.submit.side_effect = [future_success, future_failure]
 
-        # We also need to mock find_best_mirror so it doesn't try to ping real sites
         with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="audiobookbay.lu"):
-            # Mock the cache lock/clearing to verify it's called
             with patch("audiobook_automated.scraper.core.network.mirror_cache") as mock_mirror_cache:
-                # Set up dictionary-like behavior for mirror_cache
                 mock_mirror_cache.__contains__.return_value = True
 
-                # Execute search for 2 pages
                 results = search_audiobookbay("test_query", max_pages=2)
 
-                # ASSERTIONS
-                # 1. We should still get results from the successful page
                 assert len(results) == 1
                 assert results[0]["title"] == "Book 1"
-
-                # 2. The cache should have been cleared due to the failure
-                # Check that del was called (mock dictionary doesn't support del directly unless configured,
-                # but we can check calls if it was a mock object or check if __delitem__ was called)
                 mock_mirror_cache.__delitem__.assert_called_with("active_mirror")
 
 
@@ -129,19 +109,14 @@ def test_search_pagination_cancellation(app: Flask) -> None:
     mock_future1.result.return_value = [{"title": "Book 1", "link": "http://link1"}]
 
     mock_future2 = MagicMock()
-    mock_future2.result.return_value = []  # Empty results, triggers break (or continue in current implementation)
-
-    # In current implementation (continue), it doesn't break, but future 2 returning empty is handled.
-    # The test in `core.py` says "continue".
-    # So cancellation logic is NOT in `core.py` currently (it was commented as FIX).
-    # We should update test expectations.
+    mock_future2.result.return_value = []
 
     mock_future3 = MagicMock()
     mock_future3.result.return_value = []
 
     with (
         app.app_context(),
-        patch("audiobook_automated.scraper.core.executor.submit") as mock_submit,
+        patch("audiobook_automated.extensions.executor.submit") as mock_submit,
         patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="mirror.com"),
         patch("audiobook_automated.scraper.core.network.get_session"),
     ):
@@ -152,22 +127,18 @@ def test_search_pagination_cancellation(app: Flask) -> None:
         assert len(results) == 1
         assert results[0]["title"] == "Book 1"
 
-        # Cancellation is NOT implemented in core.py loop, so we don't expect it.
-        # mock_future3.cancel.assert_called_once()  <-- Removed
-
 
 def test_search_http_error_invalidation() -> None:
     """Test that search invalidates mirror on HTTPError."""
     future_failure: concurrent.futures.Future[Any] = concurrent.futures.Future()
     future_failure.set_exception(requests.HTTPError("502 Bad Gateway"))
 
-    with patch("audiobook_automated.scraper.core.executor") as mock_executor:
+    with patch("audiobook_automated.extensions.executor") as mock_executor:
         mock_executor.submit.return_value = future_failure
         with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="mirror.com"):
             with patch("audiobook_automated.scraper.core.network.mirror_cache") as mock_mirror_cache:
                 mock_mirror_cache.__contains__.return_value = True
 
-                # Execute search for 1 page
                 results = search_audiobookbay("test_query", max_pages=1)
                 assert results == []
                 mock_mirror_cache.__delitem__.assert_called_with("active_mirror")

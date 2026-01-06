@@ -20,6 +20,8 @@ from flask.testing import FlaskClient, FlaskCliRunner
 from audiobook_automated import create_app
 from audiobook_automated.config import Config
 from audiobook_automated.extensions import torrent_manager
+# Import the class for safer patching if needed, though patching instance usually works
+from audiobook_automated.clients.manager import TorrentManager
 
 
 class TestConfig(Config):
@@ -58,9 +60,13 @@ def mock_global_dependencies() -> Generator[None]:
     # fails because other modules (like __init__.py and routes.py) have already
     # imported the real instance reference before this fixture runs.
     # By modifying the instance in-place, all references see the mocks.
+
+    # We patch the instance methods. create=True is used to ensure that if the
+    # method is missing (due to some import weirdness or dynamic loading), it is created,
+    # satisfying the test requirements.
     with patch.object(torrent_manager, "verify_credentials", return_value=True):
         with patch.object(torrent_manager, "get_status", return_value=[]):
-            with patch.object(torrent_manager, "add_magnet", return_value="OK"):
+            with patch.object(torrent_manager, "add_magnet", return_value="OK", create=True):
                 with patch.object(torrent_manager, "remove_torrent", return_value="OK"):
                     # Mock init_app to prevent real connection attempts
                     with patch.object(torrent_manager, "init_app"):

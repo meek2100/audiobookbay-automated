@@ -1,4 +1,3 @@
-# File: tests/scraper/test_fetcher.py
 """Tests for fetch_page_results."""
 
 import logging
@@ -14,7 +13,6 @@ from audiobook_automated.scraper import fetch_page_results, get_search_url
 
 def fetch_and_parse_page(hostname: str, query: str, page: int, user_agent: str, timeout: int) -> list[dict[str, Any]]:
     """Helper to mimic old fetch_and_parse_page using new primitives."""
-    # Assuming https
     base_url = f"https://{hostname}"
     url = get_search_url(base_url, query, page)
     return fetch_page_results(url)
@@ -30,13 +28,12 @@ def test_fetch_and_parse_page_real_structure(real_world_html: str, mock_sleep: A
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
 
-    # Page 1 now uses explicit pagination
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=real_world_html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page(hostname, query, page, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page(hostname, query, page, "ua", 30)
 
-    # assert mock_sleep.called # sleep is removed from core
     assert len(results) == 1
     book = results[0]
     assert "A Game of Thrones" in book["title"]
@@ -46,7 +43,6 @@ def test_fetch_and_parse_page_real_structure(real_world_html: str, mock_sleep: A
 
 
 def test_fetch_and_parse_page_unknown_bitrate() -> None:
-    """Test that '?' bitrates are correctly parsed as 'Unknown'."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">Test</a></h2></div>
@@ -61,24 +57,24 @@ def test_fetch_and_parse_page_unknown_bitrate() -> None:
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["bitrate"] == "Unknown"
 
 
 def test_fetch_and_parse_page_malformed() -> None:
-    """Test that malformed HTML (no posts) returns an empty list."""
     mock_session = requests.Session()
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
     adapter.register_uri("GET", "https://host/page/1/?s=q", text="<html><body></body></html>", status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results == []
 
 
 def test_fetch_and_parse_page_zero_results(mock_sleep: Any) -> None:
-    """Test that a valid page with no posts returns an empty list without error."""
     html = """
     <html>
         <body>
@@ -94,12 +90,12 @@ def test_fetch_and_parse_page_zero_results(mock_sleep: Any) -> None:
     adapter.register_uri("GET", "https://host/page/1/?s=nonexistent", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page("host", "nonexistent", 1, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page("host", "nonexistent", 1, "ua", 30)
     assert results == []
 
 
 def test_fetch_and_parse_page_mixed_validity() -> None:
-    """Test that the parser skips broken posts while retaining valid ones."""
     mixed_html = """
     <div class="post"><div>Broken Info</div></div>
     <div class="post">
@@ -113,13 +109,13 @@ def test_fetch_and_parse_page_mixed_validity() -> None:
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=mixed_html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert len(results) == 1
     assert results[0]["title"] == "Valid Book"
 
 
 def test_parsing_structure_change() -> None:
-    """Test resilience against HTML structure changes (missing recognized tags)."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
@@ -132,12 +128,12 @@ def test_parsing_structure_change() -> None:
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["format"] == "Unknown"
 
 
 def test_fetch_and_parse_page_language_fallback() -> None:
-    """Test fallback when language regex fails to match."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
@@ -151,12 +147,12 @@ def test_fetch_and_parse_page_language_fallback() -> None:
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["language"] == "Unknown"
 
 
 def test_fetch_and_parse_page_missing_regex_matches() -> None:
-    """Tests the scenario where postInfo exists but regexes fail to find Category or Language."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">T</a></h2></div>
@@ -170,13 +166,13 @@ def test_fetch_and_parse_page_missing_regex_matches() -> None:
     adapter.register_uri("GET", "https://host/page/1/?s=q", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["language"] == "Unknown"
     assert results[0]["category"] == ["Unknown"]
 
 
 def test_fetch_and_parse_page_no_posted_date() -> None:
-    """Test when the 'Posted:' label is missing from the content paragraphs."""
     hostname = "audiobookbay.lu"
     query = "no_posted"
     html = """
@@ -196,7 +192,8 @@ def test_fetch_and_parse_page_no_posted_date() -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page(hostname, query, 1, "UA", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page(hostname, query, 1, "UA", 30)
 
     assert len(results) == 1
     assert results[0]["post_date"] == "Unknown"
@@ -204,7 +201,6 @@ def test_fetch_and_parse_page_no_posted_date() -> None:
 
 
 def test_fetch_and_parse_page_missing_title() -> None:
-    """Test that posts missing a title header are skipped."""
     hostname = "audiobookbay.lu"
     query = "no_title"
     html = """
@@ -218,12 +214,12 @@ def test_fetch_and_parse_page_missing_title() -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page(hostname, query, 1, "UA", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page(hostname, query, 1, "UA", 30)
     assert results == []
 
 
 def test_fetch_page_post_exception(caplog: Any) -> None:
-    """Test that exceptions raised during individual post parsing are logged and skipped."""
     mock_session = MagicMock()
     mock_session.get.return_value.text = "<html></html>"
     mock_session.get.return_value.status_code = 200
@@ -235,24 +231,24 @@ def test_fetch_page_post_exception(caplog: Any) -> None:
         mock_bs.return_value.select.return_value = [mock_post]
         with caplog.at_level(logging.ERROR):
             with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-                results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+                with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+                    results = fetch_and_parse_page("host", "q", 1, "ua", 30)
             assert results == []
 
 
 def test_fetch_page_urljoin_exception(real_world_html: str) -> None:
-    """Test that exceptions during URL joining return an empty list."""
     mock_session = MagicMock()
     mock_session.get.return_value.text = real_world_html
     mock_session.get.return_value.status_code = 200
 
     with patch("audiobook_automated.scraper.parser.urljoin", side_effect=Exception("Join Error")):
         with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+            with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+                results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results == []
 
 
 def test_fetch_and_parse_page_missing_cover_image() -> None:
-    """Test that a missing cover image results in a None cover field."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">No Cover</a></h2></div>
@@ -264,13 +260,12 @@ def test_fetch_and_parse_page_missing_cover_image() -> None:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
         with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
-    # Expect None so UI handles versioning
+            with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+                results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["cover"] is None
 
 
 def test_fetch_and_parse_page_missing_post_info() -> None:
-    """Test parsing logic when the 'postInfo' div is entirely missing."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">No Info</a></h2></div>
@@ -282,13 +277,12 @@ def test_fetch_and_parse_page_missing_post_info() -> None:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
         with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
-    # Even if content exists, without info it might be partial, but logic allows it.
+            with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+                results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["language"] == "Unknown"
 
 
 def test_fetch_and_parse_page_remote_default_cover_optimization() -> None:
-    """Test that the known 'default_cover.jpg' URL is converted to None."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">Remote Default</a></h2></div>
@@ -303,13 +297,12 @@ def test_fetch_and_parse_page_remote_default_cover_optimization() -> None:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
         with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-            results = fetch_and_parse_page("host", "q", 1, "ua", 30)
-    # Assert it was converted to None
+            with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+                results = fetch_and_parse_page("host", "q", 1, "ua", 30)
     assert results[0]["cover"] is None
 
 
 def test_fetch_and_parse_page_missing_content_div(caplog: Any) -> None:
-    """Test that posts missing the content div are skipped (Guard Clause coverage)."""
     html = """
     <div class="post">
         <div class="postTitle"><h2><a href="/link">Empty</a></h2></div>
@@ -321,17 +314,14 @@ def test_fetch_and_parse_page_missing_content_div(caplog: Any) -> None:
         mock_get.return_value.text = html
         mock_get.return_value.status_code = 200
         with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-            with caplog.at_level(logging.WARNING):
-                results = fetch_and_parse_page("host", "q", 1, "ua", 30)
+            with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+                with caplog.at_level(logging.WARNING):
+                    results = fetch_and_parse_page("host", "q", 1, "ua", 30)
 
     assert results == []
 
 
-# --- From Integration ---
-
-
 def test_fetch_page_special_characters(real_world_html: str, mock_sleep: Any) -> None:
-    """Test that special characters in queries are passed correctly to the session."""
     hostname = "audiobookbay.lu"
     query = "Batman & Robin [Special Edition]"
     page = 1
@@ -343,7 +333,8 @@ def test_fetch_page_special_characters(real_world_html: str, mock_sleep: Any) ->
             mock_get.return_value.text = real_world_html
             mock_get.return_value.status_code = 200
 
-            fetch_and_parse_page(hostname, query, page, user_agent, 30)
+            with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+                fetch_and_parse_page(hostname, query, page, user_agent, 30)
 
             # Verify the query was passed in the params dict
             mock_get.assert_called()
@@ -352,7 +343,6 @@ def test_fetch_page_special_characters(real_world_html: str, mock_sleep: Any) ->
 
 
 def test_fetch_page_timeout(mock_sleep: Any) -> None:
-    """Test that timeouts propagate correctly."""
     hostname = "audiobookbay.lu"
     query = "timeout"
     page = 1
@@ -364,13 +354,12 @@ def test_fetch_page_timeout(mock_sleep: Any) -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", exc=requests.exceptions.Timeout)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=session):
-        # core catches Timeout and returns []
-        results = fetch_and_parse_page(hostname, query, page, user_agent, 30)
-        assert results == []
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page(hostname, query, page, user_agent, 30)
+            assert results == []
 
 
 def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
-    """Test that '?' values in metadata are converted to 'Unknown'."""
     hostname = "audiobookbay.lu"
     query = "question_marks"
     html = """
@@ -388,7 +377,8 @@ def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
     adapter.register_uri("GET", f"https://{hostname}/page/1/?s={query}", text=html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=session):
-        results = fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0", 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page(hostname, query, 1, "TestAgent/1.0", 30)
 
     assert len(results) == 1
     r = results[0]
@@ -401,7 +391,6 @@ def test_fetch_and_parse_page_consistency_checks(mock_sleep: Any) -> None:
 
 
 def test_fetch_and_parse_page_pagination(real_world_html: str, mock_sleep: Any) -> None:
-    """Test fetching a page other than page 1 to verify pagination URL construction."""
     hostname = "audiobookbay.lu"
     query = "test"
     page = 2
@@ -411,10 +400,10 @@ def test_fetch_and_parse_page_pagination(real_world_html: str, mock_sleep: Any) 
     adapter = requests_mock.Adapter()
     mock_session.mount("https://", adapter)
 
-    # Register URI for page 2
     adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", text=real_world_html, status_code=200)
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        results = fetch_and_parse_page(hostname, query, page, user_agent, 30)
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            results = fetch_and_parse_page(hostname, query, page, user_agent, 30)
 
     assert len(results) == 1
