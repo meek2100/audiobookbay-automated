@@ -197,9 +197,9 @@ def send() -> Response | tuple[Response, int]:
     Returns:
         Response: JSON indicating success or failure.
     """
-    data = request.json
+    data = cast(dict[str, Any], request.json)
 
-    if not isinstance(data, dict):
+    if not isinstance(data, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.warning("Invalid send request: JSON body is not a dictionary.")
         raise InvalidRequestError("Invalid JSON format")
 
@@ -223,7 +223,7 @@ def send() -> Response | tuple[Response, int]:
 
     # Check raw title existence. We must allow titles that sanitize to FALLBACK_TITLE (e.g. "...")
     # to proceed to the collision handler, rather than blocking them as "Invalid".
-    if not details_url or not title or not title.strip():  # pragma: no cover
+    if not details_url or not title:  # pragma: no cover
         logger.warning("Invalid send request received: missing link or valid title")
         raise InvalidRequestError("Invalid request: Title or Link missing")
 
@@ -276,7 +276,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
     """
     data = request.json
 
-    if not isinstance(data, dict):
+    if not isinstance(data, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
         raise InvalidRequestError("Invalid JSON format")
 
     torrent_id = data.get("id") if data else None

@@ -134,7 +134,7 @@ def test_search_total_failure() -> None:
 def test_search_pagination_cancellation(app: Flask) -> None:
     """Test that pagination stops and futures are cancelled when a page returns no results."""
     mock_future1 = MagicMock()
-    mock_future1.result.return_value = [{"title": "Book 1"}]
+    mock_future1.result.return_value = [{"title": "Book 1", "link": "http://link1"}]
 
     mock_future2 = MagicMock()
     mock_future2.result.return_value = []  # Empty results, triggers break
@@ -156,3 +156,41 @@ def test_search_pagination_cancellation(app: Flask) -> None:
 
         # Verify cancellation of the 3rd future
         mock_future3.cancel.assert_called_once()
+
+
+def test_search_timeout_failure() -> None:
+    """Test that search handles Timeout exception properly."""
+    future_failure: concurrent.futures.Future[Any] = concurrent.futures.Future()
+    future_failure.set_exception(requests.Timeout("Timeout occurred"))
+
+    with patch("audiobook_automated.scraper.core.executor") as mock_executor:
+        mock_executor.submit.return_value = future_failure
+        with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
+            with patch("audiobook_automated.scraper.core.mirror_cache") as mock_mirror_cache:
+                # Execute search for 1 page
+                results = search_audiobookbay("test_query", max_pages=1)
+                assert results == []
+                mock_mirror_cache.clear.assert_called_once()
+
+
+def test_search_fail_fast_cancellation() -> None:
+    """Test that subsequent futures are cancelled when an error occurs."""
+    # Future 1: Fails with Timeout
+    future1: concurrent.futures.Future[Any] = concurrent.futures.Future()
+    future1.set_exception(requests.Timeout("Timeout"))
+
+    # Future 2: Pending (should be cancelled)
+    future2 = MagicMock()
+
+    with patch("audiobook_automated.scraper.core.executor") as mock_executor:
+        # Side effect to return different futures for different calls
+        mock_executor.submit.side_effect = [future1, future2]
+
+        with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="mirror.com"):
+            with patch("audiobook_automated.scraper.core.mirror_cache"):
+                # Search 2 pages
+                search_audiobookbay("query", max_pages=2)
+
+                # Verify failure handling logic was hit
+                # And verify future2 was cancelled
+                future2.cancel.assert_called_once()

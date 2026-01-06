@@ -152,7 +152,7 @@ def fetch_and_parse_page(  # noqa: PLR0915
     return page_results
 
 
-def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSummary]:
+def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSummary]:  # noqa: PLR0912
     """Search AudiobookBay for the given query using cached search results if available.
 
     Uses a shared global thread pool for parallel page fetching to reduce overhead.
@@ -218,6 +218,7 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
         # RESILIENCE: Local flag to prevent cache thrashing.
         # If multiple pages fail, we only invalidate the mirror once per search request.
         mirror_invalidated = False
+        seen_links: set[str] = set()
 
         # PROCESSING FIX: Iterate futures in order to handle pagination correctly.
         # Previously using as_completed() caused a race condition where an empty result
@@ -234,15 +235,26 @@ def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSu
                         f.cancel()
                     break
 
-                results.extend(page_data)
+                # Deduplication logic to handle shifting results
+                for book in page_data:
+                    if book["link"] not in seen_links:
+                        results.append(book)
+                        seen_links.add(book["link"])
             except (requests.ConnectionError, requests.Timeout) as exc:
                 logger.error(f"Network error during scrape on page {i + 1}: {exc}")
+                # FAIL-FAST: Cancel all pending requests immediately
+                for f in futures[i + 1 :]:
+                    f.cancel()
+
                 # Only clear cache once per search loop to prevent lock contention/thrashing
                 if not mirror_invalidated:
                     logger.warning(f"Invalidating mirror cache due to network failure: {active_hostname}")
                     with CACHE_LOCK:
                         mirror_cache.clear()
                     mirror_invalidated = True
+
+                # Stop processing further pages
+                break
             except Exception as exc:
                 logger.error(f"Page scrape failed (Parsing/Generic): {exc}", exc_info=True)
                 # Do not invalidate mirror for parsing errors or other non-connection issues
