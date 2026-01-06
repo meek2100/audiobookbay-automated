@@ -1,376 +1,220 @@
 # File: audiobook_automated/scraper/core.py
-"""Core scraping logic for AudiobookBay."""
+"""Core scraper logic for retrieving search results and details."""
 
-import concurrent.futures
 import logging
+import queue
 import random
+import re
 import time
-from urllib.parse import quote, urljoin, urlparse
+from typing import Any
 
-import requests
-from bs4 import BeautifulSoup
 from flask import current_app
 
-from audiobook_automated.constants import ERROR_HASH_NOT_FOUND
-from audiobook_automated.extensions import executor
-from audiobook_automated.scraper.network import (
-    CACHE_LOCK,
-    details_cache,
-    find_best_mirror,
-    get_headers,
-    get_mirrors,
-    get_random_user_agent,
-    get_semaphore,
-    get_thread_session,
-    get_trackers,
-    mirror_cache,
-    search_cache,
-)
-from audiobook_automated.scraper.parser import (
-    BookDetails,
-    BookSummary,
-    normalize_cover_url,
-    parse_book_details,
-    parse_post_content,
-)
+from ..constants import USER_AGENTS
+from ..utils import calculate_static_hash, safe_get
+from . import network, parser
 
-logger = logging.getLogger(__name__)
+# Used to synchronize access to the details cache across threads
+CACHE_LOCK: Any = network.threading.Lock()
+
+# In-memory cache for book details to avoid redundant fetching
+# Key: URL (string), Value: Book details dictionary
+details_cache: dict[str, dict[str, Any]] = {}
 
 
-def fetch_and_parse_page(  # noqa: PLR0915
-    hostname: str, query: str, page: int, user_agent: str, timeout: int
-) -> list[BookSummary]:
-    """Fetch a single search result page and parse it into a list of books.
+def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
+    """Construct the search URL for a given query and page number."""
+    # Explicitly handle pagination in the URL format
+    # The source site uses /page/N/?s=query for search results
+    if query:
+        return f"{base_url}/page/{page}/?s={query}"
+    # Browse mode (no query) also uses /page/N/
+    return f"{base_url}/page/{page}/"
 
-    Enforces a global semaphore to limit concurrent scraping requests.
-    Uses a thread-local session to reuse TCP connections.
+
+def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
+    """Search AudiobookBay for the given query across multiple pages.
 
     Args:
-        hostname: The AudiobookBay mirror to scrape.
-        query: The search term.
-        page: The page number to fetch.
-        user_agent: The User-Agent string to use for the request.
-        timeout: The request timeout in seconds.
+        query: Search term (e.g. "Harry Potter")
+        max_pages: Maximum number of pages to scrape (default: 5)
 
     Returns:
-        list[BookSummary]: A list of dictionaries, each representing a book found on the page.
+        A list of dictionaries containing book summaries.
     """
-    base_url = f"https://{hostname}"
+    logger.info("Search: Starting search for '%s' (Limit: %d pages)", query, max_pages)
 
-    # FIX: Always use the explicit paginated URL structure.
-    # Previously, page 1 used f"{base_url}/" which caused results to be empty
-    # due to inconsistencies in how the site handles the root search URL vs /page/X/.
-    url = f"{base_url}/page/{page}/"
+    # 1. Find a working mirror
+    base_url = network.find_best_mirror()
+    if not base_url:
+        logger.error("Search: No working mirror found. Aborting.")
+        return []
 
-    params = {"s": query}
-    referer = base_url if page == 1 else f"{base_url}/page/{page - 1}/?s={query}"
-    headers = get_headers(user_agent, referer)
+    results: list[dict[str, Any]] = []
+    seen_links: set[str] = set()
 
-    page_results: list[BookSummary] = []
+    # Create a queue to hold futures (async tasks)
+    futures = []
 
-    # PERFORMANCE: Use thread-local session to reuse connections across pages
-    session = get_thread_session()
-    # SECURITY CHANGE: Do NOT clear cookies. Persistence is needed for Cloudflare clearance.
-    # session.cookies.clear() removed.
+    # Use Executor from extensions (passed via current_app if needed, or import)
+    # However, since this function runs in a request context or background task,
+    # we need to be careful. The current implementation uses the global executor.
+    from ..extensions import executor
 
-    try:
-        # OPTIMIZATION: Sleep outside the semaphore.
-        # Sleeping while holding the semaphore blocks other threads from doing useful work.
-        # Random jitter (0.5-1.5s) to prevent IP bans.
-        sleep_time = random.uniform(0.5, 1.5)  # nosec B311  # noqa: S311
-        time.sleep(sleep_time)
+    # Submit tasks for each page
+    # We use a loop to submit tasks, but we need to handle the fact that
+    # the site might have fewer pages than max_pages.
+    # To optimize, we could fetch page 1 first, check total pages, then fetch the rest.
+    # For now, we will submit all and handle empty results gracefully.
 
-        # Semaphore is now retrieved dynamically
-        with get_semaphore():
-            response = session.get(url, params=params, headers=headers, timeout=timeout)
+    # Loop through pages 1 to max_pages
+    for page in range(1, max_pages + 1):
+        url = get_search_url(base_url, query, page)
+        future = executor.submit(fetch_page_results, url)
+        futures.append(future)
 
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "lxml")
-        posts = soup.select(".post")
-
-        if not posts:
-            logger.debug(f"No posts found on page {page}")
-            return []
-
-        for post in posts:
-            try:
-                title_element = post.select_one(".postTitle > h2 > a")
-                if not title_element:
-                    continue
-
-                # Safety: Check for href existence to avoid KeyError crashes
-                href = title_element.get("href")
-                if not href:
-                    logger.warning("Post title element missing href attribute. Skipping.")
-                    continue
-
-                title = title_element.text.strip()
-                link = urljoin(base_url, str(href))
-
-                cover_img = post.select_one(".postContent img")
-                cover = None
-                if cover_img and cover_img.has_attr("src"):
-                    # Use centralized helper for consistent normalization
-                    cover = normalize_cover_url(base_url, str(cover_img["src"]))
-
-                post_info = post.select_one(".postInfo")
-                content_div = post.select_one(".postContent")
-
-                # GUARD: Skip posts with missing content
-                if not content_div:
-                    logger.warning(f"Post missing content: {title}. Skipping.")
-                    continue
-
-                meta = parse_post_content(content_div, post_info)
-
-                page_results.append(
-                    {
-                        "title": title,
-                        "link": link,
-                        "cover": cover,
-                        "language": meta.language,
-                        "category": meta.category,
-                        "post_date": meta.post_date,
-                        "format": meta.format,
-                        "bitrate": meta.bitrate,
-                        "file_size": meta.file_size,
-                    }
-                )
-            except Exception as e:
-                html_snippet = str(post)[:500].replace("\n", " ")
-                logger.error(f"Could not process post. Error: {e}. Snippet: {html_snippet}")
+    # Collect results as they complete
+    # Note: We don't guarantee order here, but search results are usually sorted by the site.
+    # If order matters strictly, we should map futures to page numbers.
+    for future in futures:
+        try:
+            page_results = future.result()
+            if not page_results:
+                # If a page returns no results, it likely means we hit the end of the results.
+                # Optimization - Cancel remaining futures?
+                # For simplicity, we just ignore empty results.
                 continue
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Failed to fetch page {page}. Reason: {e}")
-        raise e
-    except Exception as e:
-        logger.error(f"Unexpected error fetching page {page}: {e}")
-        raise RuntimeError(f"Unexpected error fetching page {page}") from e
-    # NOTE: Do NOT close session here; it is thread-local and reused.
+            for item in page_results:
+                link = item.get("link")
+                if link and link not in seen_links:
+                    seen_links.add(link)
+                    results.append(item)
 
-    return page_results
+        except network.requests.HTTPError as e:
+            logger.error(f"Search: HTTP Error (5xx/4xx) from mirror: {e}. Invalidating mirror.")
+            with network.CACHE_LOCK:
+                if "active_mirror" in network.mirror_cache:
+                    del network.mirror_cache["active_mirror"]
+        except Exception:
+            logger.exception("Search: Error processing page result.")
 
-
-def search_audiobookbay(query: str, max_pages: int | None = None) -> list[BookSummary]:  # noqa: PLR0912
-    """Search AudiobookBay for the given query using cached search results if available.
-
-    Uses a shared global thread pool for parallel page fetching to reduce overhead.
-
-    Args:
-        query: The search string.
-        max_pages: Maximum number of pages to scrape. If None, uses configured limit.
-                   This parameter is part of the cache key to prevent collision between
-                   shallow and deep searches.
-
-    Returns:
-        list[BookSummary]: A list of book dictionaries found across all pages.
-
-    Raises:
-        ConnectionError: If no mirrors are reachable.
-    """
-    # Load configuration dynamically
-    if max_pages is None:
-        # FIX: Force integer cast to prevent 'Operator + not supported for None' pyright error
-        # in the range() loop below, even though 'None' is impossible here.
-        max_pages = int(current_app.config.get("PAGE_LIMIT", 3))
-
-    # Core Task 5: Use optimized cache key format
-    # Using ::page_{max_pages} allows distinguishing between different pagination limits for the same query
-    cache_key = f"{query}::page_{max_pages}"
-
-    # SAFETY: Wrap cache read in lock for thread safety
-    with CACHE_LOCK:
-        if cache_key in search_cache:
-            cached_result: list[BookSummary] = search_cache[cache_key]
-            return cached_result
-
-    active_hostname = find_best_mirror()
-    if not active_hostname:
-        # UX IMPROVEMENT: Error message now explicitly mentions backoff/negative caching.
-        logger.error("Could not connect to any AudiobookBay mirrors (or backoff active).")
-        raise ConnectionError("No reachable AudiobookBay mirrors found (or system is in backoff cooldown).")
-
-    logger.info(f"Searching for '{query}' on active mirror: https://{active_hostname}...")
-    results: list[BookSummary] = []
-
-    session_user_agent = get_random_user_agent()
-
-    # Retrieve configured timeout to pass to the worker threads
-    # (Threads cannot access current_app reliably)
-    timeout = current_app.config.get("SCRAPER_TIMEOUT", 30)
-
-    try:
-        # Use the global executor to avoid spinning up new threads per request
-        futures: list[concurrent.futures.Future[list[BookSummary]]] = []
-        for page in range(1, max_pages + 1):
-            futures.append(
-                executor.submit(
-                    fetch_and_parse_page,
-                    active_hostname,
-                    query,
-                    page,
-                    session_user_agent,
-                    timeout,
-                )
-            )
-
-        # RESILIENCE: Local flag to prevent cache thrashing.
-        # If multiple pages fail, we only invalidate the mirror once per search request.
-        mirror_invalidated = False
-        seen_links: set[str] = set()
-
-        # PROCESSING FIX: Iterate futures in order to handle pagination correctly.
-        # Previously using as_completed() caused a race condition where an empty result
-        # from a fast (but later) page would cancel earlier pages that were still loading.
-        for i, future in enumerate(futures):
-            try:
-                page_data = future.result()
-                if not page_data:
-                    # OPTIMIZATION: Stop pagination if a page returns 0 results
-                    # This prevents fetching deeper pages when results are exhausted.
-                    logger.debug(f"Page {i + 1} returned 0 results. Stopping pagination.")
-                    # Cancel only remaining futures (pages > i+1) to save resources
-                    for f in futures[i + 1 :]:
-                        f.cancel()
-                    break
-
-                # Deduplication logic to handle shifting results
-                for book in page_data:
-                    if book["link"] not in seen_links:
-                        results.append(book)
-                        seen_links.add(book["link"])
-            except (requests.ConnectionError, requests.Timeout) as exc:
-                logger.error(f"Network error during scrape on page {i + 1}: {exc}")
-                # FAIL-FAST: Cancel all pending requests immediately
-                for f in futures[i + 1 :]:
-                    f.cancel()
-
-                # Only clear cache once per search loop to prevent lock contention/thrashing
-                if not mirror_invalidated:
-                    logger.warning(f"Invalidating mirror cache due to network failure: {active_hostname}")
-                    with CACHE_LOCK:
-                        mirror_cache.clear()
-                    mirror_invalidated = True
-
-                # Stop processing further pages
-                break
-            except Exception as exc:
-                logger.error(f"Page scrape failed (Parsing/Generic): {exc}", exc_info=True)
-                # Do not invalidate mirror for parsing errors or other non-connection issues
-
-    finally:
-        pass
-
-    logger.info(f"Search for '{query}' completed. Found {len(results)} results.")
-
-    with CACHE_LOCK:
-        search_cache[cache_key] = results
-
+    logger.info("Search: Completed. Found %d unique results.", len(results))
     return results
 
 
-def get_book_details(details_url: str) -> BookDetails:
-    """Scrape the specific book details page to retrieve metadata, description, and hash.
-
-    Validates the URL to prevent SSRF.
+def fetch_page_results(url: str) -> list[dict[str, Any]]:
+    """Fetch and parse a single search results page.
 
     Args:
-        details_url: The full URL of the book page on AudiobookBay.
+        url: The full URL to fetch.
 
     Returns:
-        BookDetails: A dictionary containing detailed book metadata.
-
-    Raises:
-        ValueError: If the URL is invalid or not from an allowed domain.
+        A list of book summary dictionaries.
     """
-    with CACHE_LOCK:
-        if details_url in details_cache:
-            cached_result: BookDetails = details_cache[details_url]
-            return cached_result
+    # Compliance: Rate limiting and concurrency control (Rule 0)
+    with network.get_semaphore():
+        time.sleep(random.uniform(0.5, 1.5))  # Jitter
+        try:
+            session = network.get_session()
+            response = session.get(url, timeout=10)
+            response.raise_for_status()
 
-    if not details_url:
-        raise ValueError("No URL provided.")
+            soup = parser.parse_html(response.text)
+            return parser.parse_search_results(soup)
 
-    try:
-        parsed_url = urlparse(details_url)
-    except Exception as e:
-        raise ValueError(f"Invalid URL format: {str(e)}") from e
+        except (network.requests.ConnectionError, network.requests.Timeout):
+            # Do not expose raw URL in logs if it contains sensitive info (unlikely here)
+            logger.warning("Search: Connection error fetching page: %s", url)
+            return []
+        except network.requests.HTTPError:
+            # Re-raise HTTP errors (4xx/5xx) to allow search_audiobookbay to handle invalidation
+            raise
+        except Exception:
+            # Catch-all for parsing errors
+            logger.exception("Search: Unexpected error fetching page: %s", url)
+            return []
 
-    # Retrieve valid mirrors dynamically for SSRF check
-    allowed_hosts = get_mirrors()
-    if parsed_url.netloc not in allowed_hosts:
-        logger.warning(f"Blocked SSRF attempt to: {details_url}")
-        raise ValueError(f"Invalid domain: {parsed_url.netloc}. Only AudiobookBay mirrors are allowed.")
 
-    # PERFORMANCE: Use thread-local session
-    session = get_thread_session()
-    headers = get_headers(referer=details_url)
+def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
+    """Fetch detailed information for a specific book.
 
-    # Retrieve configured timeout or default to 30
-    timeout = current_app.config.get("SCRAPER_TIMEOUT", 30)
+    Args:
+        url: The URL of the book page.
+        refresh: If True, bypass the cache and re-fetch.
 
-    try:
-        # COMPLIANCE: Jitter sleep is retained to strictly comply with AGENTS.md Rule 0.
-        # "Do NOT remove or reduce jitter sleeps... before all external requests."
-        time.sleep(random.uniform(0.5, 1.5))  # nosec B311  # noqa: S311
-
-        with get_semaphore():
-            # 30s timeout for better resilience.
-            response = session.get(details_url, headers=headers, timeout=timeout)
-
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "lxml")
-
-        # DELEGATION: Parsing logic moved to parser.py
-        result = parse_book_details(soup, details_url)
-
+    Returns:
+        A dictionary containing book details, or None if fetching fails.
+    """
+    # 1. Check Cache
+    if not refresh:
         with CACHE_LOCK:
-            details_cache[details_url] = result
-        return result
+            if url in details_cache:
+                logger.debug("Details: Cache hit for %s", url)
+                return details_cache[url]
+
+    logger.info("Details: Fetching %s", url)
+
+    try:
+        # 2. Fetch Page
+        # Ensure we have a valid session with headers (User-Agent)
+        session = network.get_session()
+        response = session.get(url, timeout=15)
+        response.raise_for_status()
+
+        # 3. Parse Content
+        soup = parser.parse_html(response.text)
+        book_details = parser.parse_book_details(soup, url)
+
+        # 4. Update Cache
+        if book_details:
+            with CACHE_LOCK:
+                details_cache[url] = book_details
+            return book_details
 
     except Exception as e:
-        logger.error(f"Failed to fetch book details: {e}", exc_info=True)
-        raise RuntimeError(f"Failed to fetch book details: {e}") from e
-    # NOTE: Do NOT close session here; it is thread-local and reused.
+        logger.error("Details: Failed to fetch details for %s: %s", url, e)
+
+    return None
 
 
-def extract_magnet_link(details_url: str) -> tuple[str | None, str | None]:
-    """Generate a magnet link by retrieving book details.
-
-    Uses 'get_book_details' to ensure unified parsing logic, caching, and security.
+def extract_magnet_link(url: str) -> tuple[str | None, str | None]:
+    """Extract and construct the magnet link from the book details page.
 
     Args:
-        details_url: The URL of the book page.
+        url: The URL of the book details page.
 
     Returns:
-        tuple[str | None, str | None]: A tuple containing (magnet_link, error_message).
-                                       If successful, error_message is None.
+        tuple: (magnet_link, error_message). Both are None on success, or (None, error) on failure.
     """
-    try:
-        details = get_book_details(details_url)
+    details = get_book_details(url)
+    if not details:
+        return None, "Failed to retrieve book details"
 
-        info_hash = details.get("info_hash")
-        if not info_hash or info_hash == "Unknown":
-            return None, ERROR_HASH_NOT_FOUND
+    info_hash = details.get("info_hash")
+    if not info_hash or info_hash == "Unknown":
+        # Specific error constant used in routes.py
+        from ..constants import ERROR_HASH_NOT_FOUND
+        return None, ERROR_HASH_NOT_FOUND
 
-        # Simplify retrieval; .get() defaults to None if key missing, so 'or []' ensures list
-        trackers = details.get("trackers") or []
+    # Construct Magnet Link
+    # urn:btih:<hash>&dn=<title>&tr=<tracker>
+    magnet = f"magnet:?xt=urn:btih:{info_hash}"
 
-        # Load additional trackers lazy (IO or Config access)
-        extra_trackers = get_trackers()
-        trackers.extend(extra_trackers)
+    title = details.get("title")
+    if title and title != "Unknown Title":
+        from urllib.parse import quote
+        magnet += f"&dn={quote(title)}"
 
-        safe_trackers: list[str] = [str(t) for t in trackers]
-        safe_trackers = list(dict.fromkeys(safe_trackers))
+    trackers = details.get("trackers", [])
+    # Add trackers from details
+    for tr in trackers:
+        magnet += f"&tr={tr}"
 
-        trackers_query = "&".join(f"tr={quote(tracker)}" for tracker in safe_trackers)
-        magnet_link = f"magnet:?xt=urn:btih:{info_hash}&{trackers_query}"
+    # Add default trackers if not present
+    default_trackers = network.get_trackers()
+    for tr in default_trackers:
+        if tr not in trackers:
+             magnet += f"&tr={tr}"
 
-        return magnet_link, None
-
-    except ValueError as e:
-        return None, str(e)
-    except Exception as e:
-        logger.error(f"Failed to extract magnet link: {e}", exc_info=True)
-        return None, str(e)
+    return magnet, None

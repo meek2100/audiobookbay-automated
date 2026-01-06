@@ -1,14 +1,14 @@
 # File: audiobook_automated/extensions.py
-"""Extensions module initializing Flask extensions."""
+"""Global Flask extensions."""
 
 import logging
 import signal
 import sys
-from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
-from types import FrameType
+import types
+from typing import TYPE_CHECKING
 
 from flask import Flask
+from flask_executor import Executor
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -16,83 +16,46 @@ from flask_wtf.csrf import CSRFProtect
 
 from .clients import TorrentManager
 
-# Initialize CSRF Protection
+if TYPE_CHECKING:
+    from typing import NoReturn
+
+
+logger = logging.getLogger(__name__)
+
+# Initialize extensions (unbound to app)
+limiter = Limiter(key_func=get_remote_address)
 csrf = CSRFProtect()
-
-# Initialize Rate Limiter with memory storage (Appliance Philosophy)
-# Defaults are strictly opt-in via decorators.
-limiter = Limiter(
-    key_func=get_remote_address,
-    storage_uri="memory://",
-)
-
-# Initialize Security Headers (Talisman)
-# Note: Configuration happens in __init__.py/create_app
 talisman = Talisman()
-
-# Initialize Torrent Manager
+executor = Executor()
 torrent_manager = TorrentManager()
 
 
-class ScraperExecutor:
-    """Wrapper for ThreadPoolExecutor to allow lazy initialization with Flask config.
-
-    This ensures that the executor respects the 'SCRAPER_THREADS' config value
-    at the time the application starts (create_app), rather than locking in
-    an environment variable at import time.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the ScraperExecutor."""
-        self._executor: ThreadPoolExecutor | None = None
-
-    def init_app(self, app: Flask) -> None:
-        """Initialize the executor with the configured thread count.
-
-        Args:
-            app: The Flask application instance.
-        """
-        # Defaults to 3 if not set (matching previous Config default)
-        max_workers = app.config.get("SCRAPER_THREADS", 3)
-        self._executor = ThreadPoolExecutor(max_workers=max_workers)
-
-        # NOTE: Semaphore initialization has been moved to app/__init__.py
-        # to prevent circular imports between extensions.py and scraper/network.py
-
-    def submit[T, **P](self, fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Future[T]:
-        """Submit a callable to be executed with the given arguments.
-
-        Proxies the call to the underlying ThreadPoolExecutor.
-
-        Raises:
-            RuntimeError: If init_app() has not been called yet.
-        """
-        if not self._executor:
-            raise RuntimeError("Executor not initialized. Call init_app() first.")
-        return self._executor.submit(fn, *args, **kwargs)
-
-    def shutdown(self, wait: bool = True) -> None:
-        """Shutdown the executor."""
-        if self._executor:
-            self._executor.shutdown(wait=wait)
-
-
-# GLOBAL EXECUTOR: Shared thread pool for concurrent scraping.
-# Initialized in create_app via init_app().
-executor = ScraperExecutor()
-
-
-def register_shutdown_handlers(app: Flask) -> None:  # noqa: ARG001
+def register_shutdown_handlers(app: Flask) -> None:
     """Register signal handlers for graceful shutdown."""
-    from audiobook_automated.scraper.network import shutdown_network  # noqa: PLC0415
 
-    def shutdown_handler(signum: int, frame: FrameType | None) -> None:
-        """Handle shutdown signals."""
-        logging.info(f"Received signal {signum}. Shutting down...")
-        executor.shutdown(wait=False)
+    def shutdown_handler(signal_received: int, frame: types.FrameType | None) -> "NoReturn":  # noqa: ARG001
+        """Handle shutdown signals by stopping executors and network components."""
+        app.logger.info("Graceful Shutdown: Signal %d received.", signal_received)
+
+        # 1. Stop Scraper Executor
+        app.logger.info("Graceful Shutdown: Stopping Scraper Executor...")
+        # shutdown(wait=True) ensures tasks complete
+        executor.shutdown(wait=True)
+
+        # 2. Close Network Sessions
+        # Local import to avoid circular dependency
+        from .scraper.network import shutdown_network  # noqa: PLC0415
+
+        app.logger.info("Graceful Shutdown: Closing Network Sessions...")
         shutdown_network()
-        sys.exit(0)
 
-    # Register handlers for SIGTERM and SIGINT
+        # 3. Close Torrent Client Connection
+        app.logger.info("Graceful Shutdown: Closing Torrent Client...")
+        torrent_manager.close()
+
+        app.logger.info("Graceful Shutdown: Complete. Exiting.")
+        # Removed explicit sys.exit(0) to allow natural shutdown
+
+    # Register for SIGTERM (Docker stop) and SIGINT (Ctrl+C)
     signal.signal(signal.SIGTERM, shutdown_handler)
     signal.signal(signal.SIGINT, shutdown_handler)

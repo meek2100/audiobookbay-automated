@@ -3,7 +3,7 @@
 
 from audiobook_automated.constants import DEFAULT_TRACKERS, USER_AGENTS
 
-from .core import extract_magnet_link, fetch_and_parse_page, get_book_details, search_audiobookbay
+from .core import extract_magnet_link, fetch_page_results, get_book_details, get_search_url, search_audiobookbay
 from .network import (
     check_mirror,
     find_best_mirror,
@@ -22,7 +22,8 @@ __all__ = [
     "extract_magnet_link",
     "get_book_details",
     "search_audiobookbay",
-    "fetch_and_parse_page",
+    "fetch_page_results",
+    "get_search_url",
     "DEFAULT_TRACKERS",
     "USER_AGENTS",
     "check_mirror",

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from flask import Flask, Response, request, session
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config
 from .extensions import csrf, executor, limiter, register_shutdown_handlers, talisman, torrent_manager
@@ -68,7 +69,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(app)
     # RESOURCE SAFETY: Ensure thread-local sessions are closed after each request
-    app.teardown_appcontext(torrent_manager.teardown_request)
+    # REMOVED: app.teardown_appcontext(torrent_manager.teardown_request) to prevent connection storm
 
     # HEALTH CHECK: Verify torrent client connection at startup.
     # This allows admins to see immediate feedback in logs if the client is unreachable.
@@ -121,6 +122,10 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         if not request.cookies.get(app.config["SESSION_COOKIE_NAME"]):
             session.modified = True
         return response
+
+    # ProxyFix for Docker/Ingress
+    if not app.debug:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     return app
 
