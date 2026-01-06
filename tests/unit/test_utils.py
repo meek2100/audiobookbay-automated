@@ -363,3 +363,32 @@ def test_parse_bool_quoted() -> None:
     assert parse_bool("'0'") is False
     assert parse_bool(None) is False
     assert parse_bool(None, default=True) is True
+
+
+def test_ensure_collision_safety_utf8_bytes() -> None:
+    """Test that max_length constraint respects UTF-8 byte length, not just char count."""
+    # This emoji is 4 bytes: \xf0\x9f\x93\x95
+    emoji_title = "📕" * 10  # 10 chars, 40 bytes.
+
+    with patch("uuid.uuid4") as mock_uuid:
+        mock_uuid.return_value.hex = "1" * 32
+        # UUID suffix is "_11111111" (9 chars/bytes).
+
+        # Case 1: Limit 20 bytes.
+        # Available for title: 20 - 9 = 11 bytes.
+        # "📕" (4 bytes) * 2 = 8 bytes. Next one is 4 bytes (total 12 > 11).
+        # So it should truncate to 2 emojis.
+        result = ensure_collision_safety(emoji_title, max_length=20)
+
+        assert len(result.encode("utf-8")) <= 20
+        assert result.endswith("_11111111")
+        # Should be "📕📕_11111111"
+        assert result.startswith("📕📕")
+        assert len(result) == 2 + 9 + 1 - 1  # 2 emojis + 9 suffix chars = 11 chars.
+
+        # Case 2: Limit 22 bytes.
+        # Available: 22 - 9 = 13 bytes.
+        # 3 emojis = 12 bytes. Fits!
+        result_2 = ensure_collision_safety(emoji_title, max_length=22)
+        assert result_2.startswith("📕📕📕")
+        assert len(result_2.encode("utf-8")) <= 22

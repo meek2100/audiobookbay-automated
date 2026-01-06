@@ -70,8 +70,8 @@ def fetch_and_parse_page(  # noqa: PLR0915
 
     # PERFORMANCE: Use thread-local session to reuse connections across pages
     session = get_thread_session()
-    # SECURITY: Clear cookies to prevent state leakage between unrelated requests
-    session.cookies.clear()
+    # SECURITY CHANGE: Do NOT clear cookies. Persistence is needed for Cloudflare clearance.
+    # session.cookies.clear() removed.
 
     try:
         # OPTIMIZATION: Sleep outside the semaphore.
@@ -284,9 +284,10 @@ def get_book_details(details_url: str) -> BookDetails:
     Raises:
         ValueError: If the URL is invalid or not from an allowed domain.
     """
-    if details_url in details_cache:
-        cached_result: BookDetails = details_cache[details_url]
-        return cached_result
+    with CACHE_LOCK:
+        if details_url in details_cache:
+            cached_result: BookDetails = details_cache[details_url]
+            return cached_result
 
     if not details_url:
         raise ValueError("No URL provided.")
@@ -324,7 +325,8 @@ def get_book_details(details_url: str) -> BookDetails:
         # DELEGATION: Parsing logic moved to parser.py
         result = parse_book_details(soup, details_url)
 
-        details_cache[details_url] = result
+        with CACHE_LOCK:
+            details_cache[details_url] = result
         return result
 
     except Exception as e:

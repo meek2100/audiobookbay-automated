@@ -231,6 +231,19 @@ def send() -> Response | tuple[Response, int]:
     logger.info(f"Received download request for '{sanitize_title(title)}'")
 
     try:
+        # SECURITY FIX: Use scraped title to prevent path spoofing
+        # We fetch details explicitly to get the title. extract_magnet_link will hit cache.
+        try:
+            details = get_book_details(details_url)
+            # Fallback to user provided title ONLY if scraped title is missing or "Unknown Title"
+            scraped_title = details.get("title")
+            if scraped_title and scraped_title != "Unknown Title":
+                title = scraped_title
+        except Exception as e:
+            # If fetching details fails, we proceed. extract_magnet_link will likely fail too
+            # and return an error which handles the flow gracefully.
+            logger.warning(f"Could not fetch details for title verification: {e}")
+
         magnet_link, error = extract_magnet_link(details_url)
 
         if not magnet_link:
