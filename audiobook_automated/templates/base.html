@@ -30,12 +30,15 @@
         />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_version) }}" />
         <link rel="stylesheet" href="{{ url_for('static', filename='css/splash.css', v=static_version) }}" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css', v=static_version) }}" />
         {% block extra_css %}{% endblock %} {% block extra_js %}{% endblock %}
         <script src="{{ url_for('static', filename='js/theme.js', v=static_version) }}"></script>
         <script src="{{ url_for('static', filename='js/actions.js', v=static_version) }}" defer></script>
     </head>
 
     <body>
+        <div id="notification-container"></div>
+
         {% if splash_enabled %}
         <div
             id="splash-overlay"
@@ -117,8 +120,23 @@
         </div>
 
         <div class="content">
-            <div id="notification-container"></div>
             {% block content %}{% endblock %}
+        </div>
+
+        <!-- Global Confirmation Modal -->
+        <div id="confirmation-modal" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="modal-title">Confirm Action</h3>
+                </div>
+                <div class="modal-body" id="modal-body">
+                    Are you sure you want to proceed?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="modal-cancel">Cancel</button>
+                    <button class="btn-primary" id="modal-confirm">Confirm</button>
+                </div>
+            </div>
         </div>
     </body>
 </html>
