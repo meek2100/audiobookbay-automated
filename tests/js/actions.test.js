@@ -32,9 +32,6 @@ document.head.innerHTML = '<meta name="csrf-token" content="test-csrf-token" />'
 // without needing to redefine the protected window.location object.
 const patchedActionsContent = global.actionsJsContent.replace(/location\.reload\(\)/g, "window.__mockReload()");
 
-// Evaluate the script content to define the functions globally
-eval(patchedActionsContent);
-
 // --- MOCK UTILITIES ---
 
 function getNotificationText() {
@@ -64,6 +61,11 @@ beforeEach(() => {
     // Ensure notification container exists and is empty
     document.body.innerHTML = '<div id="notification-container"></div>';
     jest.useFakeTimers();
+
+    // Evaluate the script content to define the functions globally
+    // We do this AFTER useFakeTimers to ensure any captured timers are mocked (though they should be dynamic)
+    // But mainly to ensure fresh environment
+    eval(patchedActionsContent);
 });
 
 afterAll(() => {
@@ -165,14 +167,11 @@ describe("actions.js - API Interactions", () => {
         expect(mockButton.innerText).toBe("Sent!");
         expect(mockButton.disabled).toBe(true);
 
-        jest.advanceTimersByTime(2000);
+        jest.advanceTimersByTime(3500);
 
-        // Updated logic: Button remains disabled to prevent double submission
-        expect(mockButton.disabled).toBe(true);
-        // Text might reset or stay "Sent!" depending on impl, but test should align with current code
-        // current impl in actions.js: setTimeout callback is empty comment
-        // So text remains "Sent!"
-        expect(mockButton.innerText).toBe("Sent!");
+        // Updated logic: Button resets after 3 seconds
+        expect(mockButton.disabled).toBe(false);
+        expect(mockButton.innerText).toBe("Download to Server");
     });
 
     test("sendTorrent should show error on non-ok status code", async () => {

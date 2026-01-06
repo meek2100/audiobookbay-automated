@@ -141,6 +141,10 @@ def test_get_status_transmission(app: Flask) -> None:
         strategy.connect()
         results = strategy.get_status("cat")
 
+        mock_instance.get_torrents.assert_called_with(
+            arguments=["id", "name", "percentDone", "status", "totalSize", "labels"]
+        )
+
         assert len(results) == 1
         assert results[0].progress == 75.0
         assert results[0].size == "1.00 KB"
