@@ -9,6 +9,7 @@ window.reloadLibrary = reloadLibrary;
 window.deleteTorrent = deleteTorrent;
 window.sendTorrent = sendTorrent;
 window.openExternalLink = openExternalLink;
+window.showModal = showModal;
 
 document.addEventListener("DOMContentLoaded", function () {
     initSplashScreen();
@@ -213,38 +214,123 @@ function showNotification(message, type = "info") {
 }
 
 /**
- * Triggers an Audiobookshelf library scan.
+ * Shows a custom modal confirmation dialog.
+ * @param {string} title - The title of the modal.
+ * @param {string} message - The message body.
+ * @param {Function} onConfirm - Callback function if user confirms.
+ * @param {string} confirmText - Text for the confirm button.
+ * @param {string} type - 'primary' or 'danger' for button styling.
  */
-function reloadLibrary() {
-    if (!confirm("Are you sure you want to initiate a library scan?")) {
+function showModal(title, message, onConfirm, confirmText = "Confirm", type = "primary") {
+    const modal = document.getElementById("confirmation-modal");
+    if (!modal) {
+        console.error("Modal element not found!");
+        // Fallback to native confirm if modal is missing (safety)
+        if (confirm(message)) {
+            onConfirm();
+        }
         return;
     }
 
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
+    const titleEl = document.getElementById("modal-title");
+    const bodyEl = document.getElementById("modal-body");
+    const confirmBtn = document.getElementById("modal-confirm");
+    const cancelBtn = document.getElementById("modal-cancel");
 
-    fetch("/reload_library", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken,
-        },
-    })
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.message.toLowerCase().includes("failed")) {
-                showNotification(data.message, "error");
-            } else {
-                showNotification(data.message, "success");
-            }
-        })
-        .catch((error) => {
-            console.error("Error:", error);
-            showNotification("An error occurred while trying to reload the library.", "error");
-        })
-        .finally(() => {
-            // No specific UI state to reset here, but keeping consistent pattern
+    if (titleEl) titleEl.textContent = title;
+    if (bodyEl) bodyEl.textContent = message;
+
+    if (confirmBtn) {
+        confirmBtn.textContent = confirmText;
+        // Reset classes
+        confirmBtn.className = "";
+        if (type === "danger") {
+            confirmBtn.classList.add("btn-danger");
+        } else {
+            confirmBtn.classList.add("btn-primary");
+        }
+
+        // Remove old event listeners by cloning
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        newConfirmBtn.addEventListener("click", () => {
+            closeModal();
+            onConfirm();
         });
+
+        // Focus for accessibility
+        setTimeout(() => newConfirmBtn.focus(), 100);
+    }
+
+    if (cancelBtn) {
+        // Remove old event listeners
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        newCancelBtn.addEventListener("click", closeModal);
+    }
+
+    // Close on overlay click
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal();
+    };
+
+    // Close on Escape key
+    const escHandler = (e) => {
+        if (e.key === "Escape") {
+            closeModal();
+            document.removeEventListener("keydown", escHandler);
+        }
+    };
+    document.addEventListener("keydown", escHandler);
+
+    // Show modal
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+}
+
+function closeModal() {
+    const modal = document.getElementById("confirmation-modal");
+    if (modal) {
+        modal.classList.remove("active");
+        modal.setAttribute("aria-hidden", "true");
+    }
+}
+
+/**
+ * Triggers an Audiobookshelf library scan.
+ */
+function reloadLibrary() {
+    showModal(
+        "Reload Library",
+        "Are you sure you want to initiate a library scan?",
+        () => {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
+
+            fetch("/reload_library", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.message.toLowerCase().includes("failed")) {
+                        showNotification(data.message, "error");
+                    } else {
+                        showNotification(data.message, "success");
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    showNotification("An error occurred while trying to reload the library.", "error");
+                });
+        },
+        "Scan Now"
+    );
 }
 
 /**
@@ -253,46 +339,47 @@ function reloadLibrary() {
  * @param {HTMLElement} [buttonElement] - The button that triggered the action (optional).
  */
 function deleteTorrent(torrentId, buttonElement) {
-    if (!confirm("Are you sure you want to remove this torrent? The downloaded files will NOT be deleted.")) {
-        return;
-    }
+    showModal(
+        "Delete Torrent",
+        "Are you sure you want to remove this torrent? The downloaded files will NOT be deleted.",
+        () => {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
 
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
-
-    fetch("/delete", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken,
-        },
-        body: JSON.stringify({ id: torrentId }),
-    })
-        .then((response) => response.json())
-        .then((data) => {
-            showNotification(data.message, "success");
-            if (data.message.includes("successfully")) {
-                // Remove the row from the DOM if buttonElement is provided
-                if (buttonElement) {
-                    const row = buttonElement.closest("tr");
-                    if (row) {
-                        row.remove();
-                    } else {
-                        // Fallback if no row found (unlikely in status table)
-                        setTimeout(() => location.reload(), 1000);
+            fetch("/delete", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken,
+                },
+                body: JSON.stringify({ id: torrentId }),
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    showNotification(data.message, "success");
+                    if (data.message.includes("successfully")) {
+                        // Remove the row from the DOM if buttonElement is provided
+                        if (buttonElement) {
+                            const row = buttonElement.closest("tr");
+                            if (row) {
+                                row.remove();
+                            } else {
+                                // Fallback if no row found (unlikely in status table)
+                                setTimeout(() => location.reload(), 1000);
+                            }
+                        } else {
+                            setTimeout(() => location.reload(), 1000);
+                        }
                     }
-                } else {
-                    setTimeout(() => location.reload(), 1000);
-                }
-            }
-        })
-        .catch((error) => {
-            console.error("Error:", error);
-            showNotification("An error occurred while removing the torrent.", "error");
-        })
-        .finally(() => {
-            // Reset UI state if needed (currently delete removes row or reloads)
-        });
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    showNotification("An error occurred while removing the torrent.", "error");
+                });
+        },
+        "Remove",
+        "danger"
+    );
 }
 
 /**
@@ -374,13 +461,17 @@ function sendTorrent(link, title, buttonElement) {
  */
 function openExternalLink(url) {
     const warningMessage =
-        "SECURITY WARNING:\n\n" +
         "You are about to open this link directly in your browser.\n" +
         "This traffic will NOT be routed through the server's connection.\n\n" +
-        "Your IP address and traffic may be exposed.\n\n" +
-        "Are you sure you want to proceed?";
+        "Your IP address and traffic may be exposed.";
 
-    if (confirm(warningMessage)) {
-        window.open(url, "_blank");
-    }
+    showModal(
+        "External Link Warning",
+        warningMessage,
+        () => {
+            window.open(url, "_blank");
+        },
+        "Proceed",
+        "primary"
+    );
 }
