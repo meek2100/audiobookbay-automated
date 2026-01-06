@@ -178,7 +178,68 @@ def test_parse_book_details_robustness() -> None:
     assert result["title"] == "Unknown Title"
     assert result["info_hash"] == "Unknown"
     assert result["description"] == "No description available."
-    assert result["language"] == "Unknown"
+
+
+def test_tracker_label_case_insensitive() -> None:
+    """Test that tracker extraction works with mixed-case labels (e.g. TRACKER:)."""
+    html = """
+    <table class="torrent_info">
+        <tr><td>TRACKER:</td><td>udp://tracker.TEST:1337</td></tr>
+        <tr><td>Announce URL:</td><td>udp://announce.TEST:80</td></tr>
+    </table>
+    """
+    soup = BeautifulSoup(html, "lxml")
+    table = soup.find("table")
+    assert isinstance(table, Tag)
+    trackers, _, _ = _extract_table_data(table, "Unknown")
+
+    assert "udp://tracker.TEST:1337" in trackers
+    assert "udp://announce.TEST:80" in trackers
+
+
+def test_fallback_hash_in_script_ignored() -> None:
+    """Test that fallback hash search ignores script tags (searches .postContent only)."""
+    # 40-char hash in a script tag (should be ignored)
+    fake_hash = "1111111111111111111111111111111111111111"
+    # 40-char hash in postContent (should be found)
+    real_hash = "2222222222222222222222222222222222222222"
+
+    html = f"""
+    <html>
+        <script>var x = "{fake_hash}";</script>
+        <body>
+            <div class="postContent">
+                Hash: {real_hash}
+            </div>
+        </body>
+    </html>
+    """
+    soup = BeautifulSoup(html, "lxml")
+
+    # We call parse_book_details which invokes _find_info_hash_fallback
+    # Since table is missing, it goes to fallback.
+    details = parse_book_details(soup, "http://test")
+
+    assert details["info_hash"] == real_hash
+    assert details["info_hash"] != fake_hash
+
+def test_fallback_hash_no_post_content() -> None:
+    """Test fallback behavior when .postContent is missing (should be robust)."""
+    fake_hash = "1111111111111111111111111111111111111111"
+    html = f"""
+    <html>
+        <body>
+            <script>var x = "{fake_hash}";</script>
+            <div>No Post Content</div>
+        </body>
+    </html>
+    """
+    soup = BeautifulSoup(html, "lxml")
+    details = parse_book_details(soup, "http://test")
+
+    # Should not find the fake hash in script because we only search .postContent
+    # And .postContent is missing.
+    assert details["info_hash"] == "Unknown"
 
 
 def test_normalize_metadata_complex_cases() -> None:

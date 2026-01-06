@@ -331,7 +331,9 @@ def _extract_table_data(info_table: Tag | None, file_size_fallback: str) -> tupl
                 if value == "?" or not value:
                     value = "Unknown"
 
-                if "Tracker:" in label or "Announce URL:" in label:
+                # BUGFIX: Case-insensitive label check
+                label_lower = label.lower()
+                if "tracker:" in label_lower or "announce url:" in label_lower:
                     trackers.append(value)
                 elif "File Size:" in label and file_size == "Unknown":
                     file_size = value
@@ -361,10 +363,13 @@ def _find_info_hash_fallback(soup: BeautifulSoup, current_hash: str) -> str:
         if sibling:
             return str(sibling.text.strip())
 
-    # Fallback 2: Regex on full text
-    # Note: soup.text approximates the raw text content.
-    # RE_HASH_STRING usually finds the hex string in the text nodes.
-    hash_match = RE_HASH_STRING.search(str(soup))
+    # Fallback 2: Regex on postContent text only
+    # SECURITY/BUGFIX: Avoid searching full HTML string to prevent matching hashes in scripts/attributes.
+    # We restrict search to the main content text.
+    post_content_div = soup.select_one(".postContent")
+    search_text = post_content_div.get_text() if post_content_div else ""
+
+    hash_match = RE_HASH_STRING.search(search_text)
     if hash_match:
         return hash_match.group(1)
 

@@ -221,8 +221,9 @@ def check_mirror(hostname: str) -> str | None:
             return None
 
     except (requests.Timeout, requests.ConnectionError):
-        # FAIL FAST: If HEAD times out, do NOT try GET.
-        return None
+        # Fallback: If HEAD times out or fails connection, try GET.
+        # Some mirrors might block HEAD or have transient issues.
+        pass
     except requests.RequestException as e:
         logger.debug(f"Mirror check HEAD failed for {hostname}: {e}")
 

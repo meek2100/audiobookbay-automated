@@ -294,18 +294,22 @@ def test_check_mirror_get_exception() -> None:
         assert result is None
 
 
-def test_check_mirror_timeout() -> None:
-    """Test Fail-Fast: check_mirror should return None immediately on HEAD timeout."""
+def test_check_mirror_timeout_fallback() -> None:
+    """Test Fallback: check_mirror should try GET if HEAD times out."""
     with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
         mock_session = mock_get_session.return_value
         # HEAD times out
         mock_session.head.side_effect = requests.Timeout("Connection Timed Out")
+        # GET succeeds
+        mock_session.get.return_value.status_code = 200
+        # Ensure GET doesn't fail on close()
+        mock_session.get.return_value.close = MagicMock()
 
         result = network.check_mirror("timeout.mirror")
 
-        assert result is None
-        # CRITICAL ASSERTION: GET should NOT be called if HEAD timed out
-        mock_session.get.assert_not_called()
+        assert result == "timeout.mirror"
+        # CRITICAL ASSERTION: GET SHOULD BE CALLED
+        mock_session.get.assert_called_once()
 
 
 def test_find_best_mirror_cached(app: Flask) -> None:

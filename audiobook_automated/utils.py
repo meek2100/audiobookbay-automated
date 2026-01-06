@@ -98,7 +98,7 @@ def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
 
     Args:
         safe_title: The already sanitized title string.
-        max_length: The maximum allowed length for the directory name (default 240).
+        max_length: The maximum allowed length for the directory name in BYTES (default 240).
 
     Returns:
         str: The collision-safe title, potentially truncated and with a UUID appended.
@@ -109,9 +109,10 @@ def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
     if safe_title == FALLBACK_TITLE or safe_title.endswith(SAFE_SUFFIX):
         needs_uuid = True
 
-    # Check 2: Length Safety
+    # Check 2: Length Safety (Bytes)
     # If the title is too long, we force UUID logic to safely truncate
-    if len(safe_title) > max_length:
+    encoded_title = safe_title.encode("utf-8")
+    if len(encoded_title) > max_length:
         needs_uuid = True
 
     # Check 3: Ultra-short max_length edge case
@@ -123,14 +124,20 @@ def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
         # we strictly truncate without the UUID to respect the filesystem limit,
         # accepting the collision risk rather than causing an "File name too long" IO error.
         if max_length < 10:  # noqa: PLR2004
-            return safe_title[:max_length]
+            return encoded_title[:max_length].decode("utf-8", "ignore")
 
         unique_id = uuid.uuid4().hex[:8]
         # Reserve space for ID (8 chars) + Underscore (1) = 9 chars.
         trunc_len = max_length - 9
         # Ensure we don't truncate to a negative or zero length (redundant due to check above, but safe)
         trunc_len = max(trunc_len, 1)
-        return f"{safe_title[:trunc_len]}_{unique_id}"
+
+        # Truncate title to fit bytes
+        truncated_bytes = encoded_title[:trunc_len]
+        # Ignore errors to handle incomplete multi-byte characters at the boundary
+        truncated_safe = truncated_bytes.decode("utf-8", "ignore")
+
+        return f"{truncated_safe}_{unique_id}"
 
     return safe_title
 
@@ -156,7 +163,8 @@ def construct_safe_save_path(base_path: str | None, title: str) -> str:
 
     # Dynamic Path Safety Calculation
     if base_path:
-        base_len = len(base_path)
+        # Calculate base length in bytes to ensure accuracy on modern filesystems
+        base_len = len(base_path.encode("utf-8"))
         # Use constant for calculation: 260 - 10 - 1 = 249
         calculated_limit = WINDOWS_PATH_SAFE_LIMIT - base_len
 
@@ -164,13 +172,13 @@ def construct_safe_save_path(base_path: str | None, title: str) -> str:
         # This prevents silent failures where the truncation logic would produce unusable names.
         if calculated_limit < MIN_FILENAME_LENGTH:
             raise ValueError(
-                f"SAVE_PATH_BASE is too deep ({base_len} chars). "
+                f"SAVE_PATH_BASE is too deep ({base_len} bytes). "
                 f"Remaining limit {calculated_limit} is less than MIN_FILENAME_LENGTH ({MIN_FILENAME_LENGTH})."
             )
 
         if calculated_limit < DEEP_PATH_WARNING_THRESHOLD:
             logger.warning(
-                f"SAVE_PATH_BASE is extremely deep ({base_len} chars). "
+                f"SAVE_PATH_BASE is extremely deep ({base_len} bytes). "
                 "Titles will be severely truncated to prevent file system errors."
             )
 

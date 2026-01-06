@@ -105,21 +105,32 @@ def test_details_fetch_error(client: FlaskClient) -> None:
 
 
 def test_send_success(client: FlaskClient) -> None:
-    """Test successful download request."""
+    """Test successful download request and verify path spoofing prevention."""
+    mock_details = {"title": "Real Scraped Title", "info_hash": "123", "trackers": []}
+
     with patch(
         "audiobook_automated.routes.extract_magnet_link",
         return_value=("magnet:?xt=urn:btih:123", None),
     ):
-        with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-            response = client.post(
-                "/send",
-                json={"link": "https://audiobookbay.lu/book", "title": "Great Book"},
-            )
+        # Patch get_book_details to return a trusted title
+        with patch("audiobook_automated.routes.get_book_details", return_value=mock_details):
+            with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+                response = client.post(
+                    "/send",
+                    # User sends "Spoofed Title"
+                    json={"link": "https://audiobookbay.lu/book", "title": "Spoofed Title"},
+                )
 
-            assert response.status_code == 200
-            assert response.json is not None
-            assert "Download added successfully" in response.json["message"]
-            mock_tm.add_magnet.assert_called_once()
+                assert response.status_code == 200
+                assert response.json is not None
+                assert "Download added successfully" in response.json["message"]
+                mock_tm.add_magnet.assert_called_once()
+
+                # VERIFY: The save path must use the Scraped Title, not the user provided one
+                args, _ = mock_tm.add_magnet.call_args
+                save_path = args[1]
+                assert "Real Scraped Title" in save_path
+                assert "Spoofed Title" not in save_path
 
 
 def test_send_invalid_json(client: FlaskClient) -> None:
@@ -231,15 +242,20 @@ def test_status_json(client: FlaskClient) -> None:
 
 def test_send_sanitization_warning(client: FlaskClient, caplog: Any) -> None:
     """Test logging warning for titles requiring sanitization fallback."""
+    # We must patch get_book_details to return the unsafe title or fail, so it falls back to user title
+    # Here we mock it to return the same unsafe title to trigger the warning logic on that title
+    mock_details = {"title": "...", "info_hash": "123", "trackers": []}
+
     with patch(
         "audiobook_automated.routes.extract_magnet_link",
         return_value=("magnet:?xt=urn:btih:123", None),
     ):
-        with patch("audiobook_automated.routes.torrent_manager"):
-            client.post("/send", json={"link": "http://example.com", "title": "..."})
-            # Updated expectation to match the new log message format in routes.py
-            assert "required fallback/truncate handling" in caplog.text
-            assert "Using collision-safe directory name" in caplog.text
+        with patch("audiobook_automated.routes.get_book_details", return_value=mock_details):
+            with patch("audiobook_automated.routes.torrent_manager"):
+                client.post("/send", json={"link": "http://example.com", "title": "..."})
+                # Updated expectation to match the new log message format in routes.py
+                assert "required fallback/truncate handling" in caplog.text
+                assert "Using collision-safe directory name" in caplog.text
 
 
 @pytest.fixture
@@ -327,24 +343,26 @@ def test_send_deep_path_truncation(client: FlaskClient) -> None:
     client.application.config["SAVE_PATH_BASE"] = deep_path
 
     long_title = "A" * 100  # Should be heavily truncated
+    mock_details = {"title": long_title, "info_hash": "123", "trackers": []}
 
     with patch(
         "audiobook_automated.routes.extract_magnet_link",
         return_value=("magnet:?xt=urn:btih:123", None),
     ):
-        with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
-            response = client.post("/send", json={"link": "http://link", "title": long_title})
-            assert response.status_code == 200
+        with patch("audiobook_automated.routes.get_book_details", return_value=mock_details):
+            with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+                response = client.post("/send", json={"link": "http://link", "title": long_title})
+                assert response.status_code == 200
 
-            # Verify add_magnet was called with a path that respects the limit.
-            # We expect the save_path to be joined with a truncated title.
-            args, _ = mock_tm.add_magnet.call_args
-            save_path = args[1]
+                # Verify add_magnet was called with a path that respects the limit.
+                # We expect the save_path to be joined with a truncated title.
+                args, _ = mock_tm.add_magnet.call_args
+                save_path = args[1]
 
-            # The title component (basename) should be very short (~5-8 chars)
-            base_name = os.path.basename(save_path)
-            assert len(base_name) >= 5  # Minimum floor check
-            assert len(save_path) < 270  # Ensure we didn't explode the path length
+                # The title component (basename) should be very short (~5-8 chars)
+                base_name = os.path.basename(save_path)
+                assert len(base_name) >= 5  # Minimum floor check
+                assert len(save_path) < 270  # Ensure we didn't explode the path length
 
 
 def test_delete_json_list(client: FlaskClient) -> None:
