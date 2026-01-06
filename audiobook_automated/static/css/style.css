@@ -279,7 +279,7 @@ body {
 }
 
 /* Individual Link Styling */
-.navbar .nav-links a,
+.navbar .nav-links a:not(.btn-icon),
 .theme-select {
     text-decoration: none;
     color: var(--text-muted);
