@@ -9,7 +9,7 @@ import pytest
 import requests
 from flask import Flask
 
-from audiobook_automated.scraper.core import fetch_page_results, search_audiobookbay
+from audiobook_automated.scraper.core import fetch_page_results, get_search_url, search_audiobookbay
 
 
 def test_fetch_page_results_unexpected_exception() -> None:
@@ -172,3 +172,10 @@ def test_fetch_page_results_reraises_http_error() -> None:
                 assert e is error
             else:
                 pytest.fail("Should have raised HTTPError")
+
+
+def test_core_get_search_url_no_query() -> None:
+    """Test get_search_url without a query string."""
+    # Code logic: if starts with http, keep it.
+    url = get_search_url("http://base.com", None, page=1)
+    assert url == "http://base.com/page/1/"

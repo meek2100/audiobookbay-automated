@@ -92,3 +92,25 @@ def test_strategy_cleanup_error() -> None:
     # Should not raise
     strategy.__del__()
     strategy.close.assert_called_once()
+
+
+def test_base_verify_credentials_failure() -> None:
+    """Test verify_credentials returns False on exception."""
+    strategy = MockStrategy("h", 1, "u", "p")
+    strategy.connect = MagicMock(side_effect=Exception("Connection Failed"))  # type: ignore
+    assert strategy.verify_credentials() is False
+
+
+def test_base_verify_credentials_success() -> None:
+    """Test verify_credentials returns True on success."""
+    strategy = MockStrategy("h", 1, "u", "p")
+    # connect is a pass in MockStrategy, so it succeeds
+    assert strategy.verify_credentials() is True
+
+
+def test_base_teardown() -> None:
+    """Test teardown calls close."""
+    strategy = MockStrategy("h", 1, "u", "p")
+    strategy.close = MagicMock()  # type: ignore
+    strategy.teardown()
+    strategy.close.assert_called_once()
