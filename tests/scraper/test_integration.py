@@ -34,6 +34,7 @@ def test_search_audiobookbay_success(app: Flask) -> None:
 
 def test_search_caching(app: Flask) -> None:
     """Test that search results are not cached by core but rely on browser/network cache if implemented.
+
     Wait, core doesn't cache search results anymore?
     """
     # The current implementation does NOT cache search results in core.py.
@@ -48,6 +49,7 @@ def test_search_audiobookbay_sync_coverage(app: Flask) -> None:
 
 
 def test_search_no_mirrors_raises_error(app: Flask) -> None:
+    """Test behavior when no mirrors are found."""
     with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value=None):
         results = search_audiobookbay("query")
         assert results == []
@@ -60,11 +62,13 @@ def test_search_thread_failure(app: Flask) -> None:
 
 
 def test_search_audiobookbay_generic_exception_in_thread(app: Flask) -> None:
+    """Test generic exception handling in search thread."""
     # Covered in test_core.py
     pass
 
 
 def test_search_pipeline_success(app: Flask) -> None:
+    """Test successful search pipeline."""
     mock_results = [{"title": "B1", "link": "L1"}]
     with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="m"):
         with patch("audiobook_automated.scraper.core.fetch_page_results", return_value=mock_results):
@@ -73,6 +77,7 @@ def test_search_pipeline_success(app: Flask) -> None:
 
 
 def test_search_pipeline_no_results(app: Flask) -> None:
+    """Test search pipeline with no results."""
     with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="m"):
         with patch("audiobook_automated.scraper.core.fetch_page_results", return_value=[]):
             res = search_audiobookbay("q", 1)
@@ -80,6 +85,7 @@ def test_search_pipeline_no_results(app: Flask) -> None:
 
 
 def test_search_pipeline_network_error(app: Flask) -> None:
+    """Test search pipeline with network error."""
     with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="m"):
         with patch("audiobook_automated.scraper.core.fetch_page_results", side_effect=Exception("Net")):
             res = search_audiobookbay("q", 1)

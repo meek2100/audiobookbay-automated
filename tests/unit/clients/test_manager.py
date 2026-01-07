@@ -1,37 +1,48 @@
 # File: tests/unit/clients/test_manager.py
 """Unit tests for the TorrentManager."""
 
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
+from pytest import LogCaptureFixture
 
-from audiobook_automated.clients.base import TorrentClientStrategy
+from audiobook_automated.clients.base import TorrentClientStrategy, TorrentStatus
 from audiobook_automated.clients.manager import TorrentManager
 
 
 class MockStrategy(TorrentClientStrategy):
-    def connect(self):
+    """Mock strategy for testing."""
+
+    def connect(self) -> None:
+        """Mock connect."""
         pass
 
-    def close(self):
+    def close(self) -> None:
+        """Mock close."""
         pass
 
-    def add_magnet(self, link, path, category):
+    def add_magnet(self, magnet_link: str, save_path: str, category: str) -> None:
+        """Mock add_magnet."""
         pass
 
-    def remove_torrent(self, torrent_id):
+    def remove_torrent(self, torrent_id: str) -> None:
+        """Mock remove_torrent."""
         pass
 
-    def get_status(self, category):
+    def get_status(self, category: str) -> list[TorrentStatus]:
+        """Mock get_status."""
         return []
 
-    def verify_credentials(self):
+    def verify_credentials(self) -> bool:
+        """Mock verify_credentials."""
         return True
 
     DEFAULT_PORT = 1234
 
 
-def test_manager_load_strategy_success(app: Flask, caplog):
+def test_manager_load_strategy_success(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test successful strategy loading."""
     manager = TorrentManager()
 
     mock_module = MagicMock()
@@ -51,7 +62,8 @@ def test_manager_load_strategy_success(app: Flask, caplog):
         assert "Successfully loaded 'MockStrategy'" in caplog.text
 
 
-def test_manager_load_strategy_default_port(app: Flask, caplog):
+def test_manager_load_strategy_default_port(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test default port loading."""
     manager = TorrentManager()
 
     mock_module = MagicMock()
@@ -69,7 +81,8 @@ def test_manager_load_strategy_default_port(app: Flask, caplog):
         assert manager.strategy.port == 1234  # MockStrategy.DEFAULT_PORT
 
 
-def test_manager_load_strategy_invalid_port(app: Flask, caplog):
+def test_manager_load_strategy_invalid_port(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test invalid port loading."""
     manager = TorrentManager()
 
     mock_module = MagicMock()
@@ -86,7 +99,8 @@ def test_manager_load_strategy_invalid_port(app: Flask, caplog):
         assert manager.strategy.port == 8080  # Fallback from exception block
 
 
-def test_manager_load_strategy_invalid_name(app: Flask, caplog):
+def test_manager_load_strategy_invalid_name(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test invalid client name."""
     manager = TorrentManager()
     app.config["DL_CLIENT"] = "invalid$name"
 
@@ -100,7 +114,8 @@ def test_manager_load_strategy_invalid_name(app: Flask, caplog):
         mock_import.assert_called_with("audiobook_automated.clients.transmission")
 
 
-def test_manager_load_strategy_import_error(app: Flask, caplog):
+def test_manager_load_strategy_import_error(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test strategy import error."""
     manager = TorrentManager()
     app.config["DL_CLIENT"] = "missing_client"
 
@@ -111,7 +126,8 @@ def test_manager_load_strategy_import_error(app: Flask, caplog):
         assert "Failed to load client 'missing_client'" in caplog.text
 
 
-def test_manager_load_strategy_no_class(app: Flask, caplog):
+def test_manager_load_strategy_no_class(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test strategy with no class."""
     manager = TorrentManager()
     app.config["DL_CLIENT"] = "empty_client"
 
@@ -124,21 +140,27 @@ def test_manager_load_strategy_no_class(app: Flask, caplog):
     assert "Failed to load client 'empty_client'" in caplog.text
 
 
-def test_manager_proxy_methods_no_strategy():
+def test_manager_proxy_methods_no_strategy() -> None:
+    """Test proxy methods with no strategy."""
     manager = TorrentManager()
     manager.strategy = None
 
     assert manager.verify_credentials() is False
-    assert manager.add_magnet("link", "path") is None
+    # Don't assert None return for void function to satisfy Mypy
+    manager.add_magnet("link", "path")
     assert manager.get_status() == []
     assert manager.remove_torrent("id") is False
     manager.close()
 
 
-def test_manager_proxy_methods_with_strategy(app: Flask):
+def test_manager_proxy_methods_with_strategy(app: Flask) -> None:
+    """Test proxy methods with strategy."""
     manager = TorrentManager()
     app.config["DL_CATEGORY"] = "abb-automated"
-    manager._app = app
+    # Access private member via public method or fixture?
+    # Or just ignore lint for test
+    manager._app = app  # pyright: ignore[reportPrivateUsage]
+
     strategy = MagicMock()
     manager.strategy = strategy
 
@@ -146,10 +168,12 @@ def test_manager_proxy_methods_with_strategy(app: Flask):
     assert manager.verify_credentials() is True
 
     manager.add_magnet("link", "path")
+    # Verify add_magnet called. It returns None so we check assertion side effect only.
     strategy.add_magnet.assert_called_with("link", "path", "abb-automated")
 
     strategy.get_status.return_value = ["status"]
-    assert manager.get_status() == ["status"]
+    # We use cast(Any, ...) to bypass Mypy's strict check on return type vs string list comparison
+    assert cast(Any, manager.get_status()) == ["status"]
     strategy.get_status.assert_called_with("abb-automated")
 
     strategy.remove_torrent.return_value = True
@@ -163,7 +187,8 @@ def test_manager_proxy_methods_with_strategy(app: Flask):
     strategy.close.assert_called_once()
 
 
-def test_manager_teardown_request():
+def test_manager_teardown_request() -> None:
+    """Test teardown request."""
     manager = TorrentManager()
     strategy = MagicMock()
     manager.strategy = strategy
@@ -175,7 +200,8 @@ def test_manager_teardown_request():
     strategy.teardown.assert_called_once()
 
 
-def test_manager_client_type():
+def test_manager_client_type() -> None:
+    """Test client type."""
     manager = TorrentManager()
     assert manager.client_type == "None"
 

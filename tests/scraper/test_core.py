@@ -1,10 +1,11 @@
 # File: tests/scraper/test_core.py
-"""Unit tests for core scraping logic."""
+"""Unit tests for the scraper core module."""
 
 import concurrent.futures
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
 import requests
 from flask import Flask
 
@@ -67,7 +68,7 @@ def test_search_partial_failure() -> None:
             "link": "http://link1",
             "cover": None,
             "language": "En",
-            "category": "Audio",
+            "category": ["Audio"],
             "post_date": "2024",
             "format": "MP3",
             "bitrate": "128",
@@ -79,14 +80,22 @@ def test_search_partial_failure() -> None:
     future_success.set_result(success_result)
 
     future_failure: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
+    # The search loop logic re-raises HTTPError inside fetch_page_results,
+    # but the loop calling future.result() catches it.
     future_failure.set_exception(requests.HTTPError("500 Server Error"))
 
-    with patch("audiobook_automated.extensions.executor") as mock_executor:
+    def check_active_mirror(key: Any) -> bool:
+        """Check if active mirror is being cleared."""
+        return str(key) == "active_mirror"
+
+    with patch("audiobook_automated.scraper.core.executor") as mock_executor:
+        # submit is called once per page. We request 2 pages.
         mock_executor.submit.side_effect = [future_success, future_failure]
 
         with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="audiobookbay.lu"):
             with patch("audiobook_automated.scraper.core.network.mirror_cache") as mock_mirror_cache:
-                mock_mirror_cache.__contains__.return_value = True
+                # We need to mock __contains__ to return True for "active_mirror"
+                mock_mirror_cache.__contains__.side_effect = check_active_mirror
 
                 results = search_audiobookbay("test_query", max_pages=2)
 
@@ -115,7 +124,7 @@ def test_search_pagination_cancellation(app: Flask) -> None:
 
     with (
         app.app_context(),
-        patch("audiobook_automated.extensions.executor.submit") as mock_submit,
+        patch("audiobook_automated.scraper.core.executor.submit") as mock_submit,
         patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="mirror.com"),
         patch("audiobook_automated.scraper.core.network.get_session"),
     ):
@@ -132,12 +141,34 @@ def test_search_http_error_invalidation() -> None:
     future_failure: concurrent.futures.Future[Any] = concurrent.futures.Future()
     future_failure.set_exception(requests.HTTPError("502 Bad Gateway"))
 
-    with patch("audiobook_automated.extensions.executor") as mock_executor:
+    def check_active_mirror(key: Any) -> bool:
+        """Check if active mirror is being cleared."""
+        return str(key) == "active_mirror"
+
+    with patch("audiobook_automated.scraper.core.executor") as mock_executor:
+        # Only one page requested, so only one submit call
         mock_executor.submit.return_value = future_failure
         with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="mirror.com"):
             with patch("audiobook_automated.scraper.core.network.mirror_cache") as mock_mirror_cache:
-                mock_mirror_cache.__contains__.return_value = True
+                # We need to mock __contains__ to return True so the del item logic is triggered
+                mock_mirror_cache.__contains__.side_effect = check_active_mirror
 
                 results = search_audiobookbay("test_query", max_pages=1)
                 assert results == []
                 mock_mirror_cache.__delitem__.assert_called_with("active_mirror")
+
+
+def test_fetch_page_results_reraises_http_error() -> None:
+    """Test that fetch_page_results re-raises HTTPError."""
+    mock_session = MagicMock()
+    error = requests.HTTPError("404 Not Found")
+    mock_session.get.side_effect = error
+
+    with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            try:
+                fetch_page_results("http://example.com")
+            except requests.HTTPError as e:
+                assert e is error
+            else:
+                pytest.fail("Should have raised HTTPError")

@@ -279,3 +279,26 @@ def shutdown_network() -> None:
     logger.info("Shutting down network executors...")
     # cancel_futures=True ensures pending checks don't block shutdown (Python 3.9+)
     _mirror_executor.shutdown(wait=False, cancel_futures=True)
+
+
+# Explicitly export used names to satisfy mypy implicit re-export checks
+__all__ = [
+    "CACHE_LOCK",
+    "check_mirror",
+    "details_cache",
+    "find_best_mirror",
+    "get_mirrors",
+    "get_ping_session",
+    "get_random_user_agent",
+    "get_semaphore",
+    "get_session",
+    "get_thread_session",
+    "get_trackers",
+    "init_semaphore",
+    "mirror_cache",
+    "requests",
+    "search_cache",
+    "shutdown_network",
+    "threading",
+    "tracker_cache",
+]
