@@ -7,6 +7,7 @@ import re
 import unicodedata
 import uuid
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any
 
 from flask import current_app
 
@@ -95,6 +96,9 @@ def ensure_collision_safety(safe_title: str, max_length: int = 240) -> str:
     If the title matches the fallback, ends with the safe suffix (indicating a
     reserved name collision), or exceeds the max_length, a UUID is appended/truncated
     to ensure uniqueness and filesystem safety.
+
+    NOTE: This function ONLY checks for reserved filenames/length and does NOT check
+    for actual file existence on disk.
 
     Args:
         safe_title: The already sanitized title string.

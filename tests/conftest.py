@@ -18,10 +18,10 @@ from flask import Flask
 from flask.testing import FlaskClient, FlaskCliRunner
 
 from audiobook_automated import create_app
+
+# Import the class for safer patching if needed, though patching instance usually works
 from audiobook_automated.config import Config
 from audiobook_automated.extensions import torrent_manager
-# Import the class for safer patching if needed, though patching instance usually works
-from audiobook_automated.clients.manager import TorrentManager
 
 
 class TestConfig(Config):

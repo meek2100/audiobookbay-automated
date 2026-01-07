@@ -2,6 +2,7 @@
 """Routes module handling all web endpoints."""
 
 import logging
+from collections.abc import Sequence
 from dataclasses import asdict
 from typing import Any, cast
 
@@ -95,7 +96,7 @@ def search() -> str | Response:
     Returns:
         str | Response: Rendered HTML template or Response object.
     """
-    books: list[BookSummary] = []
+    books: Sequence[BookSummary] = []
     query = ""
     error_message = None
 
@@ -235,10 +236,11 @@ def send() -> Response | tuple[Response, int]:
         # We fetch details explicitly to get the title. extract_magnet_link will hit cache.
         try:
             details = get_book_details(details_url)
-            # Fallback to user provided title ONLY if scraped title is missing or "Unknown Title"
-            scraped_title = details.get("title")
-            if scraped_title and scraped_title != "Unknown Title":
-                title = scraped_title
+            if details:  # Ensure details is not None
+                # Fallback to user provided title ONLY if scraped title is missing or "Unknown Title"
+                scraped_title = details.get("title")
+                if scraped_title and scraped_title != "Unknown Title":
+                    title = str(scraped_title)
         except Exception as e:
             # If fetching details fails, we proceed. extract_magnet_link will likely fail too
             # and return an error which handles the flow gracefully.
@@ -287,7 +289,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
     Returns:
         Response: JSON Response indicating success or failure.
     """
-    data = request.json
+    data = cast(dict[str, Any], request.json)
 
     if not isinstance(data, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
         raise InvalidRequestError("Invalid JSON format")
@@ -301,7 +303,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
         # Core Task 4: Verify category before deletion
         # Security: Prevent deleting torrents not managed by this application
         torrents = torrent_manager.get_status()
-        target_torrent = next((t for t in torrents if t.id == torrent_id), None)
+        target_torrent = next((t for t in torrents if str(t.id) == str(torrent_id)), None)
 
         if not target_torrent:
             return jsonify({"status": "error", "message": "Torrent not found"}), 404
@@ -317,7 +319,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
                 }
             ), 403
 
-        torrent_manager.remove_torrent(torrent_id)
+        torrent_manager.remove_torrent(str(torrent_id))
         return jsonify({"message": "Torrent removed successfully."})
     except Exception as e:
         logger.error(f"Failed to remove torrent: {e}", exc_info=True)

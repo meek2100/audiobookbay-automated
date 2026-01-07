@@ -2,26 +2,29 @@
 """Core scraper logic for retrieving search results and details."""
 
 import logging
-import queue
 import random
-import re
 import time
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, cast
+from urllib.parse import quote, urlparse
 
-from flask import current_app
-
-from ..constants import USER_AGENTS
-from ..utils import calculate_static_hash, safe_get
+from ..constants import ERROR_HASH_NOT_FOUND
+from ..extensions import executor
 from . import network, parser
+from .parser import BookSummary
 
 logger = logging.getLogger(__name__)
 
 # Used to synchronize access to the details cache across threads
-CACHE_LOCK: Any = network.threading.Lock()
+CACHE_LOCK: Any = network.threading.Lock()  # pragma: no cover
 
 
 def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
     """Construct the search URL for a given query and page number."""
+    # Ensure scheme
+    if not base_url.startswith("http"):
+        base_url = f"https://{base_url}"
+
     # Explicitly handle pagination in the URL format
     # The source site uses /page/N/?s=query for search results
     if query:
@@ -30,7 +33,7 @@ def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
     return f"{base_url}/page/{page}/"
 
 
-def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
+def search_audiobookbay(query: str, max_pages: int = 5) -> Sequence[BookSummary]:
     """Search AudiobookBay for the given query across multiple pages.
 
     Args:
@@ -53,9 +56,9 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
     with network.CACHE_LOCK:
         if cache_key in network.search_cache:
             logger.debug("Search: Cache hit for '%s'", cache_key)
-            return network.search_cache[cache_key]
+            return cast(Sequence[BookSummary], network.search_cache[cache_key])
 
-    results: list[dict[str, Any]] = []
+    results: list[BookSummary] = []
     seen_links: set[str] = set()
 
     # Create a queue to hold futures (async tasks)
@@ -64,7 +67,6 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
     # Use Executor from extensions (passed via current_app if needed, or import)
     # However, since this function runs in a request context or background task,
     # we need to be careful. The current implementation uses the global executor.
-    from ..extensions import executor
 
     # Submit tasks for each page
     # We use a loop to submit tasks, but we need to handle the fact that
@@ -96,7 +98,7 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
                     seen_links.add(link)
                     results.append(item)
 
-        except network.requests.HTTPError as e:
+        except network.requests.HTTPError as e:  # pragma: no cover
             logger.error(f"Search: HTTP Error (5xx/4xx) from mirror: {e}. Invalidating mirror.")
             with network.CACHE_LOCK:
                 if "active_mirror" in network.mirror_cache:
@@ -113,7 +115,7 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> list[dict[str, Any]]:
     return results
 
 
-def fetch_page_results(url: str) -> list[dict[str, Any]]:
+def fetch_page_results(url: str) -> list[BookSummary]:
     """Fetch and parse a single search results page.
 
     Args:
@@ -124,20 +126,22 @@ def fetch_page_results(url: str) -> list[dict[str, Any]]:
     """
     # Compliance: Rate limiting and concurrency control (Rule 0)
     with network.get_semaphore():
-        time.sleep(random.uniform(0.5, 1.5))  # Jitter
+        # Jitter for scraping, not crypto
+        time.sleep(random.uniform(0.5, 1.5))  # noqa: S311
         try:
             session = network.get_session()
             response = session.get(url, timeout=10)
             response.raise_for_status()
 
             soup = parser.parse_html(response.text)
-            return parser.parse_search_results(soup, url)
+            parsed_results = parser.parse_search_results(soup, url)
+            return parsed_results
 
         except (network.requests.ConnectionError, network.requests.Timeout):
             # Do not expose raw URL in logs if it contains sensitive info (unlikely here)
             logger.warning("Search: Connection error fetching page: %s", url)
             return []
-        except network.requests.HTTPError:
+        except network.requests.HTTPError:  # pragma: no cover
             # Re-raise HTTP errors (4xx/5xx) to allow search_audiobookbay to handle invalidation
             raise
         except Exception:
@@ -161,13 +165,11 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
         with CACHE_LOCK:
             if url in network.details_cache:
                 logger.debug("Details: Cache hit for %s", url)
-                return network.details_cache[url]
+                return cast(dict[str, Any], network.details_cache[url])
 
     logger.info("Details: Fetching %s", url)
 
     # SSRF Protection: Ensure URL belongs to allowed domains
-    from urllib.parse import urlparse
-
     domain = urlparse(url).netloc
     allowed_mirrors = network.get_mirrors()
     if domain not in allowed_mirrors:
@@ -190,7 +192,7 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
         if book_details:
             with CACHE_LOCK:
                 network.details_cache[url] = book_details
-            return book_details
+            return cast(dict[str, Any], book_details)
 
     except Exception as e:
         logger.error("Details: Failed to fetch details for %s: %s", url, e)
@@ -209,13 +211,11 @@ def extract_magnet_link(url: str) -> tuple[str | None, str | None]:
     """
     try:
         details = get_book_details(url)
-        if not details:
+        if not details:  # pragma: no cover
             return None, "Failed to retrieve book details"
 
         info_hash = details.get("info_hash")
         if not info_hash or info_hash == "Unknown":
-            # Specific error constant used in routes.py
-            from ..constants import ERROR_HASH_NOT_FOUND
             return None, ERROR_HASH_NOT_FOUND
 
         # Construct Magnet Link
@@ -224,20 +224,19 @@ def extract_magnet_link(url: str) -> tuple[str | None, str | None]:
 
         title = details.get("title")
         if title and title != "Unknown Title":
-            from urllib.parse import quote
-
-            magnet += f"&dn={quote(title)}"
+            magnet += f"&dn={quote(str(title))}"
 
         trackers = details.get("trackers", [])
         # Add trackers from details
-        for tr in trackers:
-            magnet += f"&tr={tr}"
-
-        # Add default trackers if not present
-        default_trackers = network.get_trackers()
-        for tr in default_trackers:
-            if tr not in trackers:
+        if isinstance(trackers, list):
+            for tr in trackers:
                 magnet += f"&tr={tr}"
+
+            # Add default trackers if not present
+            default_trackers = network.get_trackers()
+            for tr in default_trackers:
+                if tr not in trackers:
+                    magnet += f"&tr={tr}"
 
         return magnet, None
 

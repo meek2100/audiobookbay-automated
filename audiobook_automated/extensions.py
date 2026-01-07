@@ -3,7 +3,6 @@
 
 import logging
 import signal
-import sys
 import types
 from typing import TYPE_CHECKING
 
@@ -17,7 +16,7 @@ from flask_wtf.csrf import CSRFProtect
 from .clients import TorrentManager
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import NoReturn
+    pass
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +32,7 @@ torrent_manager = TorrentManager()
 def register_shutdown_handlers(app: Flask) -> None:
     """Register signal handlers for graceful shutdown."""
 
-    def shutdown_handler(signal_received: int, frame: types.FrameType | None) -> "NoReturn":  # noqa: ARG001
+    def shutdown_handler(signal_received: int, frame: types.FrameType | None) -> None:  # noqa: ARG001
         """Handle shutdown signals by stopping executors and network components."""
         app.logger.info("Graceful Shutdown: Signal %d received.", signal_received)
 
@@ -54,7 +53,7 @@ def register_shutdown_handlers(app: Flask) -> None:
         torrent_manager.close()
 
         app.logger.info("Graceful Shutdown: Complete. Exiting.")
-        # Removed explicit sys.exit(0) to allow natural shutdown
+        # Removed explicit sys.exit(0) to comply with AGENTS.md
 
     # Register for SIGTERM (Docker stop) and SIGINT (Ctrl+C)
     signal.signal(signal.SIGTERM, shutdown_handler)

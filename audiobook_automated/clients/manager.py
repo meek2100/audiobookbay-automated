@@ -5,7 +5,7 @@ import importlib
 import inspect
 import logging
 import re
-from typing import Any
+from typing import Any, cast
 
 from flask import Flask
 
@@ -18,6 +18,7 @@ class TorrentManager:
     """Manages the lifecycle and interaction with the active Torrent Client Strategy."""
 
     def __init__(self) -> None:
+        """Initialize the manager."""
         self.strategy: TorrentClientStrategy | None = None
         self._app: Flask | None = None
 
@@ -60,13 +61,19 @@ class TorrentManager:
 
             # Find the strategy class in the module
             strategy_class = None
-            for name, obj in inspect.getmembers(module, inspect.isclass):
-                if issubclass(obj, TorrentClientStrategy) and obj is not TorrentClientStrategy:
+            for _, obj in inspect.getmembers(module, inspect.isclass):
+                # Ensure it is a class before issubclass to satisfy MyPy/Pyright strict checks
+                # pyright: ignore[reportUnnecessaryIsInstance]
+                if (
+                    isinstance(obj, type)
+                    and issubclass(obj, TorrentClientStrategy)
+                    and obj is not TorrentClientStrategy
+                ):
                     strategy_class = obj
                     break
 
             if not strategy_class:
-                 strategy_class = getattr(module, class_name, None)
+                strategy_class = getattr(module, class_name, None)
 
             if not strategy_class:
                 raise ImportError(f"No valid strategy class found in {module_name}")
@@ -74,29 +81,32 @@ class TorrentManager:
             # Instantiate the strategy
             # Extract configuration from app.config to pass explicitly
             host = app.config.get("DL_HOST", "localhost")
-            port = app.config.get("DL_PORT")
+            port: Any = app.config.get("DL_PORT")
             if port is None:
                 port = getattr(strategy_class, "DEFAULT_PORT", 8080)
 
             try:
-                port = int(port)
+                # Handle potential string or int input
+                if isinstance(port, str):
+                    port_int = int(float(port))
+                else:
+                    port_int = int(port)
             except (ValueError, TypeError):
-                port = 8080
+                port_int = 8080
 
             username = app.config.get("DL_USER")
             password = app.config.get("DL_PASS")
             scheme = app.config.get("DL_SCHEME", "http")
             timeout = app.config.get("DL_TIMEOUT", 30)
 
-            self.strategy = strategy_class(
-                host=host,
-                port=port,
-                username=username,
-                password=password,
-                scheme=scheme,
-                timeout=timeout
+            # Explicitly typecast check (though logic ensures it is a class)
+            # To satisfy 'Cannot assign to a method' or similar weirdness if any
+            strategy_cls = cast(type[TorrentClientStrategy], strategy_class)  # type: ignore[redundant-cast]
+
+            self.strategy = strategy_cls(
+                host=host, port=port_int, username=username, password=password, scheme=scheme, timeout=timeout
             )
-            logger.info("Plugin: Successfully loaded '%s'.", strategy_class.__name__)
+            logger.info("Plugin: Successfully loaded '%s'.", strategy_cls.__name__)
 
         except (ImportError, AttributeError, TypeError) as e:
             logger.exception("Plugin: Failed to load client '%s'. Error: %s", client_name, e)
@@ -106,6 +116,7 @@ class TorrentManager:
         """Verify that the loaded strategy can connect to the torrent client."""
         if not self.strategy:
             return False
+        # Now TorrentClientStrategy has verify_credentials method
         return self.strategy.verify_credentials()
 
     def add_magnet(self, magnet_link: str, save_path: str) -> None:
@@ -167,5 +178,6 @@ class TorrentManager:
 
     def teardown_request(self, exception: BaseException | None = None) -> None:
         """Cleanup request-scoped resources."""
-        if self.strategy and hasattr(self.strategy, "teardown"):
-             self.strategy.teardown()
+        if self.strategy:
+            # TorrentClientStrategy now has a teardown method
+            self.strategy.teardown()

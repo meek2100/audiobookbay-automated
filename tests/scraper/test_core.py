@@ -5,11 +5,10 @@ import concurrent.futures
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 from flask import Flask
 
-from audiobook_automated.scraper.core import fetch_page_results, get_search_url, search_audiobookbay
+from audiobook_automated.scraper.core import fetch_page_results, search_audiobookbay
 
 
 def test_fetch_page_results_unexpected_exception() -> None:
@@ -68,7 +67,7 @@ def test_search_partial_failure() -> None:
             "link": "http://link1",
             "cover": None,
             "language": "En",
-            "category": "Audio",
+            "category": ["Audio"],
             "post_date": "2024",
             "format": "MP3",
             "bitrate": "128",
@@ -80,14 +79,19 @@ def test_search_partial_failure() -> None:
     future_success.set_result(success_result)
 
     future_failure: concurrent.futures.Future[list[dict[str, Any]]] = concurrent.futures.Future()
+    # The search loop logic re-raises HTTPError inside fetch_page_results,
+    # but the loop calling future.result() catches it.
     future_failure.set_exception(requests.HTTPError("500 Server Error"))
 
     with patch("audiobook_automated.extensions.executor") as mock_executor:
+        # submit is called once per page. We request 2 pages.
         mock_executor.submit.side_effect = [future_success, future_failure]
 
         with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="audiobookbay.lu"):
             with patch("audiobook_automated.scraper.core.network.mirror_cache") as mock_mirror_cache:
-                mock_mirror_cache.__contains__.return_value = True
+                # We need to mock __contains__ to return True for "active_mirror"
+                # pyright: ignore[reportUnknownLambdaType]
+                mock_mirror_cache.__contains__.side_effect = lambda key: key == "active_mirror"
 
                 results = search_audiobookbay("test_query", max_pages=2)
 
@@ -134,10 +138,13 @@ def test_search_http_error_invalidation() -> None:
     future_failure.set_exception(requests.HTTPError("502 Bad Gateway"))
 
     with patch("audiobook_automated.extensions.executor") as mock_executor:
+        # Only one page requested, so only one submit call
         mock_executor.submit.return_value = future_failure
         with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="mirror.com"):
             with patch("audiobook_automated.scraper.core.network.mirror_cache") as mock_mirror_cache:
-                mock_mirror_cache.__contains__.return_value = True
+                # We need to mock __contains__ to return True so the del item logic is triggered
+                # pyright: ignore[reportUnknownLambdaType]
+                mock_mirror_cache.__contains__.side_effect = lambda key: key == "active_mirror"
 
                 results = search_audiobookbay("test_query", max_pages=1)
                 assert results == []
