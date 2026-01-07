@@ -119,9 +119,7 @@
             </div>
         </div>
 
-        <div class="content">
-            {% block content %}{% endblock %}
-        </div>
+        <div class="content">{% block content %}{% endblock %}</div>
 
         <!-- Global Confirmation Modal -->
         <div id="confirmation-modal" class="modal-overlay" aria-hidden="true">
@@ -129,9 +127,7 @@
                 <div class="modal-header">
                     <h3 class="modal-title" id="modal-title">Confirm Action</h3>
                 </div>
-                <div class="modal-body" id="modal-body">
-                    Are you sure you want to proceed?
-                </div>
+                <div class="modal-body" id="modal-body">Are you sure you want to proceed?</div>
                 <div class="modal-footer">
                     <button class="btn-secondary" id="modal-cancel">Cancel</button>
                     <button class="btn-primary" id="modal-confirm">Confirm</button>

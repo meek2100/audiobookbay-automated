@@ -1,22 +1,33 @@
+# File: tests/unit/clients/test_manager.py
 """Unit tests for the TorrentManager."""
 
-import logging
 from unittest.mock import MagicMock, patch
 
-import pytest
 from flask import Flask
 
-from audiobook_automated.clients.manager import TorrentManager
 from audiobook_automated.clients.base import TorrentClientStrategy
+from audiobook_automated.clients.manager import TorrentManager
 
 
 class MockStrategy(TorrentClientStrategy):
-    def connect(self): pass
-    def close(self): pass
-    def add_magnet(self, link, path, category): pass
-    def remove_torrent(self, torrent_id): pass
-    def get_status(self, category): return []
-    def verify_credentials(self): return True
+    def connect(self):
+        pass
+
+    def close(self):
+        pass
+
+    def add_magnet(self, link, path, category):
+        pass
+
+    def remove_torrent(self, torrent_id):
+        pass
+
+    def get_status(self, category):
+        return []
+
+    def verify_credentials(self):
+        return True
+
     DEFAULT_PORT = 1234
 
 
@@ -55,7 +66,7 @@ def test_manager_load_strategy_default_port(app: Flask, caplog):
         manager.init_app(app)
 
         assert isinstance(manager.strategy, MockStrategy)
-        assert manager.strategy.port == 1234 # MockStrategy.DEFAULT_PORT
+        assert manager.strategy.port == 1234  # MockStrategy.DEFAULT_PORT
 
 
 def test_manager_load_strategy_invalid_port(app: Flask, caplog):
@@ -72,7 +83,7 @@ def test_manager_load_strategy_invalid_port(app: Flask, caplog):
         manager.init_app(app)
 
         assert isinstance(manager.strategy, MockStrategy)
-        assert manager.strategy.port == 8080 # Fallback from exception block
+        assert manager.strategy.port == 8080  # Fallback from exception block
 
 
 def test_manager_load_strategy_invalid_name(app: Flask, caplog):
@@ -107,7 +118,7 @@ def test_manager_load_strategy_no_class(app: Flask, caplog):
     mock_module = MagicMock(spec=[])
 
     with patch("importlib.import_module", return_value=mock_module):
-         manager.init_app(app)
+        manager.init_app(app)
 
     assert manager.strategy is None
     assert "Failed to load client 'empty_client'" in caplog.text
@@ -162,6 +173,7 @@ def test_manager_teardown_request():
     strategy.teardown = MagicMock()
     manager.teardown_request()
     strategy.teardown.assert_called_once()
+
 
 def test_manager_client_type():
     manager = TorrentManager()

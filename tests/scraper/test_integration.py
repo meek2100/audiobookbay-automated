@@ -1,10 +1,9 @@
+# File: tests/scraper/test_integration.py
 """Integration tests for the scraper pipeline."""
 
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
-import requests
 from flask import Flask
 
 from audiobook_automated.scraper.core import search_audiobookbay
@@ -13,7 +12,17 @@ from audiobook_automated.scraper.core import search_audiobookbay
 def test_search_audiobookbay_success(app: Flask) -> None:
     """Test full search pipeline with mocked network calls."""
     mock_results: list[dict[str, Any]] = [
-        {"title": "Book 1", "link": "http://book1", "category": ["Audio"], "language": "En", "format": "MP3", "bitrate": "128", "file_size": "100MB", "cover": None, "post_date": "2023"}
+        {
+            "title": "Book 1",
+            "link": "http://book1",
+            "category": ["Audio"],
+            "language": "En",
+            "format": "MP3",
+            "bitrate": "128",
+            "file_size": "100MB",
+            "cover": None,
+            "post_date": "2023",
+        }
     ]
 
     with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="audiobookbay.lu"):

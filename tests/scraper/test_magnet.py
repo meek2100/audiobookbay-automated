@@ -1,6 +1,7 @@
+# File: tests/scraper/test_magnet.py
 """Tests for magnet link extraction."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from audiobook_automated.scraper.core import extract_magnet_link
 
@@ -11,11 +12,7 @@ def test_extract_magnet_deduplication() -> None:
 
 
 def test_extract_magnet_success() -> None:
-    mock_details = {
-        "info_hash": "123",
-        "title": "Book",
-        "trackers": ["t1"]
-    }
+    mock_details = {"info_hash": "123", "title": "Book", "trackers": ["t1"]}
     with patch("audiobook_automated.scraper.core.get_book_details", return_value=mock_details):
         with patch("audiobook_automated.scraper.core.network.get_trackers", return_value=["t2"]):
             magnet, error = extract_magnet_link("url")

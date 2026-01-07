@@ -349,16 +349,18 @@ def parse_search_results(soup: BeautifulSoup, base_url: str) -> list[BookSummary
 
         meta = parse_post_content(content_div, post_info)
 
-        results.append({
-            "title": title,
-            "link": str(link),
-            "cover": cover,
-            "language": meta.language,
-            "category": meta.category,
-            "post_date": meta.post_date,
-            "format": meta.format,
-            "bitrate": meta.bitrate,
-            "file_size": meta.file_size,
-        })
+        results.append(
+            {
+                "title": title,
+                "link": str(link),
+                "cover": cover,
+                "language": meta.language,
+                "category": meta.category,
+                "post_date": meta.post_date,
+                "format": meta.format,
+                "bitrate": meta.bitrate,
+                "file_size": meta.file_size,
+            }
+        )
 
     return results

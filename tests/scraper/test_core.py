@@ -5,11 +5,10 @@ import concurrent.futures
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 from flask import Flask
 
-from audiobook_automated.scraper.core import fetch_page_results, get_search_url, search_audiobookbay
+from audiobook_automated.scraper.core import fetch_page_results, search_audiobookbay
 
 
 def test_fetch_page_results_unexpected_exception() -> None:

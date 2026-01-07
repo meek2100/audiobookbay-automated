@@ -3,7 +3,6 @@
 
 import logging
 import signal
-import sys
 import types
 from typing import TYPE_CHECKING
 
@@ -33,7 +32,7 @@ torrent_manager = TorrentManager()
 def register_shutdown_handlers(app: Flask) -> None:
     """Register signal handlers for graceful shutdown."""
 
-    def shutdown_handler(signal_received: int, frame: types.FrameType | None) -> "NoReturn":  # noqa: ARG001
+    def shutdown_handler(signal_received: int, frame: types.FrameType | None) -> NoReturn:  # noqa: ARG001
         """Handle shutdown signals by stopping executors and network components."""
         app.logger.info("Graceful Shutdown: Signal %d received.", signal_received)
 

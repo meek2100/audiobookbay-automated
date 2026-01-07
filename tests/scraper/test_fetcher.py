@@ -1,10 +1,10 @@
+# File: tests/scraper/test_fetcher.py
 """Tests for fetch_page_results."""
 
 import logging
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 import requests_mock
 

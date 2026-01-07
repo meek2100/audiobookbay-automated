@@ -1,3 +1,4 @@
+# File: tests/unit/clients/test_deluge.py
 """Unit tests for the Deluge client strategy."""
 
 from unittest.mock import MagicMock, patch
@@ -19,13 +20,7 @@ def mock_deluge_client():
 
 
 def create_strategy(dl_url=None, host="localhost", port=8112, username=None, password=None):
-    return Strategy(
-        dl_url=dl_url,
-        host=host,
-        port=port,
-        username=username,
-        password=password
-    )
+    return Strategy(dl_url=dl_url, host=host, port=port, username=username, password=password)
 
 
 def test_deluge_connect_success(mock_deluge_client):
@@ -73,7 +68,7 @@ def test_deluge_add_magnet_with_label(mock_deluge_client):
     strategy.add_magnet("magnet:?", "/downloads", "audiobooks")
 
     args, kwargs = mock_deluge_client.add_torrent_magnet.call_args
-    options = kwargs['torrent_options']
+    options = kwargs["torrent_options"]
     assert options.download_location == "/downloads"
     assert options.label == "audiobooks"
 
@@ -87,7 +82,7 @@ def test_deluge_add_magnet_fallback(mock_deluge_client):
     # First call raises Exception about Label
     mock_deluge_client.add_torrent_magnet.side_effect = [
         Exception("Unknown parameter: label"),
-        None # Second call succeeds
+        None,  # Second call succeeds
     ]
 
     strategy.add_magnet("magnet:?", "/downloads", "audiobooks")
@@ -101,10 +96,7 @@ def test_deluge_add_magnet_fallback_fail(mock_deluge_client):
     strategy = create_strategy(dl_url="http://localhost:8112")
     strategy.connect()
 
-    mock_deluge_client.add_torrent_magnet.side_effect = [
-        Exception("Unknown parameter: label"),
-        Exception("Disk Full")
-    ]
+    mock_deluge_client.add_torrent_magnet.side_effect = [Exception("Unknown parameter: label"), Exception("Disk Full")]
 
     with pytest.raises(Exception, match="Disk Full"):
         strategy.add_magnet("magnet:?", "/downloads", "audiobooks")
@@ -140,12 +132,7 @@ def test_deluge_get_status(mock_deluge_client):
     strategy.connect()
 
     mock_deluge_client.get_torrents_status.return_value.result = {
-        "hash1": {
-            "name": "Book 1",
-            "state": "Downloading",
-            "progress": 50.5,
-            "total_size": 1024 * 1024
-        }
+        "hash1": {"name": "Book 1", "state": "Downloading", "progress": 50.5, "total_size": 1024 * 1024}
     }
 
     statuses = strategy.get_status("audiobooks")
@@ -166,12 +153,7 @@ def test_deluge_get_status_invalid_progress(mock_deluge_client):
     strategy.connect()
 
     mock_deluge_client.get_torrents_status.return_value.result = {
-        "hash1": {
-            "name": "Book 1",
-            "progress": "invalid",
-            "state": "Error",
-            "total_size": 0
-        }
+        "hash1": {"name": "Book 1", "progress": "invalid", "state": "Error", "total_size": 0}
     }
 
     statuses = strategy.get_status("audiobooks")
@@ -204,9 +186,7 @@ def test_deluge_get_status_null_item(mock_deluge_client):
     strategy = create_strategy(dl_url="http://localhost:8112")
     strategy.connect()
 
-    mock_deluge_client.get_torrents_status.return_value.result = {
-        "hash1": None
-    }
+    mock_deluge_client.get_torrents_status.return_value.result = {"hash1": None}
 
     statuses = strategy.get_status("audiobooks")
     assert statuses == []

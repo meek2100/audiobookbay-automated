@@ -5,7 +5,6 @@ import importlib
 import inspect
 import logging
 import re
-from typing import Any
 
 from flask import Flask
 
@@ -66,7 +65,7 @@ class TorrentManager:
                     break
 
             if not strategy_class:
-                 strategy_class = getattr(module, class_name, None)
+                strategy_class = getattr(module, class_name, None)
 
             if not strategy_class:
                 raise ImportError(f"No valid strategy class found in {module_name}")
@@ -89,12 +88,7 @@ class TorrentManager:
             timeout = app.config.get("DL_TIMEOUT", 30)
 
             self.strategy = strategy_class(
-                host=host,
-                port=port,
-                username=username,
-                password=password,
-                scheme=scheme,
-                timeout=timeout
+                host=host, port=port, username=username, password=password, scheme=scheme, timeout=timeout
             )
             logger.info("Plugin: Successfully loaded '%s'.", strategy_class.__name__)
 
@@ -168,4 +162,4 @@ class TorrentManager:
     def teardown_request(self, exception: BaseException | None = None) -> None:
         """Cleanup request-scoped resources."""
         if self.strategy and hasattr(self.strategy, "teardown"):
-             self.strategy.teardown()
+            self.strategy.teardown()

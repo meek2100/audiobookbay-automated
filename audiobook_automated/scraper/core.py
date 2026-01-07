@@ -2,16 +2,10 @@
 """Core scraper logic for retrieving search results and details."""
 
 import logging
-import queue
 import random
-import re
 import time
 from typing import Any
 
-from flask import current_app
-
-from ..constants import USER_AGENTS
-from ..utils import calculate_static_hash, safe_get
 from . import network, parser
 
 logger = logging.getLogger(__name__)
@@ -216,6 +210,7 @@ def extract_magnet_link(url: str) -> tuple[str | None, str | None]:
         if not info_hash or info_hash == "Unknown":
             # Specific error constant used in routes.py
             from ..constants import ERROR_HASH_NOT_FOUND
+
             return None, ERROR_HASH_NOT_FOUND
 
         # Construct Magnet Link
