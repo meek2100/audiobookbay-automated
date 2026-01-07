@@ -407,3 +407,22 @@ def test_fetch_and_parse_page_pagination(real_world_html: str, mock_sleep: Any) 
             results = fetch_and_parse_page(hostname, query, page, user_agent, 30)
 
     assert len(results) == 1
+
+
+def test_fetch_page_connection_error(mock_sleep: Any) -> None:
+    """Test handling of ConnectionError."""
+    hostname = "audiobookbay.lu"
+    query = "conn_error"
+    page = 1
+
+    mock_session = requests.Session()
+    adapter = requests_mock.Adapter()
+    mock_session.mount("https://", adapter)
+    adapter.register_uri("GET", f"https://{hostname}/page/{page}/?s={query}", exc=requests.ConnectionError)
+
+    with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
+        with patch("audiobook_automated.scraper.core.network.get_semaphore"):
+            # Should catch exception and return empty list
+            results = fetch_and_parse_page(hostname, query, page, "ua", 30)
+
+    assert results == []

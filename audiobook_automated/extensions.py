@@ -16,7 +16,7 @@ from flask_wtf.csrf import CSRFProtect
 
 from .clients import TorrentManager
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from typing import NoReturn
 
 

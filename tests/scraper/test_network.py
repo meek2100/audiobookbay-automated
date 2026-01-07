@@ -372,3 +372,16 @@ def test_get_trackers_json_invalid_syntax(app: Flask) -> None:
                 # The actual message depends on the implementation, but it usually catches JSONDecodeError
                 # checking for "Failed to load" or similar
                 assert "Failed to load trackers.json" in args[0]
+
+
+def test_get_semaphore() -> None:
+    """Test retrieving the global semaphore."""
+    sem = network.get_semaphore()
+    # It should be a BoundedSemaphore
+    assert isinstance(sem, network.threading.BoundedSemaphore)
+
+
+def test_get_headers_with_referer() -> None:
+    """Test get_headers with a referer."""
+    headers = network.get_headers(referer="http://ref.com")
+    assert headers["Referer"] == "http://ref.com"

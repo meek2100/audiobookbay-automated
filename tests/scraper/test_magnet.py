@@ -48,3 +48,12 @@ def test_extract_magnet_none_trackers() -> None:
             magnet, error = extract_magnet_link("url")
             assert magnet is not None
             assert "tr=" not in magnet
+
+
+def test_extract_magnet_missing_hash() -> None:
+    """Test handling of missing info hash."""
+    mock_details = {"info_hash": "Unknown", "title": "Book", "trackers": []}
+    with patch("audiobook_automated.scraper.core.get_book_details", return_value=mock_details):
+        magnet, error = extract_magnet_link("url")
+        assert magnet is None
+        assert error is not None

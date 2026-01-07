@@ -4,13 +4,12 @@
 import importlib
 import inspect
 import logging
-import os
 import re
-from typing import Any, cast
+from typing import Any
 
 from flask import Flask
 
-from .base import TorrentClientStrategy
+from .base import TorrentClientStrategy, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +20,13 @@ class TorrentManager:
     def __init__(self) -> None:
         self.strategy: TorrentClientStrategy | None = None
         self._app: Flask | None = None
+
+    @property
+    def client_type(self) -> str:
+        """Return the name of the loaded client strategy."""
+        if self.strategy:
+            return self.strategy.__class__.__name__
+        return "None"
 
     def init_app(self, app: Flask) -> None:
         """Initialize the manager with the Flask application.
@@ -53,7 +59,6 @@ class TorrentManager:
             module = importlib.import_module(module_name)
 
             # Find the strategy class in the module
-            # We look for a class that inherits from TorrentClientStrategy
             strategy_class = None
             for name, obj in inspect.getmembers(module, inspect.isclass):
                 if issubclass(obj, TorrentClientStrategy) and obj is not TorrentClientStrategy:
@@ -61,63 +66,79 @@ class TorrentManager:
                     break
 
             if not strategy_class:
-                 # Fallback: try looking for class name matching convention (e.g. TransmissionClient)
                  strategy_class = getattr(module, class_name, None)
 
             if not strategy_class:
                 raise ImportError(f"No valid strategy class found in {module_name}")
 
             # Instantiate the strategy
-            # Note: Strategies should accept **kwargs or config in __init__
-            # For now, we assume they access current_app or are initialized later.
-            # Ideally, we pass config here.
+            # Extract configuration from app.config to pass explicitly
+            host = app.config.get("DL_HOST", "localhost")
+            port = app.config.get("DL_PORT")
+            if port is None:
+                port = getattr(strategy_class, "DEFAULT_PORT", 8080)
 
-            # We pass the app config to the strategy
-            self.strategy = strategy_class(app.config)
+            try:
+                port = int(port)
+            except (ValueError, TypeError):
+                port = 8080
+
+            username = app.config.get("DL_USER")
+            password = app.config.get("DL_PASS")
+            scheme = app.config.get("DL_SCHEME", "http")
+            timeout = app.config.get("DL_TIMEOUT", 30)
+
+            self.strategy = strategy_class(
+                host=host,
+                port=port,
+                username=username,
+                password=password,
+                scheme=scheme,
+                timeout=timeout
+            )
             logger.info("Plugin: Successfully loaded '%s'.", strategy_class.__name__)
 
-        except (ImportError, AttributeError) as e:
+        except (ImportError, AttributeError, TypeError) as e:
             logger.exception("Plugin: Failed to load client '%s'. Error: %s", client_name, e)
-            # Fallback to a dummy/error strategy or re-raise
-            # For now, we leave self.strategy as None, which will cause errors on use.
+            # Leave self.strategy as None
 
     def verify_credentials(self) -> bool:
-        """Verify that the loaded strategy can connect to the torrent client.
-
-        Returns:
-            True if connected, False otherwise.
-        """
+        """Verify that the loaded strategy can connect to the torrent client."""
         if not self.strategy:
             return False
         return self.strategy.verify_credentials()
 
-    def add_torrent(self, magnet_link: str, save_path: str) -> str | None:
-        """Add a torrent to the client.
+    def add_magnet(self, magnet_link: str, save_path: str) -> None:
+        """Add a magnet link to the client.
 
         Args:
             magnet_link: The magnet URI.
             save_path: The filesystem path to save the download.
-
-        Returns:
-            The info hash of the added torrent, or None if failed.
         """
         if not self.strategy:
             logger.error("Manager: No torrent strategy loaded.")
-            return None
-        return self.strategy.add_torrent(magnet_link, save_path)
+            return
 
-    def get_status(self, torrent_id: str) -> Any:
-        """Get the status of a specific torrent.
+        category = "abb-automated"
+        if self._app:
+            category = self._app.config.get("DL_CATEGORY", "abb-automated")
 
-        Args:
-            torrent_id: The ID (info hash) of the torrent.
+        self.strategy.add_magnet(magnet_link, save_path, category)
+
+    def get_status(self) -> list[TorrentStatus]:
+        """Get the status of all torrents in the configured category.
 
         Returns:
-            The status object/dict returned by the strategy.
+            A list of TorrentStatus objects.
         """
         if not self.strategy:
-            return None
-        return self.strategy.get_status(torrent_id)
+            return []
+
+        category = "abb-automated"
+        if self._app:
+            category = self._app.config.get("DL_CATEGORY", "abb-automated")
+
+        return self.strategy.get_status(category)
 
     def remove_torrent(self, torrent_id: str, delete_data: bool = False) -> bool:
         """Remove a torrent from the client.
@@ -127,11 +148,17 @@ class TorrentManager:
             delete_data: Whether to delete the downloaded files.
 
         Returns:
-            True if successful, False otherwise.
+            True if successful (or if strategy raises no error), False otherwise.
         """
         if not self.strategy:
             return False
-        return self.strategy.remove_torrent(torrent_id, delete_data)
+
+        try:
+            self.strategy.remove_torrent(torrent_id)
+            return True
+        except Exception as e:
+            logger.error(f"Manager: Failed to remove torrent {torrent_id}: {e}")
+            return False
 
     def close(self) -> None:
         """Close any open connections held by the strategy."""
@@ -139,10 +166,6 @@ class TorrentManager:
             self.strategy.close()
 
     def teardown_request(self, exception: BaseException | None = None) -> None:
-        """Cleanup request-scoped resources (e.g. thread-local sessions)."""
-        # This is called by Flask at the end of every request.
-        # We delegate to the strategy if it supports it.
-        # Most strategies use a shared session or connection pool,
-        # but some might use thread-locals that need clearing.
+        """Cleanup request-scoped resources."""
         if self.strategy and hasattr(self.strategy, "teardown"):
              self.strategy.teardown()
