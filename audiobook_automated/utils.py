@@ -305,6 +305,21 @@ def parse_bool(value: str | None, default: bool = False) -> bool:
     return value.strip().strip("'\"").lower() in ("1", "true", "yes", "on")
 
 
+def safe_get(dictionary: dict[str, Any], key: str, default: Any = None) -> Any:
+    """Safely get a value from a dictionary, returning default if key is missing or None.
+
+    Args:
+        dictionary: The source dictionary.
+        key: The key to look up.
+        default: The default value to return.
+
+    Returns:
+        The value or default.
+    """
+    value = dictionary.get(key)
+    return value if value is not None else default
+
+
 if __name__ == "__main__":  # pragma: no cover
     # Script entry point for Docker build time optimization.
     # Calculates the hash of the static directory relative to this file

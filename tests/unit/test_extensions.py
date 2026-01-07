@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 from flask import Flask
 
-from audiobook_automated.extensions import ScraperExecutor, register_shutdown_handlers
+from audiobook_automated.extensions import register_shutdown_handlers
 
 # Import the module where the function to be patched lives
 from audiobook_automated.scraper import network as network_module
@@ -17,30 +17,6 @@ from audiobook_automated.scraper import network as network_module
 
 class TestExtensions(unittest.TestCase):
     """Test suite for extensions module."""
-
-    def test_scraper_executor_lifecycle(self) -> None:
-        """Test ScraperExecutor init and shutdown."""
-        executor = ScraperExecutor()
-        app = MagicMock(spec=Flask)
-        app.config = {"SCRAPER_THREADS": 2}
-
-        # Test submit before init raises
-        with self.assertRaises(RuntimeError):
-            executor.submit(print, "fail")
-
-        executor.init_app(app)
-        self.assertIsNotNone(executor._executor)
-
-        # Test submit works
-        def task(x: int) -> int:
-            return x * 2
-
-        future = executor.submit(task, 10)
-        self.assertEqual(future.result(), 20)
-
-        executor.shutdown()
-        # Verify executor is present (shutdown doesn't delete it, just closes it)
-        self.assertIsNotNone(executor._executor)
 
     @patch("signal.signal")
     def test_register_shutdown_handlers(self, mock_signal: MagicMock) -> None:
@@ -68,6 +44,8 @@ class TestExtensions(unittest.TestCase):
                 with patch("sys.exit") as mock_exit:
                     handler(signal.SIGTERM, None)
 
-                    mock_shutdown.assert_called_with(wait=False)
+                    # Updated: expect wait=True
+                    mock_shutdown.assert_called_with(wait=True)
                     mock_network_shutdown.assert_called_once()
-                    mock_exit.assert_called_with(0)
+                    # Updated: expect sys.exit NOT to be called
+                    mock_exit.assert_not_called()

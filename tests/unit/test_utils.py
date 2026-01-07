@@ -392,3 +392,16 @@ def test_ensure_collision_safety_utf8_bytes() -> None:
         result_2 = ensure_collision_safety(emoji_title, max_length=22)
         assert result_2.startswith("📕📕📕")
         assert len(result_2.encode("utf-8")) <= 22
+
+
+def test_safe_get() -> None:
+    """Test safe_get utility."""
+    from audiobook_automated.utils import safe_get
+
+    d = {"key": "value", "none": None}
+
+    assert safe_get(d, "key") == "value"
+    assert safe_get(d, "missing") is None
+    assert safe_get(d, "missing", "default") == "default"
+    # Key exists but value is None -> returns default
+    assert safe_get(d, "none", "default") == "default"

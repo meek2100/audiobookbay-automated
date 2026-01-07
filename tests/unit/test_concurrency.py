@@ -76,17 +76,20 @@ def test_concurrent_cache_access(clean_caches: None, app: Flask) -> None:
     }
 
     # Mock the underlying network calls
-    with patch("audiobook_automated.scraper.core.fetch_and_parse_page", return_value=mock_search_results):
-        with patch("audiobook_automated.scraper.core.find_best_mirror", return_value="audiobookbay.lu"):
-            with patch("audiobook_automated.scraper.core.get_thread_session") as mock_session:
+    with patch("audiobook_automated.scraper.core.fetch_page_results", return_value=mock_search_results):
+        with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="audiobookbay.lu"):
+            with patch("audiobook_automated.scraper.core.network.get_session") as mock_session:
                 # Mock session.get for get_book_details
                 mock_response = MagicMock()
                 mock_response.text = "<html></html>"
                 mock_response.status_code = 200
                 mock_session.return_value.get.return_value = mock_response
 
+                # Patch parser.parse_book_details via core's import if possible, or directly in parser module if core uses module reference
+                # core.py: book_details = parser.parse_book_details(soup, url)
+                # So we patch audiobook_automated.scraper.parser.parse_book_details
                 with patch(
-                    "audiobook_automated.scraper.core.parse_book_details",
+                    "audiobook_automated.scraper.parser.parse_book_details",
                     return_value=mock_details,
                 ):
                     with patch(
@@ -95,7 +98,8 @@ def test_concurrent_cache_access(clean_caches: None, app: Flask) -> None:
                     ):
                         # Define worker functions
                         def worker_search() -> None:
-                            with app.app_context():
+                            # Use test_request_context to satisfy Flask-Executor/copy_current_request_context
+                            with app.test_request_context():
                                 for _ in range(iterations):
                                     # Access search_cache
                                     res = search_audiobookbay("query", max_pages=1)
@@ -103,7 +107,7 @@ def test_concurrent_cache_access(clean_caches: None, app: Flask) -> None:
                                     time.sleep(0.01)
 
                         def worker_details() -> None:
-                            with app.app_context():
+                            with app.test_request_context():
                                 for _ in range(iterations):
                                     # Access details_cache
                                     res = get_book_details("https://audiobookbay.lu/book1")
@@ -111,7 +115,7 @@ def test_concurrent_cache_access(clean_caches: None, app: Flask) -> None:
                                     time.sleep(0.01)
 
                         def worker_trackers() -> None:
-                            with app.app_context():
+                            with app.test_request_context():
                                 for _ in range(iterations):
                                     # Access tracker_cache
                                     res = get_trackers()
