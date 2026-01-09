@@ -1,0 +1,138 @@
+<!doctype html>
+<!-- File: audiobook_automated/templates/base.html -->
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#2e003e" />
+        <meta name="csrf-token" content="{{ csrf_token() }}" />
+        <title>{% block title %}{{ site_title }}{% endblock %}</title>
+        <script nonce="{{ csp_nonce() }}">
+            // Immediate splash screen check to prevent FOUC
+            if (sessionStorage.getItem("splashShown")) {
+                document.documentElement.classList.add("no-splash");
+            }
+            window.APP_VERSION = "{{ static_version }}";
+        </script>
+        <style nonce="{{ csp_nonce() }}">
+            /* Immediate override to hide splash if no-splash class is present */
+            html.no-splash #splash-overlay {
+                display: none !important;
+            }
+        </style>
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fonts.css', v=static_version) }}" />
+
+        <link
+            rel="icon"
+            type="image/x-icon"
+            href="{{ url_for('static', filename='images/favicon.ico', v=static_version) }}"
+        />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=static_version) }}" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/splash.css', v=static_version) }}" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/modal.css', v=static_version) }}" />
+        {% block extra_css %}{% endblock %} {% block extra_js %}{% endblock %}
+        <script src="{{ url_for('static', filename='js/theme.js', v=static_version) }}"></script>
+        <script src="{{ url_for('static', filename='js/actions.js', v=static_version) }}" defer></script>
+    </head>
+
+    <body>
+        <div id="notification-container"></div>
+
+        {% if splash_enabled %}
+        <div
+            id="splash-overlay"
+            data-splash-duration="{{ splash_duration }}"
+            data-splash-enabled="{{ splash_enabled }}"
+        >
+            <div id="splash-content">
+                {% if splash_title %}
+                <h1 class="splash-title">{{ splash_title }}</h1>
+                {% endif %}
+                <p class="splash-text">{{ splash_message | safe }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="navbar">
+            <div class="nav-container">
+                <a href="{{ url_for('main.search') }}" class="nav-logo">
+                    {% if site_logo %}
+                    <img src="{{ site_logo }}" alt="{{ site_title }}" />
+                    {% else %}
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="{{ site_title }}" />
+                    {% endif %}
+                    <span class="brand-text">{{ site_title }}</span>
+                </a>
+
+                <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </button>
+
+                <div class="nav-links" id="nav-links">
+                    <a
+                        href="{{ url_for('main.search') }}"
+                        class="{% if request.endpoint == 'main.search' %}active{% endif %}"
+                        >Search</a
+                    >
+                    <a
+                        href="{{ url_for('main.status') }}"
+                        class="{% if request.endpoint == 'main.status' %}active{% endif %}"
+                        >Status</a
+                    >
+                    {% if nav_link_name and nav_link_url %}
+                    <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
+                    {% endif %} {% if library_reload_enabled %}
+                    <a href="#" id="reload-library-btn" class="btn-icon" aria-label="Reload Library">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path
+                                d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"
+                            />
+                        </svg>
+                    </a>
+                    {% endif %}
+                    <select id="theme-selector" class="theme-select">
+                        <option value="crow">🌙 Crow</option>
+                        <option value="purple">🔮 Purple</option>
+                        <option value="forest">🌲 Forest</option>
+                        <option value="ocean">🌊 Ocean</option>
+                        <option value="sunset">🌅 Sunset</option>
+                        <option value="dracula">🧛 Dracula</option>
+                        <option value="cyberpunk">🦾 Cyberpunk</option>
+                        <option value="light">☀️ Light</option>
+                        <option value="royal">👑 Royal</option>
+                        <option value="slate">🗿 Slate</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">{% block content %}{% endblock %}</div>
+
+        <!-- Global Confirmation Modal -->
+        <div id="confirmation-modal" class="modal-overlay" aria-hidden="true">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="modal-title">Confirm Action</h3>
+                </div>
+                <div class="modal-body" id="modal-body">Are you sure you want to proceed?</div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="modal-cancel">Cancel</button>
+                    <button class="btn-primary" id="modal-confirm">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

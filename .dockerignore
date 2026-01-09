@@ -1,0 +1,19 @@
+# File: .dockerignore
+__pycache__
+*.py[cod]
+*$py.class
+.git
+.gitignore
+.env
+.venv
+env/
+venv/
+*.md
+LICENSE
+# JavaScript/Node Exclusions
+node_modules/
+package.json
+package-lock.json
+jest.config.js
+# Test File Exclusions (Python tests are sometimes needed for cache, but JS tests are not)
+tests/js/
