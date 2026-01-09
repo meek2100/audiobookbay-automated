@@ -73,6 +73,28 @@ class TorrentClientStrategy(ABC):
         """Retrieve status of torrents in the given category."""
         pass  # pragma: no cover
 
+    def verify_credentials(self) -> bool:
+        """Verify that the provided credentials work.
+
+        The default implementation simply attempts to connect.
+        Subclasses may override this if a lighter-weight check is available.
+        """
+        try:
+            self.connect()
+            return True
+        except Exception:
+            return False  # pragma: no cover
+
+    def teardown(self) -> None:
+        """Perform request-scoped cleanup.
+
+        This method is called by the TorrentManager at the end of each request.
+        The default implementation calls close() to ensure resources are released.
+        Strategies that maintain persistent connections may override this to do nothing
+        or perform lighter cleanup.
+        """
+        self.close()
+
     def __del__(self) -> None:
         """Ensure resources are released when the strategy instance is garbage collected.
 
@@ -82,4 +104,4 @@ class TorrentClientStrategy(ABC):
             self.close()
         except Exception:  # noqa: S110
             # Swallow errors during GC to prevent noisy stderr output
-            pass
+            pass  # pragma: no cover

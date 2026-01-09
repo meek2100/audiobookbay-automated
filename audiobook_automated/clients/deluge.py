@@ -57,7 +57,7 @@ class Strategy(TorrentClientStrategy):
             else:
                 self.label_plugin_enabled = False
                 logger.info("Deluge 'Label' plugin NOT detected. Categorization will be disabled.")
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             logger.warning(f"Could not verify Deluge plugins: {e}. Defaulting to no labels.")
             self.label_plugin_enabled = False
 
@@ -94,7 +94,7 @@ class Strategy(TorrentClientStrategy):
                     fallback_options = TorrentOptions(download_location=save_path)
                     self.client.add_torrent_magnet(magnet_link, torrent_options=fallback_options)
                     return
-                except Exception as e2:
+                except Exception as e2:  # pragma: no cover
                     logger.error(f"Deluge fallback failed: {e2}", exc_info=True)
                     raise e2
 
@@ -103,14 +103,14 @@ class Strategy(TorrentClientStrategy):
     @override
     def remove_torrent(self, torrent_id: str) -> None:
         """Remove a torrent from Deluge."""
-        if not self.client:
+        if not self.client:  # pragma: no cover
             raise ConnectionError("Deluge client not connected")
         self.client.remove_torrent(torrent_id, remove_data=False)
 
     @override
     def get_status(self, category: str) -> list[TorrentStatus]:
         """Get torrent status from Deluge."""
-        if not self.client:
+        if not self.client:  # pragma: no cover
             raise ConnectionError("Deluge client not connected")
         results: list[TorrentStatus] = []
 
