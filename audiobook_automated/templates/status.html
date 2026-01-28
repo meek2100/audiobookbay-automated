@@ -1,0 +1,56 @@
+<!-- File: audiobook_automated/templates/status.html -->
+{% extends "base.html" %} {% block title %}Torrent Status{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/status.css', v=static_version) }}" />
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/status.js', v=static_version) }}" defer></script>
+{% endblock %} {% block content %}
+<div class="title-container">
+    <h1>Active Downloads</h1>
+</div>
+
+<div class="status-container">
+    {% if error %}
+    <div class="error-message">
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <table>
+        <caption class="sr-only">
+            List of active downloads
+        </caption>
+        <thead>
+            <tr>
+                <th class="col-title">Title</th>
+                <th class="col-progress">Progress</th>
+                <th class="col-state">State</th>
+                <th class="col-size">Size</th>
+                <th class="col-action">Action</th>
+            </tr>
+        </thead>
+        <tbody id="status-table-body">
+            {% if torrents %} {% for torrent in torrents %}
+            <tr>
+                <td class="cell-title">{{ torrent.name }}</td>
+                <td class="cell-progress">{{ torrent.progress }}%</td>
+                <td class="cell-state">{{ torrent.state }}</td>
+                <td class="cell-size">{{ torrent.size }}</td>
+                <td class="cell-action">
+                    <button class="remove-button remove-torrent-btn" data-torrent-id="{{ torrent.id }}">Remove</button>
+                </td>
+            </tr>
+            {% endfor %} {% else %} {% if not error %}
+            <tr>
+                <td
+                    colspan="5"
+                    class="empty-message"
+                    style="text-align: center; padding: 40px; color: var(--text-muted)"
+                >
+                    No active downloads found.
+                </td>
+            </tr>
+            {% endif %} {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

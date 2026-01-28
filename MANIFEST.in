@@ -1,0 +1,6 @@
+include pyproject.toml
+include README.md
+include AGENTS.md
+include entrypoint.sh
+recursive-include audiobook_automated/templates *
+recursive-include audiobook_automated/static *

@@ -1,0 +1,28 @@
+{
+    "name": "audiobookbay-automated-js-tests",
+    "version": "1.0.0",
+    "description": "JavaScript test suite for UI filtering logic.",
+    "main": "index.js",
+    "type": "commonjs",
+    "scripts": {
+        "test:js": "jest",
+        "copy-vendor": "mkdir -p app/static/vendor/js && mkdir -p app/static/vendor/css && cp node_modules/flatpickr/dist/flatpickr.min.js app/static/vendor/js/flatpickr.min.js && cp node_modules/flatpickr/dist/flatpickr.min.css app/static/vendor/css/flatpickr.min.css && cp node_modules/nouislider/dist/nouislider.min.js app/static/vendor/js/nouislider.min.js && cp node_modules/nouislider/dist/nouislider.min.css app/static/vendor/css/nouislider.min.css",
+        "update-vendor": "npm install && npm run copy-vendor"
+    },
+    "keywords": [
+        "jest",
+        "javascript",
+        "testing"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "flatpickr": "4.6.13",
+        "nouislider": "15.8.1"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.57.0",
+        "jest": "^30.2.0",
+        "jest-environment-jsdom": "^30.2.0"
+    }
+}
