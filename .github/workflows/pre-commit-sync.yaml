@@ -11,9 +11,12 @@ on:
     paths:
       - "pyproject.toml"
       - "package.json"
+      - ".github/workflows/*"
+  workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write # Required to create the Pull Request
 
 jobs:
   sync:
@@ -24,12 +27,12 @@ jobs:
         with:
           # IMPORTANT: Checkout the head of the branch, not the default merge commit
           ref: ${{ github.event.pull_request.head.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }} # Needed to push back to the PR branch
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.14" # Updated to match production baseline
+          python-version: "3.14" # Aligned with production baseline
           cache: "pip"
 
       - name: Install Python Development Dependencies
@@ -47,16 +50,20 @@ jobs:
         run: npm ci
 
       - name: Run pre-commit autoupdate
-        # This command updates the 'rev' tags for *all* repositories
-        # (Python, JS, Docker, etc.) in .pre-commit-config.yaml to their latest version.
+        # This command updates the 'rev' tags in .pre-commit-config.yaml
         run: pre-commit autoupdate
 
-      - name: Commit and Push changes to the Dependabot branch
-        uses: stefanzweifel/git-auto-commit-action@v7
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
         with:
-          commit_message: "chore(deps): Synchronize pre-commit hooks with dependency update"
-          # Only commit the config file if it changed
-          files: ".pre-commit-config.yaml"
-          branch: ${{ github.event.pull_request.head.ref }}
-          # Use Dependabot's author so GitHub treats it as part of the Dependabot PR
-          commit_author: Dependabot <dependabot@users.noreply.github.com>
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(deps): synchronize pre-commit hooks"
+          branch: "pre-commit-sync/${{ github.event.pull_request.head.ref }}"
+          title: "chore(deps): update pre-commit hooks for #${{ github.event.pull_request.number }}"
+          body: |
+            This PR synchronizes `.pre-commit-config.yaml` following a dependency update.
+
+            Triggered by PR: #${{ github.event.pull_request.number }}
+          labels: |
+            dependencies
+            automerge
