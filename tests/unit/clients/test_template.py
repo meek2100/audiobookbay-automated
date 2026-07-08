@@ -55,16 +55,21 @@ def test_template_methods_raise_connection_error_when_disconnected() -> None:
     """Ensure methods raise ConnectionError if client is None."""
     # FIX: Added required username and password arguments
     strategy = Strategy(host="localhost", port=8080, username="user", password="pass")
-    strategy.client = None
 
-    with pytest.raises(ConnectionError, match="Client not connected"):
-        strategy.add_magnet("magnet:?", "/tmp", "cat")
+    try:
+        strategy.client = None
 
-    with pytest.raises(ConnectionError, match="Client not connected"):
-        strategy.remove_torrent("123")
+        with pytest.raises(ConnectionError, match="Client not connected"):
+            strategy.add_magnet("magnet:?", "/tmp", "cat")
 
-    with pytest.raises(ConnectionError, match="Client not connected"):
-        strategy.get_status("cat")
+        with pytest.raises(ConnectionError, match="Client not connected"):
+            strategy.remove_torrent("123")
+
+        with pytest.raises(ConnectionError, match="Client not connected"):
+            strategy.get_status("cat")
+
+    finally:
+        strategy.close()
 
 
 def test_template_close_is_safe() -> None:

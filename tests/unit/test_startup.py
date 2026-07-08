@@ -267,6 +267,7 @@ class StartupConfig(audiobook_automated.config.Config):
 
     TESTING = True
     DL_CLIENT = "qbittorrent"
+    RATELIMIT_STORAGE_URI = "memory://"
 
 
 def test_startup_connection_warning(caplog: Any) -> None:
