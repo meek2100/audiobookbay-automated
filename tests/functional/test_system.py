@@ -24,10 +24,13 @@ def test_home_page_static_versioning(client: Any) -> None:
 def test_static_assets_cache_control(client: Any) -> None:
     """Test that static assets are served with long-term caching headers."""
     response = client.get("/static/images/favicon.ico")
-    if response.status_code == 200:
-        cache_control = response.headers.get("Cache-Control", "")
-        assert "max-age=31536000" in cache_control
-        assert "public" in cache_control
+    try:
+        if response.status_code == 200:
+            cache_control = response.headers.get("Cache-Control", "")
+            assert "max-age=31536000" in cache_control
+            assert "public" in cache_control
+    finally:
+        response.close()
 
 
 def test_nav_link_injection(client: Any) -> None:

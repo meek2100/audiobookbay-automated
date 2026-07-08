@@ -42,6 +42,8 @@ class TestConfig(Config):
     RATELIMIT_HEADERS_ENABLED = True
     RATELIMIT_ENABLED = True
 
+    RATELIMIT_STORAGE_URI = "memory://"
+
     # Prevent real connections in config
     DL_HOST = "mock_localhost"
 
@@ -94,6 +96,10 @@ def app(mock_global_dependencies: None) -> Generator[Flask]:
     """
     app = create_app(TestConfig)
     yield app
+
+    from audiobook_automated.extensions import torrent_manager
+
+    torrent_manager.close()
 
 
 @pytest.fixture
