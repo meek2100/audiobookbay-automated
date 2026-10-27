@@ -163,3 +163,19 @@ def test_reload_library_error(client: Any) -> None:
         assert response.status_code == 500
         assert "Library scan failed" in response.json["message"]
         assert "500 Internal Server Error" in response.json["message"]
+
+
+def test_serve_root_asset(client: Any) -> None:
+    """Test serving static assets requested directly at the root (fallback route)."""
+    # Valid existing asset
+    response = client.get("/audiobookbay-header.jpg")
+    assert response.status_code == 200
+    assert response.content_type == "image/jpeg"
+
+    # Non-existent asset
+    response = client.get("/nonexistent-image.jpg")
+    assert response.status_code == 404
+
+    # Non-media or invalid extension
+    response = client.get("/something.py")
+    assert response.status_code == 404

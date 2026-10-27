@@ -2,12 +2,24 @@
 """Routes module handling all web endpoints."""
 
 import logging
+import os
 from collections.abc import Sequence
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, cast
 
 import requests
-from flask import Blueprint, Response, current_app, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    current_app,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
 
 from audiobook_automated.constants import (
     ABS_TIMEOUT_SECONDS,
@@ -62,6 +74,33 @@ def inject_global_vars() -> dict[str, Any]:
         "splash_message": current_app.config.get("SPLASH_MESSAGE", ""),
         "splash_duration": current_app.config.get("SPLASH_DURATION", 4500),
     }
+
+
+@main_bp.route("/<path:filename>")
+def serve_root_asset(filename: str) -> Response | tuple[Response, int]:
+    """Serve static asset fallbacks requested at the root path (e.g. /crows-nest.jpg).
+
+    Handles reverse proxies, Docker configurations, or custom logo configurations
+    where an asset is requested without the '/static/images/' prefix.
+    Only allows supported media extensions (.jpg, .jpeg, .png, .gif, .webp, .ico, .mp4, .webm).
+
+    Args:
+        filename: Requested relative asset filename.
+
+    Returns:
+        Response: Static file or 404 response.
+    """
+    safe_name = Path(filename).name
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".ico", ".mp4", ".webm"}
+    ext = os.path.splitext(safe_name)[1].lower()
+
+    if ext in allowed_extensions:
+        images_dir = Path(current_app.static_folder or "static") / "images"
+        target_file = images_dir / safe_name
+        if target_file.is_file():
+            return send_from_directory(str(images_dir), safe_name)
+
+    return jsonify({"error": "Not Found"}), 404
 
 
 @main_bp.route("/health")
