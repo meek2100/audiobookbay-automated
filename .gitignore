@@ -177,3 +177,4 @@ docker-compose.override.yml
 # Playwright
 playwright-report/
 test-results/
+.agents/
