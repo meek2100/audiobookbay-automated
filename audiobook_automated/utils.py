@@ -242,28 +242,19 @@ def calculate_static_hash(static_folder: str | Path) -> str:
 
 
 def get_application_version(static_folder: str | Path) -> str:
-    """Retrieve the application version hash.
+    """Retrieve the application version hash computed dynamically at runtime.
 
-    Prioritizes reading 'version.txt' (generated at build time) to avoid
-    runtime I/O overhead. Falls back to calculating hash for local dev.
+    Calculates the content hash of the static assets folder at server startup,
+    ensuring that live-swapped files, custom volumes, and bind mounts immediately
+    bust browser caches without requiring a container rebuild.
 
     Args:
         static_folder: Path to the static assets directory.
 
     Returns:
-        str: The version hash.
+        str: An 8-character hex string representing the static folder hash.
     """
-    folder_path = Path(static_folder)
-    # version.txt is expected to be in the parent package directory
-    version_file = folder_path.parent / "version.txt"
-
-    if version_file.exists():
-        try:
-            return version_file.read_text(encoding="utf-8").strip()
-        except OSError:
-            logger.warning("Could not read version.txt, falling back to calculation.")
-
-    return calculate_static_hash(folder_path)
+    return calculate_static_hash(static_folder)
 
 
 def format_size(size_bytes: int | float | str | None) -> str:

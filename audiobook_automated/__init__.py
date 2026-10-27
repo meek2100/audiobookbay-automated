@@ -35,8 +35,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # OPTIMIZATION: Static Asset Versioning Strategy
     # Priority:
     # 1. Config/Env Var (Developer Override)
-    # 2. version.txt (Docker Build Artifact)
-    # 3. Dynamic Calculation (Local Development Fallback)
+    # 2. Dynamic Runtime Content Calculation (Busts caches on live swaps/mounts)
 
     if not app.config.get("STATIC_VERSION"):
         static_folder = Path(app.root_path) / "static"

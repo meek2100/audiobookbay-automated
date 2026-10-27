@@ -43,9 +43,8 @@ RUN uv pip install --no-cache --no-deps .
 
 # 5. Copy scripts with correct ownership
 COPY --chown=appuser:appuser entrypoint.sh .
-# 6. Set permissions on scripts and generate version artifact
-RUN chmod +x entrypoint.sh && \
-    python3 -m audiobook_automated.utils > audiobook_automated/version.txt
+# 6. Set permissions on scripts
+RUN chmod +x entrypoint.sh
 
 # Expose the port the app runs on
 EXPOSE 5078

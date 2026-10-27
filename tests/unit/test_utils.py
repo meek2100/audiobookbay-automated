@@ -142,23 +142,18 @@ def test_construct_safe_save_path_windows_reserved_collision_logic() -> None:
         assert "\\" in result
 
 
-def test_get_application_version_os_error(tmp_path: Path) -> None:
-    """Test get_application_version handles OSError when reading version.txt."""
-    version_file = tmp_path / "version.txt"
-    version_file.write_text("hash")
-
-    # Use a subdir so parent is tmp_path
+def test_get_application_version(tmp_path: Path) -> None:
+    """Test get_application_version delegates directly to calculate_static_hash."""
     static_folder = tmp_path / "static"
     static_folder.mkdir()
 
-    with patch("pathlib.Path.read_text", side_effect=OSError("Read error")):
-        with patch(
-            "audiobook_automated.utils.calculate_static_hash",
-            return_value="calculated_v1",
-        ) as mock_calc:
-            version = get_application_version(static_folder)
-            assert version == "calculated_v1"
-            mock_calc.assert_called_once()
+    with patch(
+        "audiobook_automated.utils.calculate_static_hash",
+        return_value="calculated_v1",
+    ) as mock_calc:
+        version = get_application_version(static_folder)
+        assert version == "calculated_v1"
+        mock_calc.assert_called_once_with(static_folder)
 
 
 def test_calculate_static_hash(tmp_path: Path) -> None:

@@ -167,8 +167,8 @@ def test_startup_invalid_log_level(monkeypatch: Any, mock_flask_factory: Any) ->
     assert "Configuration Warning: Invalid LOG_LEVEL" in args[0]
 
 
-def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any) -> None:
-    """Test that create_app reads STATIC_VERSION from version.txt if present (Optimization)."""
+def test_create_app_calculates_runtime_static_version(monkeypatch: Any, mock_flask_factory: Any) -> None:
+    """Test that create_app computes STATIC_VERSION at runtime via calculate_static_hash."""
     mock_class, _ = mock_flask_factory
 
     # CRITICAL: Reload app module so it imports the patched Flask class from the fixture.
@@ -181,12 +181,10 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
     # Ensure environment is valid for create_app
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp/test")
 
-    expected_hash = "production-hash-123"
+    expected_hash = "runtime-hash-123"
 
     with (
-        patch("pathlib.Path.exists", return_value=True),
-        patch("pathlib.Path.read_text", return_value=expected_hash) as mock_read,
-        patch("audiobook_automated.utils.calculate_static_hash") as mock_calc,
+        patch("audiobook_automated.utils.calculate_static_hash", return_value=expected_hash) as mock_calc,
         # FIX: Patch torrent_manager to prevent real connection attempt during startup
         patch("audiobook_automated.extensions.torrent_manager") as mock_torrent_manager,
     ):
@@ -197,45 +195,7 @@ def test_create_app_uses_version_file(monkeypatch: Any, mock_flask_factory: Any)
         audiobook_automated.create_app()
 
         assert mock_app.config["STATIC_VERSION"] == expected_hash
-
-        mock_read.assert_called()
-
-        # Verify the expensive calculation was skipped
-        mock_calc.assert_not_called()
-
-
-def test_version_file_read_error(monkeypatch: Any, mock_flask_factory: Any) -> None:
-    """Test handling of OSError when reading version.txt."""
-    mock_class, _ = mock_flask_factory
-    importlib.reload(audiobook_automated)
-    mock_app = mock_class.return_value
-    mock_app.root_path = "/mock/root"
-    monkeypatch.setenv("SAVE_PATH_BASE", "/tmp/test")
-
-    # We mock calculate_static_hash as imported in utils, because that's where get_application_version is defined
-    # But wait, create_app calls get_application_version which calls calculate_static_hash from utils.
-    # We should patch get_application_version to test create_app behavior?
-    # Or patch internals of get_application_version.
-    # The original test tested the inline logic in create_app.
-    # Now create_app calls get_application_version.
-    # So we should probably test that create_app correctly uses get_application_version.
-    # But to maintain this specific test intent (fallback logic), we can patch get_application_version's dependencies.
-
-    with (
-        patch("pathlib.Path.exists", return_value=True),
-        patch("pathlib.Path.read_text", side_effect=OSError("Read error")),
-        patch("audiobook_automated.utils.calculate_static_hash", return_value="calc-hash") as mock_calc,
-        patch("audiobook_automated.extensions.torrent_manager") as mock_tm,
-    ):
-        mock_tm.verify_credentials.return_value = True
-        audiobook_automated.create_app()
-
-        assert mock_app.config["STATIC_VERSION"] == "calc-hash"
-        # Verify warning logged (by utils logger, not app logger directly, so we might check if caplog caught it if we cared)
-        # mock_app.logger.warning.assert_called_with("Failed to read version.txt, falling back to calculation.")
-        # Note: The logging happens in utils now, so checking mock_app.logger won't work unless utils uses the same logger instance or propagates.
-        # But we can verify fallback happened by checking the result and that calc was called.
-        mock_calc.assert_called()
+        mock_calc.assert_called_once()
 
 
 def test_app_entry_point() -> None:
