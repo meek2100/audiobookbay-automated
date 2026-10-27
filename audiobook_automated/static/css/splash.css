@@ -94,8 +94,8 @@
 
 @media (max-width: 768px) {
     #skip-splash-btn {
-        bottom: 20px;
-        right: 20px;
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        right: calc(20px + env(safe-area-inset-right, 0px));
         padding: 8px 16px;
         font-size: 0.75rem;
     }
