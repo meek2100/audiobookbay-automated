@@ -133,6 +133,11 @@ class Config:
     DL_URL: str | None = _dl_url.strip(" \"'") if _dl_url else None
     DL_CLIENT_OS: str = os.getenv("DL_CLIENT_OS", "posix").strip(" \"'").lower()
 
+    # Put.io Configuration
+    _putio_token: str | None = os.getenv("PUTIO_TOKEN")
+    PUTIO_TOKEN: str | None = _putio_token.strip(" \"'") if _putio_token else None
+    PUTIO_FOLDER_ID: str = os.getenv("PUTIO_FOLDER_ID", "0").strip(" \"'")
+
     # Logging
     # We allow LOG_LEVEL to be None if unset to support Gunicorn level inheritance in __init__.py.
     _log_level_raw: str | None = os.getenv("LOG_LEVEL")

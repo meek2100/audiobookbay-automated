@@ -99,8 +99,18 @@ class TorrentManager:
             # To satisfy 'Cannot assign to a method' or similar weirdness if any
             strategy_cls = cast(type[TorrentClientStrategy], strategy_class)  # type: ignore[redundant-cast]
 
+            token = app.config.get("PUTIO_TOKEN")
+            folder_id = app.config.get("PUTIO_FOLDER_ID", "0")
+
             self.strategy = strategy_cls(
-                host=host, port=port_int, username=username, password=password, scheme=scheme, timeout=timeout
+                host=host,
+                port=port_int,
+                username=username,
+                password=password,
+                scheme=scheme,
+                timeout=timeout,
+                token=token,
+                folder_id=folder_id,
             )
             logger.info("Plugin: Successfully loaded '%s'.", strategy_cls.__name__)
 

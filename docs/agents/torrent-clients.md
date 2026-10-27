@@ -24,6 +24,9 @@
   error strings on label failures to avoid masking system errors.
 - Deluge: Detect presence of the "Label" plugin at connection. If absent, retrieve all torrents to maintain visibility.
   Handle missing plugin exceptions gracefully.
+- Put.io: Cloud torrent client using REST API v2 (`DEFAULT_PORT = 443`). Authenticates via OAuth Bearer token
+  (`PUTIO_TOKEN` or `DL_PASSWORD`). Supports custom target folder via `PUTIO_FOLDER_ID` (defaults to root `0`). Displays
+  `fetching meta..` when transfer size is 0 during metadata resolution. Normalizes `percent_done` (0-100 float).
 
 ## Plugin Extensibility
 
