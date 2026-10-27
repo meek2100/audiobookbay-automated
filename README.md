@@ -4,7 +4,7 @@
 
 AudiobookBay Automated is a lightweight web application designed to simplify audiobook management. It allows users to
 search [**AudioBook Bay**](https://audiobookbay.lu/) for audiobooks and send magnet links directly to a designated
-**Deluge, qBittorrent or Transmission** client.
+**Deluge, qBittorrent, Transmission, or Put.io** client.
 
 ## How It Works
 
@@ -48,7 +48,7 @@ on their own and import them into your library.
 
 ### Prerequisites
 
-- **Deluge, qBittorrent or Transmission** (with the WebUI enabled)
+- **Deluge, qBittorrent, Transmission, or Put.io** (with WebUI or API access)
 - **Docker** (optional, for containerized deployments)
 - **Python 3.13 - 3.14** (for local execution)
 
@@ -68,13 +68,17 @@ The app uses environment variables to configure its behavior.
 > envs/DNS lookup.
 
 ```env
-DL_CLIENT=qbittorrent          # Options: qbittorrent, transmission, deluge
-DL_HOST=192.168.1.123          # IP/Hostname of your client
-DL_PORT=8080                   # WebUI Port
+DL_CLIENT=qbittorrent          # Options: qbittorrent, transmission, deluge, putio
+DL_HOST=192.168.1.123          # IP/Hostname of your client (not required for putio)
+DL_PORT=8080                   # WebUI Port (Put.io defaults to 443)
 DL_USERNAME=admin              # WebUI Username
-DL_PASSWORD=password           # WebUI Password
+DL_PASSWORD=password           # WebUI Password (or Put.io OAuth Token)
 DL_SCHEME=http                 # Protocol (http or https). Default: http.
 DL_CATEGORY=abb-automated      # Category to assign to torrents. Default: abb-automated.
+
+# Put.io specific (Optional when DL_CLIENT=putio)
+PUTIO_TOKEN=your_oauth_token   # OAuth token (can also use DL_PASSWORD)
+PUTIO_FOLDER_ID=0              # Target folder ID in Put.io (Default: 0 - root)
 ```
 
 #### 2. System Configuration (Required)
@@ -115,8 +119,14 @@ LOG_LEVEL=INFO                 # Logging verbosity: DEBUG, INFO, WARNING, ERROR.
 TZ=UTC                         # Timezone for logs (e.g. America/Los_Angeles). Default: UTC.
 NAV_LINK_NAME=Open Player      # Label for a custom link in the navbar.
 NAV_LINK_URL=http://...        # URL for the custom link.
+
+# UI Customization & Branding (Optional)
+SITE_TITLE=AudiobookBay Automated   # Custom navbar and browser tab title.
+DEFAULT_THEME=purple           # Color theme: purple (default), dark, light, crow.
+SITE_LOGO=audiobookbay-header.jpg   # Header logo (filename in static/images or full URL/path).
 SPLASH_ENABLED=True            # Enable/Disable the welcome splash screen. Default: True.
-SPLASH_TITLE=AudiobookBay Automated   # Custom title for the splash screen.
+SPLASH_TITLE=AudiobookBay Automated # Custom title for the splash screen.
+SPLASH_VIDEO=audiobookbay-splash.mp4 # Custom video file for animated splash screen.
 SPLASH_MESSAGE=Welcome...      # Custom HTML message for the splash screen.
 SPLASH_DURATION=4500           # Duration in ms before splash fades out. Default: 4500.
 ```
@@ -125,7 +135,8 @@ SPLASH_DURATION=4500           # Duration in ms before splash fades out. Default
 
 1. Use `docker-compose` for quick deployment. You can find ready-to-use templates in the [`examples/`](examples/)
    directory.
-   - **Recommended:** [`examples/docker-compose.yaml`](examples/docker-compose.yaml) (Uses a `.env` file for security)
+   - **Recommended:** [`examples/docker-compose.env.yaml`](examples/docker-compose.env.yaml) (Uses a `.env` file for
+     security)
    - **Alternative:** [`examples/docker-compose.no-env.yaml`](examples/docker-compose.no-env.yaml) (Hardcoded
      configuration)
 

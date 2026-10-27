@@ -166,7 +166,7 @@ cython_debug/
 .python-version
 
 # Local Tracker Overrides
-trackers.json
+/trackers.json
 
 # Local Docker Compose configurations
 docker-compose.yaml
