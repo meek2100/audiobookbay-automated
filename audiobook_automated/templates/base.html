@@ -50,6 +50,9 @@
             <video id="splash-video" autoplay muted playsinline>
                 <source src="{{ splash_video }}" type="video/mp4" />
             </video>
+            <button id="skip-splash-btn" class="skip-splash-btn" type="button" aria-label="Skip Intro Animation">
+                Skip Intro
+            </button>
             {% else %}
             <div id="splash-content">
                 {% if splash_title %}

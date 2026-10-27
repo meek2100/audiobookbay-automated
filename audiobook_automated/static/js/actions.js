@@ -129,10 +129,18 @@ function initSplashScreen() {
         return;
     }
 
-    // Click to dismiss immediately
+    // Click to dismiss immediately on overlay or skip button
     splashOverlay.addEventListener("click", () => {
         dismissSplash(splashOverlay);
     });
+
+    const skipBtn = document.getElementById("skip-splash-btn");
+    if (skipBtn) {
+        skipBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            dismissSplash(splashOverlay);
+        });
+    }
 
     const splashVideo = document.getElementById("splash-video");
     if (splashVideo) {

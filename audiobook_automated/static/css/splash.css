@@ -52,3 +52,46 @@
     font-weight: 600;
     text-shadow: 0 0 15px rgba(0, 188, 212, 0.4);
 }
+
+/* Themeable Skip Intro Button */
+#skip-splash-btn {
+    position: absolute;
+    bottom: 36px;
+    right: 36px;
+    padding: 10px 22px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-main, #ffffff);
+    background: var(--glass-bg, rgba(20, 20, 25, 0.7));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.2));
+    border-radius: var(--btn-radius, 50px);
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-soft, 0 8px 32px 0 rgba(0, 0, 0, 0.5));
+    transition: all 0.3s ease;
+    z-index: 100000;
+}
+
+#skip-splash-btn:hover {
+    color: #ffffff;
+    border-color: var(--accent-color, #00bcd4);
+    box-shadow: 0 0 16px var(--accent-color, rgba(0, 188, 212, 0.4));
+    transform: translateY(-2px);
+}
+
+#skip-splash-btn:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+    #skip-splash-btn {
+        bottom: 20px;
+        right: 20px;
+        padding: 8px 16px;
+        font-size: 0.75rem;
+    }
+}
