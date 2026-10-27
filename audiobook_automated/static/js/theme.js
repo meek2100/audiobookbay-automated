@@ -2,7 +2,8 @@
 
 (function () {
     // Immediate execution to prevent FOUC (Flash of Unstyled Content)
-    const savedTheme = localStorage.getItem("theme") || "crow";
+    const fallbackTheme = window.DEFAULT_THEME || "purple";
+    const savedTheme = localStorage.getItem("theme") || fallbackTheme;
     document.documentElement.setAttribute("data-theme", savedTheme);
 
     function setTheme(theme) {

@@ -20,7 +20,7 @@ from audiobook_automated.errors import AppError, InvalidRequestError, TorrentCli
 from .extensions import limiter, talisman, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .scraper.parser import BookSummary
-from .utils import construct_safe_save_path, parse_bool, sanitize_title
+from .utils import construct_safe_save_path, format_user_error, parse_bool, sanitize_title
 
 logger = logging.getLogger(__name__)
 
@@ -150,12 +150,25 @@ def search() -> str | Response:
         # Specific handling for when mirrors are unreachable
         logger.error(f"Search failed due to connection error: {ce}")
         error_message = "Could not connect to AudiobookBay mirrors. Please try again later."
-        return render_template("search.html", books=books, error=error_message, query=query)
+        return render_template(
+            "search.html",
+            books=books,
+            error=error_message,
+            debug_details=str(ce),
+            query=query,
+        )
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
         error_message = f"Search Failed: {str(e)}"
-        return render_template("search.html", books=books, error=error_message, query=query)
+        _, debug_details = format_user_error(e, context="search")
+        return render_template(
+            "search.html",
+            books=books,
+            error=error_message,
+            debug_details=debug_details,
+            query=query,
+        )
 
 
 @main_bp.route("/details")
@@ -181,7 +194,12 @@ def details() -> str | Response:
         return render_template("details.html", book=book_details)
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
-        return render_template("details.html", error=f"Could not load details: {str(e)}")
+        error_message, debug_details = format_user_error(e, context="details")
+        return render_template(
+            "details.html",
+            error=error_message,
+            debug_details=debug_details,
+        )
 
 
 @main_bp.route("/send", methods=["POST"])
@@ -392,4 +410,10 @@ def status() -> str | Response | tuple[Response, int]:
         if is_json:
             return jsonify({"error": str(e)}), 500
 
-        return render_template("status.html", torrents=[], error=f"Error connecting to client: {str(e)}")
+        error_message, debug_details = format_user_error(e, context="client")
+        return render_template(
+            "status.html",
+            torrents=[],
+            error=error_message,
+            debug_details=debug_details,
+        )

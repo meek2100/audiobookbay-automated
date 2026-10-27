@@ -6,7 +6,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: linear-gradient(135deg, #020202 0%, #0a0a14 100%);
+    background: var(--primary-bg);
     z-index: 99999;
     display: flex;
     justify-content: center;

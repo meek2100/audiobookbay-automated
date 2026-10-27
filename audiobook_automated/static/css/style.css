@@ -23,7 +23,63 @@
     --btn-radius: 50px;
 }
 
-/* --- Theme Definitions --- */
+/* Catppuccin Mocha */
+[data-theme="catppuccin"] {
+    --primary-bg: linear-gradient(135deg, #181825 0%, #1e1e2e 100%);
+    --accent-color: #cba6f7;
+    --accent-hover: #b4befe;
+    --text-main: #cdd6f4;
+    --text-muted: #a6adc8;
+    --glass-bg: rgba(30, 30, 46, 0.75);
+    --glass-border: 1px solid rgba(203, 166, 247, 0.2);
+    --btn-primary-bg: linear-gradient(135deg, #cba6f7, #89b4fa);
+    --btn-primary-hover: linear-gradient(135deg, #b4befe, #74c7ec);
+}
+[data-theme="catppuccin"] .btn-primary {
+    color: #11111b;
+}
+
+/* Nord */
+[data-theme="nord"] {
+    --primary-bg: linear-gradient(135deg, #242933 0%, #2e3440 100%);
+    --accent-color: #88c0d0;
+    --accent-hover: #8fbcbb;
+    --text-main: #eceff4;
+    --text-muted: #d8dee9;
+    --glass-bg: rgba(46, 52, 64, 0.75);
+    --glass-border: 1px solid rgba(136, 192, 208, 0.25);
+    --btn-primary-bg: linear-gradient(135deg, #5e81ac, #81a1c1);
+    --btn-primary-hover: linear-gradient(135deg, #81a1c1, #88c0d0);
+}
+
+/* Tokyo Night */
+[data-theme="tokyo"] {
+    --primary-bg: linear-gradient(135deg, #16161e 0%, #1a1b26 100%);
+    --accent-color: #7aa2f7;
+    --accent-hover: #bb9af7;
+    --text-main: #c0caf5;
+    --text-muted: #9aa5ce;
+    --glass-bg: rgba(26, 27, 38, 0.8);
+    --glass-border: 1px solid rgba(122, 162, 247, 0.25);
+    --btn-primary-bg: linear-gradient(135deg, #7aa2f7, #bb9af7);
+    --btn-primary-hover: linear-gradient(135deg, #89ddff, #7aa2f7);
+}
+[data-theme="tokyo"] .btn-primary {
+    color: #15161e;
+}
+
+/* OLED Black */
+[data-theme="oled"] {
+    --primary-bg: #000000;
+    --accent-color: #38bdf8;
+    --accent-hover: #7dd3fc;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --glass-bg: rgba(15, 15, 15, 0.9);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+    --btn-primary-bg: linear-gradient(135deg, #0284c7, #0ea5e9);
+    --btn-primary-hover: linear-gradient(135deg, #0369a1, #0284c7);
+}
 
 /* Purple (Glass) */
 [data-theme="purple"] {
@@ -229,17 +285,23 @@ body {
     gap: 15px;
     text-decoration: none;
     border: none; /* Reset link border */
+    max-width: 280px;
 }
 
+.nav-logo-img,
 .nav-logo img {
-    height: 50px; /* Optimal height for this header */
+    height: auto;
+    max-height: 52px;
+    max-width: 260px;
     width: auto;
     display: block;
+    object-fit: contain;
     transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.nav-logo:hover .nav-logo-img,
 .nav-logo:hover img {
-    transform: scale(1.08);
+    transform: scale(1.05);
 }
 
 .brand-text {
@@ -479,15 +541,69 @@ a:hover {
 }
 
 .error-message {
-    background: rgba(229, 57, 53, 0.15);
-    border: 1px solid #e53935;
+    background: rgba(229, 57, 53, 0.12);
+    border: 1px solid rgba(229, 57, 53, 0.4);
     color: #ffcdd2;
-    padding: 20px;
+    padding: 24px;
     border-radius: var(--border-radius);
     margin: 20px auto;
     max-width: 800px;
-    text-align: center;
+    text-align: left;
     font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.error-message-primary {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.error-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.error-message-primary p {
+    margin: 0;
+    line-height: 1.5;
+    font-size: 1.05rem;
+    color: var(--text-main, #ffffff);
+}
+
+.error-debug-details {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.9rem;
+}
+
+.error-debug-details summary {
+    cursor: pointer;
+    color: var(--accent-color, #00bcd4);
+    font-weight: 600;
+    outline: none;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.error-debug-details summary:hover {
+    color: var(--accent-hover, #b2ebf2);
+}
+
+.error-debug-details pre {
+    margin: 12px 0 0;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #ef9a9a;
 }
 
 /* Scrollbar styling */
@@ -554,8 +670,10 @@ a:hover {
         background: rgba(255, 255, 255, 0.15);
     }
 
+    .nav-logo-img,
     .nav-logo img {
-        height: 32px;
+        max-height: 38px;
+        max-width: 180px;
     }
 
     /* Layout adjustments */

@@ -321,6 +321,41 @@ def safe_get(dictionary: dict[str, Any], key: str, default: Any = None) -> Any:
     return value if value is not None else default
 
 
+def format_user_error(err: Exception | str, context: str = "general") -> tuple[str, str | None]:
+    """Format an exception into a user-friendly message and technical debug details.
+
+    Args:
+        err: The exception or error string.
+        context: Context of the error ('client', 'search', 'details', 'general').
+
+    Returns:
+        tuple[str, str | None]: (user_friendly_message, technical_details)
+    """
+    raw_error = str(err).strip()
+
+    if context == "client":
+        friendly = (
+            "Error connecting to client: Unable to communicate with your torrent client. "
+            "Please check that your torrent client (qBittorrent, Transmission, or Deluge) is running "
+            "and that connection details in your configuration (host, port, credentials) are correct."
+        )
+    elif context == "search":
+        friendly = (
+            "Search Failed: Unable to retrieve results from AudiobookBay. "
+            "The site may be experiencing downtime, rate-limiting requests, or blocking the current IP/proxy. "
+            "Please try again in a few moments."
+        )
+    elif context == "details":
+        friendly = (
+            "Could not load details: Unable to retrieve audiobook details. "
+            "The requested book may no longer exist, or the source page could not be parsed."
+        )
+    else:
+        friendly = f"An unexpected error occurred: {raw_error}"
+
+    return friendly, raw_error if raw_error else None
+
+
 if __name__ == "__main__":  # pragma: no cover
     # Script entry point for Docker build time optimization.
     # Calculates the hash of the static directory relative to this file

@@ -405,3 +405,28 @@ def test_safe_get() -> None:
     assert safe_get(d, "missing", "default") == "default"
     # Key exists but value is None -> returns default
     assert safe_get(d, "none", "default") == "default"
+
+
+def test_format_user_error() -> None:
+    """Test format_user_error for all supported contexts and fallbacks."""
+    from audiobook_automated.utils import format_user_error
+
+    # Case 1: Client error
+    friendly_client, debug_client = format_user_error(Exception("Host unreachable"), context="client")
+    assert "Error connecting to client" in friendly_client
+    assert debug_client == "Host unreachable"
+
+    # Case 2: Search error
+    friendly_search, debug_search = format_user_error("Timeout", context="search")
+    assert "Search Failed" in friendly_search
+    assert debug_search == "Timeout"
+
+    # Case 3: Details error
+    friendly_details, debug_details = format_user_error(ValueError("Invalid HTML"), context="details")
+    assert "Could not load details" in friendly_details
+    assert debug_details == "Invalid HTML"
+
+    # Case 4: General error with empty string
+    friendly_gen, debug_gen = format_user_error("", context="unknown")
+    assert "An unexpected error occurred" in friendly_gen
+    assert debug_gen is None

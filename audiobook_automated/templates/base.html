@@ -13,6 +13,7 @@
                 document.documentElement.classList.add("no-splash");
             }
             window.APP_VERSION = "{{ static_version }}";
+            window.DEFAULT_THEME = "{{ default_theme }}";
         </script>
         <style nonce="{{ csp_nonce() }}">
             /* Immediate override to hide splash if no-splash class is present */
@@ -58,11 +59,10 @@
             <div class="nav-container">
                 <a href="{{ url_for('main.search') }}" class="nav-logo">
                     {% if site_logo %}
-                    <img src="{{ site_logo }}" alt="{{ site_title }}" />
+                    <img class="nav-logo-img" src="{{ site_logo }}" alt="{{ site_title }}" />
                     {% else %}
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="{{ site_title }}" />
-                    {% endif %}
                     <span class="brand-text">{{ site_title }}</span>
+                    {% endif %}
                 </a>
 
                 <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation">
@@ -103,8 +103,12 @@
                         </svg>
                     </a>
                     {% endif %}
-                    <select id="theme-selector" class="theme-select">
-                        <option value="crow">🌙 Crow</option>
+                    <select id="theme-selector" class="theme-select" aria-label="Select color theme">
+                        <option value="crow">🌙 Crow (Default)</option>
+                        <option value="catppuccin">🌸 Catppuccin Mocha</option>
+                        <option value="nord">❄️ Nord Arctic</option>
+                        <option value="tokyo">🏙️ Tokyo Night</option>
+                        <option value="oled">🖤 OLED Black</option>
                         <option value="purple">🔮 Purple</option>
                         <option value="forest">🌲 Forest</option>
                         <option value="ocean">🌊 Ocean</option>

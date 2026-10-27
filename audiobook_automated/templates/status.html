@@ -11,7 +11,16 @@
 <div class="status-container">
     {% if error %}
     <div class="error-message">
-        <p>{{ error }}</p>
+        <div class="error-message-primary">
+            <span class="error-icon" aria-hidden="true">⚠️</span>
+            <p>{{ error }}</p>
+        </div>
+        {% if debug_details and flask_debug %}
+        <details class="error-debug-details">
+            <summary>Technical Details & Debug Info</summary>
+            <pre><code>{{ debug_details }}</code></pre>
+        </details>
+        {% endif %}
     </div>
     {% else %}
     <table>

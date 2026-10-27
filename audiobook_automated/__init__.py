@@ -103,6 +103,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             "splash_title": app.config["SPLASH_TITLE"],
             "splash_message": app.config["SPLASH_MESSAGE"],
             "splash_duration": app.config["SPLASH_DURATION"],
+            "default_theme": app.config.get("DEFAULT_THEME", "purple"),
+            "flask_debug": bool(app.config.get("FLASK_DEBUG", False) or app.config.get("TESTING", False)),
         }
 
     # OPTIMIZATION: Aggressive caching for static assets

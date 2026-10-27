@@ -4,7 +4,7 @@
 import logging
 import os
 
-from .constants import DEFAULT_SITE_TITLE, DEFAULT_SPLASH_MESSAGE
+from .constants import DEFAULT_SITE_LOGO, DEFAULT_SITE_TITLE, DEFAULT_SPLASH_MESSAGE, DEFAULT_THEME
 from .utils import parse_bool
 
 
@@ -143,7 +143,8 @@ class Config:
     # Site Identity
     SITE_TITLE: str = os.getenv("SITE_TITLE", DEFAULT_SITE_TITLE).strip(" \"'")
     _site_logo: str | None = os.getenv("SITE_LOGO")
-    SITE_LOGO: str | None = _site_logo.strip(" \"'") if _site_logo else None
+    SITE_LOGO: str | None = _site_logo.strip(" \"'") if _site_logo is not None else DEFAULT_SITE_LOGO
+    DEFAULT_THEME: str = os.getenv("DEFAULT_THEME", DEFAULT_THEME).strip(" \"'").lower()
 
     # Splash Screen Configuration
     SPLASH_ENABLED: bool = parse_bool(os.getenv("SPLASH_ENABLED"), True)
