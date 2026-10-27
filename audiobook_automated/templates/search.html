@@ -25,36 +25,45 @@
 </div>
 
 {% if error %}
-<p class="error-message">{{ error }}</p>
+<div class="error-message">
+    <p>{{ error }}</p>
+</div>
 {% endif %} {% if books %}
 <div id="filter-container">
     <div class="filter-row">
         <div class="filter-controls">
-            <select id="category-filter">
-                <option value="">All Categories</option>
-                {% for cat in categories %}
-                <option value="{{ cat }}">{{ cat }}</option>
-                {% endfor %}
-            </select>
-            <select id="language-filter">
-                <option value="">All Languages</option>
-                {% for lang in languages %}
-                <option value="{{ lang }}">{{ lang }}</option>
-                {% endfor %}
-            </select>
-            <select id="bitrate-filter">
-                <option value="">All Bitrates</option>
-                {% for bitrate in bitrates %}
-                <option value="{{ bitrate }}">{{ bitrate }}</option>
-                {% endfor %}
-            </select>
-            <select id="format-filter">
-                <option value="">All Formats</option>
-                {% for fmt in formats %}
-                <option value="{{ fmt }}">{{ fmt }}</option>
-                {% endfor %}
-            </select>
-            <input type="text" id="date-range-filter" placeholder="Select Date Range" />
+            <div class="filter-row-inputs">
+                <select id="category-filter" aria-label="Category Filter">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+                <select id="language-filter" aria-label="Language Filter">
+                    <option value="">All Languages</option>
+                    {% for lang in languages %}
+                    <option value="{{ lang }}">{{ lang }}</option>
+                    {% endfor %}
+                </select>
+                <select id="bitrate-filter" aria-label="Bitrate Filter">
+                    <option value="">All Bitrates</option>
+                    {% for bitrate in bitrates %}
+                    <option value="{{ bitrate }}">{{ bitrate }}</option>
+                    {% endfor %}
+                </select>
+                <select id="format-filter" aria-label="Format Filter">
+                    <option value="">All Formats</option>
+                    {% for fmt in formats %}
+                    <option value="{{ fmt }}">{{ fmt }}</option>
+                    {% endfor %}
+                </select>
+                <input
+                    type="text"
+                    id="date-range-filter"
+                    placeholder="Select Date Range"
+                    aria-label="Date Range Filter"
+                />
+            </div>
         </div>
     </div>
     <div class="filter-row filter-row-bottom">
@@ -112,7 +121,7 @@
                 data-file-size="{{ book.file_size }}"
                 data-post-date="{{ book.post_date }}"
             >
-                <td>
+                <td class="col-cover">
                     <a href="{{ url_for('main.details', link=book.link) }}">
                         <img
                             src="{{ book.cover if book.cover else default_cover_url }}"
@@ -123,7 +132,7 @@
                         />
                     </a>
                 </td>
-                <td>
+                <td class="col-info">
                     <p class="book-title">{{ book.title }}</p>
 
                     <div class="categories-container">
@@ -141,7 +150,7 @@
                         <span class="book-post_date">Posted: {{ book.post_date }}</span>
                     </div>
                 </td>
-                <td>
+                <td class="col-actions">
                     <div class="action-buttons">
                         <a href="{{ url_for('main.details', link=book.link) }}" class="btn-glass details-button"
                             >Details</a
@@ -156,7 +165,7 @@
                     </div>
                 </td>
             </tr>
-            {% endfor %} {% else %} {% if query %}
+            {% endfor %} {% else %} {% if query and not error %}
             <tr>
                 <td colspan="3" class="empty-message">
                     No audiobooks found for "<strong>{{ query }}</strong>". <br />

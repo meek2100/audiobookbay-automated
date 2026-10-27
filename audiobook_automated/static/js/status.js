@@ -11,7 +11,7 @@ window.statusInterval = null; // Exposed for testing cleanup
 
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("status-table-body");
-    // Only run if we are on the status page
+    // Only run if we are on the status page and the table is present
     if (!tableBody) return;
 
     // Poll every 5 seconds
@@ -22,8 +22,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.error("Status poll failed:", response.status);
                 return;
             }
-            const torrents = await response.json();
-            updateTable(tableBody, torrents);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                updateTable(tableBody, data);
+            }
         } catch (error) {
             console.error("Failed to fetch status:", error);
         } finally {
@@ -55,12 +57,12 @@ function updateTable(tbody, torrents) {
         .map(
             (torrent) => `
         <tr>
-            <td>${escapeHtml(torrent.name)}</td>
-            <td>${torrent.progress}%</td>
-            <td>${escapeHtml(torrent.state)}</td>
-            <td>${escapeHtml(torrent.size)}</td>
-            <td>
-                <button class="remove-button remove-torrent-btn" data-torrent-id="${torrent.id}">Remove</button>
+            <td class="cell-title">${escapeHtml(torrent.name)}</td>
+            <td class="cell-progress">${torrent.progress}%</td>
+            <td class="cell-state">${escapeHtml(torrent.state)}</td>
+            <td class="cell-size">${escapeHtml(torrent.size)}</td>
+            <td class="cell-action">
+                <button class="remove-button remove-torrent-btn" data-torrent-id="${escapeHtml(String(torrent.id))}">Remove</button>
             </td>
         </tr>
     `
@@ -71,19 +73,16 @@ function updateTable(tbody, torrents) {
 }
 
 /**
- * Simple HTML escaping to prevent XSS in table cells.
- * @param {string} text - The text to escape.
- * @returns {string} - Escaped text.
+ * Helper to escape HTML to prevent XSS.
+ * @param {string} str - Raw string.
+ * @returns {string} Safe HTML string.
  */
-function escapeHtml(text) {
-    if (!text) return "";
-    return text
-        .toString()
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;")
-        .replace(/`/g, "&#96;")
-        .replace(/\//g, "&#47;");
+        .replace(/'/g, "&#039;");
 }

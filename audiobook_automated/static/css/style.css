@@ -586,3 +586,39 @@ a:hover {
         transform: rotate(360deg);
     }
 }
+
+/* Screen reader only utility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Ensure native select dropdown options look good across dark and light themes */
+select option {
+    background-color: #1a1a2e;
+    color: #ffffff;
+}
+
+[data-theme="light"] select option {
+    background-color: #ffffff;
+    color: #2c3e50;
+}
+
+/* Maintain circular shape for reload button on mobile */
+@media (max-width: 768px) {
+    .navbar .nav-links a.btn-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        padding: 0;
+        margin: 0 auto;
+        display: flex;
+    }
+}

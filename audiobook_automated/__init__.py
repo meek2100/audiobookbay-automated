@@ -19,6 +19,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     """Create and configure a Flask application instance."""
     app = Flask(__name__)
     app.config.from_object(config_class)
+    # Ensure properties on config class instance are resolved into app.config
+    app.config["LIBRARY_RELOAD_ENABLED"] = getattr(config_class(), "LIBRARY_RELOAD_ENABLED", False)
 
     # Validate critical configuration
     config_class.validate(app.logger)

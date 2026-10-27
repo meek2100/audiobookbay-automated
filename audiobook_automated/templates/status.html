@@ -13,8 +13,7 @@
     <div class="error-message">
         <p>{{ error }}</p>
     </div>
-    {% endif %}
-
+    {% else %}
     <table>
         <caption class="sr-only">
             List of active downloads
@@ -39,7 +38,7 @@
                     <button class="remove-button remove-torrent-btn" data-torrent-id="{{ torrent.id }}">Remove</button>
                 </td>
             </tr>
-            {% endfor %} {% else %} {% if not error %}
+            {% endfor %} {% else %}
             <tr>
                 <td
                     colspan="5"
@@ -49,8 +48,9 @@
                     No active downloads found.
                 </td>
             </tr>
-            {% endif %} {% endif %}
+            {% endif %}
         </tbody>
     </table>
+    {% endif %}
 </div>
 {% endblock %}

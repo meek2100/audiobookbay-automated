@@ -19,7 +19,7 @@
     width: 100%;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    aspect-ratio: 1/1.5;
+    aspect-ratio: 1 / 1.5;
     object-fit: cover;
 }
 
@@ -32,23 +32,28 @@
 .back-link {
     display: inline-flex;
     margin-bottom: 20px;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.95rem;
+    color: var(--accent-color);
     font-weight: 600;
+    transition: color 0.2s;
+}
+
+.back-link:hover {
+    color: var(--accent-hover);
 }
 
 .details-info h2 {
     margin-top: 0;
-    color: white;
+    color: var(--text-main);
     font-size: 2.2rem;
-    line-height: 1.2;
+    line-height: 1.25;
     margin-bottom: 25px;
+    word-break: break-word;
 }
 
-/* Metadata is now handled by .metadata-grid in style.css */
-/* We just add specific spacing here if needed */
+/* Metadata */
 .details-meta-wrapper {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.25);
     padding: 20px;
     border-radius: 12px;
     margin-bottom: 30px;
@@ -66,14 +71,14 @@
 }
 
 .details-download-btn {
-    /* Inherits .btn-primary */
-    padding: 14px 35px; /* Slightly larger for main CTA */
-    font-size: 1.1rem;
+    min-height: 48px;
+    padding: 12px 36px;
+    font-size: 1.05rem;
 }
 
 .direct-link-btn {
-    /* Inherits .btn-glass */
-    padding: 14px 25px;
+    min-height: 48px;
+    padding: 12px 28px;
 }
 
 /* Description */
@@ -81,10 +86,11 @@
     line-height: 1.8;
     color: var(--text-muted);
     font-size: 1.05rem;
+    word-break: break-word;
 }
 
 .details-description h3 {
-    color: white;
+    color: var(--text-main);
     font-size: 1.3rem;
     margin-bottom: 15px;
     display: flex;
@@ -127,10 +133,11 @@
 .tracker-item {
     font-size: 0.8rem;
     background: rgba(0, 0, 0, 0.3);
-    padding: 5px 12px;
+    padding: 6px 12px;
     border-radius: 6px;
     color: rgba(255, 255, 255, 0.7);
     font-family: monospace;
+    word-break: break-all;
 }
 
 /* Responsive */
@@ -139,31 +146,45 @@
         flex-direction: column;
         align-items: center;
         padding: 25px;
+        gap: 30px;
     }
 
     .details-left {
         width: 100%;
-        max-width: 250px;
+        max-width: 260px;
     }
 
     .details-info {
         width: 100%;
-        text-align: center; /* Center align on mobile for cleaner look */
+        text-align: left;
     }
 
-    /* Re-align grid text for centered mobile view */
-    .metadata-grid {
-        justify-content: center;
-        text-align: left; /* Keep values readable */
+    .details-info h2 {
+        font-size: 1.8rem;
+        text-align: center;
     }
 
     .action-bar {
-        justify-content: center;
+        justify-content: stretch;
         flex-direction: column;
+        gap: 12px;
     }
 
     .details-download-btn,
     .direct-link-btn {
         width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 500px) {
+    .details-container {
+        padding: 16px;
+    }
+    .details-left {
+        max-width: 200px;
+    }
+    .details-info h2 {
+        font-size: 1.5rem;
     }
 }

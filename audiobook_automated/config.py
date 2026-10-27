@@ -154,12 +154,8 @@ class Config:
 
     @property
     def LIBRARY_RELOAD_ENABLED(self) -> bool:
-        """Determine if Audiobookshelf integration is enabled.
-
-        Returns:
-            bool: True if all required ABS configuration values are present, False otherwise.
-        """
-        return all([self.ABS_URL, self.ABS_KEY, self.ABS_LIB])
+        """Check if all required Audiobookshelf configuration is present."""
+        return bool(self.ABS_URL and self.ABS_KEY and self.ABS_LIB)
 
     @classmethod
     def validate(cls, logger: logging.Logger) -> None:
