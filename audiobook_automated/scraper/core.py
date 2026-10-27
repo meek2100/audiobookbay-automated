@@ -6,7 +6,7 @@ import random
 import time
 from collections.abc import Sequence
 from typing import Any, cast
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urljoin, urlparse
 
 from ..constants import ERROR_HASH_NOT_FOUND
 from ..extensions import executor
@@ -167,7 +167,12 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
     Returns:
         A dictionary containing book details, or None if fetching fails.
     """
-    # 1. Check Cache
+    # 1. Normalize relative URLs from search results (e.g., /abss/book-title/)
+    if url.startswith("/"):
+        active_mirror = network.find_best_mirror() or network.get_mirrors()[0]
+        url = urljoin(f"https://{active_mirror}", url)
+
+    # 2. Check Cache
     if not refresh:
         with CACHE_LOCK:
             if url in network.details_cache:

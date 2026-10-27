@@ -308,3 +308,24 @@ def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
         details = get_book_details("https://audiobookbay.lu/strat3")
         assert details is not None
         assert details["info_hash"] == "5555555555666666666677777777778888888888"
+
+
+def test_get_book_details_relative_url(mock_sleep: Any) -> None:
+    """Test get_book_details handles relative URLs from search results correctly."""
+    html = """
+    <div class="post">
+        <div class="postTitle"><h1>Relative URL Book</h1></div>
+        <div class="postContent">Content</div>
+    </div>
+    """
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = html
+    mock_session.get.return_value = mock_response
+
+    with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
+        with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value="audiobookbay.lu"):
+            details = get_book_details("/abss/relative-book/")
+            assert details is not None
+            assert details["title"] == "Relative URL Book"
