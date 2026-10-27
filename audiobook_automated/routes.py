@@ -188,19 +188,31 @@ def search() -> str | Response:
     except ConnectionError as ce:
         # Specific handling for when mirrors are unreachable
         logger.error(f"Search failed due to connection error: {ce}")
-        error_message = "Could not connect to AudiobookBay mirrors. Please try again later."
+        is_debug = bool(
+            current_app.config.get("FLASK_DEBUG", False)
+            or current_app.config.get("DEBUG", False)
+            or current_app.config.get("TESTING", False)
+        )
+        friendly_message, _ = format_user_error(ce, context="search")
+        debug_details: str | None = f"Could not connect to AudiobookBay mirrors: {ce}"
+        error_message = debug_details if is_debug else friendly_message
         return render_template(
             "search.html",
             books=books,
             error=error_message,
-            debug_details=str(ce),
+            debug_details=debug_details,
             query=query,
         )
 
     except Exception as e:
         logger.error(f"Failed to search: {e}", exc_info=True)
-        error_message = f"Search Failed: {str(e)}"
-        _, debug_details = format_user_error(e, context="search")
+        is_debug = bool(
+            current_app.config.get("FLASK_DEBUG", False)
+            or current_app.config.get("DEBUG", False)
+            or current_app.config.get("TESTING", False)
+        )
+        friendly_message, debug_details = format_user_error(e, context="search")
+        error_message = f"Search Failed: {str(e)}" if is_debug else friendly_message
         return render_template(
             "search.html",
             books=books,

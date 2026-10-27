@@ -424,7 +424,7 @@ function reloadLibrary() {
                 })
                 .catch((error) => {
                     console.error("Error:", error);
-                    showNotification("An error occurred while trying to reload the library.", "error");
+                    showNotification("Could not refresh your library. Please try again in a moment.", "error");
                 });
         },
         "Scan Now"
@@ -472,7 +472,7 @@ function deleteTorrent(torrentId, buttonElement) {
                 })
                 .catch((error) => {
                     console.error("Error:", error);
-                    showNotification("An error occurred while removing the torrent.", "error");
+                    showNotification("Could not remove this download. Please try again in a moment.", "error");
                 });
         },
         "Remove",
@@ -537,7 +537,10 @@ function sendTorrent(link, title, buttonElement) {
         })
         .catch((error) => {
             console.error("Download failed:", error);
-            showNotification("Failed to send download: " + error.message, "error");
+            showNotification(
+                "Could not start download. Please check that your download app is running and try again.",
+                "error"
+            );
             // Allow retry on error
             if (buttonElement) {
                 buttonElement.disabled = false;

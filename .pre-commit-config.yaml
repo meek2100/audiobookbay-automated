@@ -29,12 +29,12 @@ repos:
   # ------------------------------------------------------------------
   # Run Format BEFORE Check so linters validate the final code structure.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.11
+    rev: v0.17.2
     hooks:
       - id: ruff-format
 
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: "v3.7.4"
+    rev: "v3.9.10"
     hooks:
       - id: prettier
         types_or: [css, javascript, html, json, yaml, markdown]
@@ -44,14 +44,14 @@ repos:
   # 3. SPELLING & HEADERS (Fast checks)
   # ------------------------------------------------------------------
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.3
     hooks:
       - id: codespell
         exclude: ^(poetry\.lock|package-lock\.json)$
         args: ["--ignore-words-list", "afterAll, COo"]
 
   - repo: https://github.com/meek2100/pre-commit-context-header
-    rev: v0.1.0
+    rev: v0.1.1
     hooks:
       - id: context-headers
         args: ["--fix"]
@@ -62,14 +62,14 @@ repos:
   # ------------------------------------------------------------------
   # Python Linter (Ruff)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.11
+    rev: v0.17.2
     hooks:
       - id: ruff-check
         args: ["--fix"]
 
   # Markdown Linter
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.46.0
+    rev: v0.49.1
     hooks:
       - id: markdownlint
         name: Lint Markdown
@@ -83,7 +83,7 @@ repos:
         files: .*(docker-compose|compose).*\.y[a]?ml$
 
   - repo: https://github.com/AleksaC/hadolint-py
-    rev: v2.14.0
+    rev: v2.15.1
     hooks:
       - id: hadolint
         args: ["--ignore", "DL3008"]
@@ -95,7 +95,7 @@ repos:
         args: ["--format=gcc"]
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         name: Lint YAML
@@ -105,7 +105,7 @@ repos:
   # 5. STATIC TYPE CHECKING (Slowest - Run last)
   # ------------------------------------------------------------------
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.19.1"
+    rev: "v2.4.0"
     hooks:
       - id: mypy
         args: ["--no-incremental", "--config=pyproject.toml"]
@@ -128,7 +128,7 @@ repos:
           - types-gunicorn
 
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.408
+    rev: v1.1.414
     hooks:
       - id: pyright
         additional_dependencies:
