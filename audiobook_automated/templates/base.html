@@ -49,9 +49,15 @@
             {% if splash_video or splash_video_webm %}
             <video id="splash-video" autoplay muted playsinline>
                 {% if splash_video_webm %}
-                <source src="{{ splash_video_webm }}" type="video/webm" />
+                <source
+                    src="{{ splash_video_webm }}{% if not splash_video_webm.startswith(('http://', 'https://', 'data:')) and '?' not in splash_video_webm %}?v={{ static_version }}{% endif %}"
+                    type="video/webm"
+                />
                 {% endif %} {% if splash_video %}
-                <source src="{{ splash_video }}" type="video/mp4" />
+                <source
+                    src="{{ splash_video }}{% if not splash_video.startswith(('http://', 'https://', 'data:')) and '?' not in splash_video %}?v={{ static_version }}{% endif %}"
+                    type="video/mp4"
+                />
                 {% endif %}
             </video>
             <button id="skip-splash-btn" class="skip-splash-btn" type="button" aria-label="Skip Intro Animation">
