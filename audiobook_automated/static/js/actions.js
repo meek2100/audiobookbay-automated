@@ -10,6 +10,8 @@ window.deleteTorrent = deleteTorrent;
 window.sendTorrent = sendTorrent;
 window.openExternalLink = openExternalLink;
 window.showModal = showModal;
+window.initSplashScreen = initSplashScreen;
+window.dismissSplash = dismissSplash;
 
 document.addEventListener("DOMContentLoaded", function () {
     initSplashScreen();
@@ -131,14 +133,20 @@ function initSplashScreen() {
 
     // Click to dismiss immediately on overlay or skip button
     splashOverlay.addEventListener("click", () => {
-        dismissSplash(splashOverlay);
+        if (splashVideo) {
+            splashVideo.pause();
+        }
+        dismissSplash(splashOverlay, { skipAnimation: true });
     });
 
     const skipBtn = document.getElementById("skip-splash-btn");
     if (skipBtn) {
         skipBtn.addEventListener("click", (e) => {
             e.stopPropagation();
-            dismissSplash(splashOverlay);
+            if (splashVideo) {
+                splashVideo.pause();
+            }
+            dismissSplash(splashOverlay, { skipAnimation: true });
         });
     }
 
@@ -176,17 +184,68 @@ function initSplashScreen() {
     }
 }
 
-function dismissSplash(overlay) {
+function dismissSplash(overlay, options = {}) {
     if (overlay.classList.contains("hidden")) return;
 
-    overlay.classList.add("hidden");
-    sessionStorage.setItem("splashShown", "true");
+    const skipAnimation = options.skipAnimation || false;
+    const splashVideo = document.getElementById("splash-video");
+    const targetLogo = document.querySelector(".nav-logo-img") || document.querySelector(".nav-logo");
 
-    // Wait for CSS transition (0.5s) to finish before hiding display
-    setTimeout(() => {
-        overlay.style.display = "none";
-        document.documentElement.classList.add("no-splash");
-    }, 500); // Matches CSS opacity transition time
+    const prefersReducedMotion =
+        typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Check if FLIP morph animation should be played
+    let shouldMorph = false;
+    let translateX = 0;
+    let translateY = 0;
+    let scale = 1;
+    let targetRadius = "16px";
+
+    if (!skipAnimation && !prefersReducedMotion && splashVideo && targetLogo) {
+        const targetRect = targetLogo.getBoundingClientRect();
+        const videoRect = splashVideo.getBoundingClientRect();
+
+        // Ensure valid visible bounding rectangles
+        if (targetRect.width > 0 && targetRect.height > 0 && videoRect.width > 0 && videoRect.height > 0) {
+            shouldMorph = true;
+
+            const targetCenterX = targetRect.left + targetRect.width / 2;
+            const targetCenterY = targetRect.top + targetRect.height / 2;
+            const videoCenterX = videoRect.left + videoRect.width / 2;
+            const videoCenterY = videoRect.top + videoRect.height / 2;
+
+            translateX = targetCenterX - videoCenterX;
+            translateY = targetCenterY - videoCenterY;
+
+            const scaleX = targetRect.width / videoRect.width;
+            const scaleY = targetRect.height / videoRect.height;
+            scale = Math.max(scaleX, scaleY);
+
+            targetRadius = window.getComputedStyle(targetLogo).borderRadius || "16px";
+        }
+    }
+
+    if (shouldMorph) {
+        overlay.classList.add("morphing");
+        splashVideo.style.borderRadius = targetRadius;
+        splashVideo.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
+        splashVideo.style.opacity = "0";
+
+        setTimeout(() => {
+            overlay.classList.add("hidden");
+            overlay.style.display = "none";
+            sessionStorage.setItem("splashShown", "true");
+            document.documentElement.classList.add("no-splash");
+        }, 650);
+    } else {
+        overlay.classList.add("hidden");
+        sessionStorage.setItem("splashShown", "true");
+
+        setTimeout(() => {
+            overlay.style.display = "none";
+            document.documentElement.classList.add("no-splash");
+        }, 400);
+    }
 }
 
 /**

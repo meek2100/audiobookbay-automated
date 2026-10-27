@@ -322,3 +322,165 @@ describe("actions.js - Browser Interactions", () => {
         expect(mockOpen).not.toHaveBeenCalled();
     });
 });
+
+describe("actions.js - Splash Screen & Morph Animation", () => {
+    beforeEach(() => {
+        sessionStorage.clear();
+        document.documentElement.className = "";
+    });
+
+    test("initSplashScreen does nothing if splash overlay does not exist", () => {
+        expect(() => initSplashScreen()).not.toThrow();
+    });
+
+    test("initSplashScreen immediately hides overlay if splashShown is in sessionStorage", () => {
+        sessionStorage.setItem("splashShown", "true");
+        document.body.innerHTML += '<div id="splash-overlay"></div>';
+
+        initSplashScreen();
+
+        const overlay = document.getElementById("splash-overlay");
+        expect(overlay.classList.contains("hidden")).toBe(true);
+        expect(overlay.style.display).toBe("none");
+    });
+
+    test("initSplashScreen immediately hides overlay if no-splash class on html", () => {
+        document.documentElement.classList.add("no-splash");
+        document.body.innerHTML += '<div id="splash-overlay"></div>';
+
+        initSplashScreen();
+
+        const overlay = document.getElementById("splash-overlay");
+        expect(overlay.classList.contains("hidden")).toBe(true);
+        expect(overlay.style.display).toBe("none");
+    });
+
+    test("initSplashScreen dismisses text splash after configured duration", () => {
+        document.body.innerHTML += `
+            <div id="splash-overlay" data-splash-duration="2000">
+                <div id="splash-content">Welcome</div>
+            </div>
+        `;
+
+        initSplashScreen();
+
+        const overlay = document.getElementById("splash-overlay");
+        expect(overlay.classList.contains("hidden")).toBe(false);
+
+        jest.advanceTimersByTime(2000);
+        expect(overlay.classList.contains("hidden")).toBe(true);
+
+        jest.advanceTimersByTime(400);
+        expect(overlay.style.display).toBe("none");
+        expect(sessionStorage.getItem("splashShown")).toBe("true");
+    });
+
+    test("initSplashScreen handles video timeupdate and skip button", () => {
+        document.body.innerHTML += `
+            <div id="splash-overlay">
+                <video id="splash-video"></video>
+                <button id="skip-splash-btn">Skip</button>
+            </div>
+        `;
+
+        const video = document.getElementById("splash-video");
+        video.pause = jest.fn();
+        const skipBtn = document.getElementById("skip-splash-btn");
+
+        initSplashScreen();
+
+        // Clicking skip button pauses video and dismisses splash
+        skipBtn.click();
+        expect(video.pause).toHaveBeenCalled();
+
+        const overlay = document.getElementById("splash-overlay");
+        expect(overlay.classList.contains("hidden")).toBe(true);
+
+        jest.advanceTimersByTime(400);
+        expect(overlay.style.display).toBe("none");
+    });
+
+    test("dismissSplash performs FLIP morph animation when video and logo have dimensions", () => {
+        document.body.innerHTML += `
+            <a href="/" class="nav-logo">
+                <img class="nav-logo-img" src="/logo.png" style="border-radius: 12px;" />
+            </a>
+            <div id="splash-overlay">
+                <video id="splash-video"></video>
+            </div>
+        `;
+
+        const overlay = document.getElementById("splash-overlay");
+        const video = document.getElementById("splash-video");
+        const logo = document.querySelector(".nav-logo-img");
+
+        // Mock getBoundingClientRect
+        logo.getBoundingClientRect = jest.fn(() => ({
+            left: 20,
+            top: 10,
+            width: 240,
+            height: 80,
+        }));
+        video.getBoundingClientRect = jest.fn(() => ({
+            left: 0,
+            top: 200,
+            width: 1200,
+            height: 400,
+        }));
+
+        dismissSplash(overlay);
+
+        expect(overlay.classList.contains("morphing")).toBe(true);
+        expect(video.style.transform).toContain("translate3d(");
+        expect(video.style.transform).toContain("scale(");
+        expect(video.style.opacity).toBe("0");
+
+        // After morph transition (650ms), overlay is hidden and display is none
+        jest.advanceTimersByTime(650);
+        expect(overlay.classList.contains("hidden")).toBe(true);
+        expect(overlay.style.display).toBe("none");
+        expect(sessionStorage.getItem("splashShown")).toBe("true");
+        expect(document.documentElement.classList.contains("no-splash")).toBe(true);
+    });
+
+    test("dismissSplash skips morph animation if prefers-reduced-motion is active", () => {
+        window.matchMedia = jest.fn().mockImplementation((query) => ({
+            matches: query === "(prefers-reduced-motion: reduce)",
+            media: query,
+        }));
+
+        document.body.innerHTML += `
+            <a href="/" class="nav-logo">
+                <img class="nav-logo-img" src="/logo.png" />
+            </a>
+            <div id="splash-overlay">
+                <video id="splash-video"></video>
+            </div>
+        `;
+
+        const overlay = document.getElementById("splash-overlay");
+        const video = document.getElementById("splash-video");
+        const logo = document.querySelector(".nav-logo-img");
+
+        logo.getBoundingClientRect = jest.fn(() => ({
+            left: 20,
+            top: 10,
+            width: 240,
+            height: 80,
+        }));
+        video.getBoundingClientRect = jest.fn(() => ({
+            left: 0,
+            top: 200,
+            width: 1200,
+            height: 400,
+        }));
+
+        dismissSplash(overlay);
+
+        expect(overlay.classList.contains("morphing")).toBe(false);
+        expect(overlay.classList.contains("hidden")).toBe(true);
+
+        jest.advanceTimersByTime(400);
+        expect(overlay.style.display).toBe("none");
+    });
+});
