@@ -18,7 +18,7 @@
 
     /* --- Spacing & Dimensions --- */
     --max-content-width: 95vw;
-    --header-height: 92px; /* Generous height for horizontal banners and site titles */
+    --header-height: 104px; /* Generous height for horizontal banners and site titles */
     --border-radius: 16px;
     --btn-radius: 50px;
 }
@@ -285,15 +285,16 @@ body {
     gap: 15px;
     text-decoration: none;
     border: none; /* Reset link border */
-    max-width: 480px;
-    flex-shrink: 0;
+    max-width: min(520px, 45vw);
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .nav-logo-img,
 .nav-logo img {
-    height: auto;
-    max-height: 72px;
-    max-width: 440px;
+    height: 84px;
+    max-height: 84px;
+    max-width: 100%;
     width: auto;
     display: block;
     object-fit: contain;
@@ -673,14 +674,18 @@ a:hover {
     }
 
     .nav-logo {
-        max-width: 240px;
+        max-width: calc(100% - 60px);
         margin-right: 10px;
+        flex: 1;
+        min-width: 0;
     }
 
     .nav-logo-img,
     .nav-logo img {
-        max-height: 48px;
-        max-width: 220px;
+        height: 56px;
+        max-height: 56px;
+        max-width: 100%;
+        width: auto;
     }
 
     /* Layout adjustments */

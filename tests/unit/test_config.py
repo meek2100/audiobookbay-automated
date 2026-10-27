@@ -298,3 +298,22 @@ def test_config_parsing_defaults() -> None:
         assert ReloadedConfig.SPLASH_VIDEO == DEFAULT_SPLASH_VIDEO
         assert ReloadedConfig.SPLASH_VIDEO_WEBM == DEFAULT_SPLASH_VIDEO_WEBM
         assert ReloadedConfig.DEFAULT_THEME == DEFAULT_THEME
+
+
+def test_parse_asset_path() -> None:
+    """Test parse_asset_path normalizes bare filenames while preserving paths and URLs."""
+    from audiobook_automated.config import parse_asset_path
+
+    # Defaults and empty cases
+    assert parse_asset_path(None, "/default.png") == "/default.png"
+    assert parse_asset_path("", "/default.png") == "/default.png"
+    assert parse_asset_path("   ", "/default.png") == "/default.png"
+
+    # Bare filenames are prefixed with /static/images/
+    assert parse_asset_path("crows-nest.jpg", "/default.png") == "/static/images/crows-nest.jpg"
+    assert parse_asset_path('"logo.png"', "/default.png") == "/static/images/logo.png"
+
+    # Existing paths and URLs are preserved
+    assert parse_asset_path("/static/images/logo.png", "/default.png") == "/static/images/logo.png"
+    assert parse_asset_path("https://example.com/logo.png", "/default.png") == "https://example.com/logo.png"
+    assert parse_asset_path("data:image/png;base64,...", "/default.png") == "data:image/png;base64,..."

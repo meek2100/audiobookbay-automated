@@ -37,6 +37,30 @@ def parse_env_int(key: str, default: int) -> int:
         return default
 
 
+def parse_asset_path(value: str | None, default: str | None) -> str | None:
+    """Normalize asset path for web use.
+
+    If a bare filename without path separators is passed (e.g., 'crows-nest.jpg'),
+    it is automatically prefixed with '/static/images/'.
+    Full paths (e.g., '/static/...', '/custom/...', or URLs) are preserved.
+
+    Args:
+        value: The raw environment variable string.
+        default: The fallback default path.
+
+    Returns:
+        Normalized path or URL string.
+    """
+    if value is None:
+        return default
+    val = value.strip(" \"'")
+    if not val:
+        return default
+    if "/" not in val and not val.startswith("data:"):
+        return f"/static/images/{val}"
+    return val
+
+
 class Config:
     """Centralized configuration for the Flask application.
 
@@ -149,18 +173,13 @@ class Config:
 
     # Site Identity
     SITE_TITLE: str = os.getenv("SITE_TITLE", DEFAULT_SITE_TITLE).strip(" \"'")
-    _site_logo: str | None = os.getenv("SITE_LOGO")
-    SITE_LOGO: str | None = _site_logo.strip(" \"'") if _site_logo is not None else DEFAULT_SITE_LOGO
+    SITE_LOGO: str | None = parse_asset_path(os.getenv("SITE_LOGO"), DEFAULT_SITE_LOGO)
     DEFAULT_THEME: str = os.getenv("DEFAULT_THEME", DEFAULT_THEME).strip(" \"'").lower()
 
     # Splash Screen Configuration
     SPLASH_ENABLED: bool = parse_bool(os.getenv("SPLASH_ENABLED"), True)
-    _splash_video: str | None = os.getenv("SPLASH_VIDEO")
-    SPLASH_VIDEO: str | None = _splash_video.strip(" \"'") if _splash_video is not None else DEFAULT_SPLASH_VIDEO
-    _splash_video_webm: str | None = os.getenv("SPLASH_VIDEO_WEBM")
-    SPLASH_VIDEO_WEBM: str | None = (
-        _splash_video_webm.strip(" \"'") if _splash_video_webm is not None else DEFAULT_SPLASH_VIDEO_WEBM
-    )
+    SPLASH_VIDEO: str | None = parse_asset_path(os.getenv("SPLASH_VIDEO"), DEFAULT_SPLASH_VIDEO)
+    SPLASH_VIDEO_WEBM: str | None = parse_asset_path(os.getenv("SPLASH_VIDEO_WEBM"), DEFAULT_SPLASH_VIDEO_WEBM)
     # Fallback to SITE_TITLE if SPLASH_TITLE is not explicitly set
     SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", SITE_TITLE).strip(" \"'")
     SPLASH_MESSAGE: str = os.getenv("SPLASH_MESSAGE", DEFAULT_SPLASH_MESSAGE).strip(" \"'")

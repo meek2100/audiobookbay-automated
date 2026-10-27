@@ -72,7 +72,11 @@
             <div class="nav-container">
                 <a href="{{ url_for('main.search') }}" class="nav-logo">
                     {% if site_logo %}
-                    <img class="nav-logo-img" src="{{ site_logo }}" alt="{{ site_title }}" />
+                    <img
+                        class="nav-logo-img"
+                        src="{{ site_logo }}{% if not site_logo.startswith(('http://', 'https://', 'data:')) and '?' not in site_logo %}?v={{ static_version }}{% endif %}"
+                        alt="{{ site_title }}"
+                    />
                     {% else %}
                     <span class="brand-text">{{ site_title }}</span>
                     {% endif %}
