@@ -66,8 +66,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const sendBtn = target.closest(".send-torrent-btn");
         if (sendBtn) {
             const link = sendBtn.dataset.link;
-            const title = sendBtn.dataset.title;
-            if (link && title) {
+            const title =
+                sendBtn.dataset.title ||
+                sendBtn.getAttribute("aria-label") ||
+                document.querySelector("h1")?.textContent?.trim() ||
+                "Audiobook";
+            if (link) {
                 sendTorrent(link, title, sendBtn);
             }
         }
@@ -273,6 +277,8 @@ function showNotification(message, type = "info") {
     container.style.gap = "10px";
 
     const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.classList.add(`toast-${type}`);
     toast.style.padding = "12px 24px";
     toast.style.borderRadius = "5px";
     toast.style.color = "#fff";
@@ -482,11 +488,7 @@ function deleteTorrent(torrentId, buttonElement) {
  */
 function sendTorrent(link, title, buttonElement) {
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    if (!csrfMeta) {
-        showNotification("Security Error: CSRF token missing. Please refresh the page.", "error");
-        return;
-    }
-    const csrfToken = csrfMeta.getAttribute("content");
+    const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
 
     // Disable specific button to prevent double-clicks
     let originalBtnHTML = "";

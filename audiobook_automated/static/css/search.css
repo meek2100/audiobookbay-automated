@@ -250,6 +250,7 @@
 /* --- Results Table / Cards (List View) --- */
 .table-wrapper {
     width: 100%;
+    overflow-x: auto;
 }
 
 table {

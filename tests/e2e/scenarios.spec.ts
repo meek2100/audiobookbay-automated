@@ -55,11 +55,12 @@ test.describe('E2E Scenarios: Search -> Download', () => {
 <html lang="en">
 <head>
     <title>Details</title>
+    <meta name="csrf-token" content="mock-token" />
     <script src="/static/js/actions.js"></script>
 </head>
 <body>
     <h1>The Martian</h1>
-    <button id="download-btn" class="send-torrent-btn" data-link="magnet:?xt=urn:btih:test">Download</button>
+    <button id="download-btn" class="send-torrent-btn" data-link="magnet:?xt=urn:btih:test" data-title="The Martian">Download</button>
     <div id="toast-container"></div>
 </body>
 </html>
