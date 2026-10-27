@@ -132,6 +132,7 @@ jobs:
             -p 5078:5078 \
             -e SECRET_KEY=ci-smoke-test-key \
             -e SAVE_PATH_BASE=/tmp \
+            -e DL_CLIENT=qbittorrent \
             audiobookbay-automated:ci-test
 
           # Give Gunicorn and entrypoint.sh time to boot
