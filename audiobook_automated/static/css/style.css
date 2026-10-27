@@ -299,7 +299,10 @@ body {
     display: block;
     object-fit: contain;
     object-position: left center;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: var(--border-radius);
+    transition:
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease;
 }
 
 .nav-logo:hover .nav-logo-img,
@@ -686,6 +689,7 @@ a:hover {
         max-height: 56px;
         max-width: 100%;
         width: auto;
+        border-radius: 12px;
     }
 
     /* Layout adjustments */
