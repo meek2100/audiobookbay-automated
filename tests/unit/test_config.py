@@ -12,7 +12,6 @@ from pytest import LogCaptureFixture, MonkeyPatch
 from audiobook_automated import config
 from audiobook_automated.config import Config
 from audiobook_automated.constants import (
-    DEFAULT_SITE_LOGO,
     DEFAULT_SITE_TITLE,
     DEFAULT_SPLASH_MESSAGE,
     DEFAULT_THEME,
@@ -288,5 +287,5 @@ def test_config_parsing_defaults() -> None:
         assert ReloadedConfig.DL_PORT is None
         assert ReloadedConfig.SITE_TITLE == DEFAULT_SITE_TITLE
         assert ReloadedConfig.SPLASH_MESSAGE == DEFAULT_SPLASH_MESSAGE
-        assert ReloadedConfig.SITE_LOGO == DEFAULT_SITE_LOGO
+        assert ReloadedConfig.SITE_LOGO is None
         assert ReloadedConfig.DEFAULT_THEME == DEFAULT_THEME
