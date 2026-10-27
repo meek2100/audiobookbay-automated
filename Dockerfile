@@ -51,7 +51,7 @@ EXPOSE 5078
 
 # Use the bundled python script for health checks
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python3 /app/audiobook_automated/healthcheck.py
+    CMD ["python3", "/app/audiobook_automated/healthcheck.py"]
 
 # Define the command to run the application
 ENTRYPOINT ["./entrypoint.sh"]
