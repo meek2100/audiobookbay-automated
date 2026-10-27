@@ -78,7 +78,7 @@ def inject_global_vars() -> dict[str, Any]:
 
 @main_bp.route("/<path:filename>")
 def serve_root_asset(filename: str) -> Response | tuple[Response, int]:
-    """Serve static asset fallbacks requested at the root path (e.g. /crows-nest.jpg).
+    """Serve static asset fallbacks requested at the root path (e.g. /custom-logo.jpg).
 
     Handles reverse proxies, Docker configurations, or custom logo configurations
     where an asset is requested without the '/static/images/' prefix.

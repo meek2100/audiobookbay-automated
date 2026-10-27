@@ -310,7 +310,7 @@ def test_parse_asset_path() -> None:
     assert parse_asset_path("   ", "/default.png") == "/default.png"
 
     # Bare filenames are prefixed with /static/images/
-    assert parse_asset_path("crows-nest.jpg", "/default.png") == "/static/images/crows-nest.jpg"
+    assert parse_asset_path("custom-logo.jpg", "/default.png") == "/static/images/custom-logo.jpg"
     assert parse_asset_path('"logo.png"', "/default.png") == "/static/images/logo.png"
 
     # Existing paths and URLs are preserved

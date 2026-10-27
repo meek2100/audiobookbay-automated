@@ -40,10 +40,22 @@ class Strategy(TorrentClientStrategy):
         self.folder_id = folder_id or os.getenv("PUTIO_FOLDER_ID", "0")
         self.session: Session | None = None
 
-        if self.host in ("localhost", "0.0.0.0", "127.0.0.1", ""):
+        if self.host in ("localhost", "0.0.0.0", "127.0.0.1", ""):  # noqa: S104
             self.base_url = "https://api.put.io/v2"
         else:
             self.base_url = f"{self.scheme}://{self.host}:{self.port}/v2"
+
+    def _get_session(self) -> Session:
+        """Return active requests session, connecting if needed.
+
+        Raises:
+            ConnectionError: If connection cannot be established.
+        """
+        if not self.session:
+            self.connect()
+        if not self.session:  # pragma: no cover
+            raise ConnectionError("Put.io client is not connected.")
+        return self.session
 
     @override
     def connect(self) -> None:
@@ -74,13 +86,11 @@ class Strategy(TorrentClientStrategy):
     def verify_credentials(self) -> bool:
         """Verify that the provided Put.io credentials work."""
         try:
-            if not self.session:
-                self.connect()
-
-            resp = self.session.get(f"{self.base_url}/account/info", timeout=self.timeout)
-            if resp.status_code == 200:
+            session = self._get_session()
+            resp = session.get(f"{self.base_url}/account/info", timeout=self.timeout)
+            if resp.status_code == 200:  # noqa: PLR2004
                 data = resp.json()
-                return data.get("status") == "OK"
+                return bool(data.get("status") == "OK")
             return False
         except Exception:
             return False
@@ -98,15 +108,13 @@ class Strategy(TorrentClientStrategy):
             ConnectionError: If client is not connected.
             RuntimeError: If Put.io API returns an error.
         """
-        if not self.session:
-            self.connect()
-
+        session = self._get_session()
         payload = {
             "url": magnet_link,
             "save_parent_id": self.folder_id,
         }
-        resp = self.session.post(f"{self.base_url}/transfers/add", data=payload, timeout=self.timeout)
-        if resp.status_code != 200:
+        resp = session.post(f"{self.base_url}/transfers/add", data=payload, timeout=self.timeout)
+        if resp.status_code != 200:  # noqa: PLR2004
             raise RuntimeError(f"Put.io add transfer failed: HTTP {resp.status_code} - {resp.text}")
 
         data = resp.json()
@@ -123,11 +131,9 @@ class Strategy(TorrentClientStrategy):
         Returns:
             list[TorrentStatus]: Normalized list of transfers.
         """
-        if not self.session:
-            self.connect()
-
-        resp = self.session.get(f"{self.base_url}/transfers/list", timeout=self.timeout)
-        if resp.status_code != 200:
+        session = self._get_session()
+        resp = session.get(f"{self.base_url}/transfers/list", timeout=self.timeout)
+        if resp.status_code != 200:  # noqa: PLR2004
             raise RuntimeError(f"Put.io list transfers failed: HTTP {resp.status_code} - {resp.text}")
 
         data = resp.json()
@@ -171,12 +177,10 @@ class Strategy(TorrentClientStrategy):
             ConnectionError: If client is not connected.
             RuntimeError: If cancellation fails.
         """
-        if not self.session:
-            self.connect()
-
+        session = self._get_session()
         payload = {"transfer_ids": str(torrent_id)}
-        resp = self.session.post(f"{self.base_url}/transfers/cancel", data=payload, timeout=self.timeout)
-        if resp.status_code != 200:
+        resp = session.post(f"{self.base_url}/transfers/cancel", data=payload, timeout=self.timeout)
+        if resp.status_code != 200:  # noqa: PLR2004
             raise RuntimeError(f"Put.io cancel transfer failed: HTTP {resp.status_code} - {resp.text}")
 
         data = resp.json()

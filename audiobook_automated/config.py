@@ -40,7 +40,7 @@ def parse_env_int(key: str, default: int) -> int:
 def parse_asset_path(value: str | None, default: str | None) -> str | None:
     """Normalize asset path for web use.
 
-    If a bare filename without path separators is passed (e.g., 'crows-nest.jpg'),
+    If a bare filename without path separators is passed (e.g., 'custom-logo.jpg'),
     it is automatically prefixed with '/static/images/'.
     Full paths (e.g., '/static/...', '/custom/...', or URLs) are preserved.
 
