@@ -137,7 +137,7 @@ def test_search_pagination_cancellation(app: Flask) -> None:
 
 
 def test_search_http_error_invalidation() -> None:
-    """Test that search invalidates mirror on HTTPError."""
+    """Test that search invalidates mirror and raises ConnectionError on HTTPError."""
     future_failure: concurrent.futures.Future[Any] = concurrent.futures.Future()
     future_failure.set_exception(requests.HTTPError("502 Bad Gateway"))
 
@@ -153,8 +153,8 @@ def test_search_http_error_invalidation() -> None:
                 # We need to mock __contains__ to return True so the del item logic is triggered
                 mock_mirror_cache.__contains__.side_effect = check_active_mirror
 
-                results = search_audiobookbay("test_query", max_pages=1)
-                assert results == []
+                with pytest.raises(ConnectionError, match="AudiobookBay mirror is currently unreachable"):
+                    search_audiobookbay("test_query", max_pages=1)
                 mock_mirror_cache.__delitem__.assert_called_with("active_mirror")
 
 

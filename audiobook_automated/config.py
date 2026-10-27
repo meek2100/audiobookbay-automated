@@ -111,14 +111,16 @@ class Config:
     LOG_LEVEL: int | None = getattr(logging, LOG_LEVEL_STR, logging.INFO) if _log_level_env else None
 
     # Scraper Configuration
-    # ROBUSTNESS: Fallback if env var is set but empty string
-    _hostname: str = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
-    ABB_HOSTNAME: str = _hostname if _hostname else "audiobookbay.lu"
+    # ROBUSTNESS: Support single host or comma-separated list in ABB_HOSTNAME
+    _hostname_raw: str = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
+    _parsed_hostnames: list[str] = [h.strip() for h in _hostname_raw.split(",") if h.strip()]
+    ABB_HOSTNAME: str = _parsed_hostnames[0] if _parsed_hostnames else "audiobookbay.lu"
+    _extra_hosts: list[str] = _parsed_hostnames[1:] if len(_parsed_hostnames) > 1 else []
 
     # Parse comma-separated mirrors into a list
     # Strip the whole string first in case the list is quoted: "a.com,b.com"
     _mirrors_str: str = os.getenv("ABB_MIRRORS", "").strip(" \"'")
-    ABB_MIRRORS: list[str] = [m.strip() for m in _mirrors_str.split(",") if m.strip()]
+    ABB_MIRRORS: list[str] = _extra_hosts + [m.strip() for m in _mirrors_str.split(",") if m.strip()]
 
     # Parse comma-separated trackers into a list
     _trackers_str: str = os.getenv("MAGNET_TRACKERS", "").strip(" \"'")

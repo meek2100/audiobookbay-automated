@@ -16,19 +16,19 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          # Use the absolute latest for linting to catch future syntax deprecations early
-          python-version: "3.14"
-          cache: "pip"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.14
 
       # Set up Node.js for frontend hooks (Prettier)
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          # This cache requires package-lock.json to be present
           cache: "npm"
 
       # Install Node dependencies so hooks can find packages if needed
@@ -40,15 +40,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
-          key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
-
-      - name: Install pre-commit
-        run: pip install pre-commit
+          key: pre-commit-3|${{ runner.os }}|${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit hooks
         env:
           SKIP: no-commit-to-branch
-        run: pre-commit run --all-files --show-diff-on-failure
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
   # 2. Automated Python Tests
   test:
@@ -58,35 +55,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # PRODUCTION REQUIREMENT: Test ALL supported versions to ensure OS compatibility.
-        # 3.13: Fedora 41 / Old Stable
-        # 3.14: Fedora 43 / Current Stable
-        # 3.15: Fedora 45 / Development
         python-version: ["3.13", "3.14"]
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
+          enable-cache: true
 
-      - name: Install Dependencies
-        # Installs app + dev dependencies (pytest, cov, etc.) from pyproject.toml
-        run: pip install ".[dev]"
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
 
       - name: Run MyPy Type Check
-        run: mypy audiobook_automated tests # Explicitly run MyPy as part of CI
+        run: uv run --python ${{ matrix.python-version }} mypy audiobook_automated tests
 
       - name: Run Tests
         env:
-          # Required for tests to run without actual secrets
           SECRET_KEY: test-key
           SAVE_PATH_BASE: /tmp/test
         run: |
-          # Runs pytest with coverage as defined in your pyproject.toml
-          pytest --junitxml=test-results-${{ matrix.python-version }}.xml
+          uv run --python ${{ matrix.python-version }} pytest --junitxml=test-results-${{ matrix.python-version }}.xml
 
       - name: Upload Test Results
         if: always()
@@ -106,16 +95,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          # Use a stable, modern version of Node
           node-version: 24
           cache: "npm"
 
       - name: Install JS Dependencies
-        # Installs packages from package.json
         run: npm ci
 
       - name: Run Jest Tests
-        # Use npx jest to execute the tests configured in jest.config.js
         run: npx jest
 
   # 4. Verify Docker Build

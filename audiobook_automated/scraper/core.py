@@ -83,13 +83,12 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> Sequence[BookSummary]
     # Collect results as they complete
     # Note: We don't guarantee order here, but search results are usually sorted by the site.
     # If order matters strictly, we should map futures to page numbers.
+    encountered_http_error: network.requests.HTTPError | None = None
+
     for future in futures:
         try:
             page_results = future.result()
             if not page_results:
-                # If a page returns no results, it likely means we hit the end of the results.
-                # Optimization - Cancel remaining futures?
-                # For simplicity, we just ignore empty results.
                 continue
 
             for item in page_results:
@@ -99,6 +98,7 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> Sequence[BookSummary]
                     results.append(item)
 
         except network.requests.HTTPError as e:
+            encountered_http_error = e
             logger.error(f"Search: HTTP Error (5xx/4xx) from mirror: {e}. Invalidating mirror.")
             with network.CACHE_LOCK:
                 if "active_mirror" in network.mirror_cache:
@@ -106,9 +106,16 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> Sequence[BookSummary]
         except Exception:
             logger.exception("Search: Error processing page result.")
 
+    # If all pages failed due to mirror HTTP 4xx/5xx errors, raise rather than swallowing into empty results
+    if not results and encountered_http_error is not None:
+        raise ConnectionError(
+            f"AudiobookBay mirror is currently unreachable or blocking requests ({encountered_http_error}). "
+            "Please check your proxy or try another mirror."
+        ) from encountered_http_error
+
     logger.info("Search: Completed. Found %d unique results.", len(results))
 
-    # Update Cache
+    # Update Cache only for successful queries
     with network.CACHE_LOCK:
         network.search_cache[cache_key] = results
 

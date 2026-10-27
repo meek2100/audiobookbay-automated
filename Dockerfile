@@ -9,10 +9,15 @@ LABEL org.opencontainers.image.description="Automated AudiobookBay downloader an
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.source="https://github.com/jamesry96/audiobookbay-automated"
 
+# Install uv from official astral image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 # Prevent Python from writing .pyc files (saves space/io)
 ENV PYTHONDONTWRITEBYTECODE=1
 # Ensure logs are flushed immediately (easier debugging)
 ENV PYTHONUNBUFFERED=1
+# Ensure uv installs into system python environment
+ENV UV_SYSTEM_PYTHON=1
 
 # Set the working directory in the container
 WORKDIR /app
@@ -22,28 +27,23 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends tzdata gosu && \
     rm -rf /var/lib/apt/lists/*
 
-# 1. Copy project definition
-COPY pyproject.toml .
+# 1. Copy project definition & lockfile
+COPY pyproject.toml uv.lock ./
 # 2. Install dependencies (Optimized for caching)
-# We create a dummy directory structure so pip install .
-# works for dependencies
-# without invalidating the cache when source code changes later.
 RUN mkdir -p audiobook_automated && \
     touch audiobook_automated/__init__.py && \
-    pip install --no-cache-dir . && \
+    uv pip install --no-cache . && \
     useradd -m appuser
 
 # 3. Copy source code
 COPY --chown=appuser:appuser audiobook_automated audiobook_automated/
 
 # 4. Re-install package to include the actual source files
-# The --no-deps flag ensures we don't re-check dependencies, keeping it fast.
-RUN pip install --no-cache-dir --no-deps .
+RUN uv pip install --no-cache --no-deps .
 
 # 5. Copy scripts with correct ownership
 COPY --chown=appuser:appuser entrypoint.sh .
 # 6. Set permissions on scripts and generate version artifact
-# Redirects the output of utils.py (the hash) to version.txt
 RUN chmod +x entrypoint.sh && \
     python3 -m audiobook_automated.utils > audiobook_automated/version.txt
 
@@ -55,9 +55,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3 /app/audiobook_automated/healthcheck.py
 
 # Define the command to run the application
-# ENTRYPOINT handles the switch to 'appuser' via gosu
 ENTRYPOINT ["./entrypoint.sh"]
 
 # CMD is empty by default; entrypoint.sh constructs the gunicorn command.
-# Users can override this to pass extra flags to gunicorn (e.g., CMD ["--workers", "4"])
 CMD []

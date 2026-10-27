@@ -110,6 +110,6 @@ def runner(app: Flask) -> FlaskCliRunner:
 
 @pytest.fixture(autouse=True)
 def push_app_context(app: Flask) -> Generator[None]:
-    """Automatically push application context for all tests."""
-    with app.app_context():
+    """Automatically push application and request context for all tests."""
+    with app.app_context(), app.test_request_context():
         yield

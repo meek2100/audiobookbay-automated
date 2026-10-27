@@ -51,15 +51,15 @@ _local = NetworkLocal()
 
 # --- Caches ---
 # mirror_cache: Stores the currently active (working) mirror hostname to avoid repeated checks.
-mirror_cache: TTLCache[str, str | None] = TTLCache(maxsize=1, ttl=600)
+mirror_cache: TTLCache[str, str | None] = cast(TTLCache[str, str | None], TTLCache(maxsize=1, ttl=600))
 # failure_cache: Negative cache to prevent rapid retries if all mirrors are known to be down.
-failure_cache: TTLCache[str, bool] = TTLCache(maxsize=1, ttl=30)
+failure_cache: TTLCache[str, bool] = cast(TTLCache[str, bool], TTLCache(maxsize=1, ttl=30))
 # search_cache: Caches search results by query to reduce load on the mirror and improve speed.
-search_cache: TTLCache[str, list[BookSummary]] = TTLCache(maxsize=100, ttl=300)
+search_cache: TTLCache[str, list[BookSummary]] = cast(TTLCache[str, list[BookSummary]], TTLCache(maxsize=100, ttl=300))
 # details_cache: Caches parsed book details by URL to prevent redundant network fetches.
-details_cache: TTLCache[str, BookDetails] = TTLCache(maxsize=100, ttl=300)
+details_cache: TTLCache[str, BookDetails] = cast(TTLCache[str, BookDetails], TTLCache(maxsize=100, ttl=300))
 # tracker_cache: Caches the list of magnet trackers to minimize filesystem I/O.
-tracker_cache: TTLCache[str, list[str]] = TTLCache(maxsize=1, ttl=300)
+tracker_cache: TTLCache[str, list[str]] = cast(TTLCache[str, list[str]], TTLCache(maxsize=1, ttl=300))
 
 
 def init_semaphore(max_requests: int) -> None:
@@ -136,6 +136,7 @@ def get_mirrors() -> list[str]:
 def get_session() -> Session:
     """Configure and return a requests Session with retry logic."""
     session = requests.Session()
+    session.headers.update({"User-Agent": get_random_user_agent()})
     retry_strategy = Retry(
         total=5,
         backoff_factor=1,
@@ -159,6 +160,7 @@ def get_ping_session() -> Session:
     """
     if _local.ping_session is None:
         session = requests.Session()
+        session.headers.update({"User-Agent": get_random_user_agent()})
         retry_strategy = Retry(
             total=0,
             backoff_factor=0,
