@@ -134,7 +134,15 @@ function initSplashScreen() {
         dismissSplash(splashOverlay);
     });
 
-    // Read duration from data attribute
+    const splashVideo = document.getElementById("splash-video");
+    if (splashVideo) {
+        // Video splash: dismiss when video playback completes
+        splashVideo.addEventListener("ended", () => {
+            dismissSplash(splashOverlay);
+        });
+    }
+
+    // Read duration from data attribute as fallback/max duration
     const duration = parseInt(splashOverlay.dataset.splashDuration) || 4500;
 
     // Fade out after delay

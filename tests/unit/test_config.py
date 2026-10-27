@@ -12,8 +12,10 @@ from pytest import LogCaptureFixture, MonkeyPatch
 from audiobook_automated import config
 from audiobook_automated.config import Config
 from audiobook_automated.constants import (
+    DEFAULT_SITE_LOGO,
     DEFAULT_SITE_TITLE,
     DEFAULT_SPLASH_MESSAGE,
+    DEFAULT_SPLASH_VIDEO,
     DEFAULT_THEME,
 )
 
@@ -253,6 +255,7 @@ def test_config_parsing_quoted() -> None:
         "SITE_TITLE": '"Quoted Title"',
         "SPLASH_MESSAGE": "'Quoted Message'",
         "SITE_LOGO": '"/path/to/logo.png"',
+        "SPLASH_VIDEO": '"/path/to/splash.mp4"',
         "SPLASH_TITLE": "'Quoted Splash Title'",
     }
 
@@ -273,6 +276,7 @@ def test_config_parsing_quoted() -> None:
         assert ReloadedConfig.SITE_TITLE == "Quoted Title"
         assert ReloadedConfig.SPLASH_MESSAGE == "Quoted Message"
         assert ReloadedConfig.SITE_LOGO == "/path/to/logo.png"
+        assert ReloadedConfig.SPLASH_VIDEO == "/path/to/splash.mp4"
         assert ReloadedConfig.SPLASH_TITLE == "Quoted Splash Title"
 
 
@@ -287,5 +291,6 @@ def test_config_parsing_defaults() -> None:
         assert ReloadedConfig.DL_PORT is None
         assert ReloadedConfig.SITE_TITLE == DEFAULT_SITE_TITLE
         assert ReloadedConfig.SPLASH_MESSAGE == DEFAULT_SPLASH_MESSAGE
-        assert ReloadedConfig.SITE_LOGO is None
+        assert ReloadedConfig.SITE_LOGO == DEFAULT_SITE_LOGO
+        assert ReloadedConfig.SPLASH_VIDEO == DEFAULT_SPLASH_VIDEO
         assert ReloadedConfig.DEFAULT_THEME == DEFAULT_THEME
