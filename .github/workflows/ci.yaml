@@ -24,6 +24,9 @@ jobs:
       - name: Set up Python
         run: uv python install 3.14
 
+      - name: Install Python Dependencies
+        run: uv sync --all-extras
+
       # Set up Node.js for frontend hooks (Prettier)
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -45,7 +48,7 @@ jobs:
       - name: Run pre-commit hooks
         env:
           SKIP: no-commit-to-branch
-        run: uv run pre-commit run --all-files --show-diff-on-failure
+        run: uv run --all-extras pre-commit run --all-files --show-diff-on-failure
 
   # 2. Automated Python Tests
   test:
@@ -67,15 +70,18 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
 
+      - name: Install Python Dependencies
+        run: uv sync --all-extras --python ${{ matrix.python-version }}
+
       - name: Run MyPy Type Check
-        run: uv run --python ${{ matrix.python-version }} mypy audiobook_automated tests
+        run: uv run --all-extras --python ${{ matrix.python-version }} mypy audiobook_automated tests
 
       - name: Run Tests
         env:
           SECRET_KEY: test-key
           SAVE_PATH_BASE: /tmp/test
         run: |
-          uv run --python ${{ matrix.python-version }} pytest --junitxml=test-results-${{ matrix.python-version }}.xml
+          uv run --all-extras --python ${{ matrix.python-version }} pytest --junitxml=test-results-${{ matrix.python-version }}.xml
 
       - name: Upload Test Results
         if: always()
