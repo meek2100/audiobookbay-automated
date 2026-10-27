@@ -144,19 +144,36 @@ function initSplashScreen() {
 
     const splashVideo = document.getElementById("splash-video");
     if (splashVideo) {
-        // Video splash: dismiss when video playback completes
-        splashVideo.addEventListener("ended", () => {
-            dismissSplash(splashOverlay);
+        // Video splash: Start smooth fade-out exactly 0.5s before video ends (at 3.5s for a 4s video)
+        let fadingStarted = false;
+        const triggerFade = () => {
+            if (!fadingStarted) {
+                fadingStarted = true;
+                dismissSplash(splashOverlay);
+            }
+        };
+
+        splashVideo.addEventListener("timeupdate", () => {
+            if (splashVideo.currentTime >= 3.5) {
+                triggerFade();
+            }
         });
+
+        splashVideo.addEventListener("ended", () => {
+            triggerFade();
+        });
+
+        // Safety fallback timer if video fails to play or load
+        setTimeout(() => {
+            triggerFade();
+        }, 5000);
+    } else {
+        // Text splash: Fade out after configured duration
+        const duration = parseInt(splashOverlay.dataset.splashDuration) || 3500;
+        setTimeout(() => {
+            dismissSplash(splashOverlay);
+        }, duration);
     }
-
-    // Read duration from data attribute as fallback/max duration (defaults to 3500ms)
-    const duration = parseInt(splashOverlay.dataset.splashDuration) || 3500;
-
-    // Fade out after delay
-    setTimeout(() => {
-        dismissSplash(splashOverlay);
-    }, duration);
 }
 
 function dismissSplash(overlay) {
