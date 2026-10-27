@@ -164,7 +164,7 @@ class Config:
     # Fallback to SITE_TITLE if SPLASH_TITLE is not explicitly set
     SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", SITE_TITLE).strip(" \"'")
     SPLASH_MESSAGE: str = os.getenv("SPLASH_MESSAGE", DEFAULT_SPLASH_MESSAGE).strip(" \"'")
-    SPLASH_DURATION: int = parse_env_int("SPLASH_DURATION", 4500)
+    SPLASH_DURATION: int = parse_env_int("SPLASH_DURATION", 3500)
 
     @property
     def LIBRARY_RELOAD_ENABLED(self) -> bool:

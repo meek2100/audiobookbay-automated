@@ -150,8 +150,8 @@ function initSplashScreen() {
         });
     }
 
-    // Read duration from data attribute as fallback/max duration
-    const duration = parseInt(splashOverlay.dataset.splashDuration) || 4500;
+    // Read duration from data attribute as fallback/max duration (defaults to 3500ms)
+    const duration = parseInt(splashOverlay.dataset.splashDuration) || 3500;
 
     // Fade out after delay
     setTimeout(() => {
@@ -165,11 +165,11 @@ function dismissSplash(overlay) {
     overlay.classList.add("hidden");
     sessionStorage.setItem("splashShown", "true");
 
-    // Wait for CSS transition to finish before hiding display
+    // Wait for CSS transition (0.5s) to finish before hiding display
     setTimeout(() => {
         overlay.style.display = "none";
         document.documentElement.classList.add("no-splash");
-    }, 1500); // Matches CSS opacity transition time
+    }, 500); // Matches CSS opacity transition time
 }
 
 /**
