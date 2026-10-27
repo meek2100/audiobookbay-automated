@@ -326,23 +326,24 @@ def format_user_error(err: Exception | str, context: str = "general") -> tuple[s
 
     if context == "client":
         friendly = (
-            "Error connecting to client: Unable to communicate with your torrent client. "
-            "Please check that your torrent client (qBittorrent, Transmission, or Deluge) is running "
-            "and that connection details in your configuration (host, port, credentials) are correct."
+            "Error connecting to client: We couldn't reach your download program. "
+            "Please check that your downloader is turned on and ready."
         )
     elif context == "search":
         friendly = (
-            "Search Failed: Unable to retrieve results from AudiobookBay. "
-            "The site may be experiencing downtime, rate-limiting requests, or blocking the current IP/proxy. "
-            "Please try again in a few moments."
+            "Search Failed: We couldn't reach the book catalog right now. "
+            "The website might be having trouble or taking a quick break. "
+            "Please wait a moment and try again."
         )
     elif context == "details":
         friendly = (
-            "Could not load details: Unable to retrieve audiobook details. "
-            "The requested book may no longer exist, or the source page could not be parsed."
+            "Could not load details: We couldn't open this book's information. "
+            "It may have been moved or removed. Please try choosing a different book."
         )
     else:
-        friendly = f"An unexpected error occurred: {raw_error}"
+        friendly = (
+            "An unexpected error occurred: Something went wrong. Please refresh the page or try again in a moment."
+        )
 
     return friendly, raw_error if raw_error else None
 
