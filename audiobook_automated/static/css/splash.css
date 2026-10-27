@@ -6,11 +6,12 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: var(--primary-bg);
+    background: #0f1118; /* Deep midnight dark blending with video canvas */
     z-index: 99999;
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
     opacity: 1;
     pointer-events: auto;
     transition: opacity 0.5s ease-out;
@@ -22,9 +23,13 @@
 }
 
 #splash-video {
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    object-fit: contain; /* Scales front & center without cropping in portrait or landscape */
+    object-position: center center;
+    display: block;
     pointer-events: none;
 }
 
