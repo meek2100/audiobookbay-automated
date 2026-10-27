@@ -46,9 +46,13 @@
             data-splash-duration="{{ splash_duration }}"
             data-splash-enabled="{{ splash_enabled }}"
         >
-            {% if splash_video %}
+            {% if splash_video or splash_video_webm %}
             <video id="splash-video" autoplay muted playsinline>
+                {% if splash_video_webm %}
+                <source src="{{ splash_video_webm }}" type="video/webm" />
+                {% endif %} {% if splash_video %}
                 <source src="{{ splash_video }}" type="video/mp4" />
+                {% endif %}
             </video>
             <button id="skip-splash-btn" class="skip-splash-btn" type="button" aria-label="Skip Intro Animation">
                 Skip Intro

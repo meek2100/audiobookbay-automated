@@ -101,6 +101,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             "site_logo": app.config.get("SITE_LOGO"),
             "splash_enabled": app.config["SPLASH_ENABLED"],
             "splash_video": app.config.get("SPLASH_VIDEO"),
+            "splash_video_webm": app.config.get("SPLASH_VIDEO_WEBM"),
             "splash_title": app.config["SPLASH_TITLE"],
             "splash_message": app.config["SPLASH_MESSAGE"],
             "splash_duration": app.config["SPLASH_DURATION"],

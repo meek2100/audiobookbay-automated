@@ -11,6 +11,7 @@ DEFAULT_SITE_TITLE: Final[str] = "AudiobookBay Automated"
 DEFAULT_SITE_LOGO: Final[str] = "/static/images/audiobookbay-header.jpg"
 DEFAULT_THEME: Final[str] = "purple"
 DEFAULT_SPLASH_VIDEO: Final[str] = "/static/images/audiobookbay-splash.mp4"
+DEFAULT_SPLASH_VIDEO_WEBM: Final[str] = "/static/images/audiobookbay-splash.webm"
 DEFAULT_SPLASH_MESSAGE: Final[str] = (
     "Welcome to AudiobookBay Automated.<br>Search, manage, and automate your audiobook library."
 )

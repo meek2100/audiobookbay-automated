@@ -9,6 +9,7 @@ from .constants import (
     DEFAULT_SITE_TITLE,
     DEFAULT_SPLASH_MESSAGE,
     DEFAULT_SPLASH_VIDEO,
+    DEFAULT_SPLASH_VIDEO_WEBM,
     DEFAULT_THEME,
 )
 from .utils import parse_bool
@@ -156,6 +157,10 @@ class Config:
     SPLASH_ENABLED: bool = parse_bool(os.getenv("SPLASH_ENABLED"), True)
     _splash_video: str | None = os.getenv("SPLASH_VIDEO")
     SPLASH_VIDEO: str | None = _splash_video.strip(" \"'") if _splash_video is not None else DEFAULT_SPLASH_VIDEO
+    _splash_video_webm: str | None = os.getenv("SPLASH_VIDEO_WEBM")
+    SPLASH_VIDEO_WEBM: str | None = (
+        _splash_video_webm.strip(" \"'") if _splash_video_webm is not None else DEFAULT_SPLASH_VIDEO_WEBM
+    )
     # Fallback to SITE_TITLE if SPLASH_TITLE is not explicitly set
     SPLASH_TITLE: str = os.getenv("SPLASH_TITLE", SITE_TITLE).strip(" \"'")
     SPLASH_MESSAGE: str = os.getenv("SPLASH_MESSAGE", DEFAULT_SPLASH_MESSAGE).strip(" \"'")

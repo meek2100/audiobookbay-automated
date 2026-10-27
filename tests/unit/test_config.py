@@ -16,6 +16,7 @@ from audiobook_automated.constants import (
     DEFAULT_SITE_TITLE,
     DEFAULT_SPLASH_MESSAGE,
     DEFAULT_SPLASH_VIDEO,
+    DEFAULT_SPLASH_VIDEO_WEBM,
     DEFAULT_THEME,
 )
 
@@ -256,6 +257,7 @@ def test_config_parsing_quoted() -> None:
         "SPLASH_MESSAGE": "'Quoted Message'",
         "SITE_LOGO": '"/path/to/logo.png"',
         "SPLASH_VIDEO": '"/path/to/splash.mp4"',
+        "SPLASH_VIDEO_WEBM": '"/path/to/splash.webm"',
         "SPLASH_TITLE": "'Quoted Splash Title'",
     }
 
@@ -277,6 +279,7 @@ def test_config_parsing_quoted() -> None:
         assert ReloadedConfig.SPLASH_MESSAGE == "Quoted Message"
         assert ReloadedConfig.SITE_LOGO == "/path/to/logo.png"
         assert ReloadedConfig.SPLASH_VIDEO == "/path/to/splash.mp4"
+        assert ReloadedConfig.SPLASH_VIDEO_WEBM == "/path/to/splash.webm"
         assert ReloadedConfig.SPLASH_TITLE == "Quoted Splash Title"
 
 
@@ -293,4 +296,5 @@ def test_config_parsing_defaults() -> None:
         assert ReloadedConfig.SPLASH_MESSAGE == DEFAULT_SPLASH_MESSAGE
         assert ReloadedConfig.SITE_LOGO == DEFAULT_SITE_LOGO
         assert ReloadedConfig.SPLASH_VIDEO == DEFAULT_SPLASH_VIDEO
+        assert ReloadedConfig.SPLASH_VIDEO_WEBM == DEFAULT_SPLASH_VIDEO_WEBM
         assert ReloadedConfig.DEFAULT_THEME == DEFAULT_THEME
