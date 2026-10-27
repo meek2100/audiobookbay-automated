@@ -3,8 +3,10 @@
 
 import importlib
 import os
+import subprocess
 import sys
 from collections.abc import Generator
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -261,3 +263,34 @@ def test_startup_connection_success(caplog: Any) -> None:
 
         # Assert the warning was NOT logged
         assert "Startup Check: Torrent client is NOT connected" not in caplog.text
+
+
+def test_entrypoint_environment_compatibility() -> None:
+    """Test that environment variables exported in entrypoint.sh allow Python to initialize cleanly.
+
+    Catches unsupported runtime flags (such as PYTHON_GIL on standard CPython builds).
+    """
+    entrypoint_path = Path(__file__).resolve().parents[2] / "entrypoint.sh"
+    assert entrypoint_path.is_file(), f"entrypoint.sh not found at {entrypoint_path}"
+
+    content = entrypoint_path.read_text(encoding="utf-8")
+    env = os.environ.copy()
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if line.startswith("export ") and "=" in line:
+            var_part = line[len("export ") :].strip()
+            key, val = var_part.split("=", 1)
+            val = val.strip("'\"")
+            if ":-" in val:
+                val = val.split(":-")[-1].rstrip("}")
+            env[key] = val
+
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", "import sys; sys.exit(0)"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, f"Python failed to initialize with entrypoint env: {result.stderr}"
