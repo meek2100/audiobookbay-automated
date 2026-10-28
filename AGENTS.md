@@ -52,9 +52,6 @@ pre-commit run --all-files
   `#content`, and no third-party domain redirects) rather than relying only on HTTP 200/root index responses.
 - **Taxonomy Routing:** Support native `/audio-books/type/<category>/`, `/audio-books/tag/<language>/`,
   `/audio-books/author/<slug>/`, and `/audio-books/narrator/<slug>/` feeds alongside general keyword search.
-- **Live Client Testing Safety:** The qBittorrent client at `10.25.25.246:8080` is a live production instance connected
-  to the user's NAS. Connection verification, status checks, and dispatch testing may be performed, but any test torrent
-  dispatched must be immediately canceled and deleted (including files) to prevent cluttering or filling the NAS.
 
 ## 4. Operating Protocol & Reasoning Framework
 
