@@ -36,7 +36,8 @@ class Strategy(TorrentClientStrategy):
             **kwargs: Extra arbitrary arguments.
         """
         super().__init__(*args, **kwargs)
-        self.token = token or self.password or os.getenv("PUTIO_TOKEN")
+        self.api_key: str | None = kwargs.get("api_key")
+        self.token = token or self.api_key or self.password or os.getenv("PUTIO_TOKEN")
         self.folder_id = folder_id or os.getenv("PUTIO_FOLDER_ID", "0")
         self.session: Session | None = None
 

@@ -49,29 +49,24 @@ def diagnostics_page() -> str:
     )
 
 
-@diagnostics_bp.route("/api/diagnostics/health")
-def diagnostics_health() -> Response:
-    """Return JSON system health, mirror status, cache metrics, and client connectivity."""
-    t0 = time.perf_counter()
-
-    # 1. System & Environment Metrics
+def _collect_system_info() -> dict[str, Any]:
+    """Collect platform, python, process and memory RSS metrics."""
     try:
         memory_usage_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 2)
     except Exception:
         memory_usage_mb = 0.0
 
-    sys_info = {
+    return {
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "pid": os.getpid(),
         "memory_rss_mb": memory_usage_mb,
     }
 
-    # 2. Mirror Status & Adaptive Performance
-    # Bounded to top candidate mirrors for responsive diagnostics
-    candidate_mirrors = network.get_mirrors()[:8]
-    mirror_results: list[dict[str, Any]] = []
 
+def _probe_candidate_mirrors(candidate_mirrors: list[str]) -> list[dict[str, Any]]:
+    """Probe candidate mirrors and return latency and scoring statistics."""
+    mirror_results: list[dict[str, Any]] = []
     for mirror in candidate_mirrors:
         m_start = time.perf_counter()
         active = network.check_mirror(mirror) is not None
@@ -88,6 +83,76 @@ def diagnostics_health() -> Response:
                 "score": round(stat.score, 1),
             }
         )
+    return mirror_results
+
+
+def _get_strategy_status(strategy_inst: Any, connected: bool, error_msg: str | None) -> str:
+    """Determine friendly status label for a torrent client strategy."""
+    if connected:
+        return "Connected"
+    if getattr(strategy_inst, "is_ip_banned", False) is True:
+        return "IP Banned"
+    cooldown = getattr(strategy_inst, "auth_cooldown_until", 0)
+    if isinstance(cooldown, (int, float)) and cooldown > time.time():
+        return "Auth Cooldown"
+    if error_msg:
+        return "Auth Failed"
+    return "Disconnected"
+
+
+def _collect_client_diagnostics(manager: Any) -> list[dict[str, Any]]:
+    """Check connectivity and collect detailed diagnostics for configured download clients."""
+    clients_info: list[dict[str, Any]] = []
+    configured_clients = getattr(manager, "clients", {})
+    if configured_clients:
+        for name, strategy_inst in configured_clients.items():
+            c_start = time.perf_counter()
+            try:
+                connected = bool(strategy_inst.verify_credentials())
+                raw_err = getattr(strategy_inst, "last_auth_error", None)
+                c_err = str(raw_err) if raw_err is not None else None
+            except Exception as e:
+                connected = False
+                c_err = str(e)
+            c_status_label = _get_strategy_status(strategy_inst, connected, c_err)
+            c_latency = round((time.perf_counter() - c_start) * 1000, 2)
+            clients_info.append(
+                {
+                    "name": name,
+                    "connected": connected,
+                    "status": c_status_label,
+                    "latency_ms": c_latency,
+                    "error": c_err,
+                }
+            )
+    else:
+        connected = bool(manager.verify_credentials())
+        primary_strat = getattr(manager, "strategy", None)
+        c_err_str: str | None = None
+        if primary_strat:
+            raw_err = getattr(primary_strat, "last_auth_error", None)
+            c_err_str = str(raw_err) if raw_err is not None else None
+        c_status = _get_strategy_status(primary_strat, connected, c_err_str)
+
+        clients_info.append(
+            {
+                "name": current_app.config.get("DL_CLIENT", "default"),
+                "connected": connected,
+                "status": c_status,
+                "error": c_err_str,
+            }
+        )
+    return clients_info
+
+
+@diagnostics_bp.route("/api/diagnostics/health")
+def diagnostics_health() -> Response:
+    """Return JSON system health, mirror status, cache metrics, and client connectivity."""
+    t0 = time.perf_counter()
+
+    sys_info = _collect_system_info()
+    candidate_mirrors = network.get_mirrors()[:8]
+    mirror_results = _probe_candidate_mirrors(candidate_mirrors)
 
     with network.CACHE_LOCK:
         active_mirror = network.mirror_cache.get("active_mirror")
@@ -95,37 +160,10 @@ def diagnostics_health() -> Response:
         details_cache_size = len(network.details_cache)
         details_cache_max = network.details_cache.maxsize
     top_search_mirrors = network.get_active_search_mirrors(limit=3)
+    if not active_mirror and top_search_mirrors:
+        active_mirror = top_search_mirrors[0]
 
-    # 3. Torrent Clients Status
-    clients_info: list[dict[str, Any]] = []
-    configured_clients = getattr(torrent_manager, "clients", {})
-    if configured_clients:
-        for name, strategy_inst in configured_clients.items():
-            c_start = time.perf_counter()
-            try:
-                connected = bool(strategy_inst.verify_credentials())
-                c_err = None
-            except Exception as e:
-                connected = False
-                c_err = str(e)
-            c_latency = round((time.perf_counter() - c_start) * 1000, 2)
-            clients_info.append(
-                {
-                    "name": name,
-                    "connected": connected,
-                    "latency_ms": c_latency,
-                    "error": c_err,
-                }
-            )
-    else:
-        connected = bool(torrent_manager.verify_credentials())
-        clients_info.append(
-            {
-                "name": current_app.config.get("DL_CLIENT", "default"),
-                "connected": connected,
-            }
-        )
-
+    clients_info = _collect_client_diagnostics(torrent_manager)
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     return jsonify(

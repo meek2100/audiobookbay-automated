@@ -1197,3 +1197,49 @@ select option {
         height: 42px;
     }
 }
+
+/* Download Client Offline Alert Banner */
+.client-alert-banner {
+    max-width: 1000px;
+    margin: 12px auto 16px auto;
+    padding: 12px 18px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: var(--border-radius-md, 12px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.client-alert-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.client-alert-icon {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.client-alert-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: #fecaca;
+    line-height: 1.4;
+}
+
+.client-alert-text strong {
+    color: #fff;
+    margin-right: 4px;
+}
+
+.client-alert-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    color: #fff;
+    white-space: nowrap;
+    text-decoration: none;
+}

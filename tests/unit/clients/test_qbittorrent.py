@@ -152,6 +152,14 @@ def test_qbittorrent_close(app: Flask) -> None:
         mock_instance.auth_log_out.assert_called_once()
         assert strategy.client is None
 
+        # Also test closing when client has an active _http_session
+        strategy.connect()
+        mock_session = MagicMock()
+        mock_instance._http_session = mock_session
+        strategy.close()
+        mock_session.close.assert_called_once()
+        assert strategy.client is None
+
 
 def test_qbittorrent_close_exception(app: Flask) -> None:
     """Test closing qBittorrent with exception (should be swallowed/logged)."""
@@ -220,3 +228,124 @@ def test_qbittorrent_not_connected() -> None:
 
     with pytest.raises(ConnectionError, match="qBittorrent client not connected"):
         strategy.get_status("cat")
+
+
+def test_qbittorrent_api_key_auth(app: Flask) -> None:
+    """Test connecting using api_key parameter."""
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        mock_instance = MockQbClient.return_value
+        mock_instance.app.version = "v5.3.0"
+
+        strategy = QbittorrentStrategy("localhost", 8080, "meek2100", "", api_key="test_api_key")
+        strategy.connect()
+        assert strategy.api_key == "test_api_key"
+        MockQbClient.assert_called_with(
+            host="localhost",
+            port=8080,
+            username="meek2100",
+            api_key="test_api_key",
+            REQUESTS_ARGS={"timeout": 30},
+        )
+        assert strategy.client is not None
+        strategy.close()
+        assert strategy.client is None
+
+
+def test_qbittorrent_password_prefixed_api_key(app: Flask) -> None:
+    """Test using password starting with 'qbt_' as api_key."""
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        mock_instance = MockQbClient.return_value
+        mock_instance.app.version = "v5.3.0"
+
+        strategy = QbittorrentStrategy("localhost", 8080, "meek2100", "qbt_abc123key")
+        strategy.connect()
+        assert strategy.api_key == "qbt_abc123key"
+        MockQbClient.assert_called_with(
+            host="localhost",
+            port=8080,
+            username="meek2100",
+            api_key="qbt_abc123key",
+            REQUESTS_ARGS={"timeout": 30},
+        )
+
+
+def test_qbittorrent_auth_failure_cooldown(app: Flask) -> None:
+    """Test repeated auth failures triggering cooldown backoff."""
+    from qbittorrentapi.exceptions import LoginFailed
+
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        mock_instance = MockQbClient.return_value
+        mock_instance.auth_log_in.side_effect = LoginFailed("Auth failed")
+
+        strategy = QbittorrentStrategy("localhost", 8080, "admin", "wrong_pass")
+
+        # 1st failure
+        with pytest.raises(ConnectionError, match="Incorrect username or password"):
+            strategy.connect()
+        assert strategy.consecutive_auth_failures == 1
+
+        # 2nd failure
+        with pytest.raises(ConnectionError, match="Incorrect username or password"):
+            strategy.connect()
+        assert strategy.consecutive_auth_failures == 2
+
+        # 3rd failure triggers backoff
+        with pytest.raises(ConnectionError, match="Incorrect username or password"):
+            strategy.connect()
+        assert strategy.consecutive_auth_failures == 3
+        assert strategy.auth_cooldown_until > 0
+
+        # 4th attempt should be blocked by cooldown without hitting server
+        with pytest.raises(ConnectionError, match="authentication cooldown active"):
+            strategy.connect()
+
+
+def test_qbittorrent_ip_banned_detection(app: Flask) -> None:
+    """Test handling IP banned Forbidden403Error."""
+    from qbittorrentapi.exceptions import Forbidden403Error
+
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        mock_instance = MockQbClient.return_value
+        mock_instance.auth_log_in.side_effect = Forbidden403Error(
+            "Your IP address has been banned after too many failed authentication attempts."
+        )
+
+        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+
+        with pytest.raises(ConnectionError, match="IP address banned"):
+            strategy.connect()
+        assert strategy.is_ip_banned is True
+
+        # Subsequent attempts are instantly blocked
+        with pytest.raises(ConnectionError, match="IP address is banned"):
+            strategy.connect()
+
+
+def test_qbittorrent_generic_forbidden(app: Flask) -> None:
+    """Test handling generic Forbidden403Error."""
+    from qbittorrentapi.exceptions import Forbidden403Error
+
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        mock_instance = MockQbClient.return_value
+        mock_instance.auth_log_in.side_effect = Forbidden403Error("Access denied")
+
+        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+
+        with pytest.raises(ConnectionError, match="Invalid API key or credentials"):
+            strategy.connect()
+        assert strategy.consecutive_auth_failures == 1

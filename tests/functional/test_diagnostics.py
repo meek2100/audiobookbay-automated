@@ -40,8 +40,15 @@ def test_diagnostics_health_api(app: Flask, client: FlaskClient) -> None:
 
     strat_mock = MagicMock()
     strat_mock.verify_credentials.return_value = True
+    strat_mock.last_auth_error = None
+    strat_mock.is_ip_banned = False
+    strat_mock.auth_cooldown_until = 0.0
+
     strat_fail = MagicMock()
     strat_fail.verify_credentials.side_effect = RuntimeError("Offline client")
+    strat_fail.last_auth_error = None
+    strat_fail.is_ip_banned = False
+    strat_fail.auth_cooldown_until = 0.0
 
     with patch.object(torrent_manager, "clients", {"client1": strat_mock, "client2": strat_fail}):
         with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
@@ -57,6 +64,108 @@ def test_diagnostics_health_api(app: Flask, client: FlaskClient) -> None:
             assert data["clients"][0]["connected"] is True
             assert data["clients"][1]["connected"] is False
             assert "Offline client" in data["clients"][1]["error"]
+
+
+def test_diagnostics_health_api_single_client_statuses(app: Flask, client: FlaskClient) -> None:
+    """Ensure /api/diagnostics/health covers single client status fallback branches."""
+    app.config["ENABLE_DIAGNOSTICS"] = True
+
+    strategy_inst = MagicMock()
+    strategy_inst.verify_credentials.return_value = False
+    strategy_inst.is_ip_banned = True
+    strategy_inst.auth_cooldown_until = 0.0
+    strategy_inst.last_auth_error = "IP banned by host"
+
+    with patch.object(torrent_manager, "clients", {}):
+        with patch.object(torrent_manager, "strategy", strategy_inst):
+            with patch.object(torrent_manager, "verify_credentials", return_value=False):
+                with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
+                    resp = client.get("/api/diagnostics/health")
+                    assert resp.status_code == 200
+                    data = resp.get_json()
+                    assert data["clients"][0]["status"] == "IP Banned"
+
+    # Cooldown branch
+    strategy_inst.is_ip_banned = False
+    strategy_inst.auth_cooldown_until = 9999999999.0
+    with patch.object(torrent_manager, "clients", {}):
+        with patch.object(torrent_manager, "strategy", strategy_inst):
+            with patch.object(torrent_manager, "verify_credentials", return_value=False):
+                with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
+                    resp = client.get("/api/diagnostics/health")
+                    assert resp.status_code == 200
+                    data = resp.get_json()
+                    assert data["clients"][0]["status"] == "Auth Cooldown"
+
+    # Auth error branch
+    strategy_inst.auth_cooldown_until = 0.0
+    strategy_inst.last_auth_error = "Invalid password"
+    with patch.object(torrent_manager, "clients", {}):
+        with patch.object(torrent_manager, "strategy", strategy_inst):
+            with patch.object(torrent_manager, "verify_credentials", return_value=False):
+                with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
+                    resp = client.get("/api/diagnostics/health")
+                    assert resp.status_code == 200
+                    data = resp.get_json()
+                    assert data["clients"][0]["status"] == "Auth Failed"
+
+
+def test_diagnostics_health_api_configured_clients_statuses(app: Flask, client: FlaskClient) -> None:
+    """Ensure /api/diagnostics/health covers configured_clients status labels."""
+    app.config["ENABLE_DIAGNOSTICS"] = True
+
+    strategy1 = MagicMock()
+    strategy1.verify_credentials.return_value = False
+    strategy1.is_ip_banned = True
+    strategy1.auth_cooldown_until = 0.0
+    strategy1.last_auth_error = "IP ban"
+
+    strategy2 = MagicMock()
+    strategy2.verify_credentials.return_value = False
+    strategy2.is_ip_banned = False
+    strategy2.auth_cooldown_until = 9999999999.0
+    strategy2.last_auth_error = None
+
+    strategy3 = MagicMock()
+    strategy3.verify_credentials.return_value = False
+    strategy3.is_ip_banned = False
+    strategy3.auth_cooldown_until = 0.0
+    strategy3.last_auth_error = "Wrong password"
+
+    strategy4 = MagicMock()
+    strategy4.verify_credentials.return_value = False
+    strategy4.is_ip_banned = False
+    strategy4.auth_cooldown_until = 0.0
+    strategy4.last_auth_error = None
+
+    strategy_exc_banned = MagicMock()
+    strategy_exc_banned.verify_credentials.side_effect = Exception("Host banned our ip")
+    strategy_exc_banned.is_ip_banned = True
+
+    strategy_exc_auth = MagicMock()
+    strategy_exc_auth.verify_credentials.side_effect = Exception("Auth failed: bad token")
+    strategy_exc_auth.last_auth_error = "Auth failed: bad token"
+
+    clients_dict = {
+        "c1": strategy1,
+        "c2": strategy2,
+        "c3": strategy3,
+        "c4": strategy4,
+        "c5": strategy_exc_banned,
+        "c6": strategy_exc_auth,
+    }
+
+    with patch.object(torrent_manager, "clients", clients_dict):
+        with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
+            resp = client.get("/api/diagnostics/health")
+            assert resp.status_code == 200
+            data = resp.get_json()
+            assert data["clients"][0]["status"] == "IP Banned"
+            assert data["clients"][1]["status"] == "Auth Cooldown"
+            assert data["clients"][2]["status"] == "Auth Failed"
+            assert data["clients"][3]["status"] == "Disconnected"
+            assert data["clients"][4]["status"] == "IP Banned"
+            assert data["clients"][5]["status"] == "Auth Failed"
 
 
 def test_diagnostics_health_api_resource_exception(app: Flask, client: FlaskClient) -> None:

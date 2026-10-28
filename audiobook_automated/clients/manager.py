@@ -95,6 +95,7 @@ class TorrentManager:
 
             username = app.config.get("DL_USERNAME") or app.config.get("DL_USER")
             password = app.config.get("DL_PASSWORD") or app.config.get("DL_PASS")
+            api_key = app.config.get("DL_API_KEY") or app.config.get("DL_KEY")
             scheme = app.config.get("DL_SCHEME", "http")
             timeout = app.config.get("CLIENT_TIMEOUT") or app.config.get("DL_TIMEOUT", 30)
 
@@ -113,6 +114,7 @@ class TorrentManager:
                 timeout=timeout,
                 token=token,
                 folder_id=folder_id,
+                api_key=api_key,
             )
             logger.info("Plugin: Successfully loaded '%s'.", client_name)
             return instance

@@ -260,6 +260,26 @@
             </a>
         </header>
 
+        <!-- Download Client Offline Alert Banner -->
+        <div id="client-offline-banner" class="client-alert-banner" style="display: none">
+            <div class="client-alert-content">
+                <span class="client-alert-icon" aria-hidden="true">⚠️</span>
+                <div class="client-alert-text">
+                    <strong>Download Program Disconnected:</strong>
+                    <span
+                        >Your download client is currently offline or unreachable. You can browse books, but downloads
+                        are paused until the client is connected.</span
+                    >
+                </div>
+                <a
+                    href="{{ url_for('diagnostics.diagnostics_page') if diagnostics_enabled else url_for('main.status') }}"
+                    class="btn-glass client-alert-btn"
+                >
+                    Check Diagnostics
+                </a>
+            </div>
+        </div>
+
         <div class="content">{% block content %}{% endblock %}</div>
 
         <!-- Floating Scroll to Top Button -->

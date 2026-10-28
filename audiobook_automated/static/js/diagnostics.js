@@ -58,23 +58,38 @@ document.addEventListener("DOMContentLoaded", () => {
                 cacheEl.textContent = `${data.cache.details_cache_size} / ${data.cache.details_cache_max}`;
             }
 
-            // Mirror Probes & Performance
+            // Mirror Probes & Performance Rankings
             const mirrorContainer = document.getElementById("mirror-metrics");
             if (mirrorContainer) {
                 mirrorContainer.innerHTML = "";
-                (data.mirrors.mirrors || []).forEach((m) => {
+                const mirrorsList = [...(data.mirrors.mirrors || [])];
+                // Sort mirrors by score descending
+                mirrorsList.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+                mirrorsList.forEach((m, index) => {
                     const metric = document.createElement("div");
                     metric.className = "diag-metric";
                     const isCooling = m.cooling_down;
                     const latencyText = m.reachable ? `${m.latency_ms} ms` : "Offline";
                     const statusColor = isCooling ? "#f59e0b" : m.reachable ? "#4ade80" : "#f87171";
                     const statusLabel = isCooling ? "Cooldown" : m.reachable ? latencyText : "Offline";
+                    const isTopRanked = index < 3 && m.reachable && !isCooling;
+                    const rankBadgeColor = isTopRanked ? "#38bdf8" : "var(--text-muted, #94a3b8)";
 
                     metric.innerHTML = `
-                        <span class="diag-label">${m.hostname} (Rate: ${m.success_rate || 100}%)</span>
-                        <span class="diag-val" style="color: ${statusColor}; font-size: 1.05rem;">
-                            ${statusLabel}
-                        </span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span class="diag-label" style="font-weight: 700; color: ${rankBadgeColor}">#${index + 1} Rank</span>
+                            <span class="diag-badge" style="font-size: 0.75rem; padding: 2px 8px;">Score: ${m.score !== undefined ? m.score : "-"}</span>
+                        </div>
+                        <span class="diag-label" style="word-break: break-all; color: #fff; font-size: 0.9rem;">${m.hostname}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
+                            <span class="diag-val" style="color: ${statusColor}; font-size: 1.15rem;">
+                                ${statusLabel}
+                            </span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8);">
+                                Rate: ${m.success_rate || 100}%
+                            </span>
+                        </div>
                     `;
                     mirrorContainer.appendChild(metric);
                 });
@@ -87,11 +102,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 (data.clients || []).forEach((c) => {
                     const metric = document.createElement("div");
                     metric.className = "diag-metric";
+                    const statusText = c.status || (c.connected ? "Connected" : "Disconnected");
+                    let statusColor = "#4ade80"; // green
+                    if (statusText === "IP Banned") {
+                        statusColor = "#ef4444"; // red
+                    } else if (statusText === "Auth Failed" || statusText === "Auth Cooldown") {
+                        statusColor = "#f59e0b"; // amber
+                    } else if (!c.connected) {
+                        statusColor = "#f87171"; // soft red
+                    }
+
                     metric.innerHTML = `
                         <span class="diag-label">${c.name}</span>
-                        <span class="diag-val" style="color: ${c.connected ? "#4ade80" : "#f87171"}; font-size: 1.05rem;">
-                            ${c.connected ? "Connected" : "Disconnected"}
+                        <span class="diag-val" style="color: ${statusColor}; font-size: 1.15rem;">
+                            ${statusText}
                         </span>
+                        ${c.error ? `<span style="font-size: 0.78rem; color: #f87171; margin-top: 4px; word-break: break-word;">${c.error}</span>` : ""}
                     `;
                     clientContainer.appendChild(metric);
                 });

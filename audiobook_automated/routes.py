@@ -112,19 +112,18 @@ def serve_root_asset(filename: str) -> Response | tuple[Response, int]:
 @main_bp.route("/health")
 @talisman(force_https=False)  # type: ignore[untyped-decorator, unused-ignore]
 def health() -> Response | tuple[Response, int]:
-    """Perform a comprehensive health check.
+    """Perform application health check.
 
-    Checks:
-    1. Application is running.
-    2. Torrent client is reachable.
+    Verifies the web appliance is running and responding.
+    Client connectivity is reported for informational purposes but does NOT
+    degrade container health (HTTP 200 is always returned when the app is up).
 
     Returns:
-        Response: JSON with status details. 200 if OK, 503 if degraded.
+        Response: JSON with status details (HTTP 200).
     """
-    if torrent_manager.verify_credentials():
-        return jsonify({"status": "ok", "client": "connected"})
-
-    return jsonify({"status": "degraded", "client": "disconnected"}), 503
+    is_connected = torrent_manager.verify_credentials()
+    client_status = "connected" if is_connected else "disconnected"
+    return jsonify({"status": "ok", "app": "healthy", "client": client_status}), 200
 
 
 @main_bp.route("/api/clients")
@@ -537,14 +536,32 @@ def status() -> str | Response | tuple[Response, int]:
             torrents=torrent_list,
             clients=torrent_manager.list_clients(),
             active_client=client_filter,
+            client_status="connected",
+            client_status_label="Client Connected",
         )
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
 
         if is_json:
-            return jsonify({"error": str(e)}), 500
+            err_type = "disconnected"
+            err_str = str(e).lower()
+            if "banned" in err_str:
+                err_type = "banned"
+            elif "cooldown" in err_str or "auth" in err_str or "password" in err_str or "key" in err_str:
+                err_type = "auth_failed"
+            return jsonify({"error": str(e), "client_status": err_type}), 500
 
         error_message, debug_details = format_user_error(e, context="client")
+        status_slug = "disconnected"
+        status_label = "Client Disconnected"
+        err_lower = (str(e) + " " + (debug_details or "")).lower()
+        if "banned" in err_lower:
+            status_slug = "banned"
+            status_label = "IP Banned"
+        elif "cooldown" in err_lower or "auth" in err_lower or "password" in err_lower or "key" in err_lower:
+            status_slug = "warning"
+            status_label = "Auth Failed"
+
         return render_template(
             "status.html",
             torrents=[],
@@ -552,4 +569,6 @@ def status() -> str | Response | tuple[Response, int]:
             active_client=client_filter,
             error=error_message,
             debug_details=debug_details,
+            client_status=status_slug,
+            client_status_label=status_label,
         )

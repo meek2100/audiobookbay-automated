@@ -2,9 +2,11 @@
 """Strategy implementation for qBittorrent."""
 
 import logging
+import time
 from typing import Any, Protocol, cast, override
 
 from qbittorrentapi import Client as QbClient
+from qbittorrentapi.exceptions import Forbidden403Error, LoginFailed, Unauthorized401Error
 
 from audiobook_automated.utils import format_size
 
@@ -27,35 +29,123 @@ class Strategy(TorrentClientStrategy):
     """Strategy implementation for qBittorrent."""
 
     DEFAULT_PORT = 8080
+    AUTH_FAIL_LIMIT = 3
+    AUTH_BACKOFF_SECONDS = 300.0  # 5 minutes backoff to prevent IP ban
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the qBittorrent strategy."""
         super().__init__(*args, **kwargs)
+        self.api_key: str | None = kwargs.get("api_key")
+        # If password looks like an API key (e.g. qbt_ prefix), allow using it as api_key
+        if not self.api_key and self.password and self.password.startswith("qbt_"):
+            self.api_key = self.password
         self.client: QbClient | None = None
+        self.consecutive_auth_failures: int = 0
+        self.auth_cooldown_until: float = 0.0
+        self.is_ip_banned: bool = False
+        self.last_auth_error: str | None = None
 
     @override
     def connect(self) -> None:
         """Connect to the qBittorrent client.
 
         Raises:
-            ConnectionError: If authentication fails or the host is unreachable.
+            ConnectionError: If authentication fails, host is unreachable, or cooldown is active.
         """
-        self.client = QbClient(
-            host=self.host,
-            port=self.port,
-            username=self.username or "",
-            password=self.password or "",
-            REQUESTS_ARGS={"timeout": self.timeout},
+        now = time.time()
+        if self.is_ip_banned:
+            raise ConnectionError(
+                "qBittorrent IP address is banned: too many failed authentication attempts. "
+                "Check downloader Web UI settings to unban."
+            )
+
+        if now < self.auth_cooldown_until:
+            remaining = int(self.auth_cooldown_until - now)
+            raise ConnectionError(
+                f"qBittorrent authentication cooldown active ({remaining}s remaining) "
+                "to protect your IP from being banned. Please verify your username, password, or API key."
+            )
+
+        try:
+            if self.api_key:
+                # Direct API key authentication (qBittorrent v5.2+)
+                self.client = QbClient(
+                    host=self.host,
+                    port=self.port,
+                    username=self.username or "",
+                    api_key=self.api_key,
+                    REQUESTS_ARGS={"timeout": self.timeout},
+                )
+                # Verify key validity with a lightweight call
+                _ = self.client.app.version
+            else:
+                self.client = QbClient(
+                    host=self.host,
+                    port=self.port,
+                    username=self.username or "",
+                    password=self.password or "",
+                    REQUESTS_ARGS={"timeout": self.timeout},
+                )
+                self.client.auth_log_in()
+
+            # Connection succeeded, reset failure metrics
+            self.consecutive_auth_failures = 0
+            self.auth_cooldown_until = 0.0
+            self.is_ip_banned = False
+            self.last_auth_error = None
+
+        except Forbidden403Error as e:
+            err_str = str(e).lower()
+            if "banned" in err_str:
+                self.is_ip_banned = True
+                self.last_auth_error = "IP Banned (Too many failed login attempts)"
+                logger.critical(
+                    "qBittorrent IP BANNED: Host %s:%s has blocked requests due to repeated failed logins.",
+                    self.host,
+                    self.port,
+                )
+                raise ConnectionError(
+                    "qBittorrent rejected connection: IP address banned due to failed attempts."
+                ) from e
+
+            # Non-ban 403 (e.g. invalid API key or restricted endpoint)
+            self._record_auth_failure("Forbidden / Invalid Credentials")
+            raise ConnectionError("qBittorrent authentication failed: Invalid API key or credentials.") from e
+
+        except (LoginFailed, Unauthorized401Error) as e:
+            self._record_auth_failure("Invalid username or password")
+            raise ConnectionError("qBittorrent authentication failed: Incorrect username or password.") from e
+
+    def _record_auth_failure(self, reason: str) -> None:
+        """Track consecutive authentication failures and trigger cooldown before an IP ban occurs."""
+        self.consecutive_auth_failures += 1
+        self.last_auth_error = reason
+        logger.warning(
+            "qBittorrent auth failure (%d/%d): %s",
+            self.consecutive_auth_failures,
+            self.AUTH_FAIL_LIMIT,
+            reason,
         )
-        self.client.auth_log_in()
+        if self.consecutive_auth_failures >= self.AUTH_FAIL_LIMIT:
+            self.auth_cooldown_until = time.time() + self.AUTH_BACKOFF_SECONDS
+            logger.error(
+                "qBittorrent auth failure limit reached (%d). Backing off for %ds to prevent IP ban.",
+                self.AUTH_FAIL_LIMIT,
+                int(self.AUTH_BACKOFF_SECONDS),
+            )
 
     @override
     def close(self) -> None:
         """Close the qBittorrent client session."""
         if self.client:
             try:
-                # qBittorrentAPI doesn't strictly require logout, but it's good practice
-                self.client.auth_log_out()
+                # If session-based, attempt log out
+                if not self.api_key:
+                    self.client.auth_log_out()
+                http_session = getattr(self.client, "_http_session", None)
+                if http_session is not None and hasattr(http_session, "close"):
+                    http_session.close()
+                    self.client._http_session = None  # pyright: ignore[reportPrivateUsage]
             except Exception as e:
                 logger.debug(f"Error closing qBittorrent connection: {e}")
             self.client = None

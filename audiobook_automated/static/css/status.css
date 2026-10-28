@@ -72,6 +72,18 @@
     color: #f87171;
 }
 
+.status-client-pill.warning {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: #fbbf24;
+}
+
+.status-client-pill.banned {
+    background: rgba(220, 38, 38, 0.2);
+    border-color: rgba(220, 38, 38, 0.5);
+    color: #fca5a5;
+}
+
 .pulse-dot {
     width: 8px;
     height: 8px;
@@ -81,9 +93,16 @@
     animation: pulse-glow 2s infinite ease-in-out;
 }
 
-.status-client-pill.disconnected .pulse-dot {
+.status-client-pill.disconnected .pulse-dot,
+.status-client-pill.banned .pulse-dot {
     background-color: #ef4444;
     box-shadow: 0 0 10px #ef4444;
+    animation: none;
+}
+
+.status-client-pill.warning .pulse-dot {
+    background-color: #f59e0b;
+    box-shadow: 0 0 10px #f59e0b;
     animation: none;
 }
 

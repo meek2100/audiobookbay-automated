@@ -18,11 +18,11 @@ def test_health_check(client: FlaskClient) -> None:
     """Test the health check endpoint."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json == {"status": "ok", "client": "connected"}
+    assert response.json == {"status": "ok", "app": "healthy", "client": "connected"}
 
 
-def test_health_check_failure(client: FlaskClient) -> None:
-    """Test the health check endpoint when client is disconnected."""
+def test_health_check_client_disconnected_app_still_healthy(client: FlaskClient) -> None:
+    """Test health check remains 200 OK even when download client is disconnected."""
     from unittest.mock import patch
 
     from audiobook_automated.extensions import torrent_manager
@@ -30,8 +30,8 @@ def test_health_check_failure(client: FlaskClient) -> None:
     # We patch the instance that is already imported
     with patch.object(torrent_manager, "verify_credentials", return_value=False):
         response = client.get("/health")
-        assert response.status_code == 503
-        assert response.json == {"status": "degraded", "client": "disconnected"}
+        assert response.status_code == 200
+        assert response.json == {"status": "ok", "app": "healthy", "client": "disconnected"}
 
 
 def test_search_endpoint_valid(client: FlaskClient) -> None:
@@ -255,6 +255,48 @@ def test_status_json(client: FlaskClient) -> None:
         response = client.get("/status?json=1")
         assert response.status_code == 200
         assert response.json == expected_json
+
+
+def test_status_json_failure_banned(client: FlaskClient) -> None:
+    """Test /status?json=1 error response when client IP is banned."""
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        mock_tm.get_status.side_effect = RuntimeError("Your IP address has been banned")
+        response = client.get("/status?json=1")
+        assert response.status_code == 500
+        json_data = response.get_json()
+        assert isinstance(json_data, dict)
+        assert json_data.get("client_status") == "banned"
+
+
+def test_status_json_failure_auth(client: FlaskClient) -> None:
+    """Test /status?json=1 error response when client auth fails."""
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        mock_tm.get_status.side_effect = RuntimeError("Invalid password or auth cooldown")
+        response = client.get("/status?json=1")
+        assert response.status_code == 500
+        json_data = response.get_json()
+        assert isinstance(json_data, dict)
+        assert json_data.get("client_status") == "auth_failed"
+
+
+def test_status_html_failure_banned(client: FlaskClient) -> None:
+    """Test /status HTML rendering with banned status pill."""
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        mock_tm.get_status.side_effect = RuntimeError("Your IP address has been banned")
+        mock_tm.list_clients.return_value = ["qbittorrent"]
+        response = client.get("/status")
+        assert response.status_code == 200
+        assert b"IP Banned" in response.data
+
+
+def test_status_html_failure_auth(client: FlaskClient) -> None:
+    """Test /status HTML rendering with auth warning status pill."""
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        mock_tm.get_status.side_effect = RuntimeError("Incorrect password")
+        mock_tm.list_clients.return_value = ["qbittorrent"]
+        response = client.get("/status")
+        assert response.status_code == 200
+        assert b"Auth Failed" in response.data
 
 
 def test_api_clients_endpoint(client: FlaskClient) -> None:

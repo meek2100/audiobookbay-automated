@@ -14,6 +14,7 @@ window.initSplashScreen = initSplashScreen;
 window.dismissSplash = dismissSplash;
 window.initMobileMenu = initMobileMenu;
 window.initScrollToTop = initScrollToTop;
+window.initClientBannerCheck = initClientBannerCheck;
 
 function initMobileMenu() {
     const mobileMenuBtn = document.getElementById("mobile-menu-btn");
@@ -107,6 +108,7 @@ document.addEventListener("DOMContentLoaded", function () {
     initSplashScreen();
     initMobileMenu();
     initScrollToTop();
+    initClientBannerCheck();
 
     // Reload Library Button
     const reloadBtn = document.getElementById("reload-library-btn");
@@ -679,4 +681,39 @@ function openExternalLink(url) {
         "Proceed",
         "primary"
     );
+}
+
+/**
+ * Checks client connectivity and displays a non-intrusive warning banner if unreachable.
+ */
+function initClientBannerCheck() {
+    const banner = document.getElementById("client-offline-banner");
+    if (!banner) return;
+
+    fetch("/api/clients")
+        .then((res) => {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json();
+        })
+        .then((data) => {
+            const clients = data.clients || [];
+            const hasConnected = clients.some((c) => c.connected);
+            if (!hasConnected && clients.length > 0) {
+                banner.style.display = "block";
+                // Optionally disable download buttons to prevent user frustration
+                document.querySelectorAll(".send-torrent-btn, .details-download-btn").forEach((btn) => {
+                    btn.classList.add("disabled");
+                    btn.title = "Download client is offline or credentials require attention";
+                });
+            } else {
+                banner.style.display = "none";
+                document.querySelectorAll(".send-torrent-btn, .details-download-btn").forEach((btn) => {
+                    btn.classList.remove("disabled");
+                    btn.title = "";
+                });
+            }
+        })
+        .catch(() => {
+            // Silently swallow errors during background connectivity checks
+        });
 }

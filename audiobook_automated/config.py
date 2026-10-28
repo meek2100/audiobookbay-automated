@@ -128,6 +128,8 @@ class Config:
     DL_USERNAME: str | None = _dl_username.strip(" \"'") if _dl_username else None
     _dl_password: str | None = os.getenv("DL_PASSWORD") or os.getenv("DL_PASS")
     DL_PASSWORD: str | None = _dl_password.strip(" \"'") if _dl_password else None
+    _dl_api_key: str | None = os.getenv("DL_API_KEY") or os.getenv("DL_KEY")
+    DL_API_KEY: str | None = _dl_api_key.strip(" \"'") if _dl_api_key else None
     DL_CATEGORY: str = os.getenv("DL_CATEGORY", "abb-automated").strip(" \"'")
     DL_SCHEME: str = os.getenv("DL_SCHEME", "http").strip(" \"'")
     _dl_url: str | None = os.getenv("DL_URL")
