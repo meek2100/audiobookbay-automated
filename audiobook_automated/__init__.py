@@ -9,6 +9,7 @@ from flask import Flask, Response, request, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config
+from .diagnostics import diagnostics_bp
 from .extensions import csrf, executor, limiter, register_shutdown_handlers, talisman, torrent_manager
 from .routes import main_bp
 from .scraper import network
@@ -91,6 +92,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Register Blueprints
     app.register_blueprint(main_bp)
+    app.register_blueprint(diagnostics_bp)
 
     @app.context_processor
     def inject_global_vars() -> dict[str, Any]:  # pyright: ignore[reportUnusedFunction]
@@ -105,6 +107,12 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             "splash_message": app.config["SPLASH_MESSAGE"],
             "splash_duration": app.config["SPLASH_DURATION"],
             "default_theme": app.config.get("DEFAULT_THEME", "purple"),
+            "abb_host": app.config.get("ABB_HOSTNAME", "audiobookbay.lu"),
+            "diagnostics_enabled": bool(
+                app.config.get("ENABLE_DIAGNOSTICS", False)
+                or app.config.get("FLASK_DEBUG", False)
+                or app.config.get("TESTING", False)
+            ),
             "flask_debug": bool(app.config.get("FLASK_DEBUG", False) or app.config.get("TESTING", False)),
         }
 

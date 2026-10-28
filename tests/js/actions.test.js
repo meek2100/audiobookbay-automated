@@ -325,7 +325,18 @@ describe("actions.js - Browser Interactions", () => {
         // Confirm
         document.getElementById("modal-confirm").click();
 
-        expect(mockOpen).toHaveBeenCalledWith("http://external.site", "_blank");
+        expect(mockOpen).toHaveBeenCalledWith("http://external.site", "_blank", "noopener,noreferrer");
+    });
+
+    test("openExternalLink should normalize relative path with window.ABB_HOST", () => {
+        window.ABB_HOST = "audiobookbay.is";
+        openExternalLink("/abss/test-book/");
+        document.getElementById("modal-confirm").click();
+        expect(mockOpen).toHaveBeenCalledWith(
+            "https://audiobookbay.is/abss/test-book/",
+            "_blank",
+            "noopener,noreferrer"
+        );
     });
 
     test("openExternalLink should do nothing if canceled via modal", () => {

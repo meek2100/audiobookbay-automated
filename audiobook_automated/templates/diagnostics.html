@@ -1,0 +1,273 @@
+<!-- File: audiobook_automated/templates/diagnostics.html -->
+{% extends "base.html" %}
+
+{% block title %}System Diagnostics - {{ site_title }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/status.css', v=static_version) }}" />
+<style>
+.diag-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.diag-card {
+    background: var(--glass-bg, rgba(25, 20, 35, 0.65));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.12));
+    border-radius: var(--border-radius-lg, 16px);
+    padding: 24px;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.diag-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 14px;
+}
+
+.diag-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color, #ffffff);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.diag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.diag-metric {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.diag-label {
+    font-size: 0.8rem;
+    color: var(--text-muted, rgba(255, 255, 255, 0.6));
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.diag-val {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent-color, #a855f7);
+    word-break: break-all;
+}
+
+.inspect-box {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.inspect-input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.inspect-input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: #fff;
+    font-size: 0.95rem;
+}
+
+.inspect-results-pre {
+    background: rgba(10, 8, 15, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+    color: #38bdf8;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="diag-container">
+    <div class="diag-card">
+        <div class="diag-header">
+            <span class="diag-title">
+                <span>⚡ System Health & Environment</span>
+            </span>
+            <button id="refresh-diag-btn" class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem;">
+                Refresh
+            </button>
+        </div>
+        <div class="diag-grid" id="system-metrics">
+            <div class="diag-metric">
+                <span class="diag-label">Status</span>
+                <span class="diag-val" id="diag-status">Loading...</span>
+            </div>
+            <div class="diag-metric">
+                <span class="diag-label">Memory RSS</span>
+                <span class="diag-val" id="diag-memory">-</span>
+            </div>
+            <div class="diag-metric">
+                <span class="diag-label">Active Mirror</span>
+                <span class="diag-val" id="diag-active-mirror">-</span>
+            </div>
+            <div class="diag-metric">
+                <span class="diag-label">Details Cache Size</span>
+                <span class="diag-val" id="diag-cache">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="diag-card">
+        <div class="diag-header">
+            <span class="diag-title">
+                <span>🌐 Mirror Probes & Latencies</span>
+            </span>
+        </div>
+        <div class="diag-grid" id="mirror-metrics">
+            <!-- Populated via JS -->
+        </div>
+    </div>
+
+    <div class="diag-card">
+        <div class="diag-header">
+            <span class="diag-title">
+                <span>📥 Download Clients</span>
+            </span>
+        </div>
+        <div class="diag-grid" id="client-metrics">
+            <!-- Populated via JS -->
+        </div>
+    </div>
+
+    <div class="diag-card">
+        <div class="diag-header">
+            <span class="diag-title">
+                <span>🔍 Live Parser & Metadata Inspector</span>
+            </span>
+        </div>
+        <div class="inspect-box">
+            <p style="color: var(--text-muted); font-size: 0.9rem;">
+                Inspect tag parsing, title, author, format, and bitrate fidelity on any AudiobookBay search query or detail URL.
+            </p>
+            <div class="inspect-input-row">
+                <input
+                    type="text"
+                    id="inspect-input"
+                    class="inspect-input"
+                    placeholder="Enter search query (e.g. 'Martian') or URL (/abss/...)"
+                />
+                <button id="run-inspect-btn" class="btn-primary">Inspect</button>
+            </div>
+            <pre id="inspect-output" class="inspect-results-pre" style="display: none;"></pre>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce() }}">
+document.addEventListener("DOMContentLoaded", () => {
+    const refreshBtn = document.getElementById("refresh-diag-btn");
+    const inspectBtn = document.getElementById("run-inspect-btn");
+    const inspectInput = document.getElementById("inspect-input");
+    const inspectOutput = document.getElementById("inspect-output");
+
+    async function loadHealth() {
+        try {
+            const res = await fetch("/api/diagnostics/health");
+            if (!res.ok) throw new Error("Health check returned status " + res.status);
+            const data = await res.json();
+
+            document.getElementById("diag-status").textContent = data.status.toUpperCase();
+            document.getElementById("diag-memory").textContent = data.system.memory_rss_mb + " MB";
+            document.getElementById("diag-active-mirror").textContent = data.mirrors.active_mirror || "None";
+            document.getElementById("diag-cache").textContent = `${data.cache.details_cache_size} / ${data.cache.details_cache_max}`;
+
+            // Mirrors
+            const mirrorContainer = document.getElementById("mirror-metrics");
+            mirrorContainer.innerHTML = "";
+            (data.mirrors.mirrors || []).forEach(m => {
+                const metric = document.createElement("div");
+                metric.className = "diag-metric";
+                metric.innerHTML = `
+                    <span class="diag-label">${m.hostname}</span>
+                    <span class="diag-val" style="color: ${m.reachable ? '#4ade80' : '#f87171'}; font-size: 1.1rem;">
+                        ${m.reachable ? `${m.latency_ms} ms` : 'Offline'}
+                    </span>
+                `;
+                mirrorContainer.appendChild(metric);
+            });
+
+            // Clients
+            const clientContainer = document.getElementById("client-metrics");
+            clientContainer.innerHTML = "";
+            (data.clients || []).forEach(c => {
+                const metric = document.createElement("div");
+                metric.className = "diag-metric";
+                metric.innerHTML = `
+                    <span class="diag-label">${c.name} (${c.strategy_class || 'None'})</span>
+                    <span class="diag-val" style="color: ${c.connected ? '#4ade80' : '#f87171'}; font-size: 1.1rem;">
+                        ${c.connected ? 'Connected' : 'Disconnected'}
+                    </span>
+                `;
+                clientContainer.appendChild(metric);
+            });
+        } catch (e) {
+            console.error("Failed to load health metrics", e);
+        }
+    }
+
+    async function runInspect() {
+        const val = inspectInput.value.trim();
+        if (!val) return;
+
+        inspectBtn.disabled = true;
+        inspectOutput.style.display = "block";
+        inspectOutput.textContent = "Inspecting parser...";
+
+        try {
+            const param = val.startsWith("http") || val.startsWith("/") ? `url=${encodeURIComponent(val)}` : `query=${encodeURIComponent(val)}`;
+            const res = await fetch(`/api/diagnostics/inspect?${param}`);
+            const json = await res.json();
+            inspectOutput.textContent = JSON.stringify(json, null, 2);
+        } catch (e) {
+            inspectOutput.textContent = "Error: " + e.message;
+        } finally {
+            inspectBtn.disabled = false;
+        }
+    }
+
+    if (refreshBtn) refreshBtn.addEventListener("click", loadHealth);
+    if (inspectBtn) inspectBtn.addEventListener("click", runInspect);
+    if (inspectInput) {
+        inspectInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") runInspect();
+        });
+    }
+
+    loadHealth();
+});
+</script>
+{% endblock %}

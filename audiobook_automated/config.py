@@ -73,6 +73,7 @@ class Config:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key").strip(" \"'")
     FLASK_DEBUG: bool = parse_bool(os.getenv("FLASK_DEBUG"), False)
     TESTING: bool = parse_bool(os.getenv("TESTING"), False)
+    ENABLE_DIAGNOSTICS: bool = parse_bool(os.getenv("ENABLE_DIAGNOSTICS"), False)
 
     # Static Asset Caching (1 Year)
     SEND_FILE_MAX_AGE_DEFAULT: int = 31536000

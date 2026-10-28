@@ -654,6 +654,15 @@ function sendTorrent(link, title, buttonElement, client) {
  * @param {string} url - The URL to open.
  */
 function openExternalLink(url) {
+    if (!url) return;
+
+    let targetUrl = url;
+    // If relative URL, construct an absolute URL using configured host or current mirror
+    if (url.startsWith("/")) {
+        const mirror = window.ABB_HOST || "audiobookbay.lu";
+        targetUrl = `https://${mirror}${url}`;
+    }
+
     const warningMessage =
         "You are about to open this link directly in your browser.\n" +
         "This traffic will NOT be routed through the server's connection.\n\n" +
@@ -663,7 +672,7 @@ function openExternalLink(url) {
         "External Link Warning",
         warningMessage,
         () => {
-            window.open(url, "_blank");
+            window.open(targetUrl, "_blank", "noopener,noreferrer");
         },
         "Proceed",
         "primary"
