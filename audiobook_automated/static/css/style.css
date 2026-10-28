@@ -285,13 +285,11 @@ body {
     }
 }
 
-/* --- Navigation (Option 4: Minimal Top Bar with Universal Hamburger Drawer) --- */
+/* --- Navigation (Option 4: Floating Top-Right Hamburger Menu) --- */
 .navbar {
     width: 100%;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: var(--glass-border);
+    background: transparent;
+    border-bottom: none;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -299,52 +297,30 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 28px rgba(0, 0, 0, 0.35);
-    transition:
-        background 0.3s ease,
-        height 0.3s ease,
-        box-shadow 0.3s ease;
+    box-shadow: none;
+    pointer-events: none; /* Allows clicks through empty space to content */
+    transition: background 0.3s ease;
 }
 
 .nav-container {
     width: 100%;
     max-width: var(--max-content-width);
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end; /* Pushes hamburger button to the top right */
     align-items: center;
     padding: 0 24px;
-    gap: 16px;
     position: relative;
+    pointer-events: auto; /* Re-enables clicks for hamburger button */
 }
 
-/* Minimal Brand Link in Top Bar */
-.nav-logo-minimal {
-    display: flex;
-    align-items: center;
-    text-decoration: none;
-    color: var(--text-main);
-    transition: opacity 0.2s ease;
-}
-
-.nav-logo-minimal:hover {
-    opacity: 0.85;
-}
-
-.brand-text-minimal {
-    font-family: "Montserrat", sans-serif;
-    font-weight: 800;
-    font-size: 1.25rem;
-    color: var(--text-main);
-    letter-spacing: -0.5px;
-    white-space: nowrap;
-}
-
-/* --- Universal Hamburger Button (Visible on ALL Screen Sizes) --- */
+/* --- Floating Hamburger Button (All Screen Sizes) --- */
 .mobile-menu-btn {
     display: flex;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
     cursor: pointer;
     flex-direction: column;
     justify-content: center;
@@ -355,14 +331,14 @@ body {
     padding: 0;
     z-index: 1003;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .mobile-menu-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .mobile-menu-btn:focus-visible {
@@ -901,10 +877,6 @@ a:hover {
         padding: 0 16px;
     }
 
-    .brand-text-minimal {
-        font-size: 1.1rem;
-    }
-
     /* Option 4 Masthead Mobile Scaling */
     .masthead-showcase {
         margin: 20px auto 4px auto;
@@ -973,10 +945,6 @@ a:hover {
 
     .nav-container {
         padding: 0 12px;
-    }
-
-    .brand-text-minimal {
-        font-size: 1rem;
     }
 
     .masthead-logo-img {

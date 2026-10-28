@@ -23,43 +23,47 @@
         {% endif %}
     </div>
     {% else %}
-    <table>
-        <caption class="sr-only">
-            List of active downloads
-        </caption>
-        <thead>
-            <tr>
-                <th class="col-title">Title</th>
-                <th class="col-progress">Progress</th>
-                <th class="col-state">State</th>
-                <th class="col-size">Size</th>
-                <th class="col-action">Action</th>
-            </tr>
-        </thead>
-        <tbody id="status-table-body">
-            {% if torrents %} {% for torrent in torrents %}
-            <tr>
-                <td class="cell-title">{{ torrent.name }}</td>
-                <td class="cell-progress">{{ torrent.progress }}%</td>
-                <td class="cell-state">{{ torrent.state }}</td>
-                <td class="cell-size">{{ torrent.size }}</td>
-                <td class="cell-action">
-                    <button class="remove-button remove-torrent-btn" data-torrent-id="{{ torrent.id }}">Remove</button>
-                </td>
-            </tr>
-            {% endfor %} {% else %}
-            <tr>
-                <td
-                    colspan="5"
-                    class="empty-message"
-                    style="text-align: center; padding: 40px; color: var(--text-muted)"
-                >
-                    No active downloads found.
-                </td>
-            </tr>
-            {% endif %}
-        </tbody>
-    </table>
+    <div class="table-wrapper">
+        <table>
+            <caption class="sr-only">
+                List of active downloads
+            </caption>
+            <thead>
+                <tr>
+                    <th class="col-title">Title</th>
+                    <th class="col-progress">Progress</th>
+                    <th class="col-state">State</th>
+                    <th class="col-size">Size</th>
+                    <th class="col-action">Action</th>
+                </tr>
+            </thead>
+            <tbody id="status-table-body">
+                {% if torrents %} {% for torrent in torrents %}
+                <tr>
+                    <td class="cell-title">{{ torrent.name }}</td>
+                    <td class="cell-progress">{{ torrent.progress }}%</td>
+                    <td class="cell-state">{{ torrent.state }}</td>
+                    <td class="cell-size">{{ torrent.size }}</td>
+                    <td class="cell-action">
+                        <button class="remove-button remove-torrent-btn" data-torrent-id="{{ torrent.id }}">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %} {% else %}
+                <tr>
+                    <td
+                        colspan="5"
+                        class="empty-message"
+                        style="text-align: center; padding: 40px; color: var(--text-muted)"
+                    >
+                        No active downloads found.
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
     {% endif %}
 </div>
 {% endblock %}
