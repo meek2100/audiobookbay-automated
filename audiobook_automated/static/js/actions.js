@@ -233,7 +233,8 @@ function dismissSplash(overlay, options = {}) {
     let shouldMorph = false;
     let translateX = 0;
     let translateY = 0;
-    let scale = 1;
+    let scaleX = 1;
+    let scaleY = 1;
     let targetRadius = "16px";
 
     if (!skipAnimation && !prefersReducedMotion && splashVideo && targetLogo) {
@@ -252,9 +253,8 @@ function dismissSplash(overlay, options = {}) {
             translateX = targetCenterX - videoCenterX;
             translateY = targetCenterY - videoCenterY;
 
-            const scaleX = targetRect.width / videoRect.width;
-            const scaleY = targetRect.height / videoRect.height;
-            scale = Math.max(scaleX, scaleY);
+            scaleX = targetRect.width / videoRect.width;
+            scaleY = targetRect.height / videoRect.height;
 
             targetRadius = window.getComputedStyle(targetLogo).borderRadius || "16px";
         }
@@ -263,10 +263,10 @@ function dismissSplash(overlay, options = {}) {
     if (shouldMorph) {
         overlay.classList.add("morphing");
         splashVideo.style.borderRadius = targetRadius;
-        splashVideo.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
+        splashVideo.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`;
         splashVideo.style.opacity = "0";
 
-        // Cross-fade the target logo in as the morph begins to reach target
+        // Cross-fade the target logo in as the morph reaches exact target size and position
         setTimeout(() => {
             document.documentElement.classList.add("splash-reveal-logo");
         }, 150);
