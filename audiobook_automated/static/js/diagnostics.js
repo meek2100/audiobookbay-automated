@@ -27,7 +27,10 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadHealth() {
         if (isFetchingHealth) return;
         isFetchingHealth = true;
-        if (refreshBtn) refreshBtn.classList.add("spinning");
+        if (refreshBtn) {
+            refreshBtn.classList.add("refreshing");
+            refreshBtn.disabled = true;
+        }
 
         try {
             const res = await fetch("/api/diagnostics/health");
@@ -98,7 +101,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } finally {
             isFetchingHealth = false;
-            if (refreshBtn) refreshBtn.classList.remove("spinning");
+            if (refreshBtn) {
+                refreshBtn.classList.remove("refreshing");
+                refreshBtn.disabled = false;
+            }
         }
     }
 

@@ -68,10 +68,11 @@ def diagnostics_health() -> Response:
     }
 
     # 2. Mirror Status & Adaptive Performance
-    all_mirrors = network.get_mirrors()
+    # Bounded to top candidate mirrors for responsive diagnostics
+    candidate_mirrors = network.get_mirrors()[:8]
     mirror_results: list[dict[str, Any]] = []
 
-    for mirror in all_mirrors:
+    for mirror in candidate_mirrors:
         m_start = time.perf_counter()
         active = network.check_mirror(mirror) is not None
         latency_ms = round((time.perf_counter() - m_start) * 1000, 2)
