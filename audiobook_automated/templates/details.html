@@ -62,12 +62,14 @@ extra_css %}
                     {% if book.author and book.author != "Unknown" %}
                     <a
                         href="{{ url_for('main.search', query=book.author) }}"
-                        class="meta-value accent meta-link"
+                        class="meta-value author-link"
                         title="Search books by {{ book.author }}"
-                        >{{ book.author }}</a
                     >
+                        <span class="meta-icon" aria-hidden="true">✍️</span>
+                        <span class="meta-text">{{ book.author }}</span>
+                    </a>
                     {% else %}
-                    <span class="meta-value accent">{{ book.author }}</span>
+                    <span class="meta-value author-text">{{ book.author }}</span>
                     {% endif %}
                 </div>
                 <div class="meta-item">
@@ -75,12 +77,14 @@ extra_css %}
                     {% if book.narrator and book.narrator != "Unknown" %}
                     <a
                         href="{{ url_for('main.search', query=book.narrator) }}"
-                        class="meta-value meta-link"
+                        class="meta-value narrator-link"
                         title="Search books narrated by {{ book.narrator }}"
-                        >{{ book.narrator }}</a
                     >
+                        <span class="meta-icon" aria-hidden="true">🎙️</span>
+                        <span class="meta-text">{{ book.narrator }}</span>
+                    </a>
                     {% else %}
-                    <span class="meta-value">{{ book.narrator }}</span>
+                    <span class="meta-value narrator-text">{{ book.narrator }}</span>
                     {% endif %}
                 </div>
                 <div class="meta-item">

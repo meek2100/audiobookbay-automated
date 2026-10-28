@@ -719,7 +719,7 @@ a:hover {
     font-weight: 700;
 }
 
-/* 2. Tags & Links */
+/* 2. Tags & Metadata Links */
 .category-tag {
     font-size: 0.8rem;
     background: var(--tag-bg, rgba(255, 255, 255, 0.08));
@@ -746,6 +746,82 @@ a.category-tag:hover,
     color: var(--accent-hover);
     transform: translateY(-1px) scale(1.03);
     box-shadow: 0 2px 12px var(--accent-glow, rgba(0, 0, 0, 0.3));
+}
+
+/* Base metadata links (Author & Narrator interactive pills) */
+.author-link,
+.narrator-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    cursor: pointer;
+    line-height: 1.3;
+}
+
+.author-link .meta-icon,
+.narrator-link .meta-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+    display: inline-block;
+    transition: transform 0.25s ease;
+}
+
+/* Distinct Style: Author (The Creative Mind) - Warm accent tint & underline */
+.author-link {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.author-link:hover {
+    color: var(--accent-hover);
+    background: var(--accent-glow, rgba(255, 255, 255, 0.15));
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px var(--accent-glow, rgba(0, 0, 0, 0.3));
+}
+
+.author-link:hover .meta-icon {
+    transform: rotate(-10deg) scale(1.15);
+}
+
+/* Distinct Style: Narrator (The Voice) - Cool glass pill with dashed border */
+.narrator-link {
+    color: var(--text-muted);
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px dashed rgba(255, 255, 255, 0.25);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.narrator-link:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--accent-hover);
+    border-style: solid;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.narrator-link:hover .meta-icon {
+    transform: scale(1.15);
+}
+
+/* Plain non-linked fallbacks */
+.author-text {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.narrator-text {
+    color: var(--text-muted);
+    font-weight: 500;
 }
 
 .meta-link {
