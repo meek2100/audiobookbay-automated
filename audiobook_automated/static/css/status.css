@@ -1,7 +1,7 @@
 /* File: audiobook_automated/static/css/status.css */
 /* --- Status Page Glass Header Hero --- */
 .status-header-glass {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto 24px auto;
     padding: 20px 28px;
     background: var(--glass-bg, rgba(20, 20, 30, 0.65));
@@ -121,24 +121,58 @@
 .status-poll-indicator {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
+    justify-content: center;
+    padding: 6px;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 999px;
-    font-size: 0.8rem;
     color: var(--text-muted, rgba(255, 255, 255, 0.7));
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.status-poll-indicator:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--text-main, #ffffff);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.status-poll-indicator:active {
+    transform: scale(0.95);
+}
+
+.poll-dial-wrap {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .poll-icon {
-    width: 14px;
-    height: 14px;
-    color: var(--text-muted, rgba(255, 255, 255, 0.7));
-    transition: transform 0.5s ease;
+    width: 32px;
+    height: 32px;
+    color: var(--accent-color, #f7d070);
+    transition: transform 0.3s ease;
+}
+
+.poll-countdown-num {
+    position: absolute;
+    font-size: 0.58rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-main, #ffffff);
+    font-family: inherit;
+    pointer-events: none;
+    text-align: center;
+    transform: translateY(0.5px);
 }
 
 .status-poll-indicator.polling .poll-icon {
-    animation: spin-poll 0.8s linear infinite;
+    animation: spin-poll 0.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes spin-poll {
@@ -207,7 +241,7 @@
 
 /* --- Container & Table Layout --- */
 .status-container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     width: 100%;
 }

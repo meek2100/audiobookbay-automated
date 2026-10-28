@@ -228,7 +228,10 @@ class TorrentManager:
             return []
 
         statuses = self.strategy.get_status(category)
-        default_name = self.client_type.lower().replace("client", "")
+        default_name = next(iter(self.clients.keys()), "").lower()
+        if not default_name:
+            default_name = self.client_type.lower().replace("client", "").replace("strategy", "")
+
         for s in statuses:
             if hasattr(s, "client"):
                 s.client = default_name
