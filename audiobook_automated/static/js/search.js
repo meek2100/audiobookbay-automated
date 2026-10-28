@@ -785,12 +785,26 @@ function initFloatingHud() {
 
     // Scroll listener for HUD visibility
     let ticking = false;
+    const indicator = document.getElementById("load-more-indicator");
+
     const onScroll = () => {
         const scrollThreshold = 350;
         if (window.scrollY > scrollThreshold) {
             hud.classList.add("visible");
+            // Check if load-more indicator is close to viewport bottom
+            if (indicator && indicator.style.display !== "none") {
+                const rect = indicator.getBoundingClientRect();
+                const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+                if (rect.top < viewportHeight - 30) {
+                    hud.classList.add("tucked");
+                } else {
+                    hud.classList.remove("tucked");
+                }
+            } else {
+                hud.classList.remove("tucked");
+            }
         } else {
-            hud.classList.remove("visible");
+            hud.classList.remove("visible", "tucked");
             if (hudFilterDrawer) {
                 hudFilterDrawer.classList.remove("open");
                 hudFilterDrawer.setAttribute("aria-hidden", "true");
