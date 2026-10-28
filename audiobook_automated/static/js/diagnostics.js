@@ -58,8 +58,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     metric.className = "diag-metric";
                     const isCooling = m.cooling_down;
                     const latencyText = m.reachable ? `${m.latency_ms} ms` : "Offline";
-                    const statusColor = isCooling ? "#f59e0b" : (m.reachable ? "#4ade80" : "#f87171");
-                    const statusLabel = isCooling ? "Cooldown" : (m.reachable ? latencyText : "Offline");
+                    const statusColor = isCooling ? "#f59e0b" : m.reachable ? "#4ade80" : "#f87171";
+                    const statusLabel = isCooling ? "Cooldown" : m.reachable ? latencyText : "Offline";
 
                     metric.innerHTML = `
                         <span class="diag-label">${m.hostname} (Rate: ${m.success_rate || 100}%)</span>

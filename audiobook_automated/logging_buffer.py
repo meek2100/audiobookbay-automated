@@ -24,7 +24,12 @@ REDACTION_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # Bearer tokens
     (re.compile(r"Bearer\s+[A-Za-z0-9_\-\.]{8,}", re.IGNORECASE), "Bearer <redacted>"),
     # IP addresses (v4) - replace private and public IPs with generic identifier
-    (re.compile(r"\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b"), "127.0.0.1"),
+    (
+        re.compile(
+            r"\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})\b"
+        ),
+        "127.0.0.1",
+    ),
     # User paths (/home/username, C:\Users\username)
     (re.compile(r"/(?:home|Users)/[A-Za-z0-9_-]+"), "/home/<user>"),
 ]
