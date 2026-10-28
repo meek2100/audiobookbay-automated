@@ -16,6 +16,16 @@ const getGlobalFunctions = () => {
         clearFilters: window.clearFilters,
         showLoadingSpinner: window.showLoadingSpinner,
         hideLoadingSpinner: window.hideLoadingSpinner,
+        setViewMode: window.setViewMode,
+        initFloatingHud: window.initFloatingHud,
+        initTopFilterDrawer: window.initTopFilterDrawer,
+        syncHudFilters: window.syncHudFilters,
+        streamRemainingPages: window.streamRemainingPages,
+        createResultRowElement: window.createResultRowElement,
+        initHoverPrefetch: window.initHoverPrefetch,
+        initInfiniteScroll: window.initInfiniteScroll,
+        loadNextPage: window.loadNextPage,
+        resetPaginationState: window.resetPaginationState,
     };
 };
 
@@ -39,8 +49,7 @@ const setup = () => {
     // Clear DOM before each test
     document.body.innerHTML = "";
 
-    // Setup Filter Controls (required for initialization)
-    // FIX: Manually populate options to simulate server-side rendering, as auto-population was removed from search.js
+    // Setup Filter Controls (native date and size dropdowns)
     document.body.innerHTML = `
         <div id="search-container">
             <button class="search-button">
@@ -73,8 +82,16 @@ const setup = () => {
                 <option value="M4B">M4B</option>
                 <option value="MP3">MP3</option>
             </select>
-            <input type="text" id="date-range-filter" />
-            <div class="filter-row"><div class="filter-controls"><div class="file-size-filter-wrapper"><div id="file-size-slider"></div></div></div><div class="filter-buttons"><button id="filter-button"></button><button id="clear-button"></button></div></div>
+            <select id="file-size-filter">
+                <option value="">Any Size</option>
+                <option value="under_500mb">&lt; 500 MB</option>
+                <option value="500mb_2gb">500 MB – 2 GB</option>
+                <option value="2gb_5gb">2 GB – 5 GB</option>
+                <option value="over_5gb">&gt; 5 GB</option>
+            </select>
+            <input type="date" id="date-from-filter" />
+            <input type="date" id="date-to-filter" />
+            <div class="filter-buttons"><button id="filter-button"></button><button id="clear-button"></button></div>
         </div>
         <table><tbody id="results-table-body"></tbody></table>
     `;
@@ -88,25 +105,17 @@ const setup = () => {
     tbody.appendChild(createResultRow("Fiction", "English", "Unknown", "10 GB", "Unknown", "MP3")); // Max size row: 10240 MB
     tbody.appendChild(createResultRow("Unknown", "Unknown", "Unknown", "Unknown", "Unknown", "Unknown")); // Fully Unknown row
 
-    // Reset and re-run initialization mocks
-    global.flatpickr.mockClear();
-    global.noUiSlider.create.mockClear();
-
     const functions = getGlobalFunctions();
+    if (functions.resetPaginationState) {
+        functions.resetPaginationState();
+    }
     functions.initializeFilters();
 
     // Manually trigger DOMContentLoaded to run initializeFilters setup
     document.dispatchEvent(new Event("DOMContentLoaded"));
 
-    // Extract the mock instances (which are now globally mocked)
-    const mockFlatpickr = global.flatpickr.mock.results[global.flatpickr.mock.results.length - 1].value;
-    const mockNoUiSlider =
-        global.noUiSlider.create.mock.results[global.noUiSlider.create.mock.results.length - 1].value;
-
     return {
         functions,
-        mockFlatpickr,
-        mockNoUiSlider,
         mockFilter: (id, value) => {
             document.getElementById(id).value = value;
         },
@@ -204,15 +213,17 @@ describe("search.js Filter Logic (DOM dependent)", () => {
 
     // --- initializeFilters Tests ---
 
-    test("initializeFilters should initialize date and size pickers correctly", () => {
-        const { mockNoUiSlider } = setupData;
+    test("initializeFilters should configure native date input constraints", () => {
+        const dateFrom = document.getElementById("date-from-filter");
+        const dateTo = document.getElementById("date-to-filter");
 
-        expect(global.flatpickr).toHaveBeenCalled();
-        expect(global.noUiSlider.create).toHaveBeenCalled();
+        dateFrom.value = "2024-01-01";
+        dateFrom.dispatchEvent(new Event("change"));
+        expect(dateTo.min).toBe("2024-01-01");
 
-        const noUiSliderOptions = mockNoUiSlider.options;
-        expect(noUiSliderOptions.range.min).toBeCloseTo(100);
-        expect(noUiSliderOptions.range.max).toBeCloseTo(10240); // 10 GB
+        dateTo.value = "2024-02-01";
+        dateTo.dispatchEvent(new Event("change"));
+        expect(dateFrom.max).toBe("2024-02-01");
     });
 
     // --- applyFilters Tests ---
@@ -237,32 +248,45 @@ describe("search.js Filter Logic (DOM dependent)", () => {
         expect(visible).toHaveLength(1);
     });
 
-    test("applyFilters should filter by File Size Range", () => {
-        const { mockNoUiSlider, mockApply } = setupData;
-        // Mock slider range: Min 150MB, Max 2GB (2048MB)
-        mockNoUiSlider.get.mockReturnValue(["150", "2048"]);
+    test("applyFilters should filter by File Size Range using native presets", () => {
+        const { mockApply } = setupData;
+        // Test preset 500 MB - 2 GB
+        mockFilter("file-size-filter", "500mb_2gb");
         mockApply();
 
         const visible = Array.from(document.querySelectorAll(".result-row")).filter((r) => r.style.display === "");
-        // Includes: 500 MB row, 1.5 GB row (1536 MB).
+        // Includes: 500 MB row, 1.5 GB row.
         expect(visible).toHaveLength(2);
     });
 
-    test("clearFilters should reset all inputs and show all rows", () => {
-        const { mockFlatpickr, mockNoUiSlider, mockClear } = setupData;
+    test("applyFilters should filter by native Date Range", () => {
+        const { mockApply } = setupData;
+        mockFilter("date-from-filter", "2024-01-01");
+        mockFilter("date-to-filter", "2024-01-31");
+        mockApply();
 
-        // Simulate a filter applied previously
+        const visible = Array.from(document.querySelectorAll(".result-row")).filter((r) => r.style.display === "");
+        // "01 Jan 2024" matches.
+        expect(visible).toHaveLength(1);
+    });
+
+    test("clearFilters should reset all inputs and show all rows", () => {
+        const { mockClear } = setupData;
+
+        // Simulate filters applied previously
         document.querySelectorAll(".result-row")[0].style.display = "none";
         mockFilter("category-filter", "Fiction");
+        mockFilter("file-size-filter", "500mb_2gb");
+        mockFilter("date-from-filter", "2024-01-01");
 
         mockClear();
 
-        // Check if select values are reset
+        // Check if values are reset
         expect(document.getElementById("category-filter").value).toBe("");
-        // Check if date picker is cleared
-        expect(mockFlatpickr.clear).toHaveBeenCalled();
-        // Check if slider is reset
-        expect(mockNoUiSlider.reset).toHaveBeenCalled();
+        expect(document.getElementById("file-size-filter").value).toBe("");
+        expect(document.getElementById("date-from-filter").value).toBe("");
+        expect(document.getElementById("date-to-filter").value).toBe("");
+
         // Check if all rows are visible
         document.querySelectorAll(".result-row").forEach((row) => {
             expect(row.style.display).toBe("");
@@ -328,5 +352,362 @@ describe("search.js UI Spinner Logic", () => {
 
         expect(messageScroller.style.display).toBe("block");
         expect(document.getElementById("scrolling-message").textContent).not.toBe("");
+    });
+});
+
+describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
+    beforeEach(() => {
+        setup();
+    });
+
+    test("createResultRowElement builds proper DOM table row", () => {
+        const { createResultRowElement } = getGlobalFunctions();
+        const book = {
+            title: "Dune",
+            link: "https://audiobookbay.lu/dune",
+            cover: "https://audiobookbay.lu/cover.jpg",
+            category: ["Sci-Fi, Fantasy"],
+            language: "English",
+            format: "M4B",
+            bitrate: "128 Kbps",
+            file_size: "500 MB",
+            post_date: "01 Jan 2024",
+        };
+
+        const row = createResultRowElement(book);
+        expect(row.tagName).toBe("TR");
+        expect(row.className).toContain("result-row");
+        expect(row.dataset.category).toBe("Sci-Fi, Fantasy");
+        expect(row.dataset.language).toBe("English");
+        expect(row.querySelector(".book-title").textContent).toBe("Dune");
+        expect(row.querySelector(".category-link").textContent).toBe("Sci-Fi");
+        expect(row.querySelector(".send-torrent-btn").dataset.title).toBe("Dune");
+    });
+
+    test("streamRemainingPages fetches subsequent pages and appends rows", async () => {
+        const { streamRemainingPages } = getGlobalFunctions();
+        const tbody = document.getElementById("results-table-body");
+        const initialRowCount = tbody.querySelectorAll(".result-row").length;
+
+        // Mock fetch
+        global.fetch = jest.fn().mockImplementation((url) => {
+            if (url.includes("page=2")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            books: [
+                                {
+                                    title: "Streamed Book 1",
+                                    link: "/book-1",
+                                    category: ["Adventure"],
+                                    language: "English",
+                                    format: "MP3",
+                                    bitrate: "64 Kbps",
+                                    file_size: "100 MB",
+                                    post_date: "02 Feb 2024",
+                                },
+                            ],
+                            has_more: false,
+                            page: 2,
+                        }),
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ books: [], has_more: false, page: 3 }),
+            });
+        });
+
+        await streamRemainingPages("dune", 2, 3);
+
+        const newRowCount = tbody.querySelectorAll(".result-row").length;
+        expect(newRowCount).toBe(initialRowCount + 1);
+        expect(tbody.textContent).toContain("Streamed Book 1");
+        expect(global.fetch).toHaveBeenCalledWith("/api/search?query=dune&page=2");
+    });
+
+    test("loadNextPage fetches page, appends rows, and manages indicator state", async () => {
+        const { loadNextPage } = getGlobalFunctions();
+        const tbody = document.getElementById("results-table-body");
+        const initialRowCount = tbody.querySelectorAll(".result-row").length;
+
+        // Add load-more-indicator and load-more-btn to DOM
+        const indicator = document.createElement("div");
+        indicator.id = "load-more-indicator";
+        indicator.innerHTML = '<span id="load-more-loading"></span><button id="load-more-btn"></button>';
+        document.body.appendChild(indicator);
+
+        global.fetch = jest.fn().mockReturnValue(
+            Promise.resolve({
+                ok: true,
+                json: () =>
+                    Promise.resolve({
+                        books: [
+                            {
+                                title: "Infinite Expanse 1",
+                                link: "/expanse-1",
+                                category: ["Sci-Fi"],
+                                language: "English",
+                                format: "M4B",
+                                bitrate: "128 Kbps",
+                                file_size: "600 MB",
+                                post_date: "05 Mar 2024",
+                            },
+                        ],
+                        has_more: true,
+                        page: 2,
+                    }),
+            })
+        );
+
+        const hasMore = await loadNextPage("expanse");
+        expect(hasMore).toBe(true);
+
+        const newRowCount = tbody.querySelectorAll(".result-row").length;
+        expect(newRowCount).toBe(initialRowCount + 1);
+        expect(tbody.textContent).toContain("Infinite Expanse 1");
+        expect(global.fetch).toHaveBeenCalledWith("/api/search?query=expanse&page=2");
+    });
+
+    test("initInfiniteScroll configures IntersectionObserver or falls back gracefully", () => {
+        const { initInfiniteScroll } = getGlobalFunctions();
+        const indicator = document.createElement("div");
+        indicator.id = "load-more-indicator";
+        document.body.appendChild(indicator);
+
+        const mockObserve = jest.fn();
+        const mockDisconnect = jest.fn();
+        global.IntersectionObserver = jest.fn().mockImplementation((callback) => ({
+            observe: mockObserve,
+            disconnect: mockDisconnect,
+        }));
+
+        initInfiniteScroll("the expanse");
+        expect(global.IntersectionObserver).toHaveBeenCalled();
+        expect(mockObserve).toHaveBeenCalledWith(indicator);
+    });
+
+    test("initHoverPrefetch fires fetch on category and details link hover after 120ms", () => {
+        jest.useFakeTimers();
+        const { initHoverPrefetch } = getGlobalFunctions();
+        const tbody = document.getElementById("results-table-body");
+
+        // Add a mock category link
+        const a = document.createElement("a");
+        a.className = "category-tag category-link";
+        a.href = "/?query=Brandon+Sanderson";
+        tbody.appendChild(a);
+
+        // Add a mock details link
+        const detailsLink = document.createElement("a");
+        detailsLink.className = "btn-glass details-button";
+        detailsLink.href = "/details?link=https%3A%2F%2Faudiobookbay.lu%2Ftest";
+        tbody.appendChild(detailsLink);
+
+        global.fetch = jest.fn().mockReturnValue(Promise.resolve({ ok: true }));
+
+        initHoverPrefetch();
+
+        // Simulate mouseenter on category link
+        a.dispatchEvent(new Event("mouseenter"));
+
+        // Before timer: no fetch
+        expect(global.fetch).not.toHaveBeenCalled();
+
+        // Advance 130ms
+        jest.advanceTimersByTime(130);
+
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining("/api/search?query=Brandon%20Sanderson&page=1"),
+            expect.any(Object)
+        );
+
+        // Simulate mouseenter on details link
+        detailsLink.dispatchEvent(new Event("mouseenter"));
+        jest.advanceTimersByTime(130);
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(global.fetch).toHaveBeenCalledWith(
+            "/details?link=https%3A%2F%2Faudiobookbay.lu%2Ftest",
+            expect.any(Object)
+        );
+
+        jest.useRealTimers();
+    });
+
+    test("setViewMode toggles grid and list mode and persists to localStorage", () => {
+        const { setViewMode } = getGlobalFunctions();
+
+        const container = document.createElement("div");
+        container.id = "results-container";
+        const listBtn = document.createElement("button");
+        listBtn.id = "view-list-btn";
+        const gridBtn = document.createElement("button");
+        gridBtn.id = "view-grid-btn";
+
+        document.body.appendChild(container);
+        document.body.appendChild(listBtn);
+        document.body.appendChild(gridBtn);
+
+        // Test setting to grid
+        setViewMode("grid");
+        expect(container.classList.contains("view-grid")).toBe(true);
+        expect(container.classList.contains("view-list")).toBe(false);
+        expect(gridBtn.classList.contains("active")).toBe(true);
+        expect(listBtn.classList.contains("active")).toBe(false);
+        expect(localStorage.getItem("viewMode")).toBe("grid");
+
+        // Test setting to list
+        setViewMode("list");
+        expect(container.classList.contains("view-list")).toBe(true);
+        expect(container.classList.contains("view-grid")).toBe(false);
+        expect(listBtn.classList.contains("active")).toBe(true);
+        expect(gridBtn.classList.contains("active")).toBe(false);
+        expect(localStorage.getItem("viewMode")).toBe("list");
+    });
+
+    test("initFloatingHud toggles visibility on scroll and manages drawer", () => {
+        const { initFloatingHud, syncHudFilters } = getGlobalFunctions();
+
+        // Build mock HUD elements
+        const hud = document.createElement("aside");
+        hud.id = "floating-filter-hud";
+        const toggleBtn = document.createElement("button");
+        toggleBtn.id = "hud-filter-toggle";
+        const drawer = document.createElement("div");
+        drawer.id = "hud-filter-drawer";
+        const closeBtn = document.createElement("button");
+        closeBtn.id = "hud-drawer-close";
+        const applyBtn = document.createElement("button");
+        applyBtn.id = "hud-apply-filters-btn";
+        const clearBtn = document.createElement("button");
+        clearBtn.id = "hud-clear-filters-btn";
+        const topBtn = document.createElement("button");
+        topBtn.id = "hud-top-btn";
+        const badge = document.createElement("span");
+        badge.id = "hud-filter-badge";
+
+        // Main selects are already set up in setup(): category-filter, language-filter, bitrate-filter, format-filter
+
+        // HUD selects
+        ["category", "language", "bitrate", "format"].forEach((field) => {
+            const hudSelect = document.createElement("select");
+            hudSelect.id = `hud-${field}-filter`;
+            const optNone = document.createElement("option");
+            optNone.value = "";
+            const optVal = document.createElement("option");
+            optVal.value = "TestVal";
+            hudSelect.appendChild(optNone);
+            hudSelect.appendChild(optVal);
+            document.body.appendChild(hudSelect);
+        });
+
+        // Add matching option to main category select
+        const catSelect = document.getElementById("category-filter");
+        if (catSelect) {
+            const opt = document.createElement("option");
+            opt.value = "TestVal";
+            catSelect.appendChild(opt);
+        }
+
+        document.body.appendChild(hud);
+        document.body.appendChild(toggleBtn);
+        document.body.appendChild(drawer);
+        document.body.appendChild(closeBtn);
+        document.body.appendChild(applyBtn);
+        document.body.appendChild(clearBtn);
+        document.body.appendChild(topBtn);
+        document.body.appendChild(badge);
+
+        window.scrollTo = jest.fn();
+        window.requestAnimationFrame = (cb) => cb();
+
+        initFloatingHud();
+
+        // Simulate scroll past 350
+        Object.defineProperty(window, "scrollY", { value: 400, writable: true });
+        window.dispatchEvent(new Event("scroll"));
+        expect(hud.classList.contains("visible")).toBe(true);
+
+        // Toggle drawer
+        toggleBtn.click();
+        expect(drawer.classList.contains("open")).toBe(true);
+
+        // Close drawer via closeBtn
+        closeBtn.click();
+        expect(drawer.classList.contains("open")).toBe(false);
+
+        // Test top button
+        topBtn.click();
+        expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+
+        // Test syncHudFilters
+        const hudCatSelect = document.getElementById("hud-category-filter");
+        hudCatSelect.value = "TestVal";
+        syncHudFilters(true);
+        expect(catSelect.value).toBe("TestVal");
+        expect(badge.textContent).toBe("1");
+        expect(badge.style.display).toBe("inline-block");
+
+        // Clear
+        catSelect.value = "";
+        hudCatSelect.value = "";
+        syncHudFilters(false);
+        expect(badge.style.display).toBe("none");
+    });
+
+    test("initTopFilterDrawer manages overlay opening, closing, and resets", () => {
+        const { initTopFilterDrawer, clearFilters } = getGlobalFunctions();
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.id = "toolbar-filter-toggle";
+        const overlay = document.createElement("div");
+        overlay.id = "filter-drawer-overlay";
+        const closeBtn = document.createElement("button");
+        closeBtn.id = "filter-drawer-close";
+        let applyBtn = document.getElementById("filter-button");
+        if (!applyBtn) {
+            applyBtn = document.createElement("button");
+            applyBtn.id = "filter-button";
+            document.body.appendChild(applyBtn);
+        }
+        const toolbarClearBtn = document.createElement("button");
+        toolbarClearBtn.id = "toolbar-clear-btn";
+
+        document.body.appendChild(toggleBtn);
+        document.body.appendChild(overlay);
+        document.body.appendChild(closeBtn);
+        document.body.appendChild(toolbarClearBtn);
+
+        initTopFilterDrawer();
+
+        // Open
+        toggleBtn.click();
+        expect(overlay.classList.contains("open")).toBe(true);
+        expect(overlay.getAttribute("aria-hidden")).toBe("false");
+
+        // Close via close button
+        closeBtn.click();
+        expect(overlay.classList.contains("open")).toBe(false);
+        expect(overlay.getAttribute("aria-hidden")).toBe("true");
+
+        // Open and close via Escape
+        toggleBtn.click();
+        expect(overlay.classList.contains("open")).toBe(true);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        expect(overlay.classList.contains("open")).toBe(false);
+
+        // Open and close via Apply
+        toggleBtn.click();
+        expect(overlay.classList.contains("open")).toBe(true);
+        applyBtn.click();
+        expect(overlay.classList.contains("open")).toBe(false);
+
+        // Toolbar clear button
+        const catSelect = document.getElementById("category-filter");
+        if (catSelect) catSelect.value = "Fiction";
+        toolbarClearBtn.click();
+        if (catSelect) expect(catSelect.value).toBe("");
     });
 });

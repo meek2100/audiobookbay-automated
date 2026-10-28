@@ -12,26 +12,101 @@ window.openExternalLink = openExternalLink;
 window.showModal = showModal;
 window.initSplashScreen = initSplashScreen;
 window.dismissSplash = dismissSplash;
+window.initMobileMenu = initMobileMenu;
+window.initScrollToTop = initScrollToTop;
 
-document.addEventListener("DOMContentLoaded", function () {
-    initSplashScreen();
-
-    // Mobile Menu Toggle Logic
+function initMobileMenu() {
     const mobileMenuBtn = document.getElementById("mobile-menu-btn");
     const navLinks = document.getElementById("nav-links");
+    const navBackdrop = document.getElementById("nav-backdrop");
 
     if (mobileMenuBtn && navLinks) {
+        const toggleMobileMenu = function (forceState) {
+            const isOpen = typeof forceState === "boolean" ? forceState : !navLinks.classList.contains("active");
+            navLinks.classList.toggle("active", isOpen);
+            mobileMenuBtn.classList.toggle("active", isOpen);
+            mobileMenuBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+            if (navBackdrop) {
+                navBackdrop.classList.toggle("active", isOpen);
+            }
+            document.body.classList.toggle("nav-open", isOpen);
+        };
+
         mobileMenuBtn.addEventListener("click", function () {
-            navLinks.classList.toggle("active");
+            toggleMobileMenu();
+        });
+
+        if (navBackdrop) {
+            navBackdrop.addEventListener("click", function () {
+                toggleMobileMenu(false);
+            });
+        }
+
+        // Close on Escape key
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && navLinks.classList.contains("active")) {
+                toggleMobileMenu(false);
+            }
         });
 
         // UX: Auto-close menu when a link is clicked
         navLinks.addEventListener("click", function (event) {
-            if (event.target.tagName === "A") {
-                navLinks.classList.remove("active");
+            if (event.target.closest("a")) {
+                toggleMobileMenu(false);
             }
         });
     }
+}
+
+let activeScrollListener = null;
+
+function initScrollToTop() {
+    const btn = document.getElementById("scroll-to-top-btn");
+    if (!btn) return;
+
+    if (activeScrollListener) {
+        window.removeEventListener("scroll", activeScrollListener);
+        activeScrollListener = null;
+    }
+
+    const checkScroll = function () {
+        if (window.scrollY > 300) {
+            btn.classList.add("visible");
+        } else {
+            btn.classList.remove("visible");
+        }
+    };
+
+    let ticking = false;
+    activeScrollListener = function () {
+        if (!ticking) {
+            ticking = true;
+            if (typeof window.requestAnimationFrame === "function") {
+                window.requestAnimationFrame(() => {
+                    checkScroll();
+                    ticking = false;
+                });
+            } else {
+                checkScroll();
+                ticking = false;
+            }
+        }
+    };
+
+    window.addEventListener("scroll", activeScrollListener, { passive: true });
+
+    btn.addEventListener("click", function () {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    initSplashScreen();
+    initMobileMenu();
+    initScrollToTop();
 
     // Reload Library Button
     const reloadBtn = document.getElementById("reload-library-btn");
@@ -193,7 +268,10 @@ function dismissSplash(overlay, options = {}) {
 
     const skipAnimation = options.skipAnimation || false;
     const splashVideo = document.getElementById("splash-video");
-    const targetLogo = document.querySelector(".nav-logo-img") || document.querySelector(".nav-logo");
+    const targetLogo =
+        document.querySelector(".masthead-logo-img") ||
+        document.querySelector(".nav-logo-img") ||
+        document.querySelector(".nav-logo");
 
     const prefersReducedMotion =
         typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -202,7 +280,8 @@ function dismissSplash(overlay, options = {}) {
     let shouldMorph = false;
     let translateX = 0;
     let translateY = 0;
-    let scale = 1;
+    let scaleX = 1;
+    let scaleY = 1;
     let targetRadius = "16px";
 
     if (!skipAnimation && !prefersReducedMotion && splashVideo && targetLogo) {
@@ -221,9 +300,8 @@ function dismissSplash(overlay, options = {}) {
             translateX = targetCenterX - videoCenterX;
             translateY = targetCenterY - videoCenterY;
 
-            const scaleX = targetRect.width / videoRect.width;
-            const scaleY = targetRect.height / videoRect.height;
-            scale = Math.max(scaleX, scaleY);
+            scaleX = targetRect.width / videoRect.width;
+            scaleY = targetRect.height / videoRect.height;
 
             targetRadius = window.getComputedStyle(targetLogo).borderRadius || "16px";
         }
@@ -232,22 +310,33 @@ function dismissSplash(overlay, options = {}) {
     if (shouldMorph) {
         overlay.classList.add("morphing");
         splashVideo.style.borderRadius = targetRadius;
-        splashVideo.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
+        splashVideo.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scaleX}, ${scaleY})`;
         splashVideo.style.opacity = "0";
+
+        // Cross-fade the target logo in as the morph reaches exact target size and position
+        setTimeout(() => {
+            document.documentElement.classList.add("splash-reveal-logo");
+        }, 150);
+
+        // Stagger the fade-in of the remaining page elements slightly behind the logo
+        setTimeout(() => {
+            document.documentElement.classList.add("splash-reveal-content");
+        }, 350);
 
         setTimeout(() => {
             overlay.classList.add("hidden");
             overlay.style.display = "none";
             sessionStorage.setItem("splashShown", "true");
             document.documentElement.classList.add("no-splash");
+            document.documentElement.classList.remove("splash-reveal-logo", "splash-reveal-content");
         }, 650);
     } else {
         overlay.classList.add("hidden");
         sessionStorage.setItem("splashShown", "true");
+        document.documentElement.classList.add("no-splash");
 
         setTimeout(() => {
             overlay.style.display = "none";
-            document.documentElement.classList.add("no-splash");
         }, 400);
     }
 }

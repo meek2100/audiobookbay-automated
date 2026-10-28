@@ -74,79 +74,197 @@
         </div>
         {% endif %}
 
-        <div class="navbar">
+        <div class="navbar navbar-minimal">
             <div class="nav-container">
-                <a href="{{ url_for('main.search') }}" class="nav-logo">
-                    {% if site_logo %}
-                    <img
-                        class="nav-logo-img"
-                        src="{{ site_logo }}{% if not site_logo.startswith(('http://', 'https://', 'data:')) and '?' not in site_logo %}?v={{ static_version }}{% endif %}"
-                        alt="{{ site_title }}"
-                    />
-                    {% else %}
-                    <span class="brand-text">{{ site_title }}</span>
-                    {% endif %}
-                </a>
-
-                <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation">
+                <button
+                    class="mobile-menu-btn"
+                    id="mobile-menu-btn"
+                    aria-label="Toggle navigation menu"
+                    aria-expanded="false"
+                    aria-controls="nav-links"
+                >
                     <span class="bar"></span>
                     <span class="bar"></span>
                     <span class="bar"></span>
                 </button>
 
+                <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
+
+                <!-- Slide-out Drawer (All Screen Sizes) -->
                 <div class="nav-links" id="nav-links">
+                    <div class="drawer-header">
+                        <span class="drawer-title">Navigation</span>
+                    </div>
+
                     <a
                         href="{{ url_for('main.search') }}"
-                        class="{% if request.endpoint == 'main.search' %}active{% endif %}"
-                        >Search</a
+                        class="nav-link-item {% if request.endpoint == 'main.search' %}active{% endif %}"
                     >
+                        <svg
+                            class="nav-link-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span>Search</span>
+                    </a>
                     <a
                         href="{{ url_for('main.status') }}"
-                        class="{% if request.endpoint == 'main.status' %}active{% endif %}"
-                        >Status</a
+                        class="nav-link-item {% if request.endpoint == 'main.status' %}active{% endif %}"
                     >
-                    {% if nav_link_name and nav_link_url %}
-                    <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
-                    {% endif %} {% if library_reload_enabled %}
-                    <a href="#" id="reload-library-btn" class="btn-icon" aria-label="Reload Library">
                         <svg
+                            class="nav-link-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                        <span>Status</span>
+                    </a>
+                    {% if nav_link_name and nav_link_url %}
+                    <a
+                        href="{{ nav_link_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="nav-link-item nav-external-link"
+                    >
+                        <svg
+                            class="nav-link-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        <span>{{ nav_link_name }}</span>
+                    </a>
+                    {% endif %} {% if library_reload_enabled %}
+                    <a
+                        href="#"
+                        id="reload-library-btn"
+                        class="nav-link-item nav-action-link"
+                        aria-label="Reload Library"
+                        title="Reload Library"
+                    >
+                        <svg
+                            class="nav-link-icon"
                             xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             stroke-width="2"
                             stroke-linecap="round"
                             stroke-linejoin="round"
+                            aria-hidden="true"
                         >
                             <path
                                 d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"
                             />
                         </svg>
+                        <span>Reload Library</span>
                     </a>
                     {% endif %}
-                    <select id="theme-selector" class="theme-select" aria-label="Select color theme">
-                        <option value="purple">🔮 Purple</option>
-                        <option value="crow">🌙 Crow</option>
-                        <option value="catppuccin">🌸 Catppuccin Mocha</option>
-                        <option value="nord">❄️ Nord Arctic</option>
-                        <option value="tokyo">🏙️ Tokyo Night</option>
-                        <option value="oled">🖤 OLED Black</option>
-                        <option value="forest">🌲 Forest</option>
-                        <option value="ocean">🌊 Ocean</option>
-                        <option value="sunset">🌅 Sunset</option>
-                        <option value="dracula">🧛 Dracula</option>
-                        <option value="cyberpunk">🦾 Cyberpunk</option>
-                        <option value="light">☀️ Light</option>
-                        <option value="royal">👑 Royal</option>
-                        <option value="slate">🗿 Slate</option>
-                    </select>
+
+                    <div class="drawer-divider" aria-hidden="true"></div>
+
+                    <div class="drawer-theme-control">
+                        <label for="theme-selector" class="drawer-section-label">
+                            <svg
+                                class="drawer-section-icon"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                aria-hidden="true"
+                            >
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            <span>Appearance</span>
+                        </label>
+                        <div class="theme-select-wrapper">
+                            <select id="theme-selector" class="theme-select" aria-label="Select color theme">
+                                <option value="purple">🔮 Purple</option>
+                                <option value="crow">🌙 Crow</option>
+                                <option value="catppuccin">🌸 Catppuccin Mocha</option>
+                                <option value="nord">❄️ Nord Arctic</option>
+                                <option value="tokyo">🏙️ Tokyo Night</option>
+                                <option value="oled">🖤 OLED Black</option>
+                                <option value="forest">🌲 Forest</option>
+                                <option value="ocean">🌊 Ocean</option>
+                                <option value="sunset">🌅 Sunset</option>
+                                <option value="dracula">🧛 Dracula</option>
+                                <option value="cyberpunk">🦾 Cyberpunk</option>
+                                <option value="light">☀️ Light</option>
+                                <option value="royal">👑 Royal</option>
+                                <option value="slate">🗿 Slate</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Option 4: Masthead Hero Showcase -->
+        <header class="masthead-showcase">
+            <a href="{{ url_for('main.search') }}" class="masthead-brand" aria-label="{{ site_title }} - Home">
+                {% if site_logo %}
+                <img
+                    class="masthead-logo-img"
+                    src="{{ site_logo }}{% if not site_logo.startswith(('http://', 'https://', 'data:')) and '?' not in site_logo %}?v={{ static_version }}{% endif %}"
+                    alt="{{ site_title }}"
+                />
+                {% else %}
+                <h1 class="masthead-title">{{ site_title }}</h1>
+                {% endif %}
+            </a>
+        </header>
+
         <div class="content">{% block content %}{% endblock %}</div>
+
+        <!-- Floating Scroll to Top Button -->
+        <button
+            id="scroll-to-top-btn"
+            class="scroll-to-top-btn"
+            type="button"
+            aria-label="Scroll back to top"
+            title="Scroll to top"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+            >
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+        </button>
 
         <!-- Global Confirmation Modal -->
         <div id="confirmation-modal" class="modal-overlay" aria-hidden="true">

@@ -222,6 +222,37 @@ def search() -> str | Response:
         )
 
 
+@main_bp.route("/api/search")
+@limiter.limit("60 per minute")
+def api_search() -> Response | tuple[Response, int]:
+    """Asynchronous search endpoint for background page streaming and prefetching.
+
+    Query Params:
+        query (str): The search term.
+        page (int): Page number to fetch (defaults to 1).
+
+    Returns:
+        Response: JSON payload containing book summaries and pagination metadata.
+    """
+    query = (request.args.get("query") or "").strip()
+    if not query or len(query) < MIN_SEARCH_QUERY_LENGTH:
+        return jsonify({"books": [], "has_more": False, "page": 1}), 200
+
+    try:
+        page = int(request.args.get("page", 1))
+        page = max(page, 1)
+    except ValueError:
+        page = 1
+
+    try:
+        search_query = query.lower()
+        books = search_audiobookbay(search_query, max_pages=1, start_page=page)
+        return jsonify({"books": list(books), "has_more": len(books) > 0, "page": page}), 200
+    except Exception as e:
+        logger.error(f"API search failed for '{query}' (page {page}): {e}")
+        return jsonify({"error": str(e), "books": [], "has_more": False, "page": page}), 500
+
+
 @main_bp.route("/details")
 @limiter.limit("30 per minute")
 def details() -> str | Response:

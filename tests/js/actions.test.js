@@ -30,9 +30,11 @@ document.head.innerHTML = '<meta name="csrf-token" content="test-csrf-token" />'
 // FIX: Patch the source code string before evaluation.
 // We replace 'location.reload()' with 'window.__mockReload()' to intercept the call.
 // We also redirect setTimeout to a custom mock to reliably test callbacks regardless of context binding.
-const patchedActionsContent = global.actionsJsContent
-    .replace(/location\.reload\(\)/g, "window.__mockReload()")
-    .replace(/setTimeout\(/g, "window.__customSetTimeout(");
+function getPatchedActionsContent() {
+    return global.actionsJsContent
+        .replace(/location\.reload\(\)/g, "window.__mockReload()")
+        .replace(/setTimeout\(/g, "window.__customSetTimeout(");
+}
 
 // --- MOCK UTILITIES ---
 
@@ -100,7 +102,7 @@ beforeEach(() => {
     jest.useFakeTimers();
 
     // Evaluate the script content
-    eval(patchedActionsContent);
+    eval(getPatchedActionsContent());
 });
 
 afterAll(() => {
@@ -443,6 +445,60 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
         expect(document.documentElement.classList.contains("no-splash")).toBe(true);
     });
 
+    test("dismissSplash performs FLIP morph animation targeting .masthead-logo-img", () => {
+        sessionStorage.clear();
+        document.documentElement.classList.remove("no-splash");
+        document.body.innerHTML += `
+            <div class="header-editorial-masthead">
+                <img class="masthead-logo-img" src="/banner.jpg" style="border-radius: 16px;" />
+            </div>
+            <div id="splash-overlay">
+                <video id="splash-video"></video>
+            </div>
+        `;
+
+        const overlay = document.getElementById("splash-overlay");
+        const video = document.getElementById("splash-video");
+        const logo = document.querySelector(".masthead-logo-img");
+
+        logo.getBoundingClientRect = jest.fn(() => ({
+            left: 100,
+            top: 20,
+            width: 800,
+            height: 250,
+        }));
+        video.getBoundingClientRect = jest.fn(() => ({
+            left: 0,
+            top: 0,
+            width: 1920,
+            height: 1080,
+        }));
+
+        dismissSplash(overlay);
+
+        expect(overlay.classList.contains("morphing")).toBe(true);
+        expect(video.style.transform).toContain("translate3d(");
+        expect(video.style.transform).toContain("scale(");
+        expect(video.style.opacity).toBe("0");
+
+        // At 150ms, logo begins cross-fade
+        jest.advanceTimersByTime(150);
+        expect(document.documentElement.classList.contains("splash-reveal-logo")).toBe(true);
+
+        // At 350ms, remaining page content fades in
+        jest.advanceTimersByTime(200);
+        expect(document.documentElement.classList.contains("splash-reveal-content")).toBe(true);
+
+        // At 650ms, overlay hides and no-splash is established
+        jest.advanceTimersByTime(300);
+        expect(overlay.classList.contains("hidden")).toBe(true);
+        expect(overlay.style.display).toBe("none");
+        expect(sessionStorage.getItem("splashShown")).toBe("true");
+        expect(document.documentElement.classList.contains("no-splash")).toBe(true);
+        expect(document.documentElement.classList.contains("splash-reveal-logo")).toBe(false);
+        expect(document.documentElement.classList.contains("splash-reveal-content")).toBe(false);
+    });
+
     test("dismissSplash skips morph animation if prefers-reduced-motion is active", () => {
         window.matchMedia = jest.fn().mockImplementation((query) => ({
             matches: query === "(prefers-reduced-motion: reduce)",
@@ -482,5 +538,130 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
 
         jest.advanceTimersByTime(400);
         expect(overlay.style.display).toBe("none");
+    });
+
+    describe("Mobile Navigation Menu", () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div class="navbar">
+                    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-links">
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                    </button>
+                    <div class="nav-backdrop" id="nav-backdrop"></div>
+                    <div class="nav-links" id="nav-links">
+                        <a href="/search" id="link-search">Search</a>
+                        <a href="/status" id="link-status">Status</a>
+                    </div>
+                </div>
+            `;
+            initMobileMenu();
+        });
+
+        test("clicking mobile menu button toggles active state and aria-expanded", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+            const backdrop = document.getElementById("nav-backdrop");
+
+            expect(btn.classList.contains("active")).toBe(false);
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(backdrop.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+            expect(document.body.classList.contains("nav-open")).toBe(false);
+
+            // Click to open
+            btn.click();
+            expect(btn.classList.contains("active")).toBe(true);
+            expect(navLinks.classList.contains("active")).toBe(true);
+            expect(backdrop.classList.contains("active")).toBe(true);
+            expect(btn.getAttribute("aria-expanded")).toBe("true");
+            expect(document.body.classList.contains("nav-open")).toBe(true);
+
+            // Click to close
+            btn.click();
+            expect(btn.classList.contains("active")).toBe(false);
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(backdrop.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+            expect(document.body.classList.contains("nav-open")).toBe(false);
+        });
+
+        test("clicking backdrop closes mobile menu", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+            const backdrop = document.getElementById("nav-backdrop");
+
+            btn.click();
+            expect(navLinks.classList.contains("active")).toBe(true);
+
+            backdrop.click();
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+            expect(document.body.classList.contains("nav-open")).toBe(false);
+        });
+
+        test("pressing Escape key closes mobile menu", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+
+            btn.click();
+            expect(navLinks.classList.contains("active")).toBe(true);
+
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+        });
+
+        test("clicking a link inside nav-links auto-closes menu", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+            const linkSearch = document.getElementById("link-search");
+
+            btn.click();
+            expect(navLinks.classList.contains("active")).toBe(true);
+
+            linkSearch.click();
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+        });
+    });
+
+    describe("Scroll to Top Shortcut", () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <button id="scroll-to-top-btn" class="scroll-to-top-btn" type="button" aria-label="Scroll back to top">Top</button>
+            `;
+            window.scrollTo = jest.fn();
+            window.requestAnimationFrame = (cb) => cb();
+            initScrollToTop();
+        });
+
+        test("scroll to top button becomes visible when window.scrollY > 300", () => {
+            const btn = document.getElementById("scroll-to-top-btn");
+            expect(btn.classList.contains("visible")).toBe(false);
+
+            // Mock scrollY > 300
+            Object.defineProperty(window, "scrollY", { value: 350, writable: true });
+            window.dispatchEvent(new Event("scroll"));
+
+            expect(btn.classList.contains("visible")).toBe(true);
+
+            // Mock scrollY back to top
+            Object.defineProperty(window, "scrollY", { value: 50, writable: true });
+            window.dispatchEvent(new Event("scroll"));
+
+            expect(btn.classList.contains("visible")).toBe(false);
+        });
+
+        test("clicking button smoothly scrolls window to top", () => {
+            const btn = document.getElementById("scroll-to-top-btn");
+            btn.click();
+
+            expect(window.scrollTo).toHaveBeenCalledWith({
+                top: 0,
+                behavior: "smooth",
+            });
+        });
     });
 });

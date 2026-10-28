@@ -4,8 +4,13 @@
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
     width: 100vw;
+    height: 100%;
     height: 100vh;
+    height: 100dvh;
     background: #0f1118; /* Deep midnight dark blending with video canvas */
     z-index: 99999;
     display: flex;
@@ -16,7 +21,7 @@
     pointer-events: auto;
     transition:
         opacity 0.4s ease,
-        background-color 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        background-color 0.65s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 #splash-overlay.hidden {
@@ -25,7 +30,7 @@
 }
 
 #splash-overlay.morphing {
-    background-color: transparent !important;
+    background-color: transparent;
     pointer-events: none;
 }
 
@@ -36,8 +41,11 @@
 }
 
 #splash-video {
+    max-width: 100%;
     max-width: 100vw;
+    max-height: 100%;
     max-height: 100vh;
+    max-height: 100dvh;
     width: auto;
     height: auto;
     object-fit: contain; /* Scales front & center without cropping in portrait or landscape */
@@ -49,7 +57,7 @@
     will-change: transform, opacity, border-radius;
     transition:
         transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1),
-        opacity 0.65s cubic-bezier(0.5, 0, 0.2, 1),
+        opacity 0.35s cubic-bezier(0.5, 0, 0.2, 1) 0.3s,
         border-radius 0.65s ease;
 }
 
@@ -73,16 +81,16 @@
 
 /* Iridescent accent for key words if we wrap them in spans later, or just general glow */
 .splash-text strong {
-    color: var(--accent-color, #00bcd4);
+    color: var(--accent-color, #38bdf8);
     font-weight: 600;
-    text-shadow: 0 0 15px rgba(0, 188, 212, 0.4);
+    text-shadow: 0 0 15px var(--accent-glow, rgba(56, 189, 248, 0.4));
 }
 
 /* Themeable Skip Intro Button */
 #skip-splash-btn {
     position: absolute;
-    bottom: 36px;
-    right: 36px;
+    bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+    right: calc(36px + env(safe-area-inset-right, 0px));
     padding: 10px 22px;
     font-family: inherit;
     font-size: 0.875rem;
@@ -90,21 +98,27 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: var(--text-main, #ffffff);
-    background: var(--glass-bg, rgba(20, 20, 25, 0.7));
-    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.2));
+    background: var(--glass-bg, rgba(20, 20, 25, 0.85));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.25));
     border-radius: var(--btn-radius, 50px);
     cursor: pointer;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: var(--shadow-soft, 0 8px 32px 0 rgba(0, 0, 0, 0.5));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.6),
+        0 0 12px var(--accent-glow, rgba(56, 189, 248, 0.2));
     transition: all 0.3s ease;
     z-index: 100000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #skip-splash-btn:hover {
     color: #ffffff;
-    border-color: var(--accent-color, #00bcd4);
-    box-shadow: 0 0 16px var(--accent-color, rgba(0, 188, 212, 0.4));
+    border-color: var(--accent-color, #38bdf8);
+    box-shadow: 0 0 20px var(--accent-glow, rgba(56, 189, 248, 0.5));
     transform: translateY(-2px);
 }
 
@@ -114,9 +128,56 @@
 
 @media (max-width: 768px) {
     #skip-splash-btn {
-        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(30px + env(safe-area-inset-bottom, 0px));
         right: calc(20px + env(safe-area-inset-right, 0px));
-        padding: 8px 16px;
-        font-size: 0.75rem;
+        padding: 10px 18px;
+        font-size: 0.8rem;
+        background: rgba(15, 17, 24, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        box-shadow:
+            0 4px 24px rgba(0, 0, 0, 0.75),
+            0 0 10px var(--accent-glow, rgba(56, 189, 248, 0.3));
     }
+}
+
+/* --- Initial Page Entry Choreography (Splash -> Page) --- */
+/* When splash is active and hasn't been shown yet, hide page content and logo until morph */
+html:not(.no-splash) .masthead-showcase .masthead-logo-img,
+html:not(.no-splash) .nav-logo-img,
+html:not(.no-splash) .nav-logo {
+    opacity: 0;
+    transition: opacity 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html:not(.no-splash) .content,
+html:not(.no-splash) .navbar {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity 0.65s cubic-bezier(0.2, 0.8, 0.2, 1),
+        transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Staged reveals triggered by dismissSplash() */
+html.splash-reveal-logo .masthead-showcase .masthead-logo-img,
+html.splash-reveal-logo .nav-logo-img,
+html.splash-reveal-logo .nav-logo {
+    opacity: 1;
+}
+
+html.splash-reveal-content .content,
+html.splash-reveal-content .navbar {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Normal state once splash has finished or for users returning/skipping */
+html.no-splash .masthead-showcase .masthead-logo-img,
+html.no-splash .nav-logo-img,
+html.no-splash .nav-logo,
+html.no-splash .content,
+html.no-splash .navbar {
+    opacity: 1;
+    transform: none;
+    transition: none;
 }

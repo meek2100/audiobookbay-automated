@@ -5,8 +5,24 @@ test.describe('UI Layout & Alignment', () => {
 
   test.beforeEach(async ({ page }) => {
     // Mock static assets to prevent 404s
-    await page.route('**/*.{png,jpg,jpeg,js,ico,svg}', async route => {
+    await page.route('**/*.{png,jpg,jpeg,ico,svg}', async route => {
         await route.fulfill({ status: 200, contentType: 'image/png', body: '' }); // Return a valid image type or ignore
+    });
+
+    // Mock JS files to return actual content
+    await page.route('**/*.js', async route => {
+        const url = new URL(route.request().url());
+        const fs = require('fs');
+        let relativePath = url.pathname;
+        if (relativePath.startsWith('/static/')) {
+            relativePath = 'audiobook_automated' + relativePath;
+        }
+        try {
+            const jsContent = fs.readFileSync(relativePath, 'utf8');
+            await route.fulfill({ status: 200, contentType: 'application/javascript', body: jsContent });
+        } catch (e) {
+            await route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' });
+        }
     });
 
     // Mock CSS files to return actual content
@@ -32,17 +48,33 @@ test.describe('UI Layout & Alignment', () => {
 <html lang="en">
 <head>
     <link rel="stylesheet" href="/static/css/style.css" />
+    <script src="/static/js/actions.js"></script>
 </head>
 <body>
-    <div class="navbar">
-        <div class="nav-links">
-             <select id="theme-selector">
-                <option>Theme 1</option>
-             </select>
+    <div class="navbar navbar-minimal">
+        <div class="nav-container">
+            <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="nav-links">
+                <span class="bar"></span>
+                <span class="bar"></span>
+                <span class="bar"></span>
+            </button>
+            <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
+            <div class="nav-links" id="nav-links">
+                <a href="/" class="nav-link-item active"><span>Search</span></a>
+                <div class="drawer-theme-control">
+                    <select id="theme-selector">
+                        <option>Theme 1</option>
+                    </select>
+                </div>
+            </div>
         </div>
-        <div class="nav-logo"><img src="logo.png" style="height: 50px;" /></div>
-        <span class="brand-text">AudiobookBay Automated</span>
     </div>
+    <header class="masthead-showcase">
+        <a href="/" class="masthead-brand">
+            <div class="nav-logo"><img src="logo.png" style="height: 50px;" /></div>
+            <span class="brand-text">AudiobookBay Automated</span>
+        </a>
+    </header>
 </body>
 </html>
         `;
@@ -53,23 +85,35 @@ test.describe('UI Layout & Alignment', () => {
   test('Test Case A: Navbar Architecture', async ({ page }) => {
     await page.goto('/');
 
-    // Branding
+    // Branding & Navigation Bar
     const navbar = page.locator('.navbar');
     await expect(navbar).toBeVisible();
-    await expect(navbar).toContainText("AudiobookBay Automated");
 
-    // Theme Selector Last Child
+    // Masthead brand showcase (Option 4 header)
+    const masthead = page.locator('.masthead-showcase');
+    await expect(masthead).toBeVisible();
+    await expect(masthead).toContainText("AudiobookBay Automated");
+
+    // Drawer is closed by default
     const navLinks = page.locator('.nav-links');
     const themeSelector = page.locator('#theme-selector');
+    const menuBtn = page.locator('#mobile-menu-btn');
+    await expect(menuBtn).toBeVisible();
+    await expect(themeSelector).toBeHidden();
+
+    // Open drawer via mobile menu toggle
+    await menuBtn.click();
+    await expect(navLinks).toHaveClass(/active/);
     await expect(themeSelector).toBeVisible();
-    const isLastChild = await navLinks.evaluate((el) => {
-        const children = el.children;
-        return children[children.length - 1].id === 'theme-selector';
+
+    // Theme Selector inside drawer
+    const isThemeSelectorInsideDrawer = await navLinks.evaluate((el) => {
+        return !!el.querySelector('#theme-selector');
     });
-    expect(isLastChild).toBeTruthy();
+    expect(isThemeSelectorInsideDrawer).toBeTruthy();
 
     // Logo Height
-    const logo = navbar.locator('img').first();
+    const logo = page.locator('.masthead-showcase img').first();
     await expect(logo).toBeVisible();
 
     // We mock the image as empty, so browsers might render it as 0x0 or small icon (16px).
@@ -338,6 +382,60 @@ test.describe('UI Layout & Alignment', () => {
     // Assuming our design uses rounded corners (e.g., 4px or 8px), not 50% (circle) for main buttons
     expect(sBtnRadius).not.toBe('50%');
     expect(dBtnRadius).not.toBe('50%');
+  });
+
+  test('Test Case G: Unified Omnibar & Icon Text Clearance', async ({ page }) => {
+    await page.route('/search-omnibar-test', async route => {
+        const html = `
+<!doctype html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="/static/css/search.css" />
+</head>
+<body>
+    <div class="search-omnibar-container" id="search-container">
+        <div id="filter-container" class="search-omnibar">
+            <form method="get" class="omnibar-search-form" id="search-form">
+                <div class="search-input-wrapper">
+                    <svg class="search-input-icon" viewBox="0 0 24 24" width="18" height="18"><circle cx="11" cy="11" r="8"></circle></svg>
+                    <input type="text" name="query" class="search-bar" value="The Expanse" />
+                </div>
+                <button type="submit" class="search-button">
+                    <span class="button-text">Search</span>
+                    <div class="button-spinner" id="button-spinner" style="display: none">
+                        <div class="spinner"></div>
+                    </div>
+                </button>
+            </form>
+            <div class="omnibar-controls">
+                <button id="toolbar-filter-toggle" class="toolbar-filter-btn">Filters</button>
+                <div class="view-toggle-container">
+                    <button class="view-btn" id="view-list-btn">List</button>
+                    <button class="view-btn active" id="view-grid-btn">Grid</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+        await route.fulfill({ status: 200, contentType: 'text/html', body: html });
+    });
+
+    await page.goto('/search-omnibar-test');
+
+    const searchBar = page.locator('.search-omnibar .search-bar');
+    const searchIcon = page.locator('.search-input-icon');
+    const omnibar = page.locator('.search-omnibar');
+
+    await expect(omnibar).toBeVisible();
+    await expect(searchBar).toBeVisible();
+    await expect(searchIcon).toBeVisible();
+
+    // Verify left padding on input prevents text from colliding with icon
+    const paddingLeft = await searchBar.evaluate(el => parseInt(getComputedStyle(el).paddingLeft, 10));
+    expect(paddingLeft).toBeGreaterThanOrEqual(44);
   });
 
 });

@@ -33,17 +33,18 @@ def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
     return f"{base_url}/page/{page}/"
 
 
-def search_audiobookbay(query: str, max_pages: int = 5) -> Sequence[BookSummary]:
+def search_audiobookbay(query: str, max_pages: int = 1, start_page: int = 1) -> Sequence[BookSummary]:
     """Search AudiobookBay for the given query across multiple pages.
 
     Args:
         query: Search term (e.g. "Harry Potter")
-        max_pages: Maximum number of pages to scrape (default: 5)
+        max_pages: Maximum number of pages to scrape (default: 1 for fast progressive render)
+        start_page: The starting page number (default: 1)
 
     Returns:
         A list of dictionaries containing book summaries.
     """
-    logger.info("Search: Starting search for '%s' (Limit: %d pages)", query, max_pages)
+    logger.info("Search: Starting search for '%s' (Pages %d-%d)", query, start_page, start_page + max_pages - 1)
 
     # 1. Find a working mirror
     base_url = network.find_best_mirror()
@@ -52,7 +53,7 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> Sequence[BookSummary]
         return []
 
     # Check Cache
-    cache_key = f"{query}::page_{max_pages}"
+    cache_key = f"{query}::pages_{start_page}_{max_pages}"
     with network.CACHE_LOCK:
         if cache_key in network.search_cache:
             logger.debug("Search: Cache hit for '%s'", cache_key)
@@ -74,8 +75,8 @@ def search_audiobookbay(query: str, max_pages: int = 5) -> Sequence[BookSummary]
     # To optimize, we could fetch page 1 first, check total pages, then fetch the rest.
     # For now, we will submit all and handle empty results gracefully.
 
-    # Loop through pages 1 to max_pages
-    for page in range(1, max_pages + 1):
+    # Loop through requested pages
+    for page in range(start_page, start_page + max_pages):
         url = get_search_url(base_url, query, page)
         future = executor.submit(fetch_page_results, url)
         futures.append(future)

@@ -143,6 +143,6 @@ def test_concurrent_cache_access(clean_caches: None, app: Flask) -> None:
 
     # Verify caches are populated correctly
     with CACHE_LOCK:
-        assert "query::page_1" in search_cache
+        assert "query::pages_1_1" in search_cache
         assert "https://audiobookbay.lu/book1" in details_cache
         assert "default" in tracker_cache
