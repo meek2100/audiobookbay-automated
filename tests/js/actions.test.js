@@ -483,4 +483,91 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
         jest.advanceTimersByTime(400);
         expect(overlay.style.display).toBe("none");
     });
+
+    describe("Mobile Navigation Menu", () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <div class="navbar">
+                    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-links">
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                        <span class="bar"></span>
+                    </button>
+                    <div class="nav-backdrop" id="nav-backdrop"></div>
+                    <div class="nav-links" id="nav-links">
+                        <a href="/search" id="link-search">Search</a>
+                        <a href="/status" id="link-status">Status</a>
+                    </div>
+                </div>
+            `;
+            initMobileMenu();
+        });
+
+        test("clicking mobile menu button toggles active state and aria-expanded", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+            const backdrop = document.getElementById("nav-backdrop");
+
+            expect(btn.classList.contains("active")).toBe(false);
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(backdrop.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+            expect(document.body.classList.contains("nav-open")).toBe(false);
+
+            // Click to open
+            btn.click();
+            expect(btn.classList.contains("active")).toBe(true);
+            expect(navLinks.classList.contains("active")).toBe(true);
+            expect(backdrop.classList.contains("active")).toBe(true);
+            expect(btn.getAttribute("aria-expanded")).toBe("true");
+            expect(document.body.classList.contains("nav-open")).toBe(true);
+
+            // Click to close
+            btn.click();
+            expect(btn.classList.contains("active")).toBe(false);
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(backdrop.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+            expect(document.body.classList.contains("nav-open")).toBe(false);
+        });
+
+        test("clicking backdrop closes mobile menu", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+            const backdrop = document.getElementById("nav-backdrop");
+
+            btn.click();
+            expect(navLinks.classList.contains("active")).toBe(true);
+
+            backdrop.click();
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+            expect(document.body.classList.contains("nav-open")).toBe(false);
+        });
+
+        test("pressing Escape key closes mobile menu", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+
+            btn.click();
+            expect(navLinks.classList.contains("active")).toBe(true);
+
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+        });
+
+        test("clicking a link inside nav-links auto-closes menu", () => {
+            const btn = document.getElementById("mobile-menu-btn");
+            const navLinks = document.getElementById("nav-links");
+            const linkSearch = document.getElementById("link-search");
+
+            btn.click();
+            expect(navLinks.classList.contains("active")).toBe(true);
+
+            linkSearch.click();
+            expect(navLinks.classList.contains("active")).toBe(false);
+            expect(btn.getAttribute("aria-expanded")).toBe("false");
+        });
+    });
 });

@@ -12,26 +12,54 @@ window.openExternalLink = openExternalLink;
 window.showModal = showModal;
 window.initSplashScreen = initSplashScreen;
 window.dismissSplash = dismissSplash;
+window.initMobileMenu = initMobileMenu;
 
-document.addEventListener("DOMContentLoaded", function () {
-    initSplashScreen();
-
-    // Mobile Menu Toggle Logic
+function initMobileMenu() {
     const mobileMenuBtn = document.getElementById("mobile-menu-btn");
     const navLinks = document.getElementById("nav-links");
+    const navBackdrop = document.getElementById("nav-backdrop");
 
     if (mobileMenuBtn && navLinks) {
+        const toggleMobileMenu = function (forceState) {
+            const isOpen = typeof forceState === "boolean" ? forceState : !navLinks.classList.contains("active");
+            navLinks.classList.toggle("active", isOpen);
+            mobileMenuBtn.classList.toggle("active", isOpen);
+            mobileMenuBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+            if (navBackdrop) {
+                navBackdrop.classList.toggle("active", isOpen);
+            }
+            document.body.classList.toggle("nav-open", isOpen);
+        };
+
         mobileMenuBtn.addEventListener("click", function () {
-            navLinks.classList.toggle("active");
+            toggleMobileMenu();
+        });
+
+        if (navBackdrop) {
+            navBackdrop.addEventListener("click", function () {
+                toggleMobileMenu(false);
+            });
+        }
+
+        // Close on Escape key
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape" && navLinks.classList.contains("active")) {
+                toggleMobileMenu(false);
+            }
         });
 
         // UX: Auto-close menu when a link is clicked
         navLinks.addEventListener("click", function (event) {
-            if (event.target.tagName === "A") {
-                navLinks.classList.remove("active");
+            if (event.target.closest("a")) {
+                toggleMobileMenu(false);
             }
         });
     }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    initSplashScreen();
+    initMobileMenu();
 
     // Reload Library Button
     const reloadBtn = document.getElementById("reload-library-btn");

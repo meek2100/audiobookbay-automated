@@ -88,11 +88,19 @@
                     {% endif %}
                 </a>
 
-                <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation">
+                <button
+                    class="mobile-menu-btn"
+                    id="mobile-menu-btn"
+                    aria-label="Toggle navigation"
+                    aria-expanded="false"
+                    aria-controls="nav-links"
+                >
                     <span class="bar"></span>
                     <span class="bar"></span>
                     <span class="bar"></span>
                 </button>
+
+                <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
 
                 <div class="nav-links" id="nav-links">
                     <a
@@ -106,9 +114,34 @@
                         >Status</a
                     >
                     {% if nav_link_name and nav_link_url %}
-                    <a href="{{ nav_link_url }}" target="_blank">{{ nav_link_name }}</a>
+                    <a href="{{ nav_link_url }}" target="_blank" rel="noopener noreferrer" class="nav-external-link">
+                        <span>{{ nav_link_name }}</span>
+                        <svg
+                            class="nav-external-icon"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                    </a>
                     {% endif %} {% if library_reload_enabled %}
-                    <a href="#" id="reload-library-btn" class="btn-icon" aria-label="Reload Library">
+                    <a
+                        href="#"
+                        id="reload-library-btn"
+                        class="btn-icon"
+                        aria-label="Reload Library"
+                        title="Reload Library"
+                    >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="20"
