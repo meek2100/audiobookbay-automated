@@ -691,7 +691,7 @@ a:hover {
     font-weight: 700;
 }
 
-/* 2. Tags */
+/* 2. Tags & Links */
 .category-tag {
     font-size: 0.8rem;
     background: rgba(255, 215, 64, 0.1);
@@ -702,6 +702,36 @@ a:hover {
     font-weight: 600;
     display: inline-block;
     letter-spacing: 0.5px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+a.category-tag,
+.category-link {
+    cursor: pointer;
+}
+
+a.category-tag:hover,
+.category-link:hover {
+    background: rgba(255, 215, 64, 0.22);
+    border-color: var(--accent-hover);
+    color: var(--accent-hover);
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.meta-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+    padding-bottom: 1px;
+}
+
+.meta-link:hover {
+    color: var(--accent-hover) !important;
+    border-bottom-color: var(--accent-hover);
+    text-shadow: 0 0 10px rgba(255, 215, 64, 0.4);
 }
 
 /* 3. Buttons */

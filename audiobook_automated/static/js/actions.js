@@ -221,7 +221,10 @@ function dismissSplash(overlay, options = {}) {
 
     const skipAnimation = options.skipAnimation || false;
     const splashVideo = document.getElementById("splash-video");
-    const targetLogo = document.querySelector(".nav-logo-img") || document.querySelector(".nav-logo");
+    const targetLogo =
+        document.querySelector(".masthead-logo-img") ||
+        document.querySelector(".nav-logo-img") ||
+        document.querySelector(".nav-logo");
 
     const prefersReducedMotion =
         typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;

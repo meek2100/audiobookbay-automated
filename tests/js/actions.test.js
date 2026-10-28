@@ -443,6 +443,48 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
         expect(document.documentElement.classList.contains("no-splash")).toBe(true);
     });
 
+    test("dismissSplash performs FLIP morph animation targeting .masthead-logo-img", () => {
+        sessionStorage.clear();
+        document.documentElement.classList.remove("no-splash");
+        document.body.innerHTML += `
+            <div class="header-editorial-masthead">
+                <img class="masthead-logo-img" src="/banner.jpg" style="border-radius: 16px;" />
+            </div>
+            <div id="splash-overlay">
+                <video id="splash-video"></video>
+            </div>
+        `;
+
+        const overlay = document.getElementById("splash-overlay");
+        const video = document.getElementById("splash-video");
+        const logo = document.querySelector(".masthead-logo-img");
+
+        logo.getBoundingClientRect = jest.fn(() => ({
+            left: 100,
+            top: 20,
+            width: 800,
+            height: 250,
+        }));
+        video.getBoundingClientRect = jest.fn(() => ({
+            left: 0,
+            top: 0,
+            width: 1920,
+            height: 1080,
+        }));
+
+        dismissSplash(overlay);
+
+        expect(overlay.classList.contains("morphing")).toBe(true);
+        expect(video.style.transform).toContain("translate3d(");
+        expect(video.style.transform).toContain("scale(");
+        expect(video.style.opacity).toBe("0");
+
+        jest.advanceTimersByTime(650);
+        expect(overlay.classList.contains("hidden")).toBe(true);
+        expect(overlay.style.display).toBe("none");
+        expect(sessionStorage.getItem("splashShown")).toBe("true");
+    });
+
     test("dismissSplash skips morph animation if prefers-reduced-motion is active", () => {
         window.matchMedia = jest.fn().mockImplementation((query) => ({
             matches: query === "(prefers-reduced-motion: reduce)",

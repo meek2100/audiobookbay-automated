@@ -59,11 +59,29 @@ extra_css %}
             <div class="metadata-grid">
                 <div class="meta-item">
                     <span class="meta-label">Author</span>
+                    {% if book.author and book.author != "Unknown" %}
+                    <a
+                        href="{{ url_for('main.search', query=book.author) }}"
+                        class="meta-value accent meta-link"
+                        title="Search books by {{ book.author }}"
+                        >{{ book.author }}</a
+                    >
+                    {% else %}
                     <span class="meta-value accent">{{ book.author }}</span>
+                    {% endif %}
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Narrator</span>
+                    {% if book.narrator and book.narrator != "Unknown" %}
+                    <a
+                        href="{{ url_for('main.search', query=book.narrator) }}"
+                        class="meta-value meta-link"
+                        title="Search books narrated by {{ book.narrator }}"
+                        >{{ book.narrator }}</a
+                    >
+                    {% else %}
                     <span class="meta-value">{{ book.narrator }}</span>
+                    {% endif %}
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Language</span>
@@ -82,7 +100,12 @@ extra_css %}
                     <div style="display: flex; flex-wrap: wrap; gap: 5px">
                         {% for raw_cat in book.category %} {% for cat in raw_cat.split(',') %} {% if cat.strip() and
                         cat.strip() != "Unknown" %}
-                        <span class="category-tag">{{ cat.strip() }}</span>
+                        <a
+                            href="{{ url_for('main.search', query=cat.strip()) }}"
+                            class="category-tag category-link"
+                            title="Search {{ cat.strip() }} audiobooks"
+                            >{{ cat.strip() }}</a
+                        >
                         {% endif %} {% endfor %} {% endfor %}
                     </div>
                 </div>

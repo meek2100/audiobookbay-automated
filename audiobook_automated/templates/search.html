@@ -147,7 +147,12 @@
                     <div class="categories-container">
                         {# Render individual pills for both Grid and List views #} {% for raw_cat in book.category %} {%
                         for cat in raw_cat.split(',') %} {% if cat.strip() and cat.strip() != "Unknown" %}
-                        <span class="category-tag">{{ cat.strip() }}</span>
+                        <a
+                            href="{{ url_for('main.search', query=cat.strip()) }}"
+                            class="category-tag category-link"
+                            title="Search {{ cat.strip() }} audiobooks"
+                            >{{ cat.strip() }}</a
+                        >
                         {% endif %} {% endfor %} {% endfor %}
                     </div>
 
