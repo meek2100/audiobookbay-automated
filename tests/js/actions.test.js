@@ -479,10 +479,22 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
         expect(video.style.transform).toContain("scale(");
         expect(video.style.opacity).toBe("0");
 
-        jest.advanceTimersByTime(650);
+        // At 150ms, logo begins cross-fade
+        jest.advanceTimersByTime(150);
+        expect(document.documentElement.classList.contains("splash-reveal-logo")).toBe(true);
+
+        // At 350ms, remaining page content fades in
+        jest.advanceTimersByTime(200);
+        expect(document.documentElement.classList.contains("splash-reveal-content")).toBe(true);
+
+        // At 650ms, overlay hides and no-splash is established
+        jest.advanceTimersByTime(300);
         expect(overlay.classList.contains("hidden")).toBe(true);
         expect(overlay.style.display).toBe("none");
         expect(sessionStorage.getItem("splashShown")).toBe("true");
+        expect(document.documentElement.classList.contains("no-splash")).toBe(true);
+        expect(document.documentElement.classList.contains("splash-reveal-logo")).toBe(false);
+        expect(document.documentElement.classList.contains("splash-reveal-content")).toBe(false);
     });
 
     test("dismissSplash skips morph animation if prefers-reduced-motion is active", () => {

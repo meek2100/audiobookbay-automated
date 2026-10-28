@@ -266,19 +266,30 @@ function dismissSplash(overlay, options = {}) {
         splashVideo.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
         splashVideo.style.opacity = "0";
 
+        // Cross-fade the target logo in as the morph begins to reach target
+        setTimeout(() => {
+            document.documentElement.classList.add("splash-reveal-logo");
+        }, 150);
+
+        // Stagger the fade-in of the remaining page elements slightly behind the logo
+        setTimeout(() => {
+            document.documentElement.classList.add("splash-reveal-content");
+        }, 350);
+
         setTimeout(() => {
             overlay.classList.add("hidden");
             overlay.style.display = "none";
             sessionStorage.setItem("splashShown", "true");
             document.documentElement.classList.add("no-splash");
+            document.documentElement.classList.remove("splash-reveal-logo", "splash-reveal-content");
         }, 650);
     } else {
         overlay.classList.add("hidden");
         sessionStorage.setItem("splashShown", "true");
+        document.documentElement.classList.add("no-splash");
 
         setTimeout(() => {
             overlay.style.display = "none";
-            document.documentElement.classList.add("no-splash");
         }, 400);
     }
 }

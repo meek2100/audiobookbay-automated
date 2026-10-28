@@ -139,3 +139,45 @@
             0 0 10px rgba(0, 188, 212, 0.3);
     }
 }
+
+/* --- Initial Page Entry Choreography (Splash -> Page) --- */
+/* When splash is active and hasn't been shown yet, hide page content and logo until morph */
+html:not(.no-splash) .masthead-showcase .masthead-logo-img,
+html:not(.no-splash) .nav-logo-img,
+html:not(.no-splash) .nav-logo {
+    opacity: 0;
+    transition: opacity 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html:not(.no-splash) .content,
+html:not(.no-splash) .navbar {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity 0.65s cubic-bezier(0.2, 0.8, 0.2, 1),
+        transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Staged reveals triggered by dismissSplash() */
+html.splash-reveal-logo .masthead-showcase .masthead-logo-img,
+html.splash-reveal-logo .nav-logo-img,
+html.splash-reveal-logo .nav-logo {
+    opacity: 1;
+}
+
+html.splash-reveal-content .content,
+html.splash-reveal-content .navbar {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Normal state once splash has finished or for users returning/skipping */
+html.no-splash .masthead-showcase .masthead-logo-img,
+html.no-splash .nav-logo-img,
+html.no-splash .nav-logo,
+html.no-splash .content,
+html.no-splash .navbar {
+    opacity: 1;
+    transform: none;
+    transition: none;
+}
