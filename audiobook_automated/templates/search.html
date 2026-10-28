@@ -146,7 +146,7 @@
 
                     <div class="categories-container">
                         {# Render individual pills for both Grid and List views #} {% for raw_cat in book.category %} {%
-                        for cat in raw_cat.split(',') %} {% if cat.strip() %}
+                        for cat in raw_cat.split(',') %} {% if cat.strip() and cat.strip() != "Unknown" %}
                         <span class="category-tag">{{ cat.strip() }}</span>
                         {% endif %} {% endfor %} {% endfor %}
                     </div>

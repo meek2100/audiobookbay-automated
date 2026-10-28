@@ -58,6 +58,23 @@
     border-radius: 12px;
     margin-bottom: 30px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.details-info-hash {
+    margin-top: 15px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.4);
+    word-break: break-all;
+    overflow-wrap: anywhere;
+}
+
+.details-info-hash .info-hash-value {
+    color: var(--accent-color);
+    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 /* Action Buttons */

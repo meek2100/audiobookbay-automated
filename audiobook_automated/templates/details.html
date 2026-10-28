@@ -80,15 +80,16 @@ extra_css %}
                 <div class="meta-item">
                     <span class="meta-label">Category</span>
                     <div style="display: flex; flex-wrap: wrap; gap: 5px">
-                        {% for cat in book.category %}
-                        <span class="category-tag">{{ cat }}</span>
-                        {% endfor %}
+                        {% for raw_cat in book.category %} {% for cat in raw_cat.split(',') %} {% if cat.strip() and
+                        cat.strip() != "Unknown" %}
+                        <span class="category-tag">{{ cat.strip() }}</span>
+                        {% endif %} {% endfor %} {% endfor %}
                     </div>
                 </div>
             </div>
 
-            <div style="margin-top: 15px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.4)">
-                <strong>Info Hash:</strong> <code style="color: var(--accent-color)">{{ book.info_hash }}</code>
+            <div class="details-info-hash">
+                <strong>Info Hash:</strong> <code class="info-hash-value">{{ book.info_hash }}</code>
             </div>
         </div>
 
