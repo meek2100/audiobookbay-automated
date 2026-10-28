@@ -124,7 +124,11 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderLogs() {
         if (!logViewer) return;
         const filter = logFilterInput ? logFilterInput.value.trim().toLowerCase() : "";
-        const filtered = filter ? currentLogs.filter((line) => line.toLowerCase().includes(filter)) : currentLogs;
+        const lines = currentLogs.map((entry) => {
+            if (typeof entry === "string") return entry;
+            return entry && entry.message ? entry.message : JSON.stringify(entry);
+        });
+        const filtered = filter ? lines.filter((line) => line.toLowerCase().includes(filter)) : lines;
 
         logViewer.textContent = filtered.join("\n") || "(No logs recorded yet)";
         if (autoScrollToggle && autoScrollToggle.checked) {

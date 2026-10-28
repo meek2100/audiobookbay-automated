@@ -159,14 +159,14 @@ def _configure_logging(app: Flask, configured_level: int | None) -> None:
     root_logger = logging.getLogger()
     if log_ring_buffer not in root_logger.handlers:
         root_logger.addHandler(log_ring_buffer)
+    effective_level = configured_level if configured_level is not None else logging.INFO
     gunicorn_logger = logging.getLogger("gunicorn.error")
     if gunicorn_logger.handlers:
         app.logger.handlers = gunicorn_logger.handlers
         # Sync level to match Gunicorn (unless overridden by config)
         if configured_level is not None:
-            app.logger.setLevel(configured_level)
-        else:
-            app.logger.setLevel(gunicorn_logger.level)
-    else:
-        # Local/Dev mode or non-Gunicorn runner
-        app.logger.setLevel(configured_level if configured_level is not None else logging.INFO)
+            effective_level = configured_level
+        elif gunicorn_logger.level != logging.NOTSET:
+            effective_level = gunicorn_logger.level
+    app.logger.setLevel(effective_level)
+    root_logger.setLevel(effective_level)
