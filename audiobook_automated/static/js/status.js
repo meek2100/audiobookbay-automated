@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const countBadge = document.getElementById("status-count-badge");
     const clientPill = document.getElementById("status-client-pill");
     const clientPillText = clientPill ? clientPill.querySelector(".client-pill-text") : null;
-    const pollText = pollIndicator ? pollIndicator.querySelector(".poll-text") : null;
+    const pollCountdownNum = document.getElementById("poll-countdown-num");
 
     let countdown = 5;
     let isFetching = false;
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isFetching) return;
         isFetching = true;
         countdown = 5;
-        if (pollText) pollText.textContent = "Refreshing...";
+        if (pollCountdownNum) pollCountdownNum.textContent = "↻";
         try {
             if (pollIndicator) pollIndicator.classList.add("polling");
             const response = await fetch("/status?json=1");
@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } finally {
             isFetching = false;
             countdown = 5;
-            if (pollText) pollText.textContent = `Live (${countdown}s)`;
+            if (pollCountdownNum) pollCountdownNum.textContent = "5";
             if (pollIndicator) {
                 setTimeout(() => pollIndicator.classList.remove("polling"), 400);
             }
@@ -87,8 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
             countdown -= 1;
             if (countdown <= 0) {
                 pollStatus();
-            } else if (pollText) {
-                pollText.textContent = `Live (${countdown}s)`;
+            } else if (pollCountdownNum) {
+                pollCountdownNum.textContent = String(countdown);
             }
         }
     }, 1000);
