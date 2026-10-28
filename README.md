@@ -12,7 +12,7 @@ securely routed through your VPN tunnel so your home IP address is never exposed
 
 ---
 
-## How It Works (In Plain English)
+## How It Works
 
 Think of AudiobookBay Automated as a personal assistant for finding audiobooks:
 
