@@ -639,12 +639,25 @@ async function streamRemainingPages(query, startPage = 2, maxPage = 5) {
 }
 
 /**
- * Initializes hover prefetching for all Category, Author, and Narrator links.
- * When the user hovers for 150ms, a prefetch request is sent to /api/search to warm the server cache.
+ * Prefetches search results or book details into browser cache and server cache.
+ * @param {string} url - The URL to prefetch.
+ */
+function prefetchUrl(url) {
+    if (!url || prefetchedQueries.has(url)) return;
+    prefetchedQueries.add(url);
+
+    // Use low priority background fetch
+    fetch(url, { priority: "low" }).catch(() => {});
+}
+
+/**
+ * Initializes hover prefetching for all Category, Author, Narrator, and Details links.
+ * When the user hovers for 120ms, or when results scroll into view, a prefetch request is sent to warm caches.
  */
 function initHoverPrefetch() {
-    const links = document.querySelectorAll("a.category-link");
-    links.forEach((link) => {
+    // 1. Prefetch Category & Search links
+    const categoryLinks = document.querySelectorAll("a.category-link");
+    categoryLinks.forEach((link) => {
         if (link.dataset.prefetchBound) return;
         link.dataset.prefetchBound = "true";
 
@@ -658,9 +671,32 @@ function initHoverPrefetch() {
             if (query.length < 2 || prefetchedQueries.has(query)) return;
 
             hoverTimer = setTimeout(() => {
-                prefetchedQueries.add(query);
-                fetch(`/api/search?query=${encodeURIComponent(query)}&page=1`, { priority: "low" }).catch(() => {});
-            }, 150);
+                prefetchUrl(`/api/search?query=${encodeURIComponent(query)}&page=1`);
+            }, 120);
+        });
+
+        link.addEventListener("mouseleave", function () {
+            if (hoverTimer) {
+                clearTimeout(hoverTimer);
+                hoverTimer = null;
+            }
+        });
+    });
+
+    // 2. Prefetch Details links for fast private view loading
+    const detailsLinks = document.querySelectorAll("a.details-button, .col-cover a");
+    detailsLinks.forEach((link) => {
+        if (link.dataset.prefetchBound) return;
+        link.dataset.prefetchBound = "true";
+
+        let hoverTimer = null;
+        link.addEventListener("mouseenter", function () {
+            const href = link.getAttribute("href");
+            if (!href || !href.includes("link=")) return;
+
+            hoverTimer = setTimeout(() => {
+                prefetchUrl(href);
+            }, 120);
         });
 
         link.addEventListener("mouseleave", function () {

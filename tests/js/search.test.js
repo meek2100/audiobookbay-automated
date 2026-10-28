@@ -488,7 +488,7 @@ describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
         expect(mockObserve).toHaveBeenCalledWith(indicator);
     });
 
-    test("initHoverPrefetch fires fetch on category pill hover after 150ms", () => {
+    test("initHoverPrefetch fires fetch on category and details link hover after 120ms", () => {
         jest.useFakeTimers();
         const { initHoverPrefetch } = getGlobalFunctions();
         const tbody = document.getElementById("results-table-body");
@@ -499,22 +499,37 @@ describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
         a.href = "/?query=Brandon+Sanderson";
         tbody.appendChild(a);
 
+        // Add a mock details link
+        const detailsLink = document.createElement("a");
+        detailsLink.className = "btn-glass details-button";
+        detailsLink.href = "/details?link=https%3A%2F%2Faudiobookbay.lu%2Ftest";
+        tbody.appendChild(detailsLink);
+
         global.fetch = jest.fn().mockReturnValue(Promise.resolve({ ok: true }));
 
         initHoverPrefetch();
 
-        // Simulate mouseenter
+        // Simulate mouseenter on category link
         a.dispatchEvent(new Event("mouseenter"));
 
         // Before timer: no fetch
         expect(global.fetch).not.toHaveBeenCalled();
 
-        // Advance 160ms
-        jest.advanceTimersByTime(160);
+        // Advance 130ms
+        jest.advanceTimersByTime(130);
 
         expect(global.fetch).toHaveBeenCalledTimes(1);
         expect(global.fetch).toHaveBeenCalledWith(
             expect.stringContaining("/api/search?query=Brandon%20Sanderson&page=1"),
+            expect.any(Object)
+        );
+
+        // Simulate mouseenter on details link
+        detailsLink.dispatchEvent(new Event("mouseenter"));
+        jest.advanceTimersByTime(130);
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(global.fetch).toHaveBeenCalledWith(
+            "/details?link=https%3A%2F%2Faudiobookbay.lu%2Ftest",
             expect.any(Object)
         );
 
