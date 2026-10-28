@@ -3,7 +3,91 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, ClassVar
+
+
+class TorrentState(StrEnum):
+    """Canonical torrent lifecycle states recognized across all client plugins."""
+
+    DOWNLOADING = "Downloading"
+    SEEDING = "Seeding"
+    PAUSED = "Paused"
+    STALLED = "Stalled"
+    QUEUED = "Queued"
+    CHECKING = "Checking"
+    COMPLETED = "Completed"
+    ERROR = "Error"
+    UNKNOWN = "Unknown"
+
+
+_EXACT_STATE_MAP: dict[str, TorrentState] = {
+    "downloading": TorrentState.DOWNLOADING,
+    "download": TorrentState.DOWNLOADING,
+    "dl": TorrentState.DOWNLOADING,
+    "forceddl": TorrentState.DOWNLOADING,
+    "seeding": TorrentState.SEEDING,
+    "seed": TorrentState.SEEDING,
+    "up": TorrentState.SEEDING,
+    "uploading": TorrentState.SEEDING,
+    "stalledup": TorrentState.SEEDING,
+    "forcedup": TorrentState.SEEDING,
+    "paused": TorrentState.PAUSED,
+    "pause": TorrentState.PAUSED,
+    "pauseddl": TorrentState.PAUSED,
+    "pausedup": TorrentState.PAUSED,
+    "stopped": TorrentState.PAUSED,
+    "stop": TorrentState.PAUSED,
+    "stalled": TorrentState.STALLED,
+    "stalleddl": TorrentState.STALLED,
+    "waiting": TorrentState.STALLED,
+    "queued": TorrentState.QUEUED,
+    "queueddl": TorrentState.QUEUED,
+    "queuedup": TorrentState.QUEUED,
+    "queue": TorrentState.QUEUED,
+    "in_queue": TorrentState.QUEUED,
+    "pending": TorrentState.QUEUED,
+    "check_pending": TorrentState.QUEUED,
+    "checking": TorrentState.CHECKING,
+    "checkingdl": TorrentState.CHECKING,
+    "checkingup": TorrentState.CHECKING,
+    "check": TorrentState.CHECKING,
+    "verifying": TorrentState.CHECKING,
+    "completed": TorrentState.COMPLETED,
+    "complete": TorrentState.COMPLETED,
+    "finished": TorrentState.COMPLETED,
+    "finish": TorrentState.COMPLETED,
+    "done": TorrentState.COMPLETED,
+    "error": TorrentState.ERROR,
+    "failed": TorrentState.ERROR,
+    "fail": TorrentState.ERROR,
+}
+
+_HEURISTIC_STATE_PATTERNS: tuple[tuple[tuple[str, ...], TorrentState], ...] = (
+    (("download", "dl"), TorrentState.DOWNLOADING),
+    (("seed", "up"), TorrentState.SEEDING),
+    (("pause", "stop"), TorrentState.PAUSED),
+    (("stall",), TorrentState.STALLED),
+    (("queue",), TorrentState.QUEUED),
+    (("check", "verify"), TorrentState.CHECKING),
+    (("error", "fail"), TorrentState.ERROR),
+)
+
+
+def normalize_torrent_state(raw_state: str | None) -> TorrentState:
+    """Normalize any client-specific raw state string into a canonical TorrentState."""
+    if not raw_state:
+        return TorrentState.UNKNOWN
+
+    s = raw_state.strip().lower()
+    if s in _EXACT_STATE_MAP:
+        return _EXACT_STATE_MAP[s]
+
+    for keywords, state in _HEURISTIC_STATE_PATTERNS:
+        if any(kw in s for kw in keywords):
+            return state
+
+    return TorrentState.UNKNOWN
 
 
 @dataclass
@@ -19,6 +103,11 @@ class TorrentStatus:
     category: str | None = None
     # Client identifier for multi-client support (e.g., 'qbittorrent', 'putio')
     client: str | None = None
+
+    def __post_init__(self) -> None:
+        """Ensure state is normalized to a canonical TorrentState value."""
+        if not isinstance(self.state, TorrentState):
+            self.state = str(normalize_torrent_state(self.state).value)
 
 
 class TorrentClientStrategy(ABC):
