@@ -6,8 +6,9 @@ AudiobookBay Automated is an easy-to-use, single-user web application that helps
 [**AudioBook Bay**](https://audiobookbay.lu/) and send them straight to your torrent downloader (**qBittorrent,
 Transmission, Deluge, or Put.io**) with a single click.
 
-It is designed to be lightweight and private: it acts as a secure bridge between AudioBook Bay and your torrent client,
-ensuring your home IP address is never directly exposed when browsing or scraping book details.
+It is designed to be lightweight and user-friendly: it acts as a central search and dispatch bridge between AudioBook
+Bay and your torrent client. When deployed alongside a VPN or network proxy (like Gluetun), all scraping requests are
+securely routed through your VPN tunnel so your home IP address is never exposed.
 
 ---
 
@@ -32,8 +33,8 @@ Think of AudiobookBay Automated as a personal assistant for finding audiobooks:
 
 ## Key Features
 
-- 🔍 **Safe & Private Search**: Search by title, author, narrator, or keywords without exposing your home IP to
-  AudiobookBay.
+- 🔍 **Centralized Search**: Search by title, author, narrator, or keywords across AudioBook Bay mirrors. (When routed
+  through a VPN container like Gluetun, your searches remain completely private).
 - 🧲 **No AudioBook Bay Account Required**: Automatically turns book hashes into standard magnet links.
 - ⚡ **Works With Your Favorite Download Client**: Native support for **qBittorrent**, **Transmission**, **Deluge**, and
   cloud-based **Put.io**. You can even hook up multiple clients at once!
