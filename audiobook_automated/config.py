@@ -123,9 +123,9 @@ class Config:
     DL_HOST: str | None = _dl_host.strip(" \"'") if _dl_host else None
     _dl_port: str | None = os.getenv("DL_PORT")
     DL_PORT: str | None = _dl_port.strip(" \"'") if _dl_port else None
-    _dl_username: str | None = os.getenv("DL_USERNAME")
+    _dl_username: str | None = os.getenv("DL_USERNAME") or os.getenv("DL_USER")
     DL_USERNAME: str | None = _dl_username.strip(" \"'") if _dl_username else None
-    _dl_password: str | None = os.getenv("DL_PASSWORD")
+    _dl_password: str | None = os.getenv("DL_PASSWORD") or os.getenv("DL_PASS")
     DL_PASSWORD: str | None = _dl_password.strip(" \"'") if _dl_password else None
     DL_CATEGORY: str = os.getenv("DL_CATEGORY", "abb-automated").strip(" \"'")
     DL_SCHEME: str = os.getenv("DL_SCHEME", "http").strip(" \"'")

@@ -317,3 +317,17 @@ def test_parse_asset_path() -> None:
     assert parse_asset_path("/static/images/logo.png", "/default.png") == "/static/images/logo.png"
     assert parse_asset_path("https://example.com/logo.png", "/default.png") == "https://example.com/logo.png"
     assert parse_asset_path("data:image/png;base64,...", "/default.png") == "data:image/png;base64,..."
+
+
+def test_config_credentials_alias_fallback() -> None:
+    """Test that DL_USER and DL_PASS serve as aliases for DL_USERNAME and DL_PASSWORD."""
+    with patch.dict(
+        os.environ,
+        {"DL_USER": "alias_user", "DL_PASS": "alias_pass", "SAVE_PATH_BASE": "/tmp", "DL_CLIENT": "test"},
+        clear=True,
+    ):
+        importlib.reload(config)
+        from audiobook_automated.config import Config as ReloadedConfig
+
+        assert ReloadedConfig.DL_USERNAME == "alias_user"
+        assert ReloadedConfig.DL_PASSWORD == "alias_pass"
