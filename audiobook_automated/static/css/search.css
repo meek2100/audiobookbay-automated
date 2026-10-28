@@ -467,11 +467,11 @@ td.col-info {
 
 .category-tag {
     font-size: 0.75rem;
-    background: rgba(255, 215, 64, 0.15);
+    background: var(--tag-bg, rgba(255, 255, 255, 0.08));
     color: var(--accent-color);
     padding: 4px 10px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 215, 64, 0.3);
+    border: 1px solid var(--tag-border, var(--accent-glow, rgba(255, 255, 255, 0.2)));
     white-space: nowrap;
 }
 
