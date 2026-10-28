@@ -5,8 +5,24 @@ test.describe('UI Layout & Alignment', () => {
 
   test.beforeEach(async ({ page }) => {
     // Mock static assets to prevent 404s
-    await page.route('**/*.{png,jpg,jpeg,js,ico,svg}', async route => {
+    await page.route('**/*.{png,jpg,jpeg,ico,svg}', async route => {
         await route.fulfill({ status: 200, contentType: 'image/png', body: '' }); // Return a valid image type or ignore
+    });
+
+    // Mock JS files to return actual content
+    await page.route('**/*.js', async route => {
+        const url = new URL(route.request().url());
+        const fs = require('fs');
+        let relativePath = url.pathname;
+        if (relativePath.startsWith('/static/')) {
+            relativePath = 'audiobook_automated' + relativePath;
+        }
+        try {
+            const jsContent = fs.readFileSync(relativePath, 'utf8');
+            await route.fulfill({ status: 200, contentType: 'application/javascript', body: jsContent });
+        } catch (e) {
+            await route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' });
+        }
     });
 
     // Mock CSS files to return actual content
@@ -20,17 +36,6 @@ test.describe('UI Layout & Alignment', () => {
         try {
             const cssContent = fs.readFileSync(relativePath, 'utf8');
             await route.fulfill({ status: 200, contentType: 'text/css', body: cssContent });
-        } catch (e) {
-            await route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' });
-        }
-    });
-
-    // Mock actions.js to support mobile drawer toggle
-    await page.route('/static/js/actions.js', async route => {
-        const fs = require('fs');
-        try {
-            const jsContent = fs.readFileSync('audiobook_automated/static/js/actions.js', 'utf8');
-            await route.fulfill({ status: 200, contentType: 'application/javascript', body: jsContent });
         } catch (e) {
             await route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not Found' });
         }
@@ -70,13 +75,6 @@ test.describe('UI Layout & Alignment', () => {
             <span class="brand-text">AudiobookBay Automated</span>
         </a>
     </header>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.initMobileMenu) {
-                window.initMobileMenu();
-            }
-        });
-    </script>
 </body>
 </html>
         `;
