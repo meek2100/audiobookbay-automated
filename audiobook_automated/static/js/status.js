@@ -19,9 +19,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const countBadge = document.getElementById("status-count-badge");
     const clientPill = document.getElementById("status-client-pill");
     const clientPillText = clientPill ? clientPill.querySelector(".client-pill-text") : null;
+    const pollText = pollIndicator ? pollIndicator.querySelector(".poll-text") : null;
+
+    let countdown = 5;
+    let isFetching = false;
 
     // Poll every 5 seconds
     const pollStatus = async () => {
+        if (isFetching) return;
+        isFetching = true;
+        countdown = 5;
+        if (pollText) pollText.textContent = "Refreshing...";
         try {
             if (pollIndicator) pollIndicator.classList.add("polling");
             const response = await fetch("/status?json=1");
@@ -64,12 +72,34 @@ document.addEventListener("DOMContentLoaded", () => {
                 clientPillText.textContent = "Client Disconnected";
             }
         } finally {
+            isFetching = false;
+            countdown = 5;
+            if (pollText) pollText.textContent = `Live (${countdown}s)`;
             if (pollIndicator) {
                 setTimeout(() => pollIndicator.classList.remove("polling"), 400);
             }
-            window.statusInterval = setTimeout(pollStatus, 5000);
         }
     };
+
+    // Countdown timer ticking every second
+    const countdownInterval = setInterval(() => {
+        if (!isFetching) {
+            countdown -= 1;
+            if (countdown <= 0) {
+                pollStatus();
+            } else if (pollText) {
+                pollText.textContent = `Live (${countdown}s)`;
+            }
+        }
+    }, 1000);
+    window.statusInterval = countdownInterval;
+
+    // Allow user to click refresh indicator to refresh immediately
+    if (pollIndicator) {
+        pollIndicator.addEventListener("click", () => {
+            pollStatus();
+        });
+    }
 
     pollStatus();
 });
