@@ -13,17 +13,33 @@ window.showLoadingSpinner = showLoadingSpinner;
 window.hideLoadingSpinner = hideLoadingSpinner;
 window.setViewMode = setViewMode;
 window.initFloatingHud = initFloatingHud;
+window.initTopFilterDrawer = initTopFilterDrawer;
 window.syncHudFilters = syncHudFilters;
 window.streamRemainingPages = streamRemainingPages;
 window.createResultRowElement = createResultRowElement;
 window.initHoverPrefetch = initHoverPrefetch;
+window.initInfiniteScroll = initInfiniteScroll;
+window.loadNextPage = loadNextPage;
+window.resetPaginationState = resetPaginationState;
 
 // Global variables defined in the file
-let datePicker;
-let fileSizeSlider;
 let messageIndex = 0;
 let intervalId = null;
 const prefetchedQueries = new Set();
+let currentPage = 1;
+let isLoadingMore = false;
+let hasMorePages = true;
+let infiniteScrollObserver = null;
+
+function resetPaginationState() {
+    currentPage = 1;
+    isLoadingMore = false;
+    hasMorePages = true;
+    if (infiniteScrollObserver) {
+        infiniteScrollObserver.disconnect();
+        infiniteScrollObserver = null;
+    }
+}
 
 document.addEventListener("DOMContentLoaded", function () {
     // Initialize filtering if results are present
@@ -60,14 +76,15 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Initialize Floating HUD
+    // Initialize Top Filter Drawer & Floating HUD
+    initTopFilterDrawer();
     initFloatingHud();
 
-    // Progressive Search Streaming & Hover Prefetch
+    // Infinite Scroll Auto-loader & Progressive Search Streaming
     const resultsContainer = document.getElementById("results-container");
     if (resultsContainer && resultsContainer.dataset.query && resultsContainer.dataset.hasResults === "true") {
         const query = resultsContainer.dataset.query;
-        streamRemainingPages(query, 2, 5);
+        initInfiniteScroll(query);
     }
 
     initHoverPrefetch();
@@ -109,18 +126,31 @@ window.addEventListener("pageshow", function (event) {
 // --- Helper Functions ---
 
 /**
- * Initializes all filter components (Selects, Date Picker, Slider).
+ * Initializes all filter components (Native Date and Size inputs).
  */
 function initializeFilters() {
-    // RESILIENCE: Ensure vendor libraries are loaded before attempting initialization
-    if (typeof flatpickr === "undefined" || typeof noUiSlider === "undefined") {
-        console.error("Vendor libraries (flatpickr/noUiSlider) are missing. Filters disabled.");
-        return;
-    }
+    // Native HTML5 inputs require no vendor initialization.
+    // If needed, set date input constraints based on DOM rows.
+    const dateFromEl = document.getElementById("date-from-filter");
+    const dateToEl = document.getElementById("date-to-filter");
 
-    // Optimization: populateSelectFilters() removed. Filters are now populated server-side.
-    initializeFileSizeSlider();
-    initializeDateRangePicker();
+    if (dateFromEl && dateToEl) {
+        // Clear any stale constraints or re-sync
+        dateFromEl.addEventListener("change", () => {
+            if (dateFromEl.value) {
+                dateToEl.min = dateFromEl.value;
+            } else {
+                dateToEl.removeAttribute("min");
+            }
+        });
+        dateToEl.addEventListener("change", () => {
+            if (dateToEl.value) {
+                dateFromEl.max = dateToEl.value;
+            } else {
+                dateFromEl.removeAttribute("max");
+            }
+        });
+    }
 }
 
 /**
@@ -168,116 +198,50 @@ function formatFileSize(mb) {
 }
 
 /**
- * Initializes the Flatpickr date range input.
+ * Parses any date format string from AudiobookBay or ISO into a Date object at midnight UTC.
+ * @param {string} dateStr - Date string.
+ * @returns {Date|null}
  */
-function initializeDateRangePicker() {
-    const allDates = Array.from(document.querySelectorAll(".result-row"))
-        .map((row) => {
-            const dateStr = row.dataset.postDate;
-            if (!dateStr || dateStr === "Unknown") return null;
-            try {
-                let date;
-                // Robust Date Parsing Strategy
-                // Format 1: "01 Jan 2024" (AudiobookBay Default)
-                if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(dateStr)) {
-                    const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, "$2 $1, $3");
-                    date = new Date(formattedStr);
-                }
-                // Format 2: ISO 8601 "2024-01-01" (Standard Fallback/Change)
-                else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-                    date = new Date(dateStr);
-                }
-                // Format 3: Fallback to browser parsing (e.g. "Jan 1, 2024")
-                else {
-                    date = new Date(dateStr);
-                }
-
-                return isNaN(date.getTime()) ? null : date;
-            } catch (e) {
-                console.warn("Date parsing error for:", dateStr, e);
-                return null;
-            }
-        })
-        .filter((date) => date !== null);
-
-    let options = {
-        mode: "range",
-        dateFormat: "Y-m-d",
-    };
-
-    if (allDates.length > 0) {
-        const minDate = new Date(Math.min.apply(null, allDates));
-        const maxDate = new Date(Math.max.apply(null, allDates));
-        options.minDate = minDate;
-        options.maxDate = maxDate;
+function parsePostDate(dateStr) {
+    if (!dateStr || dateStr === "Unknown") return null;
+    try {
+        let date;
+        if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(dateStr)) {
+            const formattedStr = dateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, "$2 $1, $3");
+            date = new Date(formattedStr);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            date = new Date(dateStr + "T00:00:00");
+        } else {
+            date = new Date(dateStr);
+        }
+        return isNaN(date.getTime()) ? null : date;
+    } catch {
+        return null;
     }
-
-    if (datePicker && typeof datePicker.destroy === "function") {
-        datePicker.destroy();
-        datePicker = null;
-    }
-    datePicker = flatpickr("#date-range-filter", options);
-}
-
-/**
- * Initializes the noUiSlider for file size filtering.
- */
-function initializeFileSizeSlider() {
-    const sliderElement = document.getElementById("file-size-slider");
-    if (!sliderElement) return;
-
-    if (sliderElement.noUiSlider) {
-        sliderElement.noUiSlider.destroy();
-        fileSizeSlider = null;
-    }
-
-    const allSizes = Array.from(document.querySelectorAll(".result-row"))
-        .map((row) => parseFileSizeToMB(row.dataset.fileSize))
-        .filter((size) => size !== null);
-
-    if (allSizes.length < 2) {
-        const wrapper = document.querySelector(".file-size-filter-wrapper");
-        if (wrapper) wrapper.style.display = "none";
-        return;
-    }
-
-    const minSize = Math.min(...allSizes);
-    const maxSize = Math.max(...allSizes);
-
-    const formatter = {
-        to: function (value) {
-            return formatFileSize(value);
-        },
-        from: function (value) {
-            return Number(parseFileSizeToMB(value));
-        },
-    };
-
-    fileSizeSlider = noUiSlider.create(sliderElement, {
-        start: [minSize, maxSize],
-        connect: true,
-        tooltips: [formatter, formatter],
-        range: { min: minSize, max: maxSize },
-    });
 }
 
 /**
  * Applies all active filters to the result table.
  */
 function applyFilters() {
-    const category = document.getElementById("category-filter").value;
-    const language = document.getElementById("language-filter").value;
-    const bitrate = document.getElementById("bitrate-filter").value;
-    const format = document.getElementById("format-filter").value;
-    const selectedDates = datePicker ? datePicker.selectedDates : [];
-    const sizeRange = fileSizeSlider ? fileSizeSlider.get().map(parseFloat) : null;
+    const category = document.getElementById("category-filter")?.value || "";
+    const language = document.getElementById("language-filter")?.value || "";
+    const bitrate = document.getElementById("bitrate-filter")?.value || "";
+    const format = document.getElementById("format-filter")?.value || "";
+    const fileSizeFilter = document.getElementById("file-size-filter")?.value || "";
+
+    const dateFromVal = document.getElementById("date-from-filter")?.value || "";
+    const dateToVal = document.getElementById("date-to-filter")?.value || "";
+
+    const dateFrom = dateFromVal ? new Date(dateFromVal + "T00:00:00") : null;
+    const dateTo = dateToVal ? new Date(dateToVal + "T23:59:59") : null;
 
     document.querySelectorAll(".result-row").forEach((row) => {
         let visible = true;
 
         // Exact Token Match for Category
         if (category) {
-            const rowCategories = row.dataset.category.split("|").map((t) => t.trim());
+            const rowCategories = (row.dataset.category || "").split("|").map((t) => t.trim());
             if (!rowCategories.includes(category)) {
                 visible = false;
             }
@@ -287,40 +251,30 @@ function applyFilters() {
         if (bitrate && row.dataset.bitrate !== bitrate) visible = false;
         if (format && row.dataset.format !== format) visible = false;
 
-        if (sizeRange) {
+        // File size filter presets
+        if (fileSizeFilter) {
             const rowSizeMB = parseFileSizeToMB(row.dataset.fileSize);
-            if (rowSizeMB === null || rowSizeMB < sizeRange[0] || rowSizeMB > sizeRange[1]) {
+            if (rowSizeMB === null) {
+                visible = false;
+            } else if (fileSizeFilter === "under_500mb" && rowSizeMB >= 500) {
+                visible = false;
+            } else if (fileSizeFilter === "500mb_2gb" && (rowSizeMB < 500 || rowSizeMB > 2048)) {
+                visible = false;
+            } else if (fileSizeFilter === "2gb_5gb" && (rowSizeMB < 2048 || rowSizeMB > 5120)) {
+                visible = false;
+            } else if (fileSizeFilter === "over_5gb" && rowSizeMB < 5120) {
                 visible = false;
             }
         }
 
-        if (selectedDates.length === 2) {
-            const rowDateStr = row.dataset.postDate;
-            if (!rowDateStr || rowDateStr === "Unknown") {
+        // Native Date Range filter
+        if (dateFrom || dateTo) {
+            const rowDate = parsePostDate(row.dataset.postDate);
+            if (!rowDate) {
                 visible = false;
             } else {
-                try {
-                    let rowDate;
-                    if (/^\d{1,2}\s[a-zA-Z]{3}\s\d{4}$/.test(rowDateStr)) {
-                        const formattedStr = rowDateStr.replace(/(\d{1,2})\s(\w{3})\s(\d{4})/, "$2 $1, $3");
-                        rowDate = new Date(formattedStr);
-                    } else if (/^\d{4}-\d{2}-\d{2}$/.test(rowDateStr)) {
-                        rowDate = new Date(rowDateStr);
-                    } else {
-                        rowDate = new Date(rowDateStr);
-                    }
-
-                    if (!isNaN(rowDate.getTime())) {
-                        rowDate.setHours(0, 0, 0, 0);
-                        if (rowDate < selectedDates[0] || rowDate > selectedDates[1]) {
-                            visible = false;
-                        }
-                    } else {
-                        visible = false;
-                    }
-                } catch (e) {
-                    visible = false;
-                }
+                if (dateFrom && rowDate < dateFrom) visible = false;
+                if (dateTo && rowDate > dateTo) visible = false;
             }
         }
 
@@ -332,12 +286,25 @@ function applyFilters() {
  * Resets all filters to their default state.
  */
 function clearFilters() {
-    document.getElementById("category-filter").value = "";
-    document.getElementById("language-filter").value = "";
-    document.getElementById("bitrate-filter").value = "";
-    document.getElementById("format-filter").value = "";
-    if (datePicker) datePicker.clear();
-    if (fileSizeSlider) fileSizeSlider.reset();
+    const fields = [
+        "category-filter",
+        "language-filter",
+        "bitrate-filter",
+        "format-filter",
+        "file-size-filter",
+        "date-from-filter",
+        "date-to-filter",
+    ];
+
+    fields.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+    });
+
+    const dateFromEl = document.getElementById("date-from-filter");
+    const dateToEl = document.getElementById("date-to-filter");
+    if (dateFromEl) dateFromEl.removeAttribute("max");
+    if (dateToEl) dateToEl.removeAttribute("min");
 
     document.querySelectorAll(".result-row").forEach((row) => {
         row.style.display = "";
@@ -507,7 +474,124 @@ function createResultRowElement(book) {
 }
 
 /**
- * Streams remaining search result pages sequentially in the background.
+ * Loads the next page of search results asynchronously and appends to the table.
+ * @param {string} query - The search query term.
+ * @returns {Promise<boolean>} - True if more results might exist, false if exhausted or errored.
+ */
+async function loadNextPage(query) {
+    if (isLoadingMore || !hasMorePages || !query) return false;
+
+    const indicator = document.getElementById("load-more-indicator");
+    const loadingSpinner = document.getElementById("load-more-loading");
+    const loadMoreBtn = document.getElementById("load-more-btn");
+    const tbody = document.getElementById("results-table-body");
+    if (!tbody) return false;
+
+    isLoadingMore = true;
+    if (indicator) indicator.style.display = "flex";
+    if (loadingSpinner) loadingSpinner.style.display = "flex";
+    if (loadMoreBtn) loadMoreBtn.style.display = "none";
+
+    const nextPage = currentPage + 1;
+
+    try {
+        const response = await fetch(`/api/search?query=${encodeURIComponent(query)}&page=${nextPage}`);
+        if (!response.ok) {
+            hasMorePages = false;
+            if (indicator) indicator.style.display = "none";
+            return false;
+        }
+
+        const data = await response.json();
+        if (!data.books || data.books.length === 0) {
+            hasMorePages = false;
+            if (indicator) indicator.style.display = "none";
+            return false;
+        }
+
+        // Append rows
+        data.books.forEach((book) => {
+            const row = createResultRowElement(book);
+            tbody.appendChild(row);
+        });
+
+        currentPage = nextPage;
+        hasMorePages = Boolean(data.has_more);
+
+        // Re-apply hover prefetching and filter evaluation on newly inserted rows
+        initHoverPrefetch();
+        applyFilters();
+
+        if (!hasMorePages) {
+            if (indicator) indicator.style.display = "none";
+        } else {
+            // Keep indicator visible so IntersectionObserver can trigger subsequent pages when user scrolls
+            if (loadingSpinner) loadingSpinner.style.display = "none";
+            if (loadMoreBtn) loadMoreBtn.style.display = "inline-block";
+        }
+
+        return hasMorePages;
+    } catch (err) {
+        console.warn("Infinite scroll page load interrupted:", err);
+        hasMorePages = false;
+        if (indicator) indicator.style.display = "none";
+        return false;
+    } finally {
+        isLoadingMore = false;
+    }
+}
+
+/**
+ * Initializes continuous scroll-triggered auto-loading using IntersectionObserver.
+ * @param {string} query - Search term.
+ */
+function initInfiniteScroll(query) {
+    currentPage = 1;
+    isLoadingMore = false;
+    hasMorePages = true;
+
+    const indicator = document.getElementById("load-more-indicator");
+    const loadMoreBtn = document.getElementById("load-more-btn");
+
+    if (indicator) {
+        indicator.style.display = "flex";
+    }
+
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener("click", () => {
+            loadNextPage(query);
+        });
+    }
+
+    // Set up IntersectionObserver if supported
+    if ("IntersectionObserver" in window && indicator) {
+        if (infiniteScrollObserver) {
+            infiniteScrollObserver.disconnect();
+        }
+
+        infiniteScrollObserver = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                if (entry && entry.isIntersecting && !isLoadingMore && hasMorePages) {
+                    loadNextPage(query);
+                }
+            },
+            {
+                root: null,
+                rootMargin: "300px",
+                threshold: 0.1,
+            }
+        );
+
+        infiniteScrollObserver.observe(indicator);
+    } else {
+        // Fallback for environments without IntersectionObserver: stream up to 5 pages
+        streamRemainingPages(query, 2, 5);
+    }
+}
+
+/**
+ * Streams remaining search result pages sequentially (fallback or testing helper).
  * @param {string} query - The search keyword.
  * @param {number} startPage - The starting background page (typically 2).
  * @param {number} maxPage - The maximum background page to fetch (typically 5).
@@ -536,12 +620,13 @@ async function streamRemainingPages(query, startPage = 2, maxPage = 5) {
                 tbody.appendChild(row);
             });
 
-            // Re-apply hover prefetching and refresh filter dropdowns
+            // Re-apply hover prefetching and filter evaluation
             initHoverPrefetch();
-            initializeFilters();
             applyFilters();
 
+            currentPage = page;
             if (!data.has_more) {
+                hasMorePages = false;
                 break;
             }
         } catch (err) {
@@ -592,7 +677,7 @@ function initHoverPrefetch() {
  * and updates the active filter count badge.
  */
 function syncHudFilters(fromHud = false) {
-    const fields = ["category", "language", "bitrate", "format"];
+    const fields = ["category", "language", "bitrate", "format", "file-size"];
     let activeFilterCount = 0;
 
     fields.forEach((field) => {
@@ -611,19 +696,37 @@ function syncHudFilters(fromHud = false) {
         }
     });
 
-    // Check date and slider for active filter count
-    if (datePicker && datePicker.selectedDates.length > 0) {
+    // Check date inputs for active filter count
+    const dateFrom = document.getElementById("date-from-filter")?.value;
+    const dateTo = document.getElementById("date-to-filter")?.value;
+    if (dateFrom || dateTo) {
         activeFilterCount++;
     }
 
-    const badge = document.getElementById("hud-filter-badge");
-    if (badge) {
+    // Update active filter badges on both toolbar and floating HUD
+    const hudBadge = document.getElementById("hud-filter-badge");
+    if (hudBadge) {
         if (activeFilterCount > 0) {
-            badge.textContent = activeFilterCount;
-            badge.style.display = "inline-block";
+            hudBadge.textContent = activeFilterCount;
+            hudBadge.style.display = "inline-block";
         } else {
-            badge.style.display = "none";
+            hudBadge.style.display = "none";
         }
+    }
+
+    const toolbarBadge = document.getElementById("toolbar-filter-badge");
+    if (toolbarBadge) {
+        if (activeFilterCount > 0) {
+            toolbarBadge.textContent = activeFilterCount;
+            toolbarBadge.style.display = "inline-block";
+        } else {
+            toolbarBadge.style.display = "none";
+        }
+    }
+
+    const toolbarClearBtn = document.getElementById("toolbar-clear-btn");
+    if (toolbarClearBtn) {
+        toolbarClearBtn.style.display = activeFilterCount > 0 ? "inline-block" : "none";
     }
 }
 
@@ -754,5 +857,74 @@ function initFloatingHud() {
     const clearBtn = document.getElementById("clear-button");
     if (clearBtn) {
         clearBtn.addEventListener("click", () => syncHudFilters(false));
+    }
+}
+
+/**
+ * Initializes the top toolbar expanding filter drawer modal overlay.
+ */
+function initTopFilterDrawer() {
+    const toggleBtn = document.getElementById("toolbar-filter-toggle");
+    const overlay = document.getElementById("filter-drawer-overlay");
+    const closeBtn = document.getElementById("filter-drawer-close");
+    const applyBtn = document.getElementById("filter-button");
+    const clearBtn = document.getElementById("clear-button");
+    const toolbarClearBtn = document.getElementById("toolbar-clear-btn");
+
+    if (!toggleBtn || !overlay) return;
+
+    const openDrawer = () => {
+        overlay.classList.add("open");
+        overlay.setAttribute("aria-hidden", "false");
+    };
+
+    const closeDrawer = () => {
+        overlay.classList.remove("open");
+        overlay.setAttribute("aria-hidden", "true");
+    };
+
+    toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openDrawer();
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener("click", closeDrawer);
+    }
+
+    // Close when clicking backdrop outside card
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+            closeDrawer();
+        }
+    });
+
+    // Close when pressing Escape key
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && overlay.classList.contains("open")) {
+            closeDrawer();
+        }
+    });
+
+    // Auto-close overlay after applying filters
+    if (applyBtn) {
+        applyBtn.addEventListener("click", () => {
+            closeDrawer();
+            syncHudFilters(false);
+        });
+    }
+
+    // Toolbar clear button directly resets filters
+    if (toolbarClearBtn) {
+        toolbarClearBtn.addEventListener("click", () => {
+            clearFilters();
+            syncHudFilters(false);
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+            syncHudFilters(false);
+        });
     }
 }

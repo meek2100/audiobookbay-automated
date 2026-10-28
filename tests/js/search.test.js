@@ -18,10 +18,14 @@ const getGlobalFunctions = () => {
         hideLoadingSpinner: window.hideLoadingSpinner,
         setViewMode: window.setViewMode,
         initFloatingHud: window.initFloatingHud,
+        initTopFilterDrawer: window.initTopFilterDrawer,
         syncHudFilters: window.syncHudFilters,
         streamRemainingPages: window.streamRemainingPages,
         createResultRowElement: window.createResultRowElement,
         initHoverPrefetch: window.initHoverPrefetch,
+        initInfiniteScroll: window.initInfiniteScroll,
+        loadNextPage: window.loadNextPage,
+        resetPaginationState: window.resetPaginationState,
     };
 };
 
@@ -45,8 +49,7 @@ const setup = () => {
     // Clear DOM before each test
     document.body.innerHTML = "";
 
-    // Setup Filter Controls (required for initialization)
-    // FIX: Manually populate options to simulate server-side rendering, as auto-population was removed from search.js
+    // Setup Filter Controls (native date and size dropdowns)
     document.body.innerHTML = `
         <div id="search-container">
             <button class="search-button">
@@ -79,8 +82,16 @@ const setup = () => {
                 <option value="M4B">M4B</option>
                 <option value="MP3">MP3</option>
             </select>
-            <input type="text" id="date-range-filter" />
-            <div class="filter-row"><div class="filter-controls"><div class="file-size-filter-wrapper"><div id="file-size-slider"></div></div></div><div class="filter-buttons"><button id="filter-button"></button><button id="clear-button"></button></div></div>
+            <select id="file-size-filter">
+                <option value="">Any Size</option>
+                <option value="under_500mb">&lt; 500 MB</option>
+                <option value="500mb_2gb">500 MB – 2 GB</option>
+                <option value="2gb_5gb">2 GB – 5 GB</option>
+                <option value="over_5gb">&gt; 5 GB</option>
+            </select>
+            <input type="date" id="date-from-filter" />
+            <input type="date" id="date-to-filter" />
+            <div class="filter-buttons"><button id="filter-button"></button><button id="clear-button"></button></div>
         </div>
         <table><tbody id="results-table-body"></tbody></table>
     `;
@@ -94,25 +105,17 @@ const setup = () => {
     tbody.appendChild(createResultRow("Fiction", "English", "Unknown", "10 GB", "Unknown", "MP3")); // Max size row: 10240 MB
     tbody.appendChild(createResultRow("Unknown", "Unknown", "Unknown", "Unknown", "Unknown", "Unknown")); // Fully Unknown row
 
-    // Reset and re-run initialization mocks
-    global.flatpickr.mockClear();
-    global.noUiSlider.create.mockClear();
-
     const functions = getGlobalFunctions();
+    if (functions.resetPaginationState) {
+        functions.resetPaginationState();
+    }
     functions.initializeFilters();
 
     // Manually trigger DOMContentLoaded to run initializeFilters setup
     document.dispatchEvent(new Event("DOMContentLoaded"));
 
-    // Extract the mock instances (which are now globally mocked)
-    const mockFlatpickr = global.flatpickr.mock.results[global.flatpickr.mock.results.length - 1].value;
-    const mockNoUiSlider =
-        global.noUiSlider.create.mock.results[global.noUiSlider.create.mock.results.length - 1].value;
-
     return {
         functions,
-        mockFlatpickr,
-        mockNoUiSlider,
         mockFilter: (id, value) => {
             document.getElementById(id).value = value;
         },
@@ -210,15 +213,17 @@ describe("search.js Filter Logic (DOM dependent)", () => {
 
     // --- initializeFilters Tests ---
 
-    test("initializeFilters should initialize date and size pickers correctly", () => {
-        const { mockNoUiSlider } = setupData;
+    test("initializeFilters should configure native date input constraints", () => {
+        const dateFrom = document.getElementById("date-from-filter");
+        const dateTo = document.getElementById("date-to-filter");
 
-        expect(global.flatpickr).toHaveBeenCalled();
-        expect(global.noUiSlider.create).toHaveBeenCalled();
+        dateFrom.value = "2024-01-01";
+        dateFrom.dispatchEvent(new Event("change"));
+        expect(dateTo.min).toBe("2024-01-01");
 
-        const noUiSliderOptions = mockNoUiSlider.options;
-        expect(noUiSliderOptions.range.min).toBeCloseTo(100);
-        expect(noUiSliderOptions.range.max).toBeCloseTo(10240); // 10 GB
+        dateTo.value = "2024-02-01";
+        dateTo.dispatchEvent(new Event("change"));
+        expect(dateFrom.max).toBe("2024-02-01");
     });
 
     // --- applyFilters Tests ---
@@ -243,32 +248,45 @@ describe("search.js Filter Logic (DOM dependent)", () => {
         expect(visible).toHaveLength(1);
     });
 
-    test("applyFilters should filter by File Size Range", () => {
-        const { mockNoUiSlider, mockApply } = setupData;
-        // Mock slider range: Min 150MB, Max 2GB (2048MB)
-        mockNoUiSlider.get.mockReturnValue(["150", "2048"]);
+    test("applyFilters should filter by File Size Range using native presets", () => {
+        const { mockApply } = setupData;
+        // Test preset 500 MB - 2 GB
+        mockFilter("file-size-filter", "500mb_2gb");
         mockApply();
 
         const visible = Array.from(document.querySelectorAll(".result-row")).filter((r) => r.style.display === "");
-        // Includes: 500 MB row, 1.5 GB row (1536 MB).
+        // Includes: 500 MB row, 1.5 GB row.
         expect(visible).toHaveLength(2);
     });
 
-    test("clearFilters should reset all inputs and show all rows", () => {
-        const { mockFlatpickr, mockNoUiSlider, mockClear } = setupData;
+    test("applyFilters should filter by native Date Range", () => {
+        const { mockApply } = setupData;
+        mockFilter("date-from-filter", "2024-01-01");
+        mockFilter("date-to-filter", "2024-01-31");
+        mockApply();
 
-        // Simulate a filter applied previously
+        const visible = Array.from(document.querySelectorAll(".result-row")).filter((r) => r.style.display === "");
+        // "01 Jan 2024" matches.
+        expect(visible).toHaveLength(1);
+    });
+
+    test("clearFilters should reset all inputs and show all rows", () => {
+        const { mockClear } = setupData;
+
+        // Simulate filters applied previously
         document.querySelectorAll(".result-row")[0].style.display = "none";
         mockFilter("category-filter", "Fiction");
+        mockFilter("file-size-filter", "500mb_2gb");
+        mockFilter("date-from-filter", "2024-01-01");
 
         mockClear();
 
-        // Check if select values are reset
+        // Check if values are reset
         expect(document.getElementById("category-filter").value).toBe("");
-        // Check if date picker is cleared
-        expect(mockFlatpickr.clear).toHaveBeenCalled();
-        // Check if slider is reset
-        expect(mockNoUiSlider.reset).toHaveBeenCalled();
+        expect(document.getElementById("file-size-filter").value).toBe("");
+        expect(document.getElementById("date-from-filter").value).toBe("");
+        expect(document.getElementById("date-to-filter").value).toBe("");
+
         // Check if all rows are visible
         document.querySelectorAll(".result-row").forEach((row) => {
             expect(row.style.display).toBe("");
@@ -407,6 +425,67 @@ describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
         expect(newRowCount).toBe(initialRowCount + 1);
         expect(tbody.textContent).toContain("Streamed Book 1");
         expect(global.fetch).toHaveBeenCalledWith("/api/search?query=dune&page=2");
+    });
+
+    test("loadNextPage fetches page, appends rows, and manages indicator state", async () => {
+        const { loadNextPage } = getGlobalFunctions();
+        const tbody = document.getElementById("results-table-body");
+        const initialRowCount = tbody.querySelectorAll(".result-row").length;
+
+        // Add load-more-indicator and load-more-btn to DOM
+        const indicator = document.createElement("div");
+        indicator.id = "load-more-indicator";
+        indicator.innerHTML = '<span id="load-more-loading"></span><button id="load-more-btn"></button>';
+        document.body.appendChild(indicator);
+
+        global.fetch = jest.fn().mockReturnValue(
+            Promise.resolve({
+                ok: true,
+                json: () =>
+                    Promise.resolve({
+                        books: [
+                            {
+                                title: "Infinite Expanse 1",
+                                link: "/expanse-1",
+                                category: ["Sci-Fi"],
+                                language: "English",
+                                format: "M4B",
+                                bitrate: "128 Kbps",
+                                file_size: "600 MB",
+                                post_date: "05 Mar 2024",
+                            },
+                        ],
+                        has_more: true,
+                        page: 2,
+                    }),
+            })
+        );
+
+        const hasMore = await loadNextPage("expanse");
+        expect(hasMore).toBe(true);
+
+        const newRowCount = tbody.querySelectorAll(".result-row").length;
+        expect(newRowCount).toBe(initialRowCount + 1);
+        expect(tbody.textContent).toContain("Infinite Expanse 1");
+        expect(global.fetch).toHaveBeenCalledWith("/api/search?query=expanse&page=2");
+    });
+
+    test("initInfiniteScroll configures IntersectionObserver or falls back gracefully", () => {
+        const { initInfiniteScroll } = getGlobalFunctions();
+        const indicator = document.createElement("div");
+        indicator.id = "load-more-indicator";
+        document.body.appendChild(indicator);
+
+        const mockObserve = jest.fn();
+        const mockDisconnect = jest.fn();
+        global.IntersectionObserver = jest.fn().mockImplementation((callback) => ({
+            observe: mockObserve,
+            disconnect: mockDisconnect,
+        }));
+
+        initInfiniteScroll("the expanse");
+        expect(global.IntersectionObserver).toHaveBeenCalled();
+        expect(mockObserve).toHaveBeenCalledWith(indicator);
     });
 
     test("initHoverPrefetch fires fetch on category pill hover after 150ms", () => {
@@ -561,5 +640,59 @@ describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
         hudCatSelect.value = "";
         syncHudFilters(false);
         expect(badge.style.display).toBe("none");
+    });
+
+    test("initTopFilterDrawer manages overlay opening, closing, and resets", () => {
+        const { initTopFilterDrawer, clearFilters } = getGlobalFunctions();
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.id = "toolbar-filter-toggle";
+        const overlay = document.createElement("div");
+        overlay.id = "filter-drawer-overlay";
+        const closeBtn = document.createElement("button");
+        closeBtn.id = "filter-drawer-close";
+        let applyBtn = document.getElementById("filter-button");
+        if (!applyBtn) {
+            applyBtn = document.createElement("button");
+            applyBtn.id = "filter-button";
+            document.body.appendChild(applyBtn);
+        }
+        const toolbarClearBtn = document.createElement("button");
+        toolbarClearBtn.id = "toolbar-clear-btn";
+
+        document.body.appendChild(toggleBtn);
+        document.body.appendChild(overlay);
+        document.body.appendChild(closeBtn);
+        document.body.appendChild(toolbarClearBtn);
+
+        initTopFilterDrawer();
+
+        // Open
+        toggleBtn.click();
+        expect(overlay.classList.contains("open")).toBe(true);
+        expect(overlay.getAttribute("aria-hidden")).toBe("false");
+
+        // Close via close button
+        closeBtn.click();
+        expect(overlay.classList.contains("open")).toBe(false);
+        expect(overlay.getAttribute("aria-hidden")).toBe("true");
+
+        // Open and close via Escape
+        toggleBtn.click();
+        expect(overlay.classList.contains("open")).toBe(true);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        expect(overlay.classList.contains("open")).toBe(false);
+
+        // Open and close via Apply
+        toggleBtn.click();
+        expect(overlay.classList.contains("open")).toBe(true);
+        applyBtn.click();
+        expect(overlay.classList.contains("open")).toBe(false);
+
+        // Toolbar clear button
+        const catSelect = document.getElementById("category-filter");
+        if (catSelect) catSelect.value = "Fiction";
+        toolbarClearBtn.click();
+        if (catSelect) expect(catSelect.value).toBe("");
     });
 });
