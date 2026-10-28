@@ -8,6 +8,18 @@
     gap: 40px;
     box-shadow: var(--shadow-soft);
     align-items: flex-start;
+    animation: detailsFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes detailsFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Left Column (Cover) */
@@ -21,6 +33,16 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     aspect-ratio: 1 / 1.5;
     object-fit: cover;
+    transition:
+        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.3s ease;
+}
+
+.details-cover:hover {
+    transform: scale(1.02);
+    box-shadow:
+        0 14px 40px rgba(0, 0, 0, 0.6),
+        0 0 20px var(--accent-glow, rgba(0, 0, 0, 0.2));
 }
 
 /* Right Column (Info) */
