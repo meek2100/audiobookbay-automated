@@ -76,11 +76,11 @@ pre-commit run --all-files
 
 Consult specialized documentation for subsystem implementation details:
 
-- [Architecture & Concurrency](file:///home/agentsvc/repos/audiobookbay-automated/docs/agents/architecture.md):
-  Single-user constraints, thread-local sessions, shutdown signals.
-- [Scraping Safety & Filesystem](file:///home/agentsvc/repos/audiobookbay-automated/docs/agents/scraping-safety.md):
-  Mirror probes, fail-fast rules, negative caching, path length safety.
-- [Download Clients & Plugins](file:///home/agentsvc/repos/audiobookbay-automated/docs/agents/torrent-clients.md):
-  Download client interface, progress normalization, client quirks, plugin creation.
-- [Testing & Quality Standards](file:///home/agentsvc/repos/audiobookbay-automated/docs/agents/testing-quality.md): 100%
-  coverage enforcement, MyPy/Pyright strict typing, fixture conventions.
+- [Architecture & Concurrency](docs/agents/architecture.md): Single-user constraints, thread-local sessions, shutdown
+  signals.
+- [Scraping Safety & Filesystem](docs/agents/scraping-safety.md): Mirror probes, fail-fast rules, negative caching, path
+  length safety.
+- [Download Clients & Plugins](docs/agents/torrent-clients.md): Download client interface, progress normalization,
+  client quirks, plugin creation.
+- [Testing & Quality Standards](docs/agents/testing-quality.md): 100% coverage enforcement, MyPy/Pyright strict typing,
+  fixture conventions.
