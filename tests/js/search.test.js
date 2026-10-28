@@ -16,6 +16,9 @@ const getGlobalFunctions = () => {
         clearFilters: window.clearFilters,
         showLoadingSpinner: window.showLoadingSpinner,
         hideLoadingSpinner: window.hideLoadingSpinner,
+        setViewMode: window.setViewMode,
+        initFloatingHud: window.initFloatingHud,
+        syncHudFilters: window.syncHudFilters,
         streamRemainingPages: window.streamRemainingPages,
         createResultRowElement: window.createResultRowElement,
         initHoverPrefetch: window.initHoverPrefetch,
@@ -437,5 +440,126 @@ describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
         );
 
         jest.useRealTimers();
+    });
+
+    test("setViewMode toggles grid and list mode and persists to localStorage", () => {
+        const { setViewMode } = getGlobalFunctions();
+
+        const container = document.createElement("div");
+        container.id = "results-container";
+        const listBtn = document.createElement("button");
+        listBtn.id = "view-list-btn";
+        const gridBtn = document.createElement("button");
+        gridBtn.id = "view-grid-btn";
+
+        document.body.appendChild(container);
+        document.body.appendChild(listBtn);
+        document.body.appendChild(gridBtn);
+
+        // Test setting to grid
+        setViewMode("grid");
+        expect(container.classList.contains("view-grid")).toBe(true);
+        expect(container.classList.contains("view-list")).toBe(false);
+        expect(gridBtn.classList.contains("active")).toBe(true);
+        expect(listBtn.classList.contains("active")).toBe(false);
+        expect(localStorage.getItem("viewMode")).toBe("grid");
+
+        // Test setting to list
+        setViewMode("list");
+        expect(container.classList.contains("view-list")).toBe(true);
+        expect(container.classList.contains("view-grid")).toBe(false);
+        expect(listBtn.classList.contains("active")).toBe(true);
+        expect(gridBtn.classList.contains("active")).toBe(false);
+        expect(localStorage.getItem("viewMode")).toBe("list");
+    });
+
+    test("initFloatingHud toggles visibility on scroll and manages drawer", () => {
+        const { initFloatingHud, syncHudFilters } = getGlobalFunctions();
+
+        // Build mock HUD elements
+        const hud = document.createElement("aside");
+        hud.id = "floating-filter-hud";
+        const toggleBtn = document.createElement("button");
+        toggleBtn.id = "hud-filter-toggle";
+        const drawer = document.createElement("div");
+        drawer.id = "hud-filter-drawer";
+        const closeBtn = document.createElement("button");
+        closeBtn.id = "hud-drawer-close";
+        const applyBtn = document.createElement("button");
+        applyBtn.id = "hud-apply-filters-btn";
+        const clearBtn = document.createElement("button");
+        clearBtn.id = "hud-clear-filters-btn";
+        const topBtn = document.createElement("button");
+        topBtn.id = "hud-top-btn";
+        const badge = document.createElement("span");
+        badge.id = "hud-filter-badge";
+
+        // Main selects are already set up in setup(): category-filter, language-filter, bitrate-filter, format-filter
+
+        // HUD selects
+        ["category", "language", "bitrate", "format"].forEach((field) => {
+            const hudSelect = document.createElement("select");
+            hudSelect.id = `hud-${field}-filter`;
+            const optNone = document.createElement("option");
+            optNone.value = "";
+            const optVal = document.createElement("option");
+            optVal.value = "TestVal";
+            hudSelect.appendChild(optNone);
+            hudSelect.appendChild(optVal);
+            document.body.appendChild(hudSelect);
+        });
+
+        // Add matching option to main category select
+        const catSelect = document.getElementById("category-filter");
+        if (catSelect) {
+            const opt = document.createElement("option");
+            opt.value = "TestVal";
+            catSelect.appendChild(opt);
+        }
+
+        document.body.appendChild(hud);
+        document.body.appendChild(toggleBtn);
+        document.body.appendChild(drawer);
+        document.body.appendChild(closeBtn);
+        document.body.appendChild(applyBtn);
+        document.body.appendChild(clearBtn);
+        document.body.appendChild(topBtn);
+        document.body.appendChild(badge);
+
+        window.scrollTo = jest.fn();
+        window.requestAnimationFrame = (cb) => cb();
+
+        initFloatingHud();
+
+        // Simulate scroll past 350
+        Object.defineProperty(window, "scrollY", { value: 400, writable: true });
+        window.dispatchEvent(new Event("scroll"));
+        expect(hud.classList.contains("visible")).toBe(true);
+
+        // Toggle drawer
+        toggleBtn.click();
+        expect(drawer.classList.contains("open")).toBe(true);
+
+        // Close drawer via closeBtn
+        closeBtn.click();
+        expect(drawer.classList.contains("open")).toBe(false);
+
+        // Test top button
+        topBtn.click();
+        expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
+
+        // Test syncHudFilters
+        const hudCatSelect = document.getElementById("hud-category-filter");
+        hudCatSelect.value = "TestVal";
+        syncHudFilters(true);
+        expect(catSelect.value).toBe("TestVal");
+        expect(badge.textContent).toBe("1");
+        expect(badge.style.display).toBe("inline-block");
+
+        // Clear
+        catSelect.value = "";
+        hudCatSelect.value = "";
+        syncHudFilters(false);
+        expect(badge.style.display).toBe("none");
     });
 });

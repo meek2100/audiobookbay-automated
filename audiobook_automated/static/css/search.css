@@ -112,10 +112,36 @@
     padding-top: 5px;
 }
 
+.input-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.input-icon {
+    position: absolute;
+    left: 14px;
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color, #38bdf8);
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.85;
+    transition:
+        opacity 0.2s ease,
+        color 0.2s ease;
+}
+
+.input-icon-wrapper:focus-within .input-icon {
+    opacity: 1;
+    color: var(--accent-hover, #7dd3fc);
+}
+
 #filter-container select,
 #filter-container input[type="text"] {
     width: 100%;
-    padding: 10px 15px;
+    padding: 10px 14px 10px 40px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     background-color: rgba(0, 0, 0, 0.25);
@@ -726,4 +752,236 @@ td.col-actions {
     border-top: 2px solid var(--accent-color);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+}
+
+/* --- Floating Condensed Filter & Search HUD --- */
+.floating-filter-hud {
+    position: fixed;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        visibility 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-filter-hud.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+.hud-pill {
+    display: flex;
+    align-items: center;
+    background: var(--glass-bg, rgba(20, 25, 35, 0.88));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.2));
+    border-radius: 50px;
+    padding: 6px 10px 6px 16px;
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.5),
+        0 0 20px var(--accent-glow, rgba(56, 189, 248, 0.2));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    gap: 10px;
+}
+
+.hud-search-form {
+    display: flex;
+    align-items: center;
+    position: relative;
+    gap: 8px;
+}
+
+.hud-search-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--accent-color, #38bdf8);
+    opacity: 0.8;
+}
+
+.hud-search-input {
+    background: transparent;
+    border: none;
+    color: var(--text-main, #ffffff);
+    font-size: 0.92rem;
+    padding: 6px 0;
+    width: 140px;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+}
+
+.hud-search-input:focus {
+    width: 200px;
+}
+
+.hud-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--text-main, #ffffff);
+    padding: 8px 14px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.hud-btn:hover {
+    background: var(--accent-color, #38bdf8);
+    color: #0b1120;
+    border-color: var(--accent-hover, #7dd3fc);
+    transform: translateY(-1px);
+}
+
+.hud-top-btn {
+    padding: 8px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+}
+
+.hud-filter-badge {
+    background: var(--accent-color, #38bdf8);
+    color: #0b1120;
+    border-radius: 12px;
+    padding: 1px 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+/* Floating Drawer / Tray */
+.hud-filter-drawer {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.95);
+    width: min(90vw, 380px);
+    background: var(--glass-bg, rgba(20, 25, 35, 0.94));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.2));
+    border-radius: 16px;
+    padding: 18px 20px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+        visibility 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hud-filter-drawer.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) scale(1);
+}
+
+.hud-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 8px;
+}
+
+.hud-drawer-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-main, #ffffff);
+}
+
+.hud-drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #94a3b8);
+    font-size: 1.3rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.hud-drawer-close:hover {
+    color: #ffffff;
+}
+
+.hud-drawer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hud-drawer-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.hud-drawer-field label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted, #94a3b8);
+}
+
+.hud-drawer-field select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(0, 0, 0, 0.35);
+    color: var(--text-main, #ffffff);
+    font-size: 0.9rem;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23e1bee7%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px top 50%;
+    background-size: 8px auto;
+}
+
+.hud-drawer-field select:focus {
+    border-color: var(--accent-color, #38bdf8);
+    outline: none;
+}
+
+.hud-drawer-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.hud-action-btn {
+    flex: 1;
+    padding: 9px;
+    font-size: 0.88rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@media (max-width: 600px) {
+    .hud-btn-label {
+        display: none;
+    }
+    .hud-search-input {
+        width: 100px;
+    }
+    .hud-search-input:focus {
+        width: 140px;
+    }
 }

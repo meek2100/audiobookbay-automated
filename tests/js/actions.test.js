@@ -30,9 +30,11 @@ document.head.innerHTML = '<meta name="csrf-token" content="test-csrf-token" />'
 // FIX: Patch the source code string before evaluation.
 // We replace 'location.reload()' with 'window.__mockReload()' to intercept the call.
 // We also redirect setTimeout to a custom mock to reliably test callbacks regardless of context binding.
-const patchedActionsContent = global.actionsJsContent
-    .replace(/location\.reload\(\)/g, "window.__mockReload()")
-    .replace(/setTimeout\(/g, "window.__customSetTimeout(");
+function getPatchedActionsContent() {
+    return global.actionsJsContent
+        .replace(/location\.reload\(\)/g, "window.__mockReload()")
+        .replace(/setTimeout\(/g, "window.__customSetTimeout(");
+}
 
 // --- MOCK UTILITIES ---
 
@@ -100,7 +102,7 @@ beforeEach(() => {
     jest.useFakeTimers();
 
     // Evaluate the script content
-    eval(patchedActionsContent);
+    eval(getPatchedActionsContent());
 });
 
 afterAll(() => {
@@ -622,6 +624,44 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
             linkSearch.click();
             expect(navLinks.classList.contains("active")).toBe(false);
             expect(btn.getAttribute("aria-expanded")).toBe("false");
+        });
+    });
+
+    describe("Scroll to Top Shortcut", () => {
+        beforeEach(() => {
+            document.body.innerHTML = `
+                <button id="scroll-to-top-btn" class="scroll-to-top-btn" type="button" aria-label="Scroll back to top">Top</button>
+            `;
+            window.scrollTo = jest.fn();
+            window.requestAnimationFrame = (cb) => cb();
+            initScrollToTop();
+        });
+
+        test("scroll to top button becomes visible when window.scrollY > 300", () => {
+            const btn = document.getElementById("scroll-to-top-btn");
+            expect(btn.classList.contains("visible")).toBe(false);
+
+            // Mock scrollY > 300
+            Object.defineProperty(window, "scrollY", { value: 350, writable: true });
+            window.dispatchEvent(new Event("scroll"));
+
+            expect(btn.classList.contains("visible")).toBe(true);
+
+            // Mock scrollY back to top
+            Object.defineProperty(window, "scrollY", { value: 50, writable: true });
+            window.dispatchEvent(new Event("scroll"));
+
+            expect(btn.classList.contains("visible")).toBe(false);
+        });
+
+        test("clicking button smoothly scrolls window to top", () => {
+            const btn = document.getElementById("scroll-to-top-btn");
+            btn.click();
+
+            expect(window.scrollTo).toHaveBeenCalledWith({
+                top: 0,
+                behavior: "smooth",
+            });
         });
     });
 });

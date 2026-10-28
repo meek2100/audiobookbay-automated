@@ -12,6 +12,8 @@ window.clearFilters = clearFilters;
 window.showLoadingSpinner = showLoadingSpinner;
 window.hideLoadingSpinner = hideLoadingSpinner;
 window.setViewMode = setViewMode;
+window.initFloatingHud = initFloatingHud;
+window.syncHudFilters = syncHudFilters;
 window.streamRemainingPages = streamRemainingPages;
 window.createResultRowElement = createResultRowElement;
 window.initHoverPrefetch = initHoverPrefetch;
@@ -33,8 +35,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (clearBtn) clearBtn.addEventListener("click", clearFilters);
     }
 
-    // Initialize View Mode
-    const savedView = localStorage.getItem("viewMode") || "list";
+    // Initialize View Mode (defaults to grid view)
+    const savedView = localStorage.getItem("viewMode") || "grid";
     setViewMode(savedView);
 
     // Bind Toggle Buttons
@@ -57,6 +59,9 @@ document.addEventListener("DOMContentLoaded", function () {
             showLoadingSpinner();
         });
     }
+
+    // Initialize Floating HUD
+    initFloatingHud();
 
     // Progressive Search Streaming & Hover Prefetch
     const resultsContainer = document.getElementById("results-container");
@@ -580,4 +585,174 @@ function initHoverPrefetch() {
             }
         });
     });
+}
+
+/**
+ * Syncs the quick HUD filter dropdowns with the main filter container controls,
+ * and updates the active filter count badge.
+ */
+function syncHudFilters(fromHud = false) {
+    const fields = ["category", "language", "bitrate", "format"];
+    let activeFilterCount = 0;
+
+    fields.forEach((field) => {
+        const mainEl = document.getElementById(`${field}-filter`);
+        const hudEl = document.getElementById(`hud-${field}-filter`);
+        if (!mainEl || !hudEl) return;
+
+        if (fromHud) {
+            mainEl.value = hudEl.value;
+        } else {
+            hudEl.value = mainEl.value;
+        }
+
+        if (mainEl.value) {
+            activeFilterCount++;
+        }
+    });
+
+    // Check date and slider for active filter count
+    if (datePicker && datePicker.selectedDates.length > 0) {
+        activeFilterCount++;
+    }
+
+    const badge = document.getElementById("hud-filter-badge");
+    if (badge) {
+        if (activeFilterCount > 0) {
+            badge.textContent = activeFilterCount;
+            badge.style.display = "inline-block";
+        } else {
+            badge.style.display = "none";
+        }
+    }
+}
+
+/**
+ * Initializes the floating condensed HUD bar that slides into view upon scrolling.
+ */
+function initFloatingHud() {
+    const hud = document.getElementById("floating-filter-hud");
+    if (!hud) return;
+
+    const hudFilterToggle = document.getElementById("hud-filter-toggle");
+    const hudFilterDrawer = document.getElementById("hud-filter-drawer");
+    const hudDrawerClose = document.getElementById("hud-drawer-close");
+    const hudApplyBtn = document.getElementById("hud-apply-filters-btn");
+    const hudClearBtn = document.getElementById("hud-clear-filters-btn");
+    const hudTopBtn = document.getElementById("hud-top-btn");
+    const hudSearchForm = document.getElementById("hud-search-form");
+    const hudSearchInput = document.getElementById("hud-search-input");
+    const mainSearchInput = document.querySelector(".search-bar");
+
+    // Scroll listener for HUD visibility
+    let ticking = false;
+    const onScroll = () => {
+        const scrollThreshold = 350;
+        if (window.scrollY > scrollThreshold) {
+            hud.classList.add("visible");
+        } else {
+            hud.classList.remove("visible");
+            if (hudFilterDrawer) {
+                hudFilterDrawer.classList.remove("open");
+                hudFilterDrawer.setAttribute("aria-hidden", "true");
+            }
+        }
+        ticking = false;
+    };
+
+    window.addEventListener(
+        "scroll",
+        () => {
+            if (!ticking) {
+                ticking = true;
+                window.requestAnimationFrame(onScroll);
+            }
+        },
+        { passive: true }
+    );
+
+    // Initial check in case page starts scrolled
+    onScroll();
+
+    // Toggle filter drawer
+    if (hudFilterToggle && hudFilterDrawer) {
+        hudFilterToggle.addEventListener("click", (e) => {
+            e.stopPropagation();
+            syncHudFilters(false);
+            const isOpen = hudFilterDrawer.classList.toggle("open");
+            hudFilterDrawer.setAttribute("aria-hidden", (!isOpen).toString());
+        });
+    }
+
+    // Close filter drawer button
+    if (hudDrawerClose && hudFilterDrawer) {
+        hudDrawerClose.addEventListener("click", () => {
+            hudFilterDrawer.classList.remove("open");
+            hudFilterDrawer.setAttribute("aria-hidden", "true");
+        });
+    }
+
+    // Close drawer when clicking outside
+    document.addEventListener("click", (e) => {
+        if (hudFilterDrawer && hudFilterDrawer.classList.contains("open")) {
+            if (!hudFilterDrawer.contains(e.target) && !hudFilterToggle.contains(e.target)) {
+                hudFilterDrawer.classList.remove("open");
+                hudFilterDrawer.setAttribute("aria-hidden", "true");
+            }
+        }
+    });
+
+    // Apply HUD filters
+    if (hudApplyBtn) {
+        hudApplyBtn.addEventListener("click", () => {
+            syncHudFilters(true);
+            applyFilters();
+            if (hudFilterDrawer) {
+                hudFilterDrawer.classList.remove("open");
+                hudFilterDrawer.setAttribute("aria-hidden", "true");
+            }
+        });
+    }
+
+    // Clear HUD filters
+    if (hudClearBtn) {
+        hudClearBtn.addEventListener("click", () => {
+            clearFilters();
+            syncHudFilters(false);
+            if (hudFilterDrawer) {
+                hudFilterDrawer.classList.remove("open");
+                hudFilterDrawer.setAttribute("aria-hidden", "true");
+            }
+        });
+    }
+
+    // Jump to top from HUD
+    if (hudTopBtn) {
+        hudTopBtn.addEventListener("click", () => {
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
+        });
+    }
+
+    // Synchronize HUD search form submit with main search form spinner
+    if (hudSearchForm) {
+        hudSearchForm.addEventListener("submit", () => {
+            if (mainSearchInput && hudSearchInput) {
+                mainSearchInput.value = hudSearchInput.value;
+            }
+            showLoadingSpinner();
+        });
+    }
+
+    // Also sync badge whenever main filters change
+    const filterBtn = document.getElementById("filter-button");
+    if (filterBtn) {
+        filterBtn.addEventListener("click", () => syncHudFilters(false));
+    }
+    const clearBtn = document.getElementById("clear-button");
+    if (clearBtn) {
+        clearBtn.addEventListener("click", () => syncHudFilters(false));
+    }
 }

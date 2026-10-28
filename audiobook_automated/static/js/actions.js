@@ -13,6 +13,7 @@ window.showModal = showModal;
 window.initSplashScreen = initSplashScreen;
 window.dismissSplash = dismissSplash;
 window.initMobileMenu = initMobileMenu;
+window.initScrollToTop = initScrollToTop;
 
 function initMobileMenu() {
     const mobileMenuBtn = document.getElementById("mobile-menu-btn");
@@ -57,9 +58,55 @@ function initMobileMenu() {
     }
 }
 
+let activeScrollListener = null;
+
+function initScrollToTop() {
+    const btn = document.getElementById("scroll-to-top-btn");
+    if (!btn) return;
+
+    if (activeScrollListener) {
+        window.removeEventListener("scroll", activeScrollListener);
+        activeScrollListener = null;
+    }
+
+    const checkScroll = function () {
+        if (window.scrollY > 300) {
+            btn.classList.add("visible");
+        } else {
+            btn.classList.remove("visible");
+        }
+    };
+
+    let ticking = false;
+    activeScrollListener = function () {
+        if (!ticking) {
+            ticking = true;
+            if (typeof window.requestAnimationFrame === "function") {
+                window.requestAnimationFrame(() => {
+                    checkScroll();
+                    ticking = false;
+                });
+            } else {
+                checkScroll();
+                ticking = false;
+            }
+        }
+    };
+
+    window.addEventListener("scroll", activeScrollListener, { passive: true });
+
+    btn.addEventListener("click", function () {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+    });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     initSplashScreen();
     initMobileMenu();
+    initScrollToTop();
 
     // Reload Library Button
     const reloadBtn = document.getElementById("reload-library-btn");

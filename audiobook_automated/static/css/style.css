@@ -1067,3 +1067,68 @@ select option {
     background-color: #ffffff;
     color: #2c3e50;
 }
+
+/* Floating Scroll to Top Shortcut */
+.scroll-to-top-btn {
+    position: fixed;
+    bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    right: calc(28px + env(safe-area-inset-right, 0px));
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--glass-bg, rgba(20, 25, 35, 0.85));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.2));
+    color: var(--accent-color, #38bdf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow:
+        0 4px 20px rgba(0, 0, 0, 0.4),
+        0 0 12px var(--accent-glow, rgba(0, 0, 0, 0.2));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(16px) scale(0.9);
+    pointer-events: none;
+    transition:
+        opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
+    z-index: 999;
+}
+
+.scroll-to-top-btn.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.scroll-to-top-btn:hover {
+    color: #ffffff;
+    background: var(--accent-color);
+    border-color: var(--accent-hover);
+    box-shadow:
+        0 6px 24px rgba(0, 0, 0, 0.5),
+        0 0 18px var(--accent-glow, rgba(56, 189, 248, 0.4));
+    transform: translateY(-3px) scale(1.05);
+}
+
+.scroll-to-top-btn:active {
+    transform: translateY(0) scale(0.96);
+}
+
+@media (max-width: 768px) {
+    .scroll-to-top-btn {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        right: calc(18px + env(safe-area-inset-right, 0px));
+        width: 42px;
+        height: 42px;
+    }
+}
