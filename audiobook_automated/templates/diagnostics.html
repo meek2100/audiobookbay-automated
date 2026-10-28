@@ -1,5 +1,6 @@
 <!-- File: audiobook_automated/templates/diagnostics.html -->
-{% extends "base.html" %} {% block title %}System Diagnostics - {{ site_title }}{% endblock %} {% block extra_css %}
+{% extends "base.html" %} {% set splash_enabled = false %} {% block title %}System Diagnostics - {{ site_title }}{%
+endblock %} {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/status.css', v=static_version) }}" />
 <style>
     .diag-container {

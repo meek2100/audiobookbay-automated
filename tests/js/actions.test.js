@@ -352,6 +352,7 @@ describe("actions.js - Browser Interactions", () => {
 describe("actions.js - Splash Screen & Morph Animation", () => {
     beforeEach(() => {
         sessionStorage.clear();
+        localStorage.clear();
         document.documentElement.className = "";
     });
 
@@ -359,7 +360,7 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
         expect(() => initSplashScreen()).not.toThrow();
     });
 
-    test("initSplashScreen immediately hides overlay if splashShown is in sessionStorage", () => {
+    test("initSplashScreen immediately hides overlay if splashShown is in sessionStorage or localStorage", () => {
         sessionStorage.setItem("splashShown", "true");
         document.body.innerHTML += '<div id="splash-overlay"></div>';
 
@@ -368,6 +369,15 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
         const overlay = document.getElementById("splash-overlay");
         expect(overlay.classList.contains("hidden")).toBe(true);
         expect(overlay.style.display).toBe("none");
+
+        // Now test via localStorage
+        sessionStorage.clear();
+        localStorage.setItem("splashShown", "true");
+        document.body.innerHTML = '<div id="splash-overlay"></div>';
+        initSplashScreen();
+        const overlay2 = document.getElementById("splash-overlay");
+        expect(overlay2.classList.contains("hidden")).toBe(true);
+        expect(overlay2.style.display).toBe("none");
     });
 
     test("initSplashScreen immediately hides overlay if no-splash class on html", () => {

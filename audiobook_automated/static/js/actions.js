@@ -205,8 +205,8 @@ function initSplashScreen() {
         return;
     }
 
-    // Also double-check sessionStorage here (redundant but safe)
-    if (sessionStorage.getItem("splashShown")) {
+    // Also double-check sessionStorage / localStorage here (redundant but safe)
+    if (sessionStorage.getItem("splashShown") || localStorage.getItem("splashShown")) {
         splashOverlay.classList.add("hidden");
         splashOverlay.style.display = "none";
         return;
@@ -329,12 +329,14 @@ function dismissSplash(overlay, options = {}) {
             overlay.classList.add("hidden");
             overlay.style.display = "none";
             sessionStorage.setItem("splashShown", "true");
+            localStorage.setItem("splashShown", "true");
             document.documentElement.classList.add("no-splash");
             document.documentElement.classList.remove("splash-reveal-logo", "splash-reveal-content");
         }, 650);
     } else {
         overlay.classList.add("hidden");
         sessionStorage.setItem("splashShown", "true");
+        localStorage.setItem("splashShown", "true");
         document.documentElement.classList.add("no-splash");
 
         setTimeout(() => {
