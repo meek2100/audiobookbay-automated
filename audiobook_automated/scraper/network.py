@@ -255,9 +255,22 @@ def find_best_mirror() -> str | None:
             return mirror_cache[cache_key]
 
     mirrors = get_mirrors()
-    logger.debug(f"Checking connectivity for {len(mirrors)} mirrors...")
 
-    futures = [_mirror_executor.submit(check_mirror, host) for host in mirrors]
+    # 3. Fast Path: Check primary mirror first without spinning up thread pool
+    if mirrors:
+        primary = mirrors[0]
+        logger.debug(f"Fast-path checking primary mirror: {primary}")
+        if check_mirror(primary):
+            logger.info(f"Primary mirror active: {primary}")
+            with CACHE_LOCK:
+                mirror_cache[cache_key] = primary
+            return primary
+
+    # 4. Failover: Check remaining mirrors concurrently
+    failover_mirrors = mirrors[1:] if len(mirrors) > 1 else mirrors
+    logger.debug(f"Primary down. Checking failover connectivity for {len(failover_mirrors)} mirrors...")
+
+    futures = [_mirror_executor.submit(check_mirror, host) for host in failover_mirrors]
 
     for future in concurrent.futures.as_completed(futures):
         result = future.result()

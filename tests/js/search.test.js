@@ -16,6 +16,9 @@ const getGlobalFunctions = () => {
         clearFilters: window.clearFilters,
         showLoadingSpinner: window.showLoadingSpinner,
         hideLoadingSpinner: window.hideLoadingSpinner,
+        streamRemainingPages: window.streamRemainingPages,
+        createResultRowElement: window.createResultRowElement,
+        initHoverPrefetch: window.initHoverPrefetch,
     };
 };
 
@@ -328,5 +331,111 @@ describe("search.js UI Spinner Logic", () => {
 
         expect(messageScroller.style.display).toBe("block");
         expect(document.getElementById("scrolling-message").textContent).not.toBe("");
+    });
+});
+
+describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
+    beforeEach(() => {
+        setup();
+    });
+
+    test("createResultRowElement builds proper DOM table row", () => {
+        const { createResultRowElement } = getGlobalFunctions();
+        const book = {
+            title: "Dune",
+            link: "https://audiobookbay.lu/dune",
+            cover: "https://audiobookbay.lu/cover.jpg",
+            category: ["Sci-Fi, Fantasy"],
+            language: "English",
+            format: "M4B",
+            bitrate: "128 Kbps",
+            file_size: "500 MB",
+            post_date: "01 Jan 2024",
+        };
+
+        const row = createResultRowElement(book);
+        expect(row.tagName).toBe("TR");
+        expect(row.className).toContain("result-row");
+        expect(row.dataset.category).toBe("Sci-Fi, Fantasy");
+        expect(row.dataset.language).toBe("English");
+        expect(row.querySelector(".book-title").textContent).toBe("Dune");
+        expect(row.querySelector(".category-link").textContent).toBe("Sci-Fi");
+        expect(row.querySelector(".send-torrent-btn").dataset.title).toBe("Dune");
+    });
+
+    test("streamRemainingPages fetches subsequent pages and appends rows", async () => {
+        const { streamRemainingPages } = getGlobalFunctions();
+        const tbody = document.getElementById("results-table-body");
+        const initialRowCount = tbody.querySelectorAll(".result-row").length;
+
+        // Mock fetch
+        global.fetch = jest.fn().mockImplementation((url) => {
+            if (url.includes("page=2")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            books: [
+                                {
+                                    title: "Streamed Book 1",
+                                    link: "/book-1",
+                                    category: ["Adventure"],
+                                    language: "English",
+                                    format: "MP3",
+                                    bitrate: "64 Kbps",
+                                    file_size: "100 MB",
+                                    post_date: "02 Feb 2024",
+                                },
+                            ],
+                            has_more: false,
+                            page: 2,
+                        }),
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ books: [], has_more: false, page: 3 }),
+            });
+        });
+
+        await streamRemainingPages("dune", 2, 3);
+
+        const newRowCount = tbody.querySelectorAll(".result-row").length;
+        expect(newRowCount).toBe(initialRowCount + 1);
+        expect(tbody.textContent).toContain("Streamed Book 1");
+        expect(global.fetch).toHaveBeenCalledWith("/api/search?query=dune&page=2");
+    });
+
+    test("initHoverPrefetch fires fetch on category pill hover after 150ms", () => {
+        jest.useFakeTimers();
+        const { initHoverPrefetch } = getGlobalFunctions();
+        const tbody = document.getElementById("results-table-body");
+
+        // Add a mock category link
+        const a = document.createElement("a");
+        a.className = "category-tag category-link";
+        a.href = "/?query=Brandon+Sanderson";
+        tbody.appendChild(a);
+
+        global.fetch = jest.fn().mockReturnValue(Promise.resolve({ ok: true }));
+
+        initHoverPrefetch();
+
+        // Simulate mouseenter
+        a.dispatchEvent(new Event("mouseenter"));
+
+        // Before timer: no fetch
+        expect(global.fetch).not.toHaveBeenCalled();
+
+        // Advance 160ms
+        jest.advanceTimersByTime(160);
+
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch).toHaveBeenCalledWith(
+            expect.stringContaining("/api/search?query=Brandon%20Sanderson&page=1"),
+            expect.any(Object)
+        );
+
+        jest.useRealTimers();
     });
 });

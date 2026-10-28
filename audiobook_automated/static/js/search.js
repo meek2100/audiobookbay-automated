@@ -12,19 +12,25 @@ window.clearFilters = clearFilters;
 window.showLoadingSpinner = showLoadingSpinner;
 window.hideLoadingSpinner = hideLoadingSpinner;
 window.setViewMode = setViewMode;
+window.streamRemainingPages = streamRemainingPages;
+window.createResultRowElement = createResultRowElement;
+window.initHoverPrefetch = initHoverPrefetch;
 
 // Global variables defined in the file
 let datePicker;
 let fileSizeSlider;
 let messageIndex = 0;
 let intervalId = null;
+const prefetchedQueries = new Set();
 
 document.addEventListener("DOMContentLoaded", function () {
     // Initialize filtering if results are present
     if (document.querySelectorAll(".result-row").length > 0) {
         initializeFilters();
-        document.getElementById("filter-button").addEventListener("click", applyFilters);
-        document.getElementById("clear-button").addEventListener("click", clearFilters);
+        const filterBtn = document.getElementById("filter-button");
+        if (filterBtn) filterBtn.addEventListener("click", applyFilters);
+        const clearBtn = document.getElementById("clear-button");
+        if (clearBtn) clearBtn.addEventListener("click", clearFilters);
     }
 
     // Initialize View Mode
@@ -51,6 +57,15 @@ document.addEventListener("DOMContentLoaded", function () {
             showLoadingSpinner();
         });
     }
+
+    // Progressive Search Streaming & Hover Prefetch
+    const resultsContainer = document.getElementById("results-container");
+    if (resultsContainer && resultsContainer.dataset.query && resultsContainer.dataset.hasResults === "true") {
+        const query = resultsContainer.dataset.query;
+        streamRemainingPages(query, 2, 5);
+    }
+
+    initHoverPrefetch();
 });
 
 function setViewMode(mode) {
@@ -393,4 +408,165 @@ function hideScrollingMessages() {
         intervalId = null;
     }
     if (messageScroller) messageScroller.style.display = "none";
+}
+
+/**
+ * Escapes HTML entities to prevent XSS.
+ * @param {string} str - Raw string.
+ * @returns {string} - Escaped string.
+ */
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+/**
+ * Creates a DOM table row for a book summary.
+ * @param {Object} book - The BookSummary dictionary.
+ * @returns {HTMLTableRowElement} - The created .result-row element.
+ */
+function createResultRowElement(book) {
+    const row = document.createElement("tr");
+    row.className = "result-row";
+    row.dataset.category = Array.isArray(book.category) ? book.category.join("|") : book.category || "";
+    row.dataset.language = book.language || "Unknown";
+    row.dataset.bitrate = book.bitrate || "Unknown";
+    row.dataset.format = book.format || "Unknown";
+    row.dataset.fileSize = book.file_size || "Unknown";
+    row.dataset.postDate = book.post_date || "Unknown";
+
+    const defaultCover =
+        document.querySelector(".cover[data-default-cover]")?.getAttribute("data-default-cover") ||
+        "/static/images/audiobook-default-cover.png";
+    const coverSrc = book.cover ? escapeHtml(book.cover) : defaultCover;
+    const detailsUrl = "/details?link=" + encodeURIComponent(book.link || "");
+    const title = escapeHtml(book.title || "Untitled Audiobook");
+
+    // Category pills HTML
+    let categoryHtml = "";
+    if (Array.isArray(book.category)) {
+        book.category.forEach((rawCat) => {
+            const parts = rawCat.split(",");
+            parts.forEach((cat) => {
+                const clean = cat.trim();
+                if (clean && clean !== "Unknown") {
+                    categoryHtml += `<a href="/?query=${encodeURIComponent(clean)}" class="category-tag category-link" title="Search ${escapeHtml(clean)} audiobooks">${escapeHtml(clean)}</a>\n`;
+                }
+            });
+        });
+    }
+
+    row.innerHTML = `
+        <td class="col-cover">
+            <a href="${detailsUrl}">
+                <img src="${coverSrc}" alt="Cover Art" class="cover" width="100" data-default-cover="${defaultCover}" />
+            </a>
+        </td>
+        <td class="col-info">
+            <p class="book-title">${title}</p>
+            <div class="categories-container">
+                ${categoryHtml}
+            </div>
+            <div class="property-results-container">
+                <span class="book-language">Language: ${escapeHtml(book.language || "Unknown")}</span>
+                <span class="book-bitrate">Bitrate: ${escapeHtml(book.bitrate || "Unknown")}</span>
+                <span class="book-format">Format: ${escapeHtml(book.format || "Unknown")}</span>
+                <span class="book-file_size">File Size: ${escapeHtml(book.file_size || "Unknown")}</span>
+                <span class="book-post_date">Posted: ${escapeHtml(book.post_date || "Unknown")}</span>
+            </div>
+        </td>
+        <td class="col-actions">
+            <div class="action-buttons">
+                <a href="${detailsUrl}" class="btn-glass details-button">Details</a>
+                <button class="btn-primary send-torrent-btn" data-link="${escapeHtml(book.link || "")}" data-title="${title}">Download</button>
+            </div>
+        </td>
+    `;
+    return row;
+}
+
+/**
+ * Streams remaining search result pages sequentially in the background.
+ * @param {string} query - The search keyword.
+ * @param {number} startPage - The starting background page (typically 2).
+ * @param {number} maxPage - The maximum background page to fetch (typically 5).
+ */
+async function streamRemainingPages(query, startPage = 2, maxPage = 5) {
+    const indicator = document.getElementById("load-more-indicator");
+    const tbody = document.getElementById("results-table-body");
+    if (!tbody || !query) return;
+
+    if (indicator) indicator.style.display = "flex";
+
+    for (let page = startPage; page <= maxPage; page++) {
+        try {
+            const response = await fetch(`/api/search?query=${encodeURIComponent(query)}&page=${page}`);
+            if (!response.ok) {
+                break;
+            }
+            const data = await response.json();
+            if (!data.books || data.books.length === 0) {
+                break;
+            }
+
+            // Append rows
+            data.books.forEach((book) => {
+                const row = createResultRowElement(book);
+                tbody.appendChild(row);
+            });
+
+            // Re-apply hover prefetching and refresh filter dropdowns
+            initHoverPrefetch();
+            initializeFilters();
+            applyFilters();
+
+            if (!data.has_more) {
+                break;
+            }
+        } catch (err) {
+            console.warn("Background streaming interrupted:", err);
+            break;
+        }
+    }
+
+    if (indicator) indicator.style.display = "none";
+}
+
+/**
+ * Initializes hover prefetching for all Category, Author, and Narrator links.
+ * When the user hovers for 150ms, a prefetch request is sent to /api/search to warm the server cache.
+ */
+function initHoverPrefetch() {
+    const links = document.querySelectorAll("a.category-link");
+    links.forEach((link) => {
+        if (link.dataset.prefetchBound) return;
+        link.dataset.prefetchBound = "true";
+
+        let hoverTimer = null;
+        link.addEventListener("mouseenter", function () {
+            const href = link.getAttribute("href");
+            if (!href || !href.includes("query=")) return;
+            const match = href.match(/[?&]query=([^&]+)/);
+            if (!match) return;
+            const query = decodeURIComponent(match[1].replace(/\+/g, " ")).trim();
+            if (query.length < 2 || prefetchedQueries.has(query)) return;
+
+            hoverTimer = setTimeout(() => {
+                prefetchedQueries.add(query);
+                fetch(`/api/search?query=${encodeURIComponent(query)}&page=1`, { priority: "low" }).catch(() => {});
+            }, 150);
+        });
+
+        link.addEventListener("mouseleave", function () {
+            if (hoverTimer) {
+                clearTimeout(hoverTimer);
+                hoverTimer = null;
+            }
+        });
+    });
 }

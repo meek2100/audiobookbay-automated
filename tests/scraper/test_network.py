@@ -53,6 +53,26 @@ def test_find_best_mirror_failover(app: Flask) -> None:
             assert mock_session.head.call_count == 2
 
 
+def test_find_best_mirror_fast_path(app: Flask) -> None:
+    """Test that find_best_mirror returns primary mirror immediately if healthy."""
+    mirror_cache.clear()
+    mirrors = ["primary.com", "fallback.com"]
+
+    with patch("audiobook_automated.scraper.network.get_mirrors", return_value=mirrors):
+        with patch("audiobook_automated.scraper.network.check_mirror") as mock_check:
+
+            def mock_mirror_check(host: str) -> str | None:
+                return host if host == "primary.com" else None
+
+            mock_check.side_effect = mock_mirror_check
+
+            best = find_best_mirror()
+            assert best == "primary.com"
+            mock_check.assert_called_once_with("primary.com")
+
+    mirror_cache.clear()
+
+
 # --- Merged Coverage Tests from test_network_coverage.py ---
 
 
@@ -343,6 +363,21 @@ def test_find_best_mirror_negative_cache_hit(app: Flask) -> None:
             result = network.find_best_mirror()
             assert result is None
             mock_get.assert_not_called()
+
+
+def test_find_best_mirror_all_down(app: Flask) -> None:
+    """Test find_best_mirror when all mirrors fail check."""
+    network.mirror_cache.clear()
+    network.failure_cache.clear()
+
+    with patch("audiobook_automated.scraper.network.get_mirrors", return_value=["down1.com", "down2.com"]):
+        with patch("audiobook_automated.scraper.network.check_mirror", return_value=None):
+            result = network.find_best_mirror()
+            assert result is None
+            with network.CACHE_LOCK:
+                assert "failure" in network.failure_cache
+
+    network.failure_cache.clear()
 
 
 def test_get_random_user_agent_returns_string() -> None:

@@ -116,7 +116,12 @@
 </div>
 {% endif %}
 
-<div class="table-wrapper" id="results-container">
+<div
+    class="table-wrapper"
+    id="results-container"
+    data-query="{{ query|escape }}"
+    data-has-results="{% if books %}true{% else %}false{% endif %}"
+>
     <table>
         <tbody id="results-table-body">
             {% if books %} {% set default_cover_url = url_for('static', filename='images/' + default_cover_filename,
@@ -189,6 +194,12 @@
             {% endif %} {% endif %}
         </tbody>
     </table>
+    {% if books %}
+    <div id="load-more-indicator" class="load-more-container" style="display: none">
+        <span class="load-more-spinner"></span>
+        <span id="load-more-text">Finding more audiobooks in background...</span>
+    </div>
+    {% endif %}
 </div>
 
 {% endblock %}

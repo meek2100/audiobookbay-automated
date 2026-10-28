@@ -585,3 +585,74 @@ def test_delete_torrent_not_found(client: FlaskClient, app: Flask) -> None:
         json_data = response.json
         assert json_data is not None
         assert json_data["message"] == "Torrent not found"
+
+
+def test_api_search_endpoint_success(client: FlaskClient) -> None:
+    """Test /api/search returns JSON with book summaries and pagination."""
+    mock_books = [
+        {
+            "title": "Async Book",
+            "link": "/async-book",
+            "cover": "cover.jpg",
+            "language": "English",
+            "category": ["Sci-Fi"],
+            "post_date": "2024",
+            "format": "MP3",
+            "bitrate": "128",
+            "file_size": "200MB",
+        }
+    ]
+    with patch("audiobook_automated.routes.search_audiobookbay", return_value=mock_books) as mock_search:
+        response = client.get("/api/search?query=async&page=2")
+        assert response.status_code == 200
+        data = response.json
+        assert data is not None
+        assert data["page"] == 2
+        assert data["has_more"] is True
+        assert len(data["books"]) == 1
+        assert data["books"][0]["title"] == "Async Book"
+        mock_search.assert_called_once_with("async", max_pages=1, start_page=2)
+
+
+def test_api_search_endpoint_short_or_empty_query(client: FlaskClient) -> None:
+    """Test /api/search returns empty list gracefully on invalid/short queries."""
+    with patch("audiobook_automated.routes.search_audiobookbay") as mock_search:
+        response = client.get("/api/search?query=a&page=1")
+        assert response.status_code == 200
+        assert response.json == {"books": [], "has_more": False, "page": 1}
+        mock_search.assert_not_called()
+
+        response_empty = client.get("/api/search?query=")
+        assert response_empty.status_code == 200
+        assert response_empty.json == {"books": [], "has_more": False, "page": 1}
+        mock_search.assert_not_called()
+
+
+def test_api_search_endpoint_invalid_page(client: FlaskClient) -> None:
+    """Test /api/search handles invalid page parameter by defaulting to page 1."""
+    with patch("audiobook_automated.routes.search_audiobookbay", return_value=[]) as mock_search:
+        response = client.get("/api/search?query=dune&page=invalid")
+        assert response.status_code == 200
+        assert response.json == {"books": [], "has_more": False, "page": 1}
+        mock_search.assert_called_once_with("dune", max_pages=1, start_page=1)
+
+
+def test_api_search_endpoint_negative_page(client: FlaskClient) -> None:
+    """Test /api/search handles negative page parameter by clamping to 1."""
+    with patch("audiobook_automated.routes.search_audiobookbay", return_value=[]) as mock_search:
+        response = client.get("/api/search?query=dune&page=-5")
+        assert response.status_code == 200
+        assert response.json == {"books": [], "has_more": False, "page": 1}
+        mock_search.assert_called_once_with("dune", max_pages=1, start_page=1)
+
+
+def test_api_search_endpoint_exception(client: FlaskClient) -> None:
+    """Test /api/search handles scraping exceptions gracefully with 500 JSON error."""
+    with patch("audiobook_automated.routes.search_audiobookbay", side_effect=Exception("Timeout")):
+        response = client.get("/api/search?query=dune&page=1")
+        assert response.status_code == 500
+        data = response.json
+        assert data is not None
+        assert "Timeout" in data["error"]
+        assert data["books"] == []
+        assert data["has_more"] is False
