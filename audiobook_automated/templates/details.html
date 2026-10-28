@@ -86,9 +86,9 @@ extra_css %}
                     <div class="meta-pills-wrap">
                         {% if book.author and book.author != "Unknown" %}
                         <a
-                            href="{{ url_for('main.search', query=book.author) }}"
+                            href="{{ url_for('main.search', query='author:' + book.author) }}"
                             class="category-tag category-link"
-                            title="Search books by {{ book.author }}"
+                            title="Browse all audiobooks by author {{ book.author }}"
                             >{{ book.author }}</a
                         >
                         {% else %}
@@ -101,9 +101,9 @@ extra_css %}
                     <div class="meta-pills-wrap">
                         {% if book.narrator and book.narrator != "Unknown" %}
                         <a
-                            href="{{ url_for('main.search', query=book.narrator) }}"
+                            href="{{ url_for('main.search', query='narrator:' + book.narrator) }}"
                             class="category-tag category-link"
-                            title="Search books narrated by {{ book.narrator }}"
+                            title="Browse all audiobooks narrated by {{ book.narrator }}"
                             >{{ book.narrator }}</a
                         >
                         {% else %}
@@ -113,7 +113,18 @@ extra_css %}
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Language</span>
-                    <span class="meta-value">{{ book.language }}</span>
+                    <div class="meta-pills-wrap">
+                        {% if book.language and book.language != "Unknown" %}
+                        <a
+                            href="{{ url_for('main.search', query='tag:' + book.language) }}"
+                            class="category-tag category-link"
+                            title="Browse all {{ book.language }} audiobooks"
+                            >{{ book.language }}</a
+                        >
+                        {% else %}
+                        <span class="meta-value">{{ book.language }}</span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Format</span>
@@ -129,9 +140,9 @@ extra_css %}
                         {% for raw_cat in book.category %} {% for cat in raw_cat.split(',') %} {% if cat.strip() and
                         cat.strip() != "Unknown" %}
                         <a
-                            href="{{ url_for('main.search', query=cat.strip()) }}"
+                            href="{{ url_for('main.search', query='type:' + cat.strip()) }}"
                             class="category-tag category-link"
-                            title="Search {{ cat.strip() }} audiobooks"
+                            title="Browse {{ cat.strip() }} category"
                             >{{ cat.strip() }}</a
                         >
                         {% endif %} {% endfor %} {% endfor %}
