@@ -124,6 +124,23 @@ describe("status.js - UI Logic", () => {
         const badge2 = rows[1].querySelector(".status-badge");
         expect(badge2.classList.contains("badge-seeding")).toBe(true);
     });
+
+    test("updateTable should render client tag when client is present", () => {
+        const torrents = [
+            { id: "201", name: "Book on Putio", progress: 80, state: "downloading", size: "1 GB", client: "putio" },
+            { id: "202", name: "Book without client", progress: 20, state: "downloading", size: "500 MB" },
+        ];
+
+        window.updateTable(tbody, torrents);
+
+        const rows = tbody.querySelectorAll("tr");
+        const clientTag1 = rows[0].querySelector(".torrent-client-tag");
+        expect(clientTag1).not.toBeNull();
+        expect(clientTag1.textContent).toBe("putio");
+
+        const clientTag2 = rows[1].querySelector(".torrent-client-tag");
+        expect(clientTag2).toBeNull();
+    });
 });
 
 describe("status.js - Polling Mechanism", () => {

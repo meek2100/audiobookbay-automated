@@ -128,6 +128,64 @@
     }
 }
 
+/* Multi-Client Filter Tabs */
+.status-client-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-x: auto;
+}
+
+.client-tab {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted, rgba(255, 255, 255, 0.7));
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.client-tab:hover {
+    color: var(--text-main, #ffffff);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.client-tab.active {
+    color: var(--text-main, #ffffff);
+    background: var(--btn-primary-bg, linear-gradient(135deg, #7c3aed, #a855f7));
+    border-color: transparent;
+    box-shadow: 0 0 12px var(--accent-glow, rgba(168, 85, 247, 0.35));
+}
+
+.title-text-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.torrent-client-tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--accent-color, #f7d070);
+}
+
 /* --- Container & Table Layout --- */
 .status-container {
     max-width: 900px;
@@ -160,20 +218,21 @@ thead th {
 
 /* Column Widths */
 th.col-title {
-    width: 40%;
+    width: 38%;
 }
 th.col-progress {
-    width: 25%;
+    width: 22%;
 }
 th.col-state {
-    width: 15%;
+    width: 14%;
 }
 th.col-size {
-    width: 10%;
+    width: 12%;
 }
 th.col-action {
-    width: 10%;
+    width: 14%;
     text-align: right;
+    padding-right: 20px;
 }
 
 /* Row Styles */
@@ -197,13 +256,19 @@ tbody tr:hover {
 }
 
 tbody td {
-    padding: 18px 20px;
+    padding: 16px 14px;
     color: var(--text-muted, #d9c4e8);
     vertical-align: middle;
     border: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+tbody td.cell-action {
+    overflow: visible;
+    text-align: right;
+    padding-right: 18px;
 }
 
 tbody tr td:first-child {

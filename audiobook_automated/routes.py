@@ -121,6 +121,23 @@ def health() -> Response | tuple[Response, int]:
     return jsonify({"status": "degraded", "client": "disconnected"}), 503
 
 
+@main_bp.route("/api/clients")
+def api_clients() -> Response:
+    """Return available configured clients and their connectivity status.
+
+    Returns:
+        Response: JSON with client list and primary client name.
+    """
+    client_names = torrent_manager.list_clients()
+    clients_data = []
+    for name in client_names:
+        is_connected = torrent_manager.verify_credentials(name)
+        clients_data.append({"name": name, "connected": is_connected})
+
+    primary = torrent_manager.client_type.lower().replace("client", "")
+    return jsonify({"clients": clients_data, "primary": primary})
+
+
 @main_bp.route("/", methods=["GET", "POST"])
 @limiter.limit("30 per minute")
 def search() -> str | Response:
@@ -284,28 +301,15 @@ def details() -> str | Response:
         )
 
 
-@main_bp.route("/send", methods=["POST"])
-@limiter.limit("60 per minute")
-def send() -> Response | tuple[Response, int]:
-    """Initiate a download.
-
-    Generates a magnet link and sends it to the configured torrent client.
-
-    JSON Body:
-        link (str): The details URL of the book.
-        title (str): The title of the book.
-
-    Returns:
-        Response: JSON indicating success or failure.
-    """
-    data = cast(dict[str, Any], request.json)
-
+def _validate_send_payload(data: dict[str, Any]) -> tuple[str, str, str | None]:
+    """Validate incoming JSON payload for /send endpoint."""
     if not isinstance(data, dict):  # pyright: ignore[reportUnnecessaryIsInstance]
         logger.warning("Invalid send request: JSON body is not a dictionary.")
         raise InvalidRequestError("Invalid JSON format")
 
     details_url = data.get("link") if data else None
     title = data.get("title") if data else None
+    client_name = data.get("client") if data else None
 
     # TYPE SAFETY: Ensure link and title are strings before proceeding.
     if details_url is not None and not isinstance(details_url, str):
@@ -322,11 +326,36 @@ def send() -> Response | tuple[Response, int]:
         logger.warning(f"Invalid send request: Title is not a string (Type: {type(title)}).")
         raise InvalidRequestError("Invalid request: Title must be a string")
 
+    # TYPE SAFETY: Ensure client is a string if supplied
+    if client_name is not None and not isinstance(client_name, str):
+        logger.warning(f"Invalid send request: Client is not a string (Type: {type(client_name)}).")
+        raise InvalidRequestError("Invalid request: Client must be a string")
+
     # Check raw title existence. We must allow titles that sanitize to FALLBACK_TITLE (e.g. "...")
     # to proceed to the collision handler, rather than blocking them as "Invalid".
     if not details_url or not title:
         logger.warning("Invalid send request received: missing link or valid title")
         raise InvalidRequestError("Invalid request: Title or Link missing")
+
+    return details_url, title, client_name
+
+
+@main_bp.route("/send", methods=["POST"])
+@limiter.limit("60 per minute")
+def send() -> Response | tuple[Response, int]:
+    """Initiate a download.
+
+    Generates a magnet link and sends it to the configured torrent client.
+
+    JSON Body:
+        link (str): The details URL of the book.
+        title (str): The title of the book.
+
+    Returns:
+        Response: JSON indicating success or failure.
+    """
+    data = cast(dict[str, Any], request.json)
+    details_url, title, client_name = _validate_send_payload(data)
 
     # Logging raw title before processing
     logger.info(f"Received download request for '{sanitize_title(title)}'")
@@ -357,10 +386,13 @@ def send() -> Response | tuple[Response, int]:
         # DELEGATION: Path construction logic moved to utils.py
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
         save_path = construct_safe_save_path(save_path_base, title)
+        if client_name:
+            torrent_manager.add_magnet(magnet_link, save_path, client_name=client_name)
+        else:
+            torrent_manager.add_magnet(magnet_link, save_path)
 
-        torrent_manager.add_magnet(magnet_link, save_path)
-
-        logger.info(f"Successfully sent '{title}' to {torrent_manager.client_type}")
+        target_client = client_name or torrent_manager.client_type
+        logger.info(f"Successfully sent '{title}' to {target_client}")
         return (
             jsonify(
                 {
@@ -467,25 +499,33 @@ def status() -> str | Response | tuple[Response, int]:
     """Render the current status of downloads.
 
     Supports returning JSON for frontend polling via ?json=1.
+    Supports filtering by client via ?client=<name>.
 
     Query Params:
         json (str): If set to "1", "true", "yes", or "on", returns JSON instead of HTML.
+        client (str): Optional client name to filter by.
 
     Returns:
         str | Response: Rendered HTML, JSON data, or Error Response.
     """
     # Robust boolean parsing
     is_json = parse_bool(request.args.get("json", ""))
+    client_filter = request.args.get("client")
 
     try:
-        torrent_list = torrent_manager.get_status()
+        torrent_list = torrent_manager.get_status(client_name=client_filter)
 
         if is_json:
             # Assumes torrent_manager.get_status returns Dataclasses as per architectural requirements.
             return jsonify([asdict(t) for t in torrent_list])
 
         logger.debug(f"Retrieved status for {len(torrent_list)} torrents.")
-        return render_template("status.html", torrents=torrent_list)
+        return render_template(
+            "status.html",
+            torrents=torrent_list,
+            clients=torrent_manager.list_clients(),
+            active_client=client_filter,
+        )
     except Exception as e:
         logger.error(f"Failed to fetch torrent status: {e}", exc_info=True)
 
@@ -496,6 +536,8 @@ def status() -> str | Response | tuple[Response, int]:
         return render_template(
             "status.html",
             torrents=[],
+            clients=torrent_manager.list_clients(),
+            active_client=client_filter,
             error=error_message,
             debug_details=debug_details,
         )

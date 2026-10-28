@@ -32,6 +32,21 @@
             </div>
         </div>
     </div>
+    {% if clients and clients|length > 1 %}
+    <div class="status-client-tabs" role="tablist" aria-label="Filter downloads by client">
+        <a href="{{ url_for('main.status') }}" class="client-tab {{ 'active' if not active_client else '' }}" role="tab"
+            >All Clients</a
+        >
+        {% for c in clients %}
+        <a
+            href="{{ url_for('main.status', client=c) }}"
+            class="client-tab {{ 'active' if active_client == c else '' }}"
+            role="tab"
+            >{{ c|capitalize }}</a
+        >
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 
 <div class="status-container">
@@ -75,7 +90,12 @@
                     <td class="cell-title">
                         <div class="title-with-icon">
                             <span class="book-media-icon" aria-hidden="true">🎧</span>
-                            <span class="title-text">{{ torrent.name }}</span>
+                            <div class="title-text-group">
+                                <span class="title-text">{{ torrent.name }}</span>
+                                {% if torrent.client %}
+                                <span class="torrent-client-tag">{{ torrent.client|capitalize }}</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </td>
                     <td class="cell-progress">

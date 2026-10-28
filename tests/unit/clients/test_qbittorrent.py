@@ -103,7 +103,33 @@ def test_get_status_qbittorrent(app: Flask) -> None:
         assert len(results) == 1
         assert results[0].name == "Test Book"
         assert results[0].progress == 50.0
+        assert results[0].state == "Downloading"
         assert results[0].size == "1.00 MB"
+
+
+def test_qbittorrent_stalledup_maps_to_seeding(app: Flask) -> None:
+    """Test that qBittorrent stalledUP status normalizes to Seeding."""
+    with (
+        patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
+        app.app_context(),
+    ):
+        mock_instance = MockQbClient.return_value
+        mock_torrent = MagicMock()
+        mock_torrent.hash = "hash2"
+        mock_torrent.name = "Completed Book"
+        mock_torrent.progress = 1.0
+        mock_torrent.state = "stalledUP"
+        mock_torrent.total_size = 2097152
+
+        mock_instance.torrents_info.return_value = [mock_torrent]
+
+        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+        strategy.connect()
+        results = strategy.get_status("cat")
+
+        assert len(results) == 1
+        assert results[0].state == "Seeding"
+        assert results[0].progress == 100.0
 
 
 def test_qbittorrent_close(app: Flask) -> None:

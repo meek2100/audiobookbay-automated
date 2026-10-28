@@ -114,14 +114,35 @@ class Strategy(TorrentClientStrategy):
         results: list[TorrentStatus] = []
         # qBittorrent supports server-side filtering by category
         qb_torrents = cast(list[QbTorrentProtocol], self.client.torrents_info(category=category))
+        state_map = {
+            "error": "Error",
+            "pausedUP": "Paused",
+            "pausedDL": "Paused",
+            "queuedUP": "Queued",
+            "queuedDL": "Queued",
+            "uploading": "Seeding",
+            "stalledUP": "Seeding",
+            "checkingUP": "Checking",
+            "checkingDL": "Checking",
+            "downloading": "Downloading",
+            "stalledDL": "Stalled",
+            "metaDL": "Downloading Metadata",
+            "forcedMetaDL": "Downloading Metadata",
+            "forcedDL": "Downloading",
+            "forcedUP": "Seeding",
+            "allocating": "Allocating",
+            "moving": "Moving",
+        }
         for qb_torrent in qb_torrents:
+            raw_state = qb_torrent.state or "unknown"
+            friendly_state = state_map.get(raw_state, raw_state.capitalize())
             results.append(
                 TorrentStatus(
                     id=qb_torrent.hash,
                     name=qb_torrent.name,
                     # qB API returns progress as 0.0-1.0 float, normalize to 0.0-100.0
                     progress=round(qb_torrent.progress * 100, 2) if qb_torrent.progress else 0.0,
-                    state=qb_torrent.state,
+                    state=friendly_state,
                     size=format_size(qb_torrent.total_size),
                 )
             )

@@ -17,6 +17,8 @@ class TorrentStatus:
     size: str
     # Core Task 4: Add category field to allow validation before deletion
     category: str | None = None
+    # Client identifier for multi-client support (e.g., 'qbittorrent', 'putio')
+    client: str | None = None
 
 
 class TorrentClientStrategy(ABC):

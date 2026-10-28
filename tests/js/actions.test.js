@@ -260,6 +260,19 @@ describe("actions.js - API Interactions", () => {
         expect(mockButton.innerHTML).toBe("Download");
     });
 
+    test("sendTorrent should include client in fetch body when specified", async () => {
+        mockFetch.mockClear();
+        sendTorrent("http://link", "Book Title", null, "putio");
+
+        expect(mockFetch).toHaveBeenCalledWith(
+            "/send",
+            expect.objectContaining({
+                method: "POST",
+                body: JSON.stringify({ link: "http://link", title: "Book Title", client: "putio" }),
+            })
+        );
+    });
+
     test("sendTorrent should show error on non-ok status code", async () => {
         const mockButton = document.createElement("button");
         mockButton.innerText = "Download";

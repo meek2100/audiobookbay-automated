@@ -89,7 +89,10 @@ function updateTable(tbody, torrents) {
             <td class="cell-title">
                 <div class="title-with-icon">
                     <span class="book-media-icon" aria-hidden="true">🎧</span>
-                    <span class="title-text">${escapeHtml(torrent.name)}</span>
+                    <div class="title-text-group">
+                        <span class="title-text">${escapeHtml(torrent.name)}</span>
+                        ${torrent.client ? `<span class="torrent-client-tag">${escapeHtml(torrent.client)}</span>` : ""}
+                    </div>
                 </div>
             </td>
             <td class="cell-progress">

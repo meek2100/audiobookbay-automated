@@ -70,7 +70,8 @@ def mock_global_dependencies() -> Generator[None]:
                 with patch.object(torrent_manager, "remove_torrent", return_value="OK"):
                     # Mock init_app to prevent real connection attempts
                     with patch.object(torrent_manager, "init_app"):
-                        yield
+                        with patch("audiobook_automated.routes.get_book_details", return_value=None):
+                            yield
 
 
 @pytest.fixture(autouse=True)
