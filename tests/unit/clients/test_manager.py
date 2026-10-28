@@ -52,12 +52,16 @@ def test_manager_load_strategy_success(app: Flask, caplog: LogCaptureFixture) ->
         app.config["DL_CLIENT"] = "mock_client"
         app.config["DL_HOST"] = "1.2.3.4"
         app.config["DL_PORT"] = "9999"
+        app.config["DL_USERNAME"] = "testuser"
+        app.config["DL_PASSWORD"] = "testpass"
 
         manager.init_app(app)
 
         assert isinstance(manager.strategy, MockStrategy)
         assert manager.strategy.host == "1.2.3.4"
         assert manager.strategy.port == 9999
+        assert manager.strategy.username == "testuser"
+        assert manager.strategy.password == "testpass"
 
         assert "Successfully loaded 'MockStrategy'" in caplog.text
 
