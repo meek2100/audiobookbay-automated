@@ -50,7 +50,7 @@ def search_audiobookbay(query: str, max_pages: int = 1, start_page: int = 1) -> 
     base_url = network.find_best_mirror()
     if not base_url:
         logger.error("Search: No working mirror found. Aborting.")
-        return []
+        raise ConnectionError("No working AudiobookBay mirrors found. Check network connectivity or try again shortly.")
 
     # Check Cache
     cache_key = f"{query}::pages_{start_page}_{max_pages}"

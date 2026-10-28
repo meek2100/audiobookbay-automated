@@ -105,10 +105,14 @@ def test_search_partial_failure() -> None:
 
 
 def test_search_total_failure() -> None:
-    """Test that search returns empty list when no mirrors found."""
-    with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value=None):
-        results = search_audiobookbay("query")
-        assert results == []
+    """Test that search raises ConnectionError when no mirrors found."""
+    import pytest
+
+    with (
+        patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value=None),
+        pytest.raises(ConnectionError, match="No working AudiobookBay mirrors found"),
+    ):
+        search_audiobookbay("query")
 
 
 def test_search_pagination_cancellation(app: Flask) -> None:

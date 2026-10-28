@@ -614,9 +614,30 @@ td.col-info {
 
 .empty-message {
     text-align: center;
-    padding: 40px;
-    font-size: 1.1rem;
+    padding: 60px 20px;
+    font-size: 1.15rem;
     color: var(--text-muted);
+}
+
+/* Ensure empty message spans full container width in grid mode and centers properly */
+.view-grid tbody:has(td.empty-message) {
+    display: block;
+    width: 100%;
+}
+
+.view-grid tr:has(td.empty-message) {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.view-grid td.empty-message {
+    display: block;
+    width: 100% !important;
+    text-align: center;
+    margin: 0 auto;
 }
 
 /* --- Grid View Styles --- */
