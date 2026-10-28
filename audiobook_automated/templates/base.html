@@ -74,24 +74,16 @@
         </div>
         {% endif %}
 
-        <div class="navbar">
+        <div class="navbar navbar-minimal">
             <div class="nav-container">
-                <a href="{{ url_for('main.search') }}" class="nav-logo">
-                    {% if site_logo %}
-                    <img
-                        class="nav-logo-img"
-                        src="{{ site_logo }}{% if not site_logo.startswith(('http://', 'https://', 'data:')) and '?' not in site_logo %}?v={{ static_version }}{% endif %}"
-                        alt="{{ site_title }}"
-                    />
-                    {% else %}
-                    <span class="brand-text">{{ site_title }}</span>
-                    {% endif %}
+                <a href="{{ url_for('main.search') }}" class="nav-logo-minimal" aria-label="{{ site_title }} - Home">
+                    <span class="brand-text-minimal">{{ site_title }}</span>
                 </a>
 
                 <button
                     class="mobile-menu-btn"
                     id="mobile-menu-btn"
-                    aria-label="Toggle navigation"
+                    aria-label="Toggle navigation menu"
                     aria-expanded="false"
                     aria-controls="nav-links"
                 >
@@ -102,7 +94,12 @@
 
                 <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
 
+                <!-- Slide-out Drawer (All Screen Sizes) -->
                 <div class="nav-links" id="nav-links">
+                    <div class="drawer-header">
+                        <span class="drawer-title">Navigation</span>
+                    </div>
+
                     <a
                         href="{{ url_for('main.search') }}"
                         class="{% if request.endpoint == 'main.search' %}active{% endif %}"
@@ -178,6 +175,21 @@
                 </div>
             </div>
         </div>
+
+        <!-- Option 4: Masthead Hero Showcase -->
+        <header class="masthead-showcase">
+            <a href="{{ url_for('main.search') }}" class="masthead-brand" aria-label="{{ site_title }} - Home">
+                {% if site_logo %}
+                <img
+                    class="masthead-logo-img"
+                    src="{{ site_logo }}{% if not site_logo.startswith(('http://', 'https://', 'data:')) and '?' not in site_logo %}?v={{ static_version }}{% endif %}"
+                    alt="{{ site_title }}"
+                />
+                {% else %}
+                <h1 class="masthead-title">{{ site_title }}</h1>
+                {% endif %}
+            </a>
+        </header>
 
         <div class="content">{% block content %}{% endblock %}</div>
 

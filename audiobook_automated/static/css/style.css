@@ -18,7 +18,7 @@
 
     /* --- Spacing & Dimensions --- */
     --max-content-width: 95vw;
-    --header-height: 104px; /* Generous height for horizontal banners and site titles */
+    --header-height: 56px; /* Ultra-slim top bar with universal hamburger */
     --border-radius: 16px;
     --btn-radius: 50px;
 }
@@ -243,7 +243,7 @@ body {
 /* Tablet Breakpoint (iPad Air, iPad Pro, iPad mini, and mid-sized viewports) */
 @media (max-width: 1024px) {
     :root {
-        --header-height: 90px;
+        --header-height: 56px;
     }
 
     .content {
@@ -285,7 +285,7 @@ body {
     }
 }
 
-/* --- Navigation (Modern Appliance Layout) --- */
+/* --- Navigation (Option 4: Minimal Top Bar with Universal Hamburger Drawer) --- */
 .navbar {
     width: 100%;
     background: var(--glass-bg);
@@ -310,61 +310,40 @@ body {
     width: 100%;
     max-width: var(--max-content-width);
     display: flex;
-    justify-content: space-between; /* Pushes logo left, links right */
+    justify-content: space-between;
     align-items: center;
-    padding: 0 28px;
-    gap: 20px;
+    padding: 0 24px;
+    gap: 16px;
+    position: relative;
 }
 
-/* Logo & Branding Styling */
-.nav-logo {
+/* Minimal Brand Link in Top Bar */
+.nav-logo-minimal {
     display: flex;
     align-items: center;
-    padding: 0;
-    margin: 0;
-    gap: 14px;
     text-decoration: none;
-    border: none;
-    max-width: min(540px, 50vw);
-    flex-shrink: 1;
-    min-width: 0;
+    color: var(--text-main);
+    transition: opacity 0.2s ease;
 }
 
-.nav-logo-img,
-.nav-logo img {
-    height: 80px;
-    max-height: 80px;
-    max-width: 100%;
-    width: auto;
-    display: block;
-    object-fit: contain;
-    object-position: left center;
-    border-radius: var(--border-radius);
-    transition:
-        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-        filter 0.3s ease;
+.nav-logo-minimal:hover {
+    opacity: 0.85;
 }
 
-.nav-logo:hover .nav-logo-img,
-.nav-logo:hover img {
-    transform: scale(1.02);
-    filter: drop-shadow(0 4px 12px rgba(0, 188, 212, 0.25));
-}
-
-.brand-text {
+.brand-text-minimal {
     font-family: "Montserrat", sans-serif;
     font-weight: 800;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: var(--text-main);
     letter-spacing: -0.5px;
     white-space: nowrap;
 }
 
-/* Hamburger Toggle Button (Hidden on Desktop) */
+/* --- Universal Hamburger Button (Visible on ALL Screen Sizes) --- */
 .mobile-menu-btn {
-    display: none;
+    display: flex;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 12px;
     cursor: pointer;
     flex-direction: column;
@@ -374,13 +353,16 @@ body {
     width: 44px;
     height: 44px;
     padding: 0;
-    z-index: 1002;
+    z-index: 1003;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .mobile-menu-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .mobile-menu-btn:focus-visible {
@@ -411,18 +393,19 @@ body {
     transform: translateY(-7px) rotate(-45deg);
 }
 
-/* Mobile Backdrop Overlay */
+/* Universal Backdrop Overlay */
 .nav-backdrop {
-    display: none;
+    display: block;
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    z-index: 998;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1001;
     opacity: 0;
     transition: opacity 0.3s ease;
     pointer-events: none;
@@ -433,30 +416,169 @@ body {
     pointer-events: auto;
 }
 
-/* Links Wrapper */
+/* Universal Slide-down / Dropdown Drawer for Option 4 */
 .nav-links {
-    display: flex;
-    align-items: center;
+    position: fixed;
+    top: var(--header-height);
+    right: 20px;
+    width: 320px;
+    max-width: calc(100vw - 40px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: var(--glass-border);
+    border-radius: 20px;
+    flex-direction: column;
+    padding: 22px 18px 24px 18px;
     gap: 12px;
+    transform: translateY(-20px) scale(0.96);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.25s ease,
+        visibility 0.3s ease;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    z-index: 1002;
+    max-height: calc(100vh - var(--header-height) - 40px);
+    max-height: calc(100dvh - var(--header-height) - 40px);
+    overflow-y: auto;
 }
 
-/* Individual Link Styling */
-.navbar .nav-links a:not(.btn-icon),
-.theme-select {
-    display: inline-flex;
+.nav-links.active {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    visibility: visible;
+}
+
+.drawer-header {
+    display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.drawer-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+/* Drawer Item Styling */
+.navbar .nav-links a:not(.btn-icon) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     text-decoration: none;
     color: var(--text-muted);
     font-weight: 600;
-    font-size: 0.95rem;
-    padding: 9px 18px;
-    border-radius: 30px;
+    font-size: 1rem;
+    padding: 12px 18px;
+    border-radius: var(--border-radius);
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    white-space: nowrap;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    width: 100%;
+}
+
+.navbar .nav-links a:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.navbar .nav-links a:active {
+    transform: translateY(0);
+}
+
+.navbar .nav-links a.active {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.18);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 16px rgba(0, 188, 212, 0.25);
+}
+
+.navbar .nav-links .theme-select {
+    width: 100%;
+    text-align: center;
+    text-align-last: center;
+    padding: 12px 18px;
+    font-size: 0.95rem;
+    height: 48px;
+    border-radius: var(--border-radius);
+    background-color: rgba(255, 255, 255, 0.05);
+    background-position: right 16px top 50%;
+}
+
+.navbar .nav-links a.btn-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    padding: 0;
+    margin: 4px auto 0 auto;
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Option 4: Masthead Hero Showcase --- */
+.masthead-showcase {
+    width: 100%;
+    max-width: var(--max-content-width);
+    margin: 32px auto 8px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 20px;
+}
+
+.masthead-brand {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+    max-width: 100%;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.masthead-brand:hover {
+    transform: scale(1.02);
+}
+
+.masthead-logo-img {
+    height: 160px;
+    max-height: 160px;
+    max-width: 100%;
+    width: auto;
+    display: block;
+    object-fit: contain;
+    border-radius: var(--border-radius);
+    filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.4));
+    transition:
+        filter 0.3s ease,
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.masthead-brand:hover .masthead-logo-img {
+    filter: drop-shadow(0 8px 30px rgba(0, 188, 212, 0.35));
+}
+
+.masthead-title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 800;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    color: var(--text-main);
+    letter-spacing: -1px;
+    text-align: center;
+    margin: 0;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .navbar .nav-links a:hover,
@@ -767,7 +889,7 @@ a:hover {
 /* --- Mobile Responsiveness --- */
 @media (max-width: 768px) {
     :root {
-        --header-height: 76px;
+        --header-height: 54px;
     }
 
     body.nav-open {
@@ -777,103 +899,60 @@ a:hover {
     /* Navbar compacting */
     .nav-container {
         padding: 0 16px;
-        gap: 12px;
     }
 
-    .mobile-menu-btn {
-        display: flex;
+    .brand-text-minimal {
+        font-size: 1.1rem;
     }
 
-    .nav-backdrop {
-        display: block;
+    /* Option 4 Masthead Mobile Scaling */
+    .masthead-showcase {
+        margin: 20px auto 4px auto;
+        padding: 0 16px;
     }
 
-    /* Mobile Menu Drawer (Slide-down Sheet) */
+    .masthead-logo-img {
+        height: 110px;
+        max-height: 110px;
+    }
+
+    /* Mobile Menu Drawer on small screens (Full slide-down sheet) */
     .nav-links {
-        position: fixed;
         top: var(--header-height);
         left: 0;
         right: 0;
-        background: var(--glass-bg);
-        backdrop-filter: blur(28px);
-        -webkit-backdrop-filter: blur(28px);
-        flex-direction: column;
-        padding: 24px 20px 32px 20px;
-        gap: 14px;
-        transform: translateY(-120%);
-        opacity: 0;
-        visibility: hidden;
-        transition:
-            transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-            opacity 0.3s ease,
-            visibility 0.35s ease;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0 0 24px 24px;
+        border-left: none;
+        border-right: none;
+        border-top: none;
         border-bottom: var(--glass-border);
+        padding: 24px 20px 32px 20px;
+        transform: translateY(-120%);
         box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
-        z-index: 1001;
         max-height: calc(100vh - var(--header-height));
-        overflow-y: auto;
+        max-height: calc(100dvh - var(--header-height));
     }
 
     .nav-links.active {
         transform: translateY(0);
-        opacity: 1;
-        visibility: visible;
     }
 
     .navbar .nav-links a:not(.btn-icon) {
-        width: 100%;
-        justify-content: center;
         padding: 14px 20px;
         font-size: 1.05rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: var(--border-radius);
-    }
-
-    .navbar .nav-links a:not(.btn-icon):hover,
-    .navbar .nav-links a:not(.btn-icon).active {
-        background: rgba(255, 255, 255, 0.14);
-        border-color: var(--accent-color);
-        box-shadow: 0 4px 16px rgba(0, 188, 212, 0.2);
     }
 
     .navbar .nav-links .theme-select {
-        width: 100%;
-        text-align: center;
-        text-align-last: center;
         padding: 14px 20px;
         font-size: 1.05rem;
         height: 52px;
-        border-radius: var(--border-radius);
-        background-color: rgba(255, 255, 255, 0.05);
-        background-position: right 20px top 50%;
     }
 
     .navbar .nav-links a.btn-icon {
         width: 48px;
         height: 48px;
-        border-radius: 50%;
-        padding: 0;
-        margin: 6px auto 0 auto;
-        display: flex;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .nav-logo {
-        max-width: calc(100% - 64px);
-        margin: 0;
-        flex: 1;
-        min-width: 0;
-    }
-
-    .nav-logo-img,
-    .nav-logo img {
-        height: 54px;
-        max-height: 54px;
-        max-width: 100%;
-        width: auto;
-        border-radius: 10px;
     }
 
     /* Layout adjustments */
@@ -889,28 +968,25 @@ a:hover {
 /* Extra Small Mobile Devices (e.g., iPhone 13 mini, compact viewports <= 420px) */
 @media (max-width: 420px) {
     :root {
-        --header-height: 68px;
+        --header-height: 50px;
     }
 
     .nav-container {
         padding: 0 12px;
-        gap: 8px;
     }
 
-    .nav-logo {
-        max-width: calc(100% - 56px);
+    .brand-text-minimal {
+        font-size: 1rem;
     }
 
-    .nav-logo-img,
-    .nav-logo img {
-        height: 46px;
-        max-height: 46px;
-        border-radius: 8px;
+    .masthead-logo-img {
+        height: 85px;
+        max-height: 85px;
     }
 
     .mobile-menu-btn {
-        width: 40px;
-        height: 40px;
+        width: 38px;
+        height: 38px;
     }
 }
 
