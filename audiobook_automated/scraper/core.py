@@ -33,12 +33,12 @@ def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
     return f"{base_url}/page/{page}/"
 
 
-def search_audiobookbay(query: str, max_pages: int = 5, start_page: int = 1) -> Sequence[BookSummary]:
+def search_audiobookbay(query: str, max_pages: int = 1, start_page: int = 1) -> Sequence[BookSummary]:
     """Search AudiobookBay for the given query across multiple pages.
 
     Args:
         query: Search term (e.g. "Harry Potter")
-        max_pages: Maximum number of pages to scrape (default: 5)
+        max_pages: Maximum number of pages to scrape (default: 1 for fast progressive render)
         start_page: The starting page number (default: 1)
 
     Returns:

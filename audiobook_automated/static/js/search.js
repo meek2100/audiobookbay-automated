@@ -207,6 +207,10 @@ function initializeDateRangePicker() {
         options.maxDate = maxDate;
     }
 
+    if (datePicker && typeof datePicker.destroy === "function") {
+        datePicker.destroy();
+        datePicker = null;
+    }
     datePicker = flatpickr("#date-range-filter", options);
 }
 
@@ -215,6 +219,13 @@ function initializeDateRangePicker() {
  */
 function initializeFileSizeSlider() {
     const sliderElement = document.getElementById("file-size-slider");
+    if (!sliderElement) return;
+
+    if (sliderElement.noUiSlider) {
+        sliderElement.noUiSlider.destroy();
+        fileSizeSlider = null;
+    }
+
     const allSizes = Array.from(document.querySelectorAll(".result-row"))
         .map((row) => parseFileSizeToMB(row.dataset.fileSize))
         .filter((size) => size !== null);
