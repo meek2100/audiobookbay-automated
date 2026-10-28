@@ -114,3 +114,46 @@ def test_base_teardown() -> None:
     strategy.close = MagicMock()  # type: ignore
     strategy.teardown()
     strategy.close.assert_called_once()
+
+
+def test_torrent_status_state_normalization() -> None:
+    """Test that TorrentStatus automatically normalizes raw state strings."""
+    from audiobook_automated.clients.base import TorrentState, normalize_torrent_state
+
+    # None and empty
+    assert normalize_torrent_state(None) == TorrentState.UNKNOWN
+    assert normalize_torrent_state("") == TorrentState.UNKNOWN
+
+    # Exact and common prefixes
+    assert normalize_torrent_state("downloading") == TorrentState.DOWNLOADING
+    assert normalize_torrent_state("forcedDL") == TorrentState.DOWNLOADING
+    assert normalize_torrent_state("stalledUP") == TorrentState.SEEDING
+    assert normalize_torrent_state("uploading") == TorrentState.SEEDING
+    assert normalize_torrent_state("pausedDL") == TorrentState.PAUSED
+    assert normalize_torrent_state("stopped") == TorrentState.PAUSED
+    assert normalize_torrent_state("stalledDL") == TorrentState.STALLED
+    assert normalize_torrent_state("queuedUP") == TorrentState.QUEUED
+    assert normalize_torrent_state("in_queue") == TorrentState.QUEUED
+    assert normalize_torrent_state("checkingUP") == TorrentState.CHECKING
+    assert normalize_torrent_state("verifying") == TorrentState.CHECKING
+    assert normalize_torrent_state("finished") == TorrentState.COMPLETED
+    assert normalize_torrent_state("done") == TorrentState.COMPLETED
+    assert normalize_torrent_state("error") == TorrentState.ERROR
+    assert normalize_torrent_state("failed") == TorrentState.ERROR
+
+    # Heuristic substring matches
+    assert normalize_torrent_state("custom_download_job") == TorrentState.DOWNLOADING
+    assert normalize_torrent_state("active_seed_peer") == TorrentState.SEEDING
+    assert normalize_torrent_state("user_pause_action") == TorrentState.PAUSED
+    assert normalize_torrent_state("network_stalled_wait") == TorrentState.STALLED
+    assert normalize_torrent_state("batch_queue_item") == TorrentState.QUEUED
+    assert normalize_torrent_state("file_check_hash") == TorrentState.CHECKING
+    assert normalize_torrent_state("fatal_fail_code") == TorrentState.ERROR
+    assert normalize_torrent_state("completely_bizarre_xyz") == TorrentState.UNKNOWN
+
+    # TorrentStatus post_init normalization
+    status = TorrentStatus(id="1", name="Book", progress=50.0, state="stalledUP", size="1GB")
+    assert status.state == "Seeding"
+
+    status_enum = TorrentStatus(id="2", name="Book", progress=100.0, state=TorrentState.SEEDING, size="1GB")
+    assert status_enum.state == "Seeding"

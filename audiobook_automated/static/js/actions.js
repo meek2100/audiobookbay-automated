@@ -146,8 +146,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 sendBtn.getAttribute("aria-label") ||
                 document.querySelector("h1")?.textContent?.trim() ||
                 "Audiobook";
+            const client = sendBtn.dataset.client;
             if (link) {
-                sendTorrent(link, title, sendBtn);
+                sendTorrent(link, title, sendBtn, client);
             }
         }
 
@@ -165,8 +166,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (detailsBtn) {
             const link = detailsBtn.dataset.link;
             const title = detailsBtn.dataset.title;
+            const client = detailsBtn.dataset.client;
             if (link && title) {
-                sendTorrent(link, title, detailsBtn);
+                sendTorrent(link, title, detailsBtn, client);
             }
         }
 
@@ -573,9 +575,10 @@ function deleteTorrent(torrentId, buttonElement) {
  * Sends a magnet link to the configured torrent client.
  * @param {string} link - The URL/Magnet link.
  * @param {string} title - The book title.
- * @param {HTMLElement} buttonElement - The button clicked (for state management).
+ * @param {HTMLElement} [buttonElement] - The button clicked (for state management).
+ * @param {string} [client] - Optional target torrent client identifier.
  */
-function sendTorrent(link, title, buttonElement) {
+function sendTorrent(link, title, buttonElement, client) {
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
 
@@ -588,13 +591,18 @@ function sendTorrent(link, title, buttonElement) {
         buttonElement.innerHTML = '<span class="spinner"></span> Sending...';
     }
 
+    const payload = { link: link, title: title };
+    if (client) {
+        payload.client = client;
+    }
+
     fetch("/send", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "X-CSRFToken": csrfToken,
         },
-        body: JSON.stringify({ link: link, title: title }),
+        body: JSON.stringify(payload),
     })
         .then((response) => {
             if (!response.ok) {

@@ -228,7 +228,15 @@ def test_status_json(client: FlaskClient) -> None:
     from audiobook_automated.clients.base import TorrentStatus
 
     mock_status = [
-        TorrentStatus(id="1", name="Book", progress=50.0, state="Downloading", size="100 MB", category="audiobooks")
+        TorrentStatus(
+            id="1",
+            name="Book",
+            progress=50.0,
+            state="Downloading",
+            size="100 MB",
+            category="audiobooks",
+            client="qbittorrent",
+        )
     ]
     expected_json = [
         {
@@ -238,6 +246,7 @@ def test_status_json(client: FlaskClient) -> None:
             "state": "Downloading",
             "size": "100 MB",
             "category": "audiobooks",
+            "client": "qbittorrent",
         }
     ]
 
@@ -246,6 +255,50 @@ def test_status_json(client: FlaskClient) -> None:
         response = client.get("/status?json=1")
         assert response.status_code == 200
         assert response.json == expected_json
+
+
+def test_api_clients_endpoint(client: FlaskClient) -> None:
+    """Test /api/clients endpoint returning available clients."""
+
+    def mock_verify(name: str | None = None) -> bool:
+        return name == "qbittorrent"
+
+    with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+        mock_tm.list_clients.return_value = ["qbittorrent", "putio"]
+        mock_tm.verify_credentials.side_effect = mock_verify
+        mock_tm.client_type = "QbittorrentClient"
+
+        response = client.get("/api/clients")
+        assert response.status_code == 200
+        assert response.json == {
+            "clients": [
+                {"name": "qbittorrent", "connected": True},
+                {"name": "putio", "connected": False},
+            ],
+            "primary": "qbittorrent",
+        }
+
+
+def test_send_with_client_selection(client: FlaskClient) -> None:
+    """Test send endpoint when target client is explicitly specified."""
+    mock_details = {"title": "Test Book", "info_hash": "123", "trackers": []}
+
+    with patch(
+        "audiobook_automated.routes.extract_magnet_link",
+        return_value=("magnet:?xt=urn:btih:123", None),
+    ):
+        with patch("audiobook_automated.routes.get_book_details", return_value=mock_details):
+            with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+                response = client.post(
+                    "/send",
+                    json={"link": "https://audiobookbay.lu/book", "title": "Test Book", "client": "putio"},
+                )
+                assert response.status_code == 200
+                assert response.json is not None
+                assert "Download added successfully" in response.json["message"]
+                mock_tm.add_magnet.assert_called_once()
+                _, kwargs = mock_tm.add_magnet.call_args
+                assert kwargs.get("client_name") == "putio"
 
 
 def test_send_sanitization_warning(client: FlaskClient, caplog: Any) -> None:
@@ -526,6 +579,32 @@ def test_send_invalid_link_type(client: FlaskClient) -> None:
     assert response.status_code == 400
     assert response.json is not None
     assert "Invalid request: Link must be a string" in response.json["message"]
+
+
+def test_send_invalid_client_type(client: FlaskClient) -> None:
+    """Test send endpoint with non-string client parameter to ensure type safety."""
+    response = client.post(
+        "/send",
+        json={"link": "https://audiobookbay.lu/book", "title": "Some Book", "client": 12345},
+    )
+    assert response.status_code == 400
+    assert response.json is not None
+    assert "Client must be a string" in response.json["message"]
+
+
+def test_send_get_book_details_exception(client: FlaskClient) -> None:
+    """Test send proceeds when get_book_details raises an unexpected exception."""
+    with patch("audiobook_automated.routes.get_book_details", side_effect=RuntimeError("Details timeout")):
+        with patch("audiobook_automated.routes.extract_magnet_link", return_value=("magnet:?xt=urn:btih:123", None)):
+            with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
+                response = client.post(
+                    "/send",
+                    json={"link": "https://audiobookbay.lu/book", "title": "Fallback Book"},
+                )
+                assert response.status_code == 200
+                assert response.json is not None
+                assert "Download added successfully" in response.json["message"]
+                mock_tm.add_magnet.assert_called_once()
 
 
 def test_send_invalid_protocol(client: FlaskClient) -> None:
