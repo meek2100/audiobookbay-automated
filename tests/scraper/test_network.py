@@ -36,14 +36,16 @@ def test_find_best_mirror_failover(app: Flask) -> None:
             mock_session = MagicMock()
             mock_get_session.return_value = mock_session
 
-            # First mirror fails (Timeout), Second succeeds
+            # First mirror fails (Timeout on both HEAD, HTTPS GET, and HTTP GET)
             mock_response_ok = MagicMock()
             mock_response_ok.status_code = 200
+            mock_response_ok.text = "<div class='postTitle'>Title</div> audiobookbay"
+            mock_response_ok.url = "https://mirror2.com/"
             mock_response_ok.elapsed.total_seconds.return_value = 0.5
 
-            # Configure side effects for the session.head call
-            # First call raises Timeout, second returns OK response
+            # Configure side effects: first mirror times out everywhere, second succeeds on HEAD
             mock_session.head.side_effect = [requests.Timeout("Timeout"), mock_response_ok]
+            mock_session.get.side_effect = [requests.Timeout("Timeout"), requests.Timeout("Timeout"), mock_response_ok]
 
             # Execute
             best_mirror = find_best_mirror()
@@ -162,6 +164,8 @@ def test_find_best_mirror_fallback_logic(app: Flask) -> None:
 
             mock_get_resp = MagicMock()
             mock_get_resp.status_code = 200
+            mock_get_resp.text = "<div class='postTitle'>Title</div> audiobookbay"
+            mock_get_resp.url = "https://mirror1.com/"
             # Ensure GET doesn't fail on close()
             mock_get_resp.close = MagicMock()
             mock_session.get.return_value = mock_get_resp
@@ -257,6 +261,9 @@ def test_check_mirror_success_head() -> None:
     with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
         mock_session = mock_get_session.return_value
         mock_session.head.return_value.status_code = 200
+        mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.text = "<div class='postTitle'>Title</div> audiobookbay"
+        mock_session.get.return_value.url = "https://good.mirror/"
         result = network.check_mirror("good.mirror")
         assert result == "good.mirror"
 
@@ -267,6 +274,8 @@ def test_check_mirror_success_get_fallback() -> None:
         mock_session = mock_get_session.return_value
         mock_session.head.side_effect = requests.RequestException("Method Not Allowed")
         mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.text = "<div class='postContent'>Body</div> audiobookbay"
+        mock_session.get.return_value.url = "https://fallback.mirror/"
         # Ensure GET doesn't fail on close()
         mock_session.get.return_value.close = MagicMock()
 
@@ -280,6 +289,8 @@ def test_check_mirror_head_500_fallback() -> None:
         mock_session = mock_get_session.return_value
         mock_session.head.return_value.status_code = 500
         mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.text = "<div class='postTitle'>Title</div> audiobookbay"
+        mock_session.get.return_value.url = "https://flaky.mirror/"
 
         result = network.check_mirror("flaky.mirror")
         assert result is None
@@ -293,6 +304,8 @@ def test_check_mirror_head_405_fallback() -> None:
         mock_session.head.return_value.status_code = 405
         # GET returns 200
         mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.text = "<div class='postTitle'>Title</div> audiobookbay"
+        mock_session.get.return_value.url = "https://fallback.mirror/"
         # Ensure GET doesn't fail on close()
         mock_session.get.return_value.close = MagicMock()
 
@@ -322,6 +335,8 @@ def test_check_mirror_timeout_fallback() -> None:
         mock_session.head.side_effect = requests.Timeout("Connection Timed Out")
         # GET succeeds
         mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.text = "<div class='postTitle'>Title</div> audiobookbay"
+        mock_session.get.return_value.url = "https://timeout.mirror/"
         # Ensure GET doesn't fail on close()
         mock_session.get.return_value.close = MagicMock()
 
@@ -329,7 +344,7 @@ def test_check_mirror_timeout_fallback() -> None:
 
         assert result == "timeout.mirror"
         # CRITICAL ASSERTION: GET SHOULD BE CALLED
-        mock_session.get.assert_called_once()
+        mock_session.get.assert_called()
 
 
 def test_find_best_mirror_cached(app: Flask) -> None:
@@ -522,6 +537,71 @@ def test_fetch_remote_mirrors_fallback_on_invalid_file(app: Flask) -> None:
             with patch("builtins.open", side_effect=OSError("Read error")):
                 mirrors = network.fetch_remote_mirrors()
                 assert mirrors == network.DEFAULT_MIRRORS
+
+
+def test_is_authentic_catalog_edge_cases() -> None:
+    """Test semantic verification rules for authentic catalogs."""
+    assert not network.is_authentic_catalog("")
+    assert not network.is_authentic_catalog("<html>Domain is parked</html>")
+    assert not network.is_authentic_catalog("<html>Buy this domain</html>")
+    assert not network.is_authentic_catalog("<html>Random unrelated HTML</html>")
+    assert not network.is_authentic_catalog(
+        "<div class='postTitle'>Title</div> audiobookbay", final_url="https://expireddomains.net/"
+    )
+    assert network.is_authentic_catalog(
+        "<div class='postTitle'>Title</div> audiobookbay", final_url="https://audiobookbay.lu/"
+    )
+
+
+def test_check_mirror_semantic_verification_failure() -> None:
+    """Test that check_mirror records failure when HTTP 200 is returned but catalog is inauthentic."""
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        # HEAD returns 200, but GET text is inauthentic
+        mock_session.head.return_value.status_code = 200
+        mock_session.get.return_value.status_code = 200
+        mock_session.get.return_value.text = "<html>Welcome to parked page</html>"
+        mock_session.get.return_value.url = "https://fake.mirror/"
+
+        assert network.check_mirror("fake.mirror") is None
+
+
+def test_check_mirror_https_get_inauthentic_and_http_fallback() -> None:
+    """Test check_mirror HTTPS GET inauthentic failure and HTTP GET fallback."""
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_get_session:
+        mock_session = mock_get_session.return_value
+        # HEAD fails
+        mock_session.head.side_effect = requests.RequestException("HEAD error")
+        # HTTPS GET returns 200 but fake
+        fake_resp = MagicMock(status_code=200, text="<html>Fake</html>", url="https://fake.mirror/")
+        # HTTP GET succeeds with authentic catalog
+        ok_resp = MagicMock(
+            status_code=200,
+            text="<div class='postTitle'>Title</div> audiobookbay",
+            url="http://fake.mirror/",
+        )
+        mock_session.get.side_effect = [fake_resp, fake_resp]
+
+        # Inauthentic HTTPS and HTTP GET should return None
+        assert network.check_mirror("fake.mirror") is None
+
+        # HTTPS GET non-200 (e.g. 500) then HTTP GET 200
+        err_resp = MagicMock(status_code=500)
+        mock_session.get.side_effect = [err_resp, ok_resp]
+        assert network.check_mirror("https500.mirror") == "https500.mirror"
+
+        # When HTTPS GET throws exception, it falls back to HTTP GET
+        mock_session.get.side_effect = [requests.RequestException("HTTPS failed"), ok_resp]
+        assert network.check_mirror("legit.http.mirror") == "legit.http.mirror"
+
+        # HTTP GET inauthentic returns None
+        mock_session.get.side_effect = [requests.RequestException("HTTPS failed"), fake_resp]
+        assert network.check_mirror("fake2.mirror") is None
+
+        # HTTP GET 500 returns None
+        err_resp = MagicMock(status_code=500)
+        mock_session.get.side_effect = [requests.RequestException("HTTPS failed"), err_resp]
+        assert network.check_mirror("fake3.mirror") is None
 
 
 def test_get_active_search_mirrors(app: Flask) -> None:

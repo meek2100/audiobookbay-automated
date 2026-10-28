@@ -126,9 +126,21 @@
         max-height: 350px;
     }
 
-    .refreshing {
-        opacity: 0.6;
-        cursor: not-allowed;
+    .card-spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        border-radius: 50%;
+        border-top-color: var(--accent-color, #38bdf8);
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 </style>
 {% endblock %} {% block extra_js %}
@@ -139,6 +151,7 @@
         <div class="diag-header">
             <span class="diag-title">
                 <span>⚡ System Health & Environment</span>
+                <span id="health-spinner" class="card-spinner" style="display: none"></span>
             </span>
             <div class="diag-actions">
                 <span id="last-updated-badge" class="diag-badge">Last updated: -</span>
@@ -156,7 +169,7 @@
                     Auto-refresh (5s)
                 </label>
                 <button id="refresh-diag-btn" class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem">
-                    Refresh
+                    Refresh Health
                 </button>
             </div>
         </div>
@@ -207,8 +220,10 @@
         <div class="diag-header">
             <span class="diag-title">
                 <span>📜 Real-Time Scrubbed Application Logs</span>
+                <span id="logs-spinner" class="card-spinner" style="display: none"></span>
             </span>
             <div class="diag-actions">
+                <span id="logs-updated-badge" class="diag-badge">Last updated: -</span>
                 <input
                     type="text"
                     id="log-filter-input"
@@ -229,8 +244,11 @@
                     <input type="checkbox" id="auto-scroll-toggle" checked />
                     Auto-scroll
                 </label>
+                <button id="refresh-logs-btn" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem">
+                    Refresh Logs
+                </button>
                 <button id="download-logs-btn" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem">
-                    Download Logs (.txt)
+                    Download (.txt)
                 </button>
             </div>
         </div>

@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import urlparse
 
 import requests
 from cachetools import TTLCache
@@ -371,9 +372,60 @@ def get_headers(user_agent: str | None = None, referer: str | None = None) -> di
     return headers
 
 
+def is_authentic_catalog(html_text: str, final_url: str | None = None) -> bool:
+    """Verify that a response body belongs to an authentic AudiobookBay catalog.
+
+    Checks:
+      1. Mandatory catalog elements: 'postTitle' or 'postContent' classes present.
+      2. No external redirects to parked domains, search spam, or ad-landings.
+      3. Brand identity present in page content.
+    """
+    if not html_text:
+        return False
+
+    text_lower = html_text.lower()
+
+    # Verify absence of known domain parking / landing page signatures
+    parking_indicators = ("domain is parked", "buy this domain", "expired domain", "redirecting...")
+    if any(ind in text_lower for ind in parking_indicators):
+        return False
+
+    # Check for authentic AudiobookBay post markup
+    has_post_title = "posttitle" in text_lower
+    has_post_content = "postcontent" in text_lower
+    has_abb_brand = "audiobookbay" in text_lower or "audio-books" in text_lower
+
+    if (has_post_title or has_post_content) and has_abb_brand:
+        if final_url:
+            parsed = urlparse(final_url)
+            host = parsed.netloc.split(":")[0].lower()
+            # If redirected to a known malicious or parking domain
+            foreign_ad_domains = ("expireddomains", "parkingcrew", "bodis", "sedo", "dan.com", "hugedomains")
+            if any(ad in host for ad in foreign_ad_domains):
+                return False
+        return True
+
+    return False
+
+
+def _probe_catalog_endpoint(session: Session, url: str, headers: dict[str, str]) -> tuple[bool, str | None]:
+    """Helper to perform GET and verify authentic catalog structure."""
+    try:
+        response = session.get(url, headers=headers, timeout=2.5)
+        if response.status_code == 200:  # noqa: PLR2004
+            if is_authentic_catalog(response.text, response.url):
+                return True, None
+            return False, "Semantic verification failed (Non-authentic catalog)"
+        return False, f"HTTP {response.status_code}"
+    except (requests.Timeout, requests.RequestException) as e:
+        return False, str(e)
+
+
 def check_mirror(hostname: str) -> str | None:
     """Check if a mirror is reachable via HEAD or GET request and update tracking stats.
 
+    Verifies authentic catalog structure to protect users against parked domains,
+    malware landers, and broken proxy mirrors.
     Uses a zero-retry thread-local session to fail fast.
     """
     url = f"https://{hostname}/"
@@ -382,40 +434,39 @@ def check_mirror(hostname: str) -> str | None:
     stat = get_mirror_stat(hostname)
     start_time = time.perf_counter()
 
+    # Try HTTPS HEAD fast probe
     try:
         response = session.head(url, headers=headers, timeout=2.5, allow_redirects=True)
         if response.status_code == 200:  # noqa: PLR2004
-            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            stat.record_success(latency_ms)
-            return hostname
+            ok, err = _probe_catalog_endpoint(session, url, headers)
+            if ok:
+                latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                stat.record_success(latency_ms)
+                return hostname
+            stat.record_failure(err or "Inauthentic catalog")
+            return None
 
-        # ROBUSTNESS: Some Anti-DDoS/Cloudflare configs return 405 (Method Not Allowed)
-        # or 403 (Forbidden) for HEAD requests but allow GET. We must fall back.
-        if response.status_code in (403, 405):
-            logger.debug(f"Mirror {hostname} returned {response.status_code} on HEAD. Falling back to GET.")
-        else:
-            # 404, 500, 502, etc. indicate the mirror is likely down or broken.
+        # Cloudflare / Anti-DDoS may return 403/405 on HEAD but permit GET
+        if response.status_code not in (403, 405):
             stat.record_failure(f"HTTP {response.status_code}")
             return None
 
     except (requests.Timeout, requests.ConnectionError) as e:
-        # Fallback: If HEAD times out or fails connection, try GET.
-        # Some mirrors might block HEAD or have transient issues.
         logger.debug(f"Mirror HEAD probe exception for {hostname}: {e}")
     except requests.RequestException as e:
         logger.debug(f"Mirror check HEAD failed for {hostname}: {e}")
 
-    try:
-        response = session.get(url, headers=headers, timeout=2.5, stream=True)
-        response.close()
-        if response.status_code == 200:  # noqa: PLR2004
+    # Fallback probes: try HTTPS GET then HTTP GET
+    last_err: str | None = None
+    for target_url in (url, f"http://{hostname}/"):
+        ok, err = _probe_catalog_endpoint(session, target_url, headers)
+        if ok:
             latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
             stat.record_success(latency_ms)
             return hostname
-        stat.record_failure(f"HTTP {response.status_code}")
-    except (requests.Timeout, requests.RequestException) as e:
-        stat.record_failure(str(e))
+        last_err = err
 
+    stat.record_failure(last_err or "Endpoint unreachable")
     return None
 
 

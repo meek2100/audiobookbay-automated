@@ -6,11 +6,15 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     const refreshBtn = document.getElementById("refresh-diag-btn");
+    const refreshLogsBtn = document.getElementById("refresh-logs-btn");
     const inspectBtn = document.getElementById("run-inspect-btn");
     const inspectInput = document.getElementById("inspect-input");
     const inspectOutput = document.getElementById("inspect-output");
     const autoRefreshToggle = document.getElementById("auto-refresh-toggle");
     const lastUpdatedBadge = document.getElementById("last-updated-badge");
+    const logsUpdatedBadge = document.getElementById("logs-updated-badge");
+    const healthSpinner = document.getElementById("health-spinner");
+    const logsSpinner = document.getElementById("logs-spinner");
     const logViewer = document.getElementById("log-viewer-pre");
     const downloadLogsBtn = document.getElementById("download-logs-btn");
     const autoScrollToggle = document.getElementById("auto-scroll-toggle");
@@ -18,6 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let autoRefreshInterval = null;
     let isFetchingHealth = false;
+    let isFetchingLogs = false;
     let currentLogs = [];
 
     function formatTime(date) {
@@ -27,9 +32,10 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadHealth() {
         if (isFetchingHealth) return;
         isFetchingHealth = true;
+        if (healthSpinner) healthSpinner.style.display = "inline-block";
         if (refreshBtn) {
-            refreshBtn.classList.add("refreshing");
             refreshBtn.disabled = true;
+            refreshBtn.textContent = "Updating...";
         }
 
         try {
@@ -101,23 +107,44 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } finally {
             isFetchingHealth = false;
+            if (healthSpinner) healthSpinner.style.display = "none";
             if (refreshBtn) {
-                refreshBtn.classList.remove("refreshing");
                 refreshBtn.disabled = false;
+                refreshBtn.textContent = "Refresh Health";
             }
         }
     }
 
     async function loadLogs() {
-        if (!logViewer) return;
+        if (!logViewer || isFetchingLogs) return;
+        isFetchingLogs = true;
+        if (logsSpinner) logsSpinner.style.display = "inline-block";
+        if (refreshLogsBtn) {
+            refreshLogsBtn.disabled = true;
+            refreshLogsBtn.textContent = "Updating...";
+        }
+
         try {
             const res = await fetch("/api/diagnostics/logs?limit=150");
-            if (!res.ok) return;
+            if (!res.ok) throw new Error("Logs check returned status " + res.status);
             const data = await res.json();
             currentLogs = data.logs || [];
             renderLogs();
+            if (logsUpdatedBadge) {
+                logsUpdatedBadge.textContent = "Last updated: " + formatTime(new Date());
+            }
         } catch (e) {
             console.error("Failed to fetch logs", e);
+            if (logsUpdatedBadge) {
+                logsUpdatedBadge.textContent = "Update failed: " + formatTime(new Date());
+            }
+        } finally {
+            isFetchingLogs = false;
+            if (logsSpinner) logsSpinner.style.display = "none";
+            if (refreshLogsBtn) {
+                refreshLogsBtn.disabled = false;
+                refreshLogsBtn.textContent = "Refresh Logs";
+            }
         }
     }
 
@@ -179,6 +206,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (refreshBtn) {
         refreshBtn.addEventListener("click", () => {
             loadHealth();
+        });
+    }
+
+    if (refreshLogsBtn) {
+        refreshLogsBtn.addEventListener("click", () => {
             loadLogs();
         });
     }
