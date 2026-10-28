@@ -90,10 +90,10 @@ class TorrentManager:
             except (ValueError, TypeError):
                 port_int = 8080
 
-            username = app.config.get("DL_USER")
-            password = app.config.get("DL_PASS")
+            username = app.config.get("DL_USERNAME") or app.config.get("DL_USER")
+            password = app.config.get("DL_PASSWORD") or app.config.get("DL_PASS")
             scheme = app.config.get("DL_SCHEME", "http")
-            timeout = app.config.get("DL_TIMEOUT", 30)
+            timeout = app.config.get("CLIENT_TIMEOUT") or app.config.get("DL_TIMEOUT", 30)
 
             # Explicitly typecast check (though logic ensures it is a class)
             # To satisfy 'Cannot assign to a method' or similar weirdness if any
