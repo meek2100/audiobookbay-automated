@@ -9,7 +9,9 @@ from flask import Flask, Response, request, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config
+from .diagnostics import diagnostics_bp
 from .extensions import csrf, executor, limiter, register_shutdown_handlers, talisman, torrent_manager
+from .logging_buffer import log_ring_buffer
 from .routes import main_bp
 from .scraper import network
 from .utils import get_application_version
@@ -53,8 +55,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         "default-src": ["'self'"],
         "img-src": ["'self'", "*", "data:"],
         "style-src": ["'self'", "'unsafe-inline'"],
-        # Add 'unsafe-eval' only if strictly needed by libraries like Flatpickr,
-        # otherwise keep strict.
+        # Restrict scripts strictly to 'self' without unsafe-eval
         "script-src": ["'self'"],
     }
     talisman.init_app(
@@ -91,6 +92,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Register Blueprints
     app.register_blueprint(main_bp)
+    app.register_blueprint(diagnostics_bp)
 
     @app.context_processor
     def inject_global_vars() -> dict[str, Any]:  # pyright: ignore[reportUnusedFunction]
@@ -105,6 +107,12 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             "splash_message": app.config["SPLASH_MESSAGE"],
             "splash_duration": app.config["SPLASH_DURATION"],
             "default_theme": app.config.get("DEFAULT_THEME", "purple"),
+            "abb_host": app.config.get("ABB_HOSTNAME", "audiobookbay.lu"),
+            "diagnostics_enabled": bool(
+                app.config.get("ENABLE_DIAGNOSTICS", False)
+                or app.config.get("FLASK_DEBUG", False)
+                or app.config.get("TESTING", False)
+            ),
             "flask_debug": bool(app.config.get("FLASK_DEBUG", False) or app.config.get("TESTING", False)),
         }
 
@@ -147,15 +155,18 @@ def _configure_logging(app: Flask, configured_level: int | None) -> None:
     # 2. Gunicorn Logger Level (if running in Gunicorn)
     # 3. Default (INFO)
 
-    # DEPLOYMENT FIX: Attach Gunicorn handlers if running in production
+    # Attach memory ring buffer for live diagnostics and 1-click issue reporting
+    root_logger = logging.getLogger()
+    if log_ring_buffer not in root_logger.handlers:
+        root_logger.addHandler(log_ring_buffer)
+    effective_level = configured_level if configured_level is not None else logging.INFO
     gunicorn_logger = logging.getLogger("gunicorn.error")
     if gunicorn_logger.handlers:
         app.logger.handlers = gunicorn_logger.handlers
         # Sync level to match Gunicorn (unless overridden by config)
         if configured_level is not None:
-            app.logger.setLevel(configured_level)
-        else:
-            app.logger.setLevel(gunicorn_logger.level)
-    else:
-        # Local/Dev mode or non-Gunicorn runner
-        app.logger.setLevel(configured_level if configured_level is not None else logging.INFO)
+            effective_level = configured_level
+        elif gunicorn_logger.level != logging.NOTSET:
+            effective_level = gunicorn_logger.level
+    app.logger.setLevel(effective_level)
+    root_logger.setLevel(effective_level)

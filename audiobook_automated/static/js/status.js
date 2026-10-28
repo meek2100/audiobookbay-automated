@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const pollIndicator = document.getElementById("status-poll-indicator");
     const countBadge = document.getElementById("status-count-badge");
+    const clientPill = document.getElementById("status-client-pill");
+    const clientPillText = clientPill ? clientPill.querySelector(".client-pill-text") : null;
 
     // Poll every 5 seconds
     const pollStatus = async () => {
@@ -24,6 +26,23 @@ document.addEventListener("DOMContentLoaded", () => {
             if (pollIndicator) pollIndicator.classList.add("polling");
             const response = await fetch("/status?json=1");
             if (!response.ok) {
+                let errData = {};
+                try {
+                    errData = await response.json();
+                } catch (_) {}
+                if (clientPill && clientPillText) {
+                    clientPill.className = "status-client-pill";
+                    if (errData.client_status === "banned") {
+                        clientPill.classList.add("banned");
+                        clientPillText.textContent = "IP Banned";
+                    } else if (errData.client_status === "auth_failed") {
+                        clientPill.classList.add("warning");
+                        clientPillText.textContent = "Auth Failed";
+                    } else {
+                        clientPill.classList.add("disconnected");
+                        clientPillText.textContent = "Client Disconnected";
+                    }
+                }
                 console.error("Status poll failed:", response.status);
                 return;
             }
@@ -33,9 +52,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (countBadge) {
                     countBadge.textContent = `${data.length} Active`;
                 }
+                if (clientPill && clientPillText) {
+                    clientPill.className = "status-client-pill";
+                    clientPillText.textContent = "Client Connected";
+                }
             }
         } catch (error) {
             console.error("Failed to fetch status:", error);
+            if (clientPill && clientPillText) {
+                clientPill.className = "status-client-pill disconnected";
+                clientPillText.textContent = "Client Disconnected";
+            }
         } finally {
             if (pollIndicator) {
                 setTimeout(() => pollIndicator.classList.remove("polling"), 400);

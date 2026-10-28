@@ -87,21 +87,19 @@ USER_AGENTS: Final[list[str]] = [
     "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko",
 ]
 
-# Default list of AudiobookBay mirrors to use if the primary fails.
-# Used as a base list in network.py before appending user overrides.
+# Default top mirrors to use if primary fails or no environment overrides are set.
+# Provides default host (audiobookbay.lu) + 2 best mirrors (audiobookbay.ch, audiobookbay.fi),
+# with tested community lists fetched dynamically from remote mirrors.json.
 DEFAULT_MIRRORS: Final[list[str]] = [
     "audiobookbay.lu",
-    "audiobookbay.is",
-    "audiobookbay.se",
-    "audiobookbay.li",
-    "audiobookbay.ws",
-    "audiobookbay.la",
-    "audiobookbay.me",
+    "audiobookbay.ch",
     "audiobookbay.fi",
-    "theaudiobookbay.com",
-    "audiobookbay.nl",
-    "audiobookbay.pl",
 ]
+
+# Remote repository URL for dynamically synchronizing latest community mirrors
+DEFAULT_MIRRORS_REMOTE_URL: Final[str] = (
+    "https://raw.githubusercontent.com/theurer/audiobookbay-automated/master/examples/mirrors.json"
+)
 
 # Concurrency setting for mirror availability checks
 MIRROR_CHECK_THREADS: Final[int] = 5

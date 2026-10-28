@@ -50,9 +50,13 @@ def test_search_audiobookbay_sync_coverage(app: Flask) -> None:
 
 def test_search_no_mirrors_raises_error(app: Flask) -> None:
     """Test behavior when no mirrors are found."""
-    with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value=None):
-        results = search_audiobookbay("query")
-        assert results == []
+    import pytest
+
+    with (
+        patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value=None),
+        pytest.raises(ConnectionError, match="No working AudiobookBay mirrors found"),
+    ):
+        search_audiobookbay("query")
 
 
 def test_search_thread_failure(app: Flask) -> None:

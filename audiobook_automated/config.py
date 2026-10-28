@@ -73,6 +73,7 @@ class Config:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-to-a-secure-random-key").strip(" \"'")
     FLASK_DEBUG: bool = parse_bool(os.getenv("FLASK_DEBUG"), False)
     TESTING: bool = parse_bool(os.getenv("TESTING"), False)
+    ENABLE_DIAGNOSTICS: bool = parse_bool(os.getenv("ENABLE_DIAGNOSTICS"), False)
 
     # Static Asset Caching (1 Year)
     SEND_FILE_MAX_AGE_DEFAULT: int = 31536000
@@ -127,6 +128,8 @@ class Config:
     DL_USERNAME: str | None = _dl_username.strip(" \"'") if _dl_username else None
     _dl_password: str | None = os.getenv("DL_PASSWORD") or os.getenv("DL_PASS")
     DL_PASSWORD: str | None = _dl_password.strip(" \"'") if _dl_password else None
+    _dl_api_key: str | None = os.getenv("DL_API_KEY") or os.getenv("DL_KEY")
+    DL_API_KEY: str | None = _dl_api_key.strip(" \"'") if _dl_api_key else None
     DL_CATEGORY: str = os.getenv("DL_CATEGORY", "abb-automated").strip(" \"'")
     DL_SCHEME: str = os.getenv("DL_SCHEME", "http").strip(" \"'")
     _dl_url: str | None = os.getenv("DL_URL")
@@ -157,6 +160,10 @@ class Config:
     # Strip the whole string first in case the list is quoted: "a.com,b.com"
     _mirrors_str: str = os.getenv("ABB_MIRRORS", "").strip(" \"'")
     ABB_MIRRORS: list[str] = _extra_hosts + [m.strip() for m in _mirrors_str.split(",") if m.strip()]
+
+    # Remote mirrors sync URL (optional override)
+    _mirrors_remote_url: str | None = os.getenv("ABB_MIRRORS_REMOTE_URL")
+    ABB_MIRRORS_REMOTE_URL: str | None = _mirrors_remote_url.strip(" \"'") if _mirrors_remote_url else None
 
     # Parse comma-separated trackers into a list
     _trackers_str: str = os.getenv("MAGNET_TRACKERS", "").strip(" \"'")

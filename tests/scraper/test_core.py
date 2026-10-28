@@ -105,10 +105,14 @@ def test_search_partial_failure() -> None:
 
 
 def test_search_total_failure() -> None:
-    """Test that search returns empty list when no mirrors found."""
-    with patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value=None):
-        results = search_audiobookbay("query")
-        assert results == []
+    """Test that search raises ConnectionError when no mirrors found."""
+    import pytest
+
+    with (
+        patch("audiobook_automated.scraper.core.network.find_best_mirror", return_value=None),
+        pytest.raises(ConnectionError, match="No working AudiobookBay mirrors found"),
+    ):
+        search_audiobookbay("query")
 
 
 def test_search_pagination_cancellation(app: Flask) -> None:
@@ -179,3 +183,39 @@ def test_core_get_search_url_no_query() -> None:
     # Code logic: if starts with http, keep it.
     url = get_search_url("http://base.com", None, page=1)
     assert url == "http://base.com/page/1/"
+
+
+def test_core_get_search_url_taxonomy_and_queries() -> None:
+    """Test get_search_url with categories, tags, authors, narrators, and direct paths."""
+    # Direct path
+    assert (
+        get_search_url("base.com", "/audio-books/type/action/", page=1) == "https://base.com/audio-books/type/action/"
+    )
+    assert (
+        get_search_url("base.com", "/audio-books/type/action/", page=2)
+        == "https://base.com/audio-books/type/action/page/2/"
+    )
+
+    # Taxonomy prefixes: type, tag, author, narrator
+    assert get_search_url("base.com", "type:Sci-Fi", page=1) == "https://base.com/audio-books/type/sci-fi/"
+    assert get_search_url("base.com", "type:Sci-Fi", page=3) == "https://base.com/audio-books/type/sci-fi/page/3/"
+
+    assert get_search_url("base.com", "tag:English", page=1) == "https://base.com/audio-books/tag/english/"
+    assert (
+        get_search_url("base.com", "author:Brandon Sanderson", page=1)
+        == "https://base.com/audio-books/author/brandon-sanderson/"
+    )
+    assert (
+        get_search_url("base.com", "narrator:Ray Porter", page=2)
+        == "https://base.com/audio-books/narrator/ray-porter/page/2/"
+    )
+
+    # Standard keyword query
+    assert (
+        get_search_url("base.com", "Dungeon Crawler Carl", page=1) == "https://base.com/page/1/?s=Dungeon Crawler Carl"
+    )
+
+    # HTTP scheme preserved when stat indicates http protocol
+    with patch("audiobook_automated.scraper.network.get_mirror_stat") as mock_stat:
+        mock_stat.return_value.protocol = "http"
+        assert get_search_url("http-only.com", "Dungeon", page=1) == "http://http-only.com/page/1/?s=Dungeon"

@@ -17,6 +17,7 @@ from audiobook_automated.scraper.parser import (
     BookMetadata,
     _extract_table_data,
     _normalize_metadata,
+    _parse_categories_from_info,
     _sanitize_description,
     get_text_after_label,
     normalize_cover_url,
@@ -454,6 +455,30 @@ def test_parse_post_content_category_splitting() -> None:
     meta_comma = parse_post_content(None, post_info_comma)
     assert meta_comma.category == ["Sci-Fi", "Action", "Fantasy"]
 
+    # Multi-word categories with non-breaking spaces (e.g. Teens & Young Adults)
+    html_multiword = """
+    <div class="postInfo">
+        Category: Teens & Young Adults&nbsp; Sci-Fi & Fantasy&nbsp; True Crime&nbsp; Language: English
+    </div>
+    """
+    soup_multiword = BeautifulSoup(html_multiword, "lxml")
+    post_info_multiword = soup_multiword.select_one(".postInfo")
+    assert isinstance(post_info_multiword, Tag)
+    meta_multiword = parse_post_content(None, post_info_multiword)
+    assert meta_multiword.category == ["Teens & Young Adults", "Sci-Fi & Fantasy", "True Crime"]
+
+    # Categories from anchor tags
+    html_anchors = """
+    <div class="postInfo">
+        Category: <a href="/category/teens-young-adults/">Teens & Young Adults</a> <a href="/category/sci-fi/">Sci-Fi</a> Language: English
+    </div>
+    """
+    soup_anchors = BeautifulSoup(html_anchors, "lxml")
+    post_info_anchors = soup_anchors.select_one(".postInfo")
+    assert isinstance(post_info_anchors, Tag)
+    meta_anchors = parse_post_content(None, post_info_anchors)
+    assert meta_anchors.category == ["Teens & Young Adults", "Sci-Fi"]
+
 
 def test_normalize_metadata_strings() -> None:
     """Test normalization of string fields."""
@@ -532,6 +557,20 @@ def test_parse_details_format_in_desc() -> None:
 
     assert result["format"] == "M4B"
     assert result["bitrate"] == "64 Kbps"
+
+
+def test_parse_categories_empty_match() -> None:
+    """Test category parsing when category match is whitespace only."""
+    html = """
+    <div class="postInfo">
+        Category:    Language: English
+    </div>
+    """
+    soup = BeautifulSoup(html, "lxml")
+    post_info = soup.select_one(".postInfo")
+    assert isinstance(post_info, Tag)
+    cats = _parse_categories_from_info(post_info)
+    assert cats == ["Unknown"]
 
 
 def test_garbage_html_parsing() -> None:

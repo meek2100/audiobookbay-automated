@@ -15,7 +15,7 @@ updates:
           - "*"
     open-pull-requests-limit: 10
 
-  # 2. JavaScript / Frontend Dependencies (package.json + package-lock.json / pnpm-lock.yaml)
+  # 2. JavaScript / Frontend Dependencies (package.json + package-lock.json)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:

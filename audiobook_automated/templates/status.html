@@ -13,9 +13,11 @@
             </span>
         </div>
         <div class="status-header-meta">
-            <div class="status-client-pill" id="status-client-pill">
+            <div class="status-client-pill {{ client_status if client_status else '' }}" id="status-client-pill">
                 <span class="pulse-dot"></span>
-                <span class="client-pill-text">Client Connected</span>
+                <span class="client-pill-text"
+                    >{{ client_status_label if client_status_label else 'Client Connected' }}</span
+                >
             </div>
             <div class="status-poll-indicator" id="status-poll-indicator" title="Auto-refreshing status">
                 <svg

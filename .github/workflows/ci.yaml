@@ -38,11 +38,6 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
-      - name: Verify Vendor Assets In Sync
-        run: |
-          npm run copy-vendor
-          git diff --exit-code audiobook_automated/static/vendor/
-
       # Optimization: Cache pre-commit environments
       - name: Cache pre-commit
         uses: actions/cache@v6

@@ -61,74 +61,85 @@ on their own and import them into your library.
 
 The app uses environment variables to configure its behavior.
 
-#### 1. Torrent Client Connection (Required)
+### Environment Variables
 
-> **Note:** For some unknown reason some users have issues if the hostname is quoted, if it doesn't work try removing
-> the quotes. I have no idea why this happens and can only assume it depends on the host system and how it handles
-> envs/DNS lookup.
+Setting up AudiobookBay Automated only takes a few minutes. To keep things as simple as possible, the settings below are
+organized into three tiers:
+
+1. **Standard Setup (Required)** — The only variables most users ever need to set.
+2. **Optional & Customization** — Useful features like theme colors or connecting to Audiobookshelf.
+3. **Advanced & Developer Only** — Fine-tuning, network overrides, and troubleshooting tools (most users can leave these
+   alone).
+
+---
+
+#### 1. Standard Setup (Required)
+
+These settings connect the app to your torrent client and define where audiobooks should be downloaded.
 
 ```env
-DL_CLIENT=qbittorrent          # Options: qbittorrent, transmission, deluge, putio
-DL_HOST=192.168.1.123          # IP/Hostname of your client (not required for putio)
-DL_PORT=8080                   # WebUI Port (Put.io defaults to 443)
-DL_USERNAME=admin              # WebUI Username
-DL_PASSWORD=password           # WebUI Password (or Put.io OAuth Token)
-DL_SCHEME=http                 # Protocol (http or https). Default: http.
-DL_CATEGORY=abb-automated      # Category to assign to torrents. Default: abb-automated.
+# --- Download Client Connection ---
+DL_CLIENT=qbittorrent          # Your client: qbittorrent, transmission, deluge, or putio
+DL_HOST=192.168.1.123          # IP address or hostname of your client (not needed for putio)
+DL_PORT=8080                   # WebUI port of your client (e.g. 8080 for qBittorrent, 9091 for Transmission)
+DL_USERNAME=admin              # WebUI username
+DL_PASSWORD=password           # WebUI password (or your Put.io token)
 
-# Put.io specific (Optional when DL_CLIENT=putio)
-PUTIO_TOKEN=your_oauth_token   # OAuth token (can also use DL_PASSWORD)
-PUTIO_FOLDER_ID=0              # Target folder ID in Put.io (Default: 0 - root)
+# --- Save Location & Security ---
+SAVE_PATH_BASE=/audiobooks     # IMPORTANT: The path where files are stored inside your torrent client
+SECRET_KEY=change_me           # Any long, random secret text to secure browser sessions
 ```
 
-#### 2. System Configuration (Required)
+> [!TIP] **Understanding `SAVE_PATH_BASE`:** This is the folder path **as seen by your torrent client**, not this app.
+> For example, if your qBittorrent container maps `/media/audiobooks` to `/downloads`, set this to `/downloads`.
+
+---
+
+#### 2. Optional & Customization Settings
+
+Everything below works out-of-the-box with sensible defaults, but you can customize them if you'd like.
 
 ```env
-SAVE_PATH_BASE=/audiobooks     # CRITICAL: The root save path *inside* the Torrent Client container.
-SECRET_KEY=change_me           # Flask Session Key. Change this for production security.
+# --- Appearance & Theme ---
+DEFAULT_THEME=purple           # Color theme: purple (default), dark, light, or crow
+SITE_TITLE=AudiobookBay Automated # Name shown in the header and browser tab
+SPLASH_ENABLED=True            # Show the welcome intro video on first visit (True or False)
+
+# --- Audiobookshelf Integration ---
+# Enables the "Reload Library" button in the navigation drawer to immediately scan for new books
+ABS_URL=http://192.168.1.123:13378 # URL to your Audiobookshelf server
+ABS_KEY=your_api_token             # Found in Audiobookshelf: Settings -> Users -> API Token
+ABS_LIB=your_library_id            # Library ID from your browser address bar when viewing the library
+
+# --- Custom Navigation Link ---
+# Adds a quick-link button to your navigation menu (e.g., to open your player)
+NAV_LINK_NAME=Open Player
+NAV_LINK_URL=http://192.168.1.123:13378
 ```
 
-#### 3. Audiobookshelf Integration (Optional)
+---
 
-To enable the "Reload Library" button in the navigation bar:
+#### 3. Advanced & Developer Settings
 
-```env
-ABS_URL=http://192.168.1.123:13378 # URL to your Audiobookshelf instance
-ABS_KEY=your_api_token             # API Token (Settings -> Users)
-ABS_LIB=your_library_id            # Library ID (Found in the URL when viewing the library)
-```
-
-#### 4. Search & Scraping (Optional)
+> [!NOTE] You do **not** need to touch these settings for normal day-to-day use. They are provided for specialized
+> network setups, debugging, or custom container configurations.
 
 ```env
-ABB_HOSTNAME=audiobookbay.lu   # Primary mirror. Default: audiobookbay.lu
-ABB_MIRRORS=audiobookbay.is,audiobookbay.se       # Comma-separated list of backup mirrors to try.
-MAGNET_TRACKERS=udp://...      # Comma-separated list of extra trackers to add to magnets.
-PAGE_LIMIT=3                   # Max pages to scrape per search. Default: 3.
-```
+# --- Network & Server Binding ---
+LISTEN_PORT=5078               # Internal port the app listens on (Default: 5078)
+LISTEN_HOST=0.0.0.0            # Network interface to bind to (Default: 0.0.0.0)
+DL_SCHEME=http                 # Protocol for torrent client: http or https (Default: http)
+DL_CATEGORY=abb-automated      # Category label applied to torrents (Default: abb-automated)
 
-#### 5. Application Settings (Optional)
+# --- Scraping & Mirror Overrides ---
+ABB_HOSTNAME=audiobookbay.lu   # Primary search mirror (Default: audiobookbay.lu)
+ABB_MIRRORS=audiobookbay.is,audiobookbay.se # Backup mirrors tried automatically if primary is down
+PAGE_LIMIT=3                   # Number of search pages to scrape per query (Default: 3)
+MAGNET_TRACKERS=udp://...      # Extra public trackers to append to generated magnet links
 
-```env
-LISTEN_PORT=5078               # Internal port. Default: 5078.
-LISTEN_HOST=0.0.0.0            # Bind address. Default: 0.0.0.0 (or [::] if IPv6 detected).
-THREADS=8                      # Worker threads. Increase for higher concurrency. Default: 8.
-SCRAPER_THREADS=3              # Number of concurrent scraping requests. Default: 3.
-TIMEOUT=60                     # Request timeout in seconds. Default: 60.
-LOG_LEVEL=INFO                 # Logging verbosity: DEBUG, INFO, WARNING, ERROR. Default: INFO.
-TZ=UTC                         # Timezone for logs (e.g. America/Los_Angeles). Default: UTC.
-NAV_LINK_NAME=Open Player      # Label for a custom link in the navbar.
-NAV_LINK_URL=http://...        # URL for the custom link.
-
-# UI Customization & Branding (Optional)
-SITE_TITLE=AudiobookBay Automated   # Custom navbar and browser tab title.
-DEFAULT_THEME=purple           # Color theme: purple (default), dark, light, crow.
-SITE_LOGO=audiobookbay-header.jpg   # Header logo (filename in static/images or full URL/path).
-SPLASH_ENABLED=True            # Enable/Disable the welcome splash screen. Default: True.
-SPLASH_TITLE=AudiobookBay Automated # Custom title for the splash screen.
-SPLASH_VIDEO=audiobookbay-splash.mp4 # Custom video file for animated splash screen.
-SPLASH_MESSAGE=Welcome...      # Custom HTML message for the splash screen.
-SPLASH_DURATION=4500           # Duration in ms before splash fades out. Default: 4500.
+# --- Logging & Troubleshooting (Developers) ---
+LOG_LEVEL=INFO                 # Verbosity: DEBUG, INFO, WARNING, ERROR (Default: INFO)
+ENABLE_DIAGNOSTICS=false       # Enables the /diagnostics live health dashboard and scraper inspector
 ```
 
 ### Using Docker

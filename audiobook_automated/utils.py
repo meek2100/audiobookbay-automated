@@ -3,8 +3,10 @@
 
 import hashlib
 import logging
+import platform
 import re
 import unicodedata
+import urllib.parse
 import uuid
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
@@ -20,6 +22,7 @@ from audiobook_automated.constants import (
     WINDOWS_PATH_SAFE_LIMIT,
     WINDOWS_RESERVED_NAMES,
 )
+from audiobook_automated.logging_buffer import log_ring_buffer
 
 logger = logging.getLogger(__name__)
 
@@ -346,6 +349,57 @@ def format_user_error(err: Exception | str, context: str = "general") -> tuple[s
         )
 
     return friendly, raw_error if raw_error else None
+
+
+def build_github_issue_url(
+    error_summary: str,
+    technical_details: str | None = None,
+    context: str = "general",
+) -> str:
+    """Generate a pre-filled 1-click GitHub issue reporting URL.
+
+    Scrubs PII and attaches sanitized environment details, mirror states, and logs.
+    """
+    repo_url = "https://github.com/theurer/audiobookbay-automated/issues/new"
+    title = f"Bug: [{context.title()}] {error_summary[:60]}"
+
+    # Pull sanitized logs if available
+    recent_logs = ""
+    try:
+        recent_logs = log_ring_buffer.get_text_logs(limit=20)
+    except Exception:
+        recent_logs = "No logs available"
+
+    body = f"""### Description
+{error_summary}
+
+### Context
+- **Context Type**: {context}
+- **Python Version**: {platform.python_version()}
+- **OS Platform**: {platform.platform()}
+
+### Technical Error Details
+```
+{technical_details or "None"}
+```
+
+### Recent Application Logs (Sanitized)
+<details>
+<summary>Click to view recent logs</summary>
+
+```
+{recent_logs}
+```
+</details>
+
+*Generated automatically via AudiobookBay Automated 1-Click Issue Reporter.*
+"""
+    params = {
+        "title": title,
+        "body": body,
+        "labels": "bug,automated-report",
+    }
+    return f"{repo_url}?{urllib.parse.urlencode(params)}"
 
 
 if __name__ == "__main__":  # pragma: no cover

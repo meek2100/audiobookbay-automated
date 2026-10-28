@@ -199,7 +199,17 @@ describe("status.js - Polling Mechanism", () => {
     });
 
     test("Polling should handle non-200 responses", async () => {
-        mockFetch.mockResolvedValue({ ok: false, status: 500 });
+        document.body.innerHTML = `
+            <div id="status-client-pill" class="status-client-pill">
+                <span class="client-pill-text">Client Connected</span>
+            </div>
+            <table><tbody id="status-table-body"></tbody></table>
+        `;
+        mockFetch.mockResolvedValue({
+            ok: false,
+            status: 500,
+            json: async () => ({ error: "Banned", client_status: "banned" }),
+        });
 
         document.dispatchEvent(new Event("DOMContentLoaded"));
         jest.advanceTimersByTime(5000);
@@ -207,8 +217,12 @@ describe("status.js - Polling Mechanism", () => {
         expect(mockFetch).toHaveBeenCalled();
 
         await Promise.resolve();
+        await flushPromises();
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Status poll failed"), 500);
+        const pill = document.getElementById("status-client-pill");
+        expect(pill.classList.contains("banned")).toBe(true);
+        expect(pill.textContent).toContain("IP Banned");
     });
 
     test("Polling should NOT start if table body is missing", () => {

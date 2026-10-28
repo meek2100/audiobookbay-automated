@@ -14,23 +14,7 @@ const actionsJsPath = path.resolve(__dirname, "audiobook_automated/static/js/act
 const actionsJsContent = fs.readFileSync(actionsJsPath, "utf8");
 global.actionsJsContent = actionsJsContent;
 
-// --- status.js Setup (NEW) ---
+// --- status.js Setup ---
 const statusJsPath = path.resolve(__dirname, "audiobook_automated/static/js/status.js");
 const statusJsContent = fs.readFileSync(statusJsPath, "utf8");
 global.statusJsContent = statusJsContent;
-// ------------------------------
-
-// --- Global Mocks ---
-global.flatpickr = jest.fn((element, options) => ({
-    selectedDates: [],
-    clear: jest.fn(),
-    options,
-}));
-
-global.noUiSlider = {
-    create: jest.fn((element, options) => ({
-        get: jest.fn(() => options.start),
-        reset: jest.fn(),
-        options,
-    })),
-};

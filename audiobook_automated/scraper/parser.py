@@ -22,7 +22,10 @@ MIN_TABLE_CELLS = 2
 RE_INFO_HASH = re.compile(r"Info Hash", re.IGNORECASE)
 RE_HASH_STRING = re.compile(r"\b([a-fA-F0-9]{40}|[a-fA-F0-9]{64})\b")
 RE_LANGUAGE = re.compile(r"Language:\s*(.+?)(?:\s*$|\s+Format:|\s+Bitrate:|\s+Keywords:)", re.IGNORECASE)
-RE_CATEGORY = re.compile(r"Category:\s*(.+?)(?:\s+Language:|\s*$)", re.IGNORECASE)
+RE_CATEGORY = re.compile(
+    r"Category:\s*(?:(?=(?:Language|Format|Bitrate|Keywords):)|(.*?)(?:\s+(?:Language|Format|Bitrate|Keywords):|\s*$))",
+    re.IGNORECASE,
+)
 RE_LABEL_POSTED = re.compile(r"Posted:", re.IGNORECASE)
 RE_LABEL_FORMAT = re.compile(r"Format:", re.IGNORECASE)
 RE_LABEL_BITRATE = re.compile(r"Bitrate:", re.IGNORECASE)
@@ -156,6 +159,31 @@ def _parse_body_content(content_div: Tag, meta: BookMetadata) -> None:
             meta.file_size = get_text_after_label(p, RE_LABEL_SIZE, is_file_size=True)
 
 
+def _parse_categories_from_info(post_info: Tag) -> list[str]:
+    """Extract and split categories cleanly from post_info."""
+    category_anchors = post_info.select('a[href*="/category/"], a[rel*="category"]')
+    if category_anchors:
+        parsed_cats = [a.get_text(strip=True) for a in category_anchors if a.get_text(strip=True)]
+        if parsed_cats:
+            return parsed_cats
+
+    info_text = post_info.get_text(" ", strip=True)
+    info_raw_text = post_info.get_text("\xa0", strip=True)
+    cat_match = RE_CATEGORY.search(info_raw_text) or RE_CATEGORY.search(info_text)
+    if not cat_match:
+        return ["Unknown"]
+
+    raw_cat = (cat_match.group(1) or "").strip()
+    if not raw_cat:
+        return ["Unknown"]
+
+    if "," in raw_cat:
+        return [c.strip() for c in raw_cat.split(",") if c.strip()]
+    if "\xa0" in raw_cat or "\t" in raw_cat or re.search(r"\s{2,}", raw_cat):
+        return [c.strip() for c in re.split(r"(?:\xa0|\t|\s{2,})+", raw_cat) if c.strip()]
+    return [raw_cat]
+
+
 def parse_post_content(
     content_div: Tag | None,
     post_info: Tag | None,
@@ -166,19 +194,12 @@ def parse_post_content(
     meta = BookMetadata()
 
     if post_info:
+        meta.category = _parse_categories_from_info(post_info)
+
         info_text = post_info.get_text(" ", strip=True)
         lang_match = RE_LANGUAGE.search(info_text)
         if lang_match:
             meta.language = lang_match.group(1)
-
-        cat_match = RE_CATEGORY.search(info_text)
-        if cat_match:
-            raw_cat = cat_match.group(1).replace("\xa0", " ").strip()
-            if raw_cat:
-                if "," in raw_cat:
-                    meta.category = [c.strip() for c in raw_cat.split(",") if c.strip()]
-                else:
-                    meta.category = [c.strip() for c in re.split(r"\s+", raw_cat) if c.strip()]
 
     if content_div:
         _parse_body_content(content_div, meta)

@@ -14,6 +14,7 @@ window.initSplashScreen = initSplashScreen;
 window.dismissSplash = dismissSplash;
 window.initMobileMenu = initMobileMenu;
 window.initScrollToTop = initScrollToTop;
+window.initClientBannerCheck = initClientBannerCheck;
 
 function initMobileMenu() {
     const mobileMenuBtn = document.getElementById("mobile-menu-btn");
@@ -107,6 +108,7 @@ document.addEventListener("DOMContentLoaded", function () {
     initSplashScreen();
     initMobileMenu();
     initScrollToTop();
+    initClientBannerCheck();
 
     // Reload Library Button
     const reloadBtn = document.getElementById("reload-library-btn");
@@ -205,8 +207,8 @@ function initSplashScreen() {
         return;
     }
 
-    // Also double-check sessionStorage here (redundant but safe)
-    if (sessionStorage.getItem("splashShown")) {
+    // Also double-check sessionStorage / localStorage here (redundant but safe)
+    if (sessionStorage.getItem("splashShown") || localStorage.getItem("splashShown")) {
         splashOverlay.classList.add("hidden");
         splashOverlay.style.display = "none";
         return;
@@ -329,12 +331,14 @@ function dismissSplash(overlay, options = {}) {
             overlay.classList.add("hidden");
             overlay.style.display = "none";
             sessionStorage.setItem("splashShown", "true");
+            localStorage.setItem("splashShown", "true");
             document.documentElement.classList.add("no-splash");
             document.documentElement.classList.remove("splash-reveal-logo", "splash-reveal-content");
         }, 650);
     } else {
         overlay.classList.add("hidden");
         sessionStorage.setItem("splashShown", "true");
+        localStorage.setItem("splashShown", "true");
         document.documentElement.classList.add("no-splash");
 
         setTimeout(() => {
@@ -654,6 +658,15 @@ function sendTorrent(link, title, buttonElement, client) {
  * @param {string} url - The URL to open.
  */
 function openExternalLink(url) {
+    if (!url) return;
+
+    let targetUrl = url;
+    // If relative URL, construct an absolute URL using configured host or current mirror
+    if (url.startsWith("/")) {
+        const mirror = window.ABB_HOST || "audiobookbay.lu";
+        targetUrl = `https://${mirror}${url}`;
+    }
+
     const warningMessage =
         "You are about to open this link directly in your browser.\n" +
         "This traffic will NOT be routed through the server's connection.\n\n" +
@@ -663,9 +676,44 @@ function openExternalLink(url) {
         "External Link Warning",
         warningMessage,
         () => {
-            window.open(url, "_blank");
+            window.open(targetUrl, "_blank", "noopener,noreferrer");
         },
         "Proceed",
         "primary"
     );
+}
+
+/**
+ * Checks client connectivity and displays a non-intrusive warning banner if unreachable.
+ */
+function initClientBannerCheck() {
+    const banner = document.getElementById("client-offline-banner");
+    if (!banner) return;
+
+    fetch("/api/clients")
+        .then((res) => {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json();
+        })
+        .then((data) => {
+            const clients = data.clients || [];
+            const hasConnected = clients.some((c) => c.connected);
+            if (!hasConnected && clients.length > 0) {
+                banner.style.display = "block";
+                // Optionally disable download buttons to prevent user frustration
+                document.querySelectorAll(".send-torrent-btn, .details-download-btn").forEach((btn) => {
+                    btn.classList.add("disabled");
+                    btn.title = "Download client is offline or credentials require attention";
+                });
+            } else {
+                banner.style.display = "none";
+                document.querySelectorAll(".send-torrent-btn, .details-download-btn").forEach((btn) => {
+                    btn.classList.remove("disabled");
+                    btn.title = "";
+                });
+            }
+        })
+        .catch(() => {
+            // Silently swallow errors during background connectivity checks
+        });
 }

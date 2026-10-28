@@ -3,6 +3,7 @@
 
 import logging
 import random
+import re
 import time
 from collections.abc import Sequence
 from typing import Any, cast
@@ -19,18 +20,64 @@ logger = logging.getLogger(__name__)
 CACHE_LOCK: Any = network.threading.Lock()  # pragma: no cover
 
 
-def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
-    """Construct the search URL for a given query and page number."""
-    # Ensure scheme
-    if not base_url.startswith("http"):
-        base_url = f"https://{base_url}"
+def slugify_taxonomy(text: str) -> str:
+    """Normalize text into an AudiobookBay-compatible URL slug."""
+    # Convert spaces/underscores/slashes to hyphens, lowercase, and strip punctuation
+    cleaned = text.strip().lower()
+    cleaned = re.sub(r"[^\w\s-]", "", cleaned)
+    cleaned = re.sub(r"[\s_]+", "-", cleaned)
+    return cleaned.strip("-")
 
-    # Explicitly handle pagination in the URL format
-    # The source site uses /page/N/?s=query for search results
-    if query:
-        return f"{base_url}/page/{page}/?s={query}"
-    # Browse mode (no query) also uses /page/N/
-    return f"{base_url}/page/{page}/"
+
+def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
+    """Construct the search or taxonomy URL for a given query and page number.
+
+    Supports:
+      - Direct taxonomy prefixes:
+          'type:<category>'     -> /audio-books/type/<category>/page/<N>/
+          'tag:<tag>'           -> /audio-books/tag/<tag>/page/<N>/
+          'author:<author>'     -> /audio-books/author/<author>/page/<N>/
+          'narrator:<narrator>' -> /audio-books/narrator/<narrator>/page/<N>/
+      - Direct path input:
+          '/audio-books/...'    -> /audio-books/.../page/<N>/
+      - General keyword search:
+          'query'               -> /page/<N>/?s=query
+      - Browse mode (no query):
+          None                  -> /page/<N>/
+    """
+    # Ensure scheme: if not specified in base_url, check network mirror stat or fallback to https
+    if not base_url.startswith("http://") and not base_url.startswith("https://"):
+        host_clean = base_url.split("/", maxsplit=1)[0]
+        stat = network.get_mirror_stat(host_clean)
+        scheme = getattr(stat, "protocol", "https")
+        base_url = f"{scheme}://{base_url}"
+    base_url = base_url.rstrip("/")
+
+    if not query:
+        return f"{base_url}/page/{page}/"
+
+    q_strip = query.strip()
+
+    # Case 1: Direct path provided (e.g. /audio-books/type/action/)
+    if q_strip.startswith("/audio-books/"):
+        path = q_strip.rstrip("/")
+        if page > 1:
+            return f"{base_url}{path}/page/{page}/"
+        return f"{base_url}{path}/"
+
+    # Case 2: Taxonomy prefix detected
+    for prefix in ("type:", "tag:", "author:", "narrator:"):
+        if q_strip.lower().startswith(prefix):
+            tax_type = prefix[:-1]
+            raw_val = q_strip[len(prefix) :].strip()
+            slug = slugify_taxonomy(raw_val)
+            path = f"/audio-books/{tax_type}/{slug}"
+            if page > 1:
+                return f"{base_url}{path}/page/{page}/"
+            return f"{base_url}{path}/"
+
+    # Case 3: Standard WordPress keyword search parameter
+    return f"{base_url}/page/{page}/?s={q_strip}"
 
 
 def search_audiobookbay(query: str, max_pages: int = 1, start_page: int = 1) -> Sequence[BookSummary]:
@@ -50,7 +97,7 @@ def search_audiobookbay(query: str, max_pages: int = 1, start_page: int = 1) -> 
     base_url = network.find_best_mirror()
     if not base_url:
         logger.error("Search: No working mirror found. Aborting.")
-        return []
+        raise ConnectionError("No working AudiobookBay mirrors found. Check network connectivity or try again shortly.")
 
     # Check Cache
     cache_key = f"{query}::pages_{start_page}_{max_pages}"
@@ -171,7 +218,12 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
     # 1. Normalize relative URLs from search results (e.g., /abss/book-title/)
     if url.startswith("/"):
         active_mirror = network.find_best_mirror() or network.get_mirrors()[0]
-        url = urljoin(f"https://{active_mirror}", url)
+        if not active_mirror.startswith("http://") and not active_mirror.startswith("https://"):
+            host_clean = active_mirror.split("/")[0]
+            stat = network.get_mirror_stat(host_clean)
+            scheme = getattr(stat, "protocol", "https")
+            active_mirror = f"{scheme}://{active_mirror}"
+        url = urljoin(active_mirror, url)
 
     # 2. Check Cache
     if not refresh:

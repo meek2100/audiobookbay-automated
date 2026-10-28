@@ -43,6 +43,15 @@ pre-commit run --all-files
   backticks.
 - **First-Line File Headers:** The first line of every source file must comment the relative file path prefixed with
   `File:` (e.g., `# File: audiobook_automated/app.py`).
+- **User-Centric Terminology:** Always use clear end-user terminology (e.g. `Download Client`, plugin name like
+  `qBittorrent`) rather than developer jargon like `Strategy` across docs, logs, and UI.
+- **Proxy Environment Safety:** When routing through a remote VPN/proxy (such as Gluetun), `NO_PROXY` must explicitly
+  bypass local and internal RFC-1918 subnets (`localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`) to prevent
+  client connectivity and local Gunicorn bindings from timing out through the external proxy.
+- **Semantic Catalog Verification:** Mirror health checks must verify authentic catalog HTML structures (`postTitle`,
+  `#content`, and no third-party domain redirects) rather than relying only on HTTP 200/root index responses.
+- **Taxonomy Routing:** Support native `/audio-books/type/<category>/`, `/audio-books/tag/<language>/`,
+  `/audio-books/author/<slug>/`, and `/audio-books/narrator/<slug>/` feeds alongside general keyword search.
 
 ## 4. Operating Protocol & Reasoning Framework
 
