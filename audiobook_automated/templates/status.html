@@ -4,8 +4,34 @@
 {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='js/status.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
-<div class="title-container">
-    <h1>Active Downloads</h1>
+<div class="status-header-glass">
+    <div class="status-header-main">
+        <div class="status-header-title-wrap">
+            <h1 class="status-title">Active Downloads</h1>
+            <span class="status-count-badge" id="status-count-badge">
+                {{ torrents|length if torrents else 0 }} Active
+            </span>
+        </div>
+        <div class="status-header-meta">
+            <div class="status-client-pill" id="status-client-pill">
+                <span class="pulse-dot"></span>
+                <span class="client-pill-text">Client Connected</span>
+            </div>
+            <div class="status-poll-indicator" id="status-poll-indicator" title="Auto-refreshing status">
+                <svg
+                    class="poll-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                >
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
+                <span class="poll-text">Live (5s)</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="status-container">
@@ -38,15 +64,61 @@
                 </tr>
             </thead>
             <tbody id="status-table-body">
-                {% if torrents %} {% for torrent in torrents %}
+                {% if torrents %} {% for torrent in torrents %} {% set state_lower = (torrent.state|lower) if
+                torrent.state else 'unknown' %} {% if 'download' in state_lower %} {% set badge_class =
+                'badge-downloading' %} {% elif 'seed' in state_lower or 'finish' in state_lower or 'complete' in
+                state_lower %} {% set badge_class = 'badge-seeding' %} {% elif 'pause' in state_lower or 'stop' in
+                state_lower %} {% set badge_class = 'badge-paused' %} {% elif 'error' in state_lower or 'fail' in
+                state_lower %} {% set badge_class = 'badge-error' %} {% else %} {% set badge_class = 'badge-other' %} {%
+                endif %}
                 <tr>
-                    <td class="cell-title">{{ torrent.name }}</td>
-                    <td class="cell-progress">{{ torrent.progress }}%</td>
-                    <td class="cell-state">{{ torrent.state }}</td>
+                    <td class="cell-title">
+                        <div class="title-with-icon">
+                            <span class="book-media-icon" aria-hidden="true">🎧</span>
+                            <span class="title-text">{{ torrent.name }}</span>
+                        </div>
+                    </td>
+                    <td class="cell-progress">
+                        <div class="progress-cell-wrap">
+                            <div
+                                class="progress-bar-container"
+                                role="progressbar"
+                                aria-valuenow="{{ torrent.progress }}"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                            >
+                                <div
+                                    class="progress-bar-fill {{ 'fill-complete' if torrent.progress >= 100 else '' }}"
+                                    style="width: {{ torrent.progress }}%"
+                                ></div>
+                            </div>
+                            <span class="progress-percentage">{{ torrent.progress }}%</span>
+                        </div>
+                    </td>
+                    <td class="cell-state">
+                        <span class="status-badge {{ badge_class }}">{{ torrent.state }}</span>
+                    </td>
                     <td class="cell-size">{{ torrent.size }}</td>
                     <td class="cell-action">
-                        <button class="remove-button remove-torrent-btn" data-torrent-id="{{ torrent.id }}">
-                            Remove
+                        <button
+                            class="remove-button remove-torrent-btn btn-glass-danger"
+                            data-torrent-id="{{ torrent.id }}"
+                            title="Remove download"
+                        >
+                            <svg
+                                class="action-btn-icon"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                aria-hidden="true"
+                            >
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                                ></path>
+                            </svg>
+                            <span>Remove</span>
                         </button>
                     </td>
                 </tr>

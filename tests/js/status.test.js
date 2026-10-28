@@ -88,6 +88,42 @@ describe("status.js - UI Logic", () => {
         expect(tbody.innerHTML).toContain("&lt;script&gt;alert('xss')&lt;/script&gt;");
         expect(tbody.innerHTML).not.toContain("<script>alert");
     });
+
+    test("getStatusBadgeClass should return appropriate badge class for various states", () => {
+        expect(window.getStatusBadgeClass("downloading")).toBe("badge-downloading");
+        expect(window.getStatusBadgeClass("Seeding")).toBe("badge-seeding");
+        expect(window.getStatusBadgeClass("Finished")).toBe("badge-seeding");
+        expect(window.getStatusBadgeClass("Paused")).toBe("badge-paused");
+        expect(window.getStatusBadgeClass("Error")).toBe("badge-error");
+        expect(window.getStatusBadgeClass("unknown_state")).toBe("badge-other");
+    });
+
+    test("updateTable should render progress bar elements and badge classes", () => {
+        const torrents = [
+            { id: "101", name: "Downloading Book", progress: 42.5, state: "downloading", size: "350 MB" },
+            { id: "102", name: "Completed Book", progress: 100, state: "seeding", size: "1.2 GB" },
+        ];
+
+        window.updateTable(tbody, torrents);
+
+        const rows = tbody.querySelectorAll("tr");
+        expect(rows.length).toBe(2);
+
+        // Verify progress bar markup in row 1
+        const progressBar1 = rows[0].querySelector(".progress-bar-fill");
+        expect(progressBar1).not.toBeNull();
+        expect(progressBar1.style.width).toBe("42.5%");
+        expect(progressBar1.classList.contains("fill-complete")).toBe(false);
+
+        const badge1 = rows[0].querySelector(".status-badge");
+        expect(badge1.classList.contains("badge-downloading")).toBe(true);
+
+        // Verify row 2 is marked complete
+        const progressBar2 = rows[1].querySelector(".progress-bar-fill");
+        expect(progressBar2.classList.contains("fill-complete")).toBe(true);
+        const badge2 = rows[1].querySelector(".status-badge");
+        expect(badge2.classList.contains("badge-seeding")).toBe(true);
+    });
 });
 
 describe("status.js - Polling Mechanism", () => {
