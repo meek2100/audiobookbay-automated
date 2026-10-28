@@ -173,9 +173,12 @@ def parse_post_content(
 
         cat_match = RE_CATEGORY.search(info_text)
         if cat_match:
-            raw_cat = cat_match.group(1).strip()
+            raw_cat = cat_match.group(1).replace("\xa0", " ").strip()
             if raw_cat:
-                meta.category = [c.strip() for c in raw_cat.split(",") if c.strip()]
+                if "," in raw_cat:
+                    meta.category = [c.strip() for c in raw_cat.split(",") if c.strip()]
+                else:
+                    meta.category = [c.strip() for c in re.split(r"\s+", raw_cat) if c.strip()]
 
     if content_div:
         _parse_body_content(content_div, meta)

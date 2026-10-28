@@ -428,6 +428,33 @@ def test_normalize_metadata_category_empty_list() -> None:
     assert meta.category == ["Unknown"]
 
 
+def test_parse_post_content_category_splitting() -> None:
+    """Test that parse_post_content splits categories with non-breaking spaces and commas."""
+    # HTML with non-breaking spaces
+    html_nbsp = """
+    <div class="postInfo">
+        Category: Adults&nbsp; Bestsellers&nbsp; LitRPG&nbsp; Sci-Fi&nbsp; Language: Spanish
+    </div>
+    """
+    soup_nbsp = BeautifulSoup(html_nbsp, "lxml")
+    post_info_nbsp = soup_nbsp.select_one(".postInfo")
+    assert isinstance(post_info_nbsp, Tag)
+    meta_nbsp = parse_post_content(None, post_info_nbsp)
+    assert meta_nbsp.category == ["Adults", "Bestsellers", "LitRPG", "Sci-Fi"]
+
+    # HTML with comma separation
+    html_comma = """
+    <div class="postInfo">
+        Category: Sci-Fi, Action, Fantasy Language: English
+    </div>
+    """
+    soup_comma = BeautifulSoup(html_comma, "lxml")
+    post_info_comma = soup_comma.select_one(".postInfo")
+    assert isinstance(post_info_comma, Tag)
+    meta_comma = parse_post_content(None, post_info_comma)
+    assert meta_comma.category == ["Sci-Fi", "Action", "Fantasy"]
+
+
 def test_normalize_metadata_strings() -> None:
     """Test normalization of string fields."""
     meta = BookMetadata(format="? ", bitrate="")
