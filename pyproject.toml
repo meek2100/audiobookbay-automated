@@ -28,7 +28,7 @@ dependencies = [
     "qbittorrent-api==2026.10.1",
     "transmission-rpc==7.0.12",
     "deluge-web-client==2.1.1",
-    "cachetools==7.2.4",
+    "cachetools==7.2.5",
     "gunicorn==26.2.0",
     "Flask-WTF==1.2.2",
     "Flask-Limiter==4.1.1",
