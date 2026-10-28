@@ -22,10 +22,12 @@
 
 - Global Request Semaphore: Initialized at startup to match `SCRAPER_THREADS`.
 - Must never be bypassed, removed, or modified to exceed configured concurrency.
-- Background executors (e.g., `_mirror_executor`) must register `signal.SIGTERM` handlers for clean container shutdown.
+- Background executors (e.g., mirror check workers) must register clean container shutdown handlers.
 
 ## Extension & Initialization
 
-- Global extensions (e.g., `ScraperExecutor`, `TorrentManager`) must use the Flask `init_app()` pattern.
+- Global extensions (e.g., `TorrentManager`, `ScraperEngine`) must use the Flask `init_app()` pattern.
 - No import-time binding of configuration values.
-- Configuration must use `pydantic-settings`.
+- Configuration is loaded via typed classes in `audiobook_automated/config.py` with runtime validation in `validate()`.
+- Multi-client routing: `TorrentManager` initializes individual client plugins specified by `DL_CLIENT` and
+  `DL_CLIENTS`, routing download requests to the designated client and aggregating status queries.

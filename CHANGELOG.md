@@ -11,22 +11,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- **Put.io Torrent Client Strategy:** Integrated Put.io cloud torrent downloader (`DL_CLIENT=putio`) with Bearer token
+- **Multi-Client Routing:** Added support for aggregating and dispatching to multiple download clients simultaneously
+  using `DL_CLIENTS` (comma-separated list).
+- **API Key Authentication:** Added `DL_API_KEY` (and `DL_KEY`) support for modern qBittorrent and Put.io setups.
+- **Cross-Platform Path Normalization:** Added `DL_CLIENT_OS=windows` configuration to safely format paths for Windows
+  torrent client hosts without mangling POSIX paths on Linux.
+- **Dual Protocol Fallback & Latency Scoring:** Search scrapers now probe HTTPS first and gracefully fall back to HTTP
+  (port 80), ranking mirrors via exponential moving average (EMA) response latency.
+- **Live Diagnostics Suite:** Added comprehensive health dashboard and scraper inspector at `/diagnostics` (toggleable
+  via `ENABLE_DIAGNOSTICS`).
+- **14 Modern Themes:** Expanded theme switcher with 14 polished palettes (`purple`, `crow`, `catppuccin`, `nord`,
+  `tokyo`, `oled`, `forest`, `ocean`, `sunset`, `dracula`, `cyberpunk`, `light`, `royal`, `slate`).
+- **Put.io Cloud Client:** Integrated Put.io cloud torrent downloader (`DL_CLIENT=putio`) with Bearer token
   authentication and customizable target folder ID (`PUTIO_FOLDER_ID`).
-- **UI Customization & Theming:** Added `DEFAULT_THEME` (`purple`, `dark`, `light`, `crow`), customizable `SITE_TITLE`,
-  and `SITE_LOGO`.
+- **UI Customization & Theming:** Added `DEFAULT_THEME`, customizable `SITE_TITLE`, and `SITE_LOGO`.
 - **Animated Splash Screen Morph:** Added video splash screen with smooth transition that shrinks and fades into the
   top-left header logo.
 - **Custom Trackers Example:** Added `examples/trackers.json` demonstrating custom tracker override formats.
 
 ### Changed
 
+- **Layman-Friendly Documentation:** Completely updated `README.md` with clear, accessible guides for non-technical
+  users, including deep dives into path mapping (`SAVE_PATH_BASE`), download client setups, and Audiobookshelf
+  integration.
+- **Architectural Reference Refresh:** Updated `AGENTS.md` and all guides in `docs/agents/` to reflect current
+  configuration structures and invariants.
 - **Responsive Design:** Optimized layout breakpoints for mobile devices (iPhone 13 mini through iPad Pro and desktops)
   ensuring stacked cards on small screens and fluid navigation.
 - **CI / Workflows:** Configured `uv sync --all-extras` across GitHub Actions workflows to ensure development tools
   (`pre-commit`, `mypy`, `pytest`) are available on all runners.
-- **Documentation:** Updated `README.md` and `examples/.env.example` with complete configuration options and verified
-  all example file links.
 
 ### Fixed
 

@@ -10,9 +10,14 @@
 - Search Query Limits: Search queries must meet minimum character length requirements (>= 2 characters) and normalize to
   lowercase.
 
-## Mirror Probing & Negative Caching
+## Mirror Probing, Dual Protocol Fallback & Negative Caching
 
-- Mirror checks utilize `HEAD` requests without retries, falling back to `GET` on 403 or 405 status codes.
+- Dual Protocol Probing: Mirror checks probe HTTPS first; on TLS handshake failures, they cleanly fall back to HTTP
+  (port 80).
+- Semantic Catalog Verification: Verification validates authentic HTML structures (`postTitle`, `#content`) and ensures
+  no third-party redirects or parked-domain markers exist before marking a mirror healthy.
+- Latency Scoring: Active mirrors are ranked via exponential moving average (EMA) response latency
+  (`Accuracy > Speed > Security`).
 - Fail Fast: Probes must immediately return `None` on connection errors or timeouts.
 - Negative Caching: If all external mirrors fail, cache the failure state for backoff (e.g., 30 seconds) to prevent
   retry storms. Do not purge mirror caches prematurely.
@@ -23,5 +28,7 @@
   honor OS path limits (such as 260 characters on Windows).
 - Windows Reserved Names: Sanitize illegal characters and reserved words (e.g., `CON`, `PRN`, `AUX`, `NUL`), including
   compound extensions (e.g., `CON.tar.gz`).
+- Cross-Platform OS Normalization: When `DL_CLIENT_OS=windows` or backslashes are present in `SAVE_PATH_BASE`, paths are
+  safely formatted using Windows backslash conventions without mangling POSIX paths on Linux.
 - Collision Avoidance: Append short UUIDs (`uuid.uuid4().hex[:8]`) to sanitized or fallback directory names to guarantee
   uniqueness.
