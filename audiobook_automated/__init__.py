@@ -11,6 +11,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from .config import Config
 from .diagnostics import diagnostics_bp
 from .extensions import csrf, executor, limiter, register_shutdown_handlers, talisman, torrent_manager
+from .logging_buffer import log_ring_buffer
 from .routes import main_bp
 from .scraper import network
 from .utils import get_application_version
@@ -154,7 +155,10 @@ def _configure_logging(app: Flask, configured_level: int | None) -> None:
     # 2. Gunicorn Logger Level (if running in Gunicorn)
     # 3. Default (INFO)
 
-    # DEPLOYMENT FIX: Attach Gunicorn handlers if running in production
+    # Attach memory ring buffer for live diagnostics and 1-click issue reporting
+    root_logger = logging.getLogger()
+    if log_ring_buffer not in root_logger.handlers:
+        root_logger.addHandler(log_ring_buffer)
     gunicorn_logger = logging.getLogger("gunicorn.error")
     if gunicorn_logger.handlers:
         app.logger.handlers = gunicorn_logger.handlers

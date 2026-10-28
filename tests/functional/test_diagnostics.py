@@ -126,3 +126,28 @@ def test_diagnostics_inspect_exception(app: Flask, client: FlaskClient) -> None:
         resp = client.get("/api/diagnostics/inspect?query=crash")
         assert resp.status_code == 500
         assert resp.get_json() == {"error": "Scraper boom"}
+
+
+def test_diagnostics_logs_endpoints(app: Flask, client: FlaskClient) -> None:
+    """Ensure /api/diagnostics/logs and download work correctly."""
+    app.config["ENABLE_DIAGNOSTICS"] = True
+    app.logger.info("Test log entry for diagnostics endpoint")
+
+    # JSON logs endpoint
+    resp = client.get("/api/diagnostics/logs?limit=5")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "logs" in data
+    assert data["count"] > 0
+
+    # Invalid limit defaults gracefully
+    resp_invalid = client.get("/api/diagnostics/logs?limit=notanumber")
+    assert resp_invalid.status_code == 200
+
+    # Download logs endpoint
+    resp_dl = client.get("/api/diagnostics/logs/download")
+    assert resp_dl.status_code == 200
+    assert resp_dl.mimetype == "text/plain"
+    assert "Content-Disposition" in resp_dl.headers
+    assert "audiobookbay-automated-logs.txt" in resp_dl.headers["Content-Disposition"]
+    assert b"Test log entry for diagnostics endpoint" in resp_dl.data

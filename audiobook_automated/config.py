@@ -159,6 +159,10 @@ class Config:
     _mirrors_str: str = os.getenv("ABB_MIRRORS", "").strip(" \"'")
     ABB_MIRRORS: list[str] = _extra_hosts + [m.strip() for m in _mirrors_str.split(",") if m.strip()]
 
+    # Remote mirrors sync URL (optional override)
+    _mirrors_remote_url: str | None = os.getenv("ABB_MIRRORS_REMOTE_URL")
+    ABB_MIRRORS_REMOTE_URL: str | None = _mirrors_remote_url.strip(" \"'") if _mirrors_remote_url else None
+
     # Parse comma-separated trackers into a list
     _trackers_str: str = os.getenv("MAGNET_TRACKERS", "").strip(" \"'")
     MAGNET_TRACKERS: list[str] = [t.strip() for t in _trackers_str.split(",") if t.strip()]

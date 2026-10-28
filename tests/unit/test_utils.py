@@ -425,3 +425,32 @@ def test_format_user_error() -> None:
     friendly_gen, debug_gen = format_user_error("", context="unknown")
     assert "An unexpected error occurred" in friendly_gen
     assert debug_gen is None
+
+
+def test_build_github_issue_url() -> None:
+    """Test generating a pre-filled 1-click GitHub issue URL."""
+    from audiobook_automated.logging_buffer import log_ring_buffer
+    from audiobook_automated.utils import build_github_issue_url
+
+    log_ring_buffer.clear()
+    record = logging.LogRecord("test", logging.INFO, "test.py", 10, "Sample test log output", (), None)
+    log_ring_buffer.emit(record)
+
+    url = build_github_issue_url(
+        error_summary="Search query timed out",
+        technical_details="ConnectionError to mirrors",
+        context="search",
+    )
+
+    assert "https://github.com/theurer/audiobookbay-automated/issues/new?" in url
+    assert "title=" in url
+    assert "Bug%3A+%5BSearch%5D+Search+query+timed+out" in url or "Bug%3A" in url
+    assert "labels=bug%2Cautomated-report" in url
+    assert "Sample+test+log+output" in url or "Sample" in url
+
+    # Test fallback branch when exception occurs fetching logs
+    with patch(
+        "audiobook_automated.logging_buffer.log_ring_buffer.get_text_logs", side_effect=Exception("Buffer failure")
+    ):
+        fallback_url = build_github_issue_url("Fallback error", context="general")
+        assert "No+logs+available" in fallback_url

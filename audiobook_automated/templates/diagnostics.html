@@ -28,6 +28,8 @@
         margin-bottom: 20px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         padding-bottom: 14px;
+        flex-wrap: wrap;
+        gap: 12px;
     }
 
     .diag-title {
@@ -39,6 +41,21 @@
         gap: 10px;
     }
 
+    .diag-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .diag-badge {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-muted, #94a3b8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
     .diag-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -48,7 +65,7 @@
     .diag-metric {
         background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 12px;
+        border-radius: var(--border-radius-md, 12px);
         padding: 16px;
         display: flex;
         flex-direction: column;
@@ -57,32 +74,31 @@
 
     .diag-label {
         font-size: 0.8rem;
-        color: var(--text-muted, rgba(255, 255, 255, 0.6));
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.05em;
+        color: var(--text-muted, #94a3b8);
     }
 
     .diag-val {
-        font-size: 1.3rem;
+        font-size: 1.35rem;
         font-weight: 700;
-        color: var(--accent-color, #a855f7);
-        word-break: break-all;
+        color: var(--text-color, #ffffff);
     }
 
     .inspect-box {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
     }
 
     .inspect-input-row {
         display: flex;
-        gap: 10px;
+        gap: 12px;
     }
 
     .inspect-input {
         flex: 1;
-        background: rgba(0, 0, 0, 0.35);
+        background: rgba(0, 0, 0, 0.25);
         border: 1px solid rgba(255, 255, 255, 0.15);
         border-radius: 8px;
         padding: 10px 14px;
@@ -90,7 +106,8 @@
         font-size: 0.95rem;
     }
 
-    .inspect-results-pre {
+    .inspect-results-pre,
+    .log-viewer-pre {
         background: rgba(10, 8, 15, 0.85);
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 8px;
@@ -103,7 +120,26 @@
         white-space: pre-wrap;
         word-break: break-word;
     }
+
+    .log-viewer-pre {
+        color: #cbd5e1;
+        max-height: 350px;
+    }
+
+    .spinning {
+        animation: spin 1s linear infinite;
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    @keyframes spin {
+        100% {
+            transform: rotate(360deg);
+        }
+    }
 </style>
+{% endblock %} {% block extra_js %}
+<script src="{{ url_for('static', filename='js/diagnostics.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
 <div class="diag-container">
     <div class="diag-card">
@@ -111,9 +147,25 @@
             <span class="diag-title">
                 <span>⚡ System Health & Environment</span>
             </span>
-            <button id="refresh-diag-btn" class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem">
-                Refresh
-            </button>
+            <div class="diag-actions">
+                <span id="last-updated-badge" class="diag-badge">Last updated: -</span>
+                <label
+                    style="
+                        font-size: 0.85rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        cursor: pointer;
+                        color: var(--text-muted, #94a3b8);
+                    "
+                >
+                    <input type="checkbox" id="auto-refresh-toggle" checked />
+                    Auto-refresh (5s)
+                </label>
+                <button id="refresh-diag-btn" class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem">
+                    Refresh
+                </button>
+            </div>
         </div>
         <div class="diag-grid" id="system-metrics">
             <div class="diag-metric">
@@ -138,7 +190,7 @@
     <div class="diag-card">
         <div class="diag-header">
             <span class="diag-title">
-                <span>🌐 Mirror Probes & Latencies</span>
+                <span>🌐 Mirror Probes & Performance Rankings</span>
             </span>
         </div>
         <div class="diag-grid" id="mirror-metrics">
@@ -155,6 +207,41 @@
         <div class="diag-grid" id="client-metrics">
             <!-- Populated via JS -->
         </div>
+    </div>
+
+    <!-- Live Application Logs Card -->
+    <div class="diag-card">
+        <div class="diag-header">
+            <span class="diag-title">
+                <span>📜 Real-Time Scrubbed Application Logs</span>
+            </span>
+            <div class="diag-actions">
+                <input
+                    type="text"
+                    id="log-filter-input"
+                    placeholder="Filter logs..."
+                    class="inspect-input"
+                    style="padding: 6px 10px; font-size: 0.8rem; width: 160px"
+                />
+                <label
+                    style="
+                        font-size: 0.85rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        cursor: pointer;
+                        color: var(--text-muted, #94a3b8);
+                    "
+                >
+                    <input type="checkbox" id="auto-scroll-toggle" checked />
+                    Auto-scroll
+                </label>
+                <button id="download-logs-btn" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem">
+                    Download Logs (.txt)
+                </button>
+            </div>
+        </div>
+        <pre id="log-viewer-pre" class="log-viewer-pre">Loading application logs...</pre>
     </div>
 
     <div class="diag-card">
@@ -181,92 +268,4 @@
         </div>
     </div>
 </div>
-
-<script nonce="{{ csp_nonce() }}">
-    document.addEventListener("DOMContentLoaded", () => {
-        const refreshBtn = document.getElementById("refresh-diag-btn");
-        const inspectBtn = document.getElementById("run-inspect-btn");
-        const inspectInput = document.getElementById("inspect-input");
-        const inspectOutput = document.getElementById("inspect-output");
-
-        async function loadHealth() {
-            try {
-                const res = await fetch("/api/diagnostics/health");
-                if (!res.ok) throw new Error("Health check returned status " + res.status);
-                const data = await res.json();
-
-                document.getElementById("diag-status").textContent = data.status.toUpperCase();
-                document.getElementById("diag-memory").textContent = data.system.memory_rss_mb + " MB";
-                document.getElementById("diag-active-mirror").textContent = data.mirrors.active_mirror || "None";
-                document.getElementById("diag-cache").textContent =
-                    `${data.cache.details_cache_size} / ${data.cache.details_cache_max}`;
-
-                // Mirrors
-                const mirrorContainer = document.getElementById("mirror-metrics");
-                mirrorContainer.innerHTML = "";
-                (data.mirrors.mirrors || []).forEach((m) => {
-                    const metric = document.createElement("div");
-                    metric.className = "diag-metric";
-                    metric.innerHTML = `
-                    <span class="diag-label">${m.hostname}</span>
-                    <span class="diag-val" style="color: ${m.reachable ? "#4ade80" : "#f87171"}; font-size: 1.1rem;">
-                        ${m.reachable ? `${m.latency_ms} ms` : "Offline"}
-                    </span>
-                `;
-                    mirrorContainer.appendChild(metric);
-                });
-
-                // Clients
-                const clientContainer = document.getElementById("client-metrics");
-                clientContainer.innerHTML = "";
-                (data.clients || []).forEach((c) => {
-                    const metric = document.createElement("div");
-                    metric.className = "diag-metric";
-                    metric.innerHTML = `
-                    <span class="diag-label">${c.name} (${c.strategy_class || "None"})</span>
-                    <span class="diag-val" style="color: ${c.connected ? "#4ade80" : "#f87171"}; font-size: 1.1rem;">
-                        ${c.connected ? "Connected" : "Disconnected"}
-                    </span>
-                `;
-                    clientContainer.appendChild(metric);
-                });
-            } catch (e) {
-                console.error("Failed to load health metrics", e);
-            }
-        }
-
-        async function runInspect() {
-            const val = inspectInput.value.trim();
-            if (!val) return;
-
-            inspectBtn.disabled = true;
-            inspectOutput.style.display = "block";
-            inspectOutput.textContent = "Inspecting parser...";
-
-            try {
-                const param =
-                    val.startsWith("http") || val.startsWith("/")
-                        ? `url=${encodeURIComponent(val)}`
-                        : `query=${encodeURIComponent(val)}`;
-                const res = await fetch(`/api/diagnostics/inspect?${param}`);
-                const json = await res.json();
-                inspectOutput.textContent = JSON.stringify(json, null, 2);
-            } catch (e) {
-                inspectOutput.textContent = "Error: " + e.message;
-            } finally {
-                inspectBtn.disabled = false;
-            }
-        }
-
-        if (refreshBtn) refreshBtn.addEventListener("click", loadHealth);
-        if (inspectBtn) inspectBtn.addEventListener("click", runInspect);
-        if (inspectInput) {
-            inspectInput.addEventListener("keydown", (e) => {
-                if (e.key === "Enter") runInspect();
-            });
-        }
-
-        loadHealth();
-    });
-</script>
 {% endblock %}

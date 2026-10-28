@@ -59,7 +59,7 @@ class TorrentManager:
         class_name = f"{client_name.capitalize()}Client"
 
         try:
-            logger.info("Plugin: Loading client strategy '%s'...", client_name)
+            logger.info("Plugin: Loading download client '%s'...", client_name)
             module = importlib.import_module(module_name)
 
             # Find the strategy class in the module
@@ -114,7 +114,7 @@ class TorrentManager:
                 token=token,
                 folder_id=folder_id,
             )
-            logger.info("Plugin: Successfully loaded '%s'.", strategy_cls.__name__)
+            logger.info("Plugin: Successfully loaded '%s'.", client_name)
             return instance
 
         except (ImportError, AttributeError, TypeError) as e:

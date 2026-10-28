@@ -103,6 +103,11 @@ DEFAULT_MIRRORS: Final[list[str]] = [
     "audiobookbay.pl",
 ]
 
+# Remote repository URL for dynamically synchronizing latest community mirrors
+DEFAULT_MIRRORS_REMOTE_URL: Final[str] = (
+    "https://raw.githubusercontent.com/theurer/audiobookbay-automated/master/examples/mirrors.json"
+)
+
 # Concurrency setting for mirror availability checks
 MIRROR_CHECK_THREADS: Final[int] = 5
 

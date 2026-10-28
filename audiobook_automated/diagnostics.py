@@ -16,6 +16,7 @@ from typing import Any
 from flask import Blueprint, Response, abort, current_app, jsonify, render_template, request
 
 from audiobook_automated.extensions import torrent_manager
+from audiobook_automated.logging_buffer import log_ring_buffer
 from audiobook_automated.scraper import core, network
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ def diagnostics_health() -> Response:
         "memory_rss_mb": memory_usage_mb,
     }
 
-    # 2. Mirror Status & Ping
+    # 2. Mirror Status & Adaptive Performance
     all_mirrors = network.get_mirrors()
     mirror_results: list[dict[str, Any]] = []
 
@@ -74,11 +75,16 @@ def diagnostics_health() -> Response:
         m_start = time.perf_counter()
         active = network.check_mirror(mirror) is not None
         latency_ms = round((time.perf_counter() - m_start) * 1000, 2)
+        stat = network.get_mirror_stat(mirror)
         mirror_results.append(
             {
                 "hostname": mirror,
                 "reachable": active,
                 "latency_ms": latency_ms,
+                "ema_latency_ms": stat.ema_latency_ms,
+                "success_rate": round(stat.success_rate * 100, 1),
+                "cooling_down": stat.is_cooling_down,
+                "score": round(stat.score, 1),
             }
         )
 
@@ -87,6 +93,7 @@ def diagnostics_health() -> Response:
         negative_cache_active = "failure" in network.failure_cache
         details_cache_size = len(network.details_cache)
         details_cache_max = network.details_cache.maxsize
+    top_search_mirrors = network.get_active_search_mirrors(limit=3)
 
     # 3. Torrent Clients Status
     clients_info: list[dict[str, Any]] = []
@@ -107,7 +114,6 @@ def diagnostics_health() -> Response:
                     "connected": connected,
                     "latency_ms": c_latency,
                     "error": c_err,
-                    "strategy_class": strategy_inst.__class__.__name__,
                 }
             )
     else:
@@ -116,7 +122,6 @@ def diagnostics_health() -> Response:
             {
                 "name": current_app.config.get("DL_CLIENT", "default"),
                 "connected": connected,
-                "strategy_class": torrent_manager.strategy.__class__.__name__ if torrent_manager.strategy else None,
             }
         )
 
@@ -130,6 +135,7 @@ def diagnostics_health() -> Response:
             "mirrors": {
                 "active_mirror": active_mirror,
                 "negative_cache_active": negative_cache_active,
+                "top_search_mirrors": top_search_mirrors,
                 "mirrors": mirror_results,
             },
             "cache": {
@@ -138,6 +144,30 @@ def diagnostics_health() -> Response:
             },
             "clients": clients_info,
         }
+    )
+
+
+@diagnostics_bp.route("/api/diagnostics/logs")
+def diagnostics_logs() -> Response:
+    """Return recent sanitized application logs as JSON."""
+    limit_str = request.args.get("limit", "100")
+    try:
+        limit = int(limit_str)
+    except ValueError:
+        limit = 100
+
+    logs = log_ring_buffer.get_logs(limit=limit)
+    return jsonify({"logs": logs, "count": len(logs)})
+
+
+@diagnostics_bp.route("/api/diagnostics/logs/download")
+def diagnostics_logs_download() -> Response:
+    """Download recent sanitized logs as a text file."""
+    text_content = log_ring_buffer.get_text_logs()
+    return Response(
+        text_content,
+        mimetype="text/plain",
+        headers={"Content-Disposition": "attachment; filename=audiobookbay-automated-logs.txt"},
     )
 
 

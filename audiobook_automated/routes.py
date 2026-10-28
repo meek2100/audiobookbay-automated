@@ -32,7 +32,13 @@ from audiobook_automated.errors import AppError, InvalidRequestError, TorrentCli
 from .extensions import limiter, talisman, torrent_manager
 from .scraper import extract_magnet_link, get_book_details, search_audiobookbay
 from .scraper.parser import BookSummary
-from .utils import construct_safe_save_path, format_user_error, parse_bool, sanitize_title
+from .utils import (
+    build_github_issue_url,
+    construct_safe_save_path,
+    format_user_error,
+    parse_bool,
+    sanitize_title,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -213,11 +219,13 @@ def search() -> str | Response:
         friendly_message, _ = format_user_error(ce, context="search")
         debug_details: str | None = f"Could not connect to AudiobookBay mirrors: {ce}"
         error_message = debug_details if is_debug else friendly_message
+        github_issue_url = build_github_issue_url(friendly_message, debug_details, context="search")
         return render_template(
             "search.html",
             books=books,
             error=error_message,
             debug_details=debug_details,
+            github_issue_url=github_issue_url,
             query=query,
         )
 
@@ -230,11 +238,13 @@ def search() -> str | Response:
         )
         friendly_message, debug_details = format_user_error(e, context="search")
         error_message = f"Search Failed: {str(e)}" if is_debug else friendly_message
+        github_issue_url = build_github_issue_url(friendly_message, debug_details or str(e), context="search")
         return render_template(
             "search.html",
             books=books,
             error=error_message,
             debug_details=debug_details,
+            github_issue_url=github_issue_url,
             query=query,
         )
 
@@ -294,10 +304,12 @@ def details() -> str | Response:
     except Exception as e:
         logger.error(f"Failed to fetch details: {e}", exc_info=True)
         error_message, debug_details = format_user_error(e, context="details")
+        github_issue_url = build_github_issue_url(error_message, debug_details or str(e), context="details")
         return render_template(
             "details.html",
             error=error_message,
             debug_details=debug_details,
+            github_issue_url=github_issue_url,
         )
 
 

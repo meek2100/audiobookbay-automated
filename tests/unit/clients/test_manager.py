@@ -66,7 +66,7 @@ def test_manager_load_strategy_success(app: Flask, caplog: LogCaptureFixture) ->
         assert manager.strategy.username == "testuser"
         assert manager.strategy.password == "testpass"
 
-        assert "Successfully loaded 'MockStrategy'" in caplog.text
+        assert "Successfully loaded 'mock_client'" in caplog.text
 
 
 def test_manager_load_strategy_default_port(app: Flask, caplog: LogCaptureFixture) -> None:

@@ -420,3 +420,121 @@ def test_get_headers_with_referer() -> None:
     """Test get_headers with a referer."""
     headers = network.get_headers(referer="http://ref.com")
     assert headers["Referer"] == "http://ref.com"
+
+
+def test_mirror_stats_tracking() -> None:
+    """Test MirrorStat recording success, failure, cooldown, and scoring."""
+    stat = network.MirrorStat(hostname="test.mirror")
+    assert stat.total_requests == 0
+    assert stat.success_rate == 1.0
+    assert not stat.is_cooling_down
+
+    # Success records EMA latency
+    stat.record_success(100.0)
+    assert stat.success_count == 1
+    assert stat.ema_latency_ms == 100.0
+    assert stat.total_requests == 1
+    assert stat.success_rate == 1.0
+
+    stat.record_success(200.0)
+    # EMA: 0.7 * 100 + 0.3 * 200 = 130
+    assert stat.ema_latency_ms == 130.0
+
+    # Failure applies cooldown
+    stat.record_failure("HTTP 500")
+    assert stat.failure_count == 1
+    assert stat.is_cooling_down
+    assert stat.last_error == "HTTP 500"
+    assert stat.score < 0
+
+
+def test_get_all_mirror_stats() -> None:
+    """Test get_all_mirror_stats snapshot."""
+    stat = network.get_mirror_stat("stat.test")
+    stat.record_success(50.0)
+    all_stats = network.get_all_mirror_stats()
+    assert any(s["hostname"] == "stat.test" for s in all_stats)
+
+
+def test_fetch_remote_mirrors(app: Flask) -> None:
+    """Test remote mirrors fetch and caching."""
+    network._remote_mirrors_cache.clear()
+
+    # Success case via remote URL
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_ping:
+        mock_sess = MagicMock()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = ["remote1.com", "remote2.com"]
+        mock_sess.get.return_value = mock_resp
+        mock_ping.return_value = mock_sess
+
+        mirrors = network.fetch_remote_mirrors()
+        assert mirrors == ["remote1.com", "remote2.com"]
+
+    # Cached
+    assert network.fetch_remote_mirrors() == ["remote1.com", "remote2.com"]
+
+    # Fallback to local examples/mirrors.json on network error
+    network._remote_mirrors_cache.clear()
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_ping:
+        mock_sess = MagicMock()
+        mock_sess.get.side_effect = requests.RequestException("Network error")
+        mock_ping.return_value = mock_sess
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data='["local1.com", "local2.com"]')):
+                mirrors = network.fetch_remote_mirrors()
+                assert mirrors == ["local1.com", "local2.com"]
+
+
+def test_get_mirrors_ranking(app: Flask) -> None:
+    """Test adaptive ranking of mirrors in get_mirrors."""
+    app.config["ABB_HOSTNAME"] = "primary.com"
+    app.config["ABB_MIRRORS"] = ["mirror2.com", "mirror3.com"]
+
+    with patch("audiobook_automated.scraper.network.fetch_remote_mirrors", return_value=["mirror4.com"]):
+        # Untried: primary comes first
+        mirrors = network.get_mirrors()
+        assert mirrors[0] == "primary.com"
+
+        # Record high score for mirror2
+        stat_m2 = network.get_mirror_stat("mirror2.com")
+        stat_m2.record_success(10.0)
+
+        # Primary cools down
+        stat_primary = network.get_mirror_stat("primary.com")
+        stat_primary.record_failure("offline")
+
+        ranked = network.get_mirrors()
+        assert ranked[0] == "mirror2.com"
+
+
+def test_fetch_remote_mirrors_fallback_on_invalid_file(app: Flask) -> None:
+    """Test fallback when local mirrors.json cannot be read."""
+    network._remote_mirrors_cache.clear()
+    with patch("audiobook_automated.scraper.network.get_ping_session") as mock_ping:
+        mock_sess = MagicMock()
+        mock_sess.get.side_effect = requests.RequestException("Remote down")
+        mock_ping.return_value = mock_sess
+
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("builtins.open", side_effect=OSError("Read error")):
+                mirrors = network.fetch_remote_mirrors()
+                assert mirrors == network.DEFAULT_MIRRORS
+
+
+def test_get_active_search_mirrors(app: Flask) -> None:
+    """Test pruning candidate mirrors to top 3 search mirrors and fallback when all cool down."""
+    with patch(
+        "audiobook_automated.scraper.network.get_mirrors", return_value=["m1.com", "m2.com", "m3.com", "m4.com"]
+    ):
+        active = network.get_active_search_mirrors(limit=3)
+        assert len(active) == 3
+        assert active == ["m1.com", "m2.com", "m3.com"]
+
+        # When all cool down, fallback to top candidates anyway
+        for m in ["m1.com", "m2.com", "m3.com", "m4.com"]:
+            network.get_mirror_stat(m).record_failure("error")
+        fallback_active = network.get_active_search_mirrors(limit=2)
+        assert len(fallback_active) == 2
