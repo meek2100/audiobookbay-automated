@@ -53,6 +53,8 @@ class MirrorStat:
     last_checked_at: float = 0.0
     cooldown_until: float = 0.0
     last_error: str | None = None
+    protocol: str = "https"  # "https" or "http"
+    is_parked_or_invalid: bool = False
 
     @property
     def total_requests(self) -> int:
@@ -61,7 +63,9 @@ class MirrorStat:
 
     @property
     def success_rate(self) -> float:
-        """Success rate between 0.0 and 1.0 (defaults to 1.0 if untried)."""
+        """Success rate between 0.0 and 1.0 (defaults to 1.0 if untried, 0.0 if parked/invalid)."""
+        if self.is_parked_or_invalid:
+            return 0.0
         if self.total_requests == 0:
             return 1.0
         return self.success_count / self.total_requests
@@ -69,26 +73,32 @@ class MirrorStat:
     @property
     def is_cooling_down(self) -> bool:
         """Whether this mirror is currently on backoff cooldown."""
-        return time.time() < self.cooldown_until
+        return self.is_parked_or_invalid or (time.time() < self.cooldown_until)
 
-    def record_success(self, latency_ms: float) -> None:
+    def record_success(self, latency_ms: float, protocol: str = "https") -> None:
         """Record a successful response and update exponential moving average latency."""
         self.success_count += 1
         self.last_latency_ms = latency_ms
         self.last_checked_at = time.time()
         self.cooldown_until = 0.0
         self.last_error = None
+        self.protocol = protocol
+        self.is_parked_or_invalid = False
         if self.ema_latency_ms <= 0.0:
             self.ema_latency_ms = latency_ms
         else:
             # 70% previous EMA, 30% current latency
             self.ema_latency_ms = round((0.7 * self.ema_latency_ms) + (0.3 * latency_ms), 2)
 
-    def record_failure(self, error_msg: str | None = None) -> None:
+    def record_failure(self, error_msg: str | None = None, is_parked: bool = False) -> None:
         """Record a failure and apply exponential cooldown backoff."""
         self.failure_count += 1
         self.last_checked_at = time.time()
         self.last_error = error_msg
+        if is_parked:
+            self.is_parked_or_invalid = True
+            self.cooldown_until = time.time() + 86400.0  # 24hr cooldown for parked/spam
+            return
         # Cooldown: 15s * consecutive fail factor (up to 300s)
         backoff_sec = min(300.0, 15.0 * min(self.failure_count, 10))
         self.cooldown_until = time.time() + backoff_sec
@@ -97,14 +107,26 @@ class MirrorStat:
     def score(self) -> float:
         """Compute performance score (higher is better).
 
-        Penalizes failing/cooling down mirrors heavily; rewards high success rate and low latency.
+        Penalizes parked/failing/cooling down mirrors heavily.
+        Rewards high success rate, low latency, and applies a bonus for HTTPS (+150).
         """
+        if self.is_parked_or_invalid:
+            return -9999.0
         if self.is_cooling_down:
             return -1000.0 - (self.cooldown_until - time.time())
-        # Base on success rate (0-1000) minus latency penalty
+        # Base on success rate (0-1000)
         rate_score = self.success_rate * 1000.0
-        lat_penalty = min(500.0, self.ema_latency_ms if self.ema_latency_ms > 0 else 100.0)
-        return rate_score - lat_penalty
+        # Latency penalty:
+        # Prioritize Accuracy > Speed > Security.
+        # Sub-second latencies (e.g. 580ms) incur modest penalty (~58 points).
+        # Multi-second/extreme latencies (e.g. 40,000ms) incur severe penalties (~4000 points),
+        # ensuring a fast 80% HTTP mirror (800 - 58 = 742) strongly beats a 40s 100% HTTPS mirror (1000 - 4000 + 150 = -2850).
+        effective_lat = self.ema_latency_ms if self.ema_latency_ms > 0 else 100.0
+        lat_penalty = effective_lat / 10.0
+        # HTTPS protocol bonus: 90% HTTPS (~900 + 150 = 1050) beats 95% HTTP (~950) when latency is close,
+        # but 63% HTTP (630) beats 43% HTTPS (430 + 150 = 580).
+        protocol_bonus = 150.0 if self.protocol == "https" else 0.0
+        return rate_score - lat_penalty + protocol_bonus
 
 
 _mirror_stats: dict[str, MirrorStat] = {}
@@ -421,53 +443,74 @@ def _probe_catalog_endpoint(session: Session, url: str, headers: dict[str, str])
         return False, str(e)
 
 
+def _probe_https_mirror(
+    session: Session, hostname: str, headers: dict[str, str]
+) -> tuple[bool, str | None, bool, bool]:
+    """Attempt HTTPS probes for a mirror.
+
+    Returns:
+        (success, error_message, is_parked, head_failed_hard)
+    """
+    https_url = f"https://{hostname}/"
+    try:
+        response = session.head(https_url, headers=headers, timeout=2.5, allow_redirects=True)
+        if response.status_code == 200:  # noqa: PLR2004
+            ok, err = _probe_catalog_endpoint(session, https_url, headers)
+            return (ok, err or ("Inauthentic catalog" if not ok else None), "Non-authentic catalog" in str(err), False)
+        if response.status_code >= 500:  # noqa: PLR2004
+            return False, f"HTTP {response.status_code}", False, True
+    except (requests.Timeout, requests.RequestException) as e:
+        logger.debug(f"HTTPS HEAD probe for {hostname}: {e}")
+
+    ok_https, err_https = _probe_catalog_endpoint(session, https_url, headers)
+    if ok_https:
+        return True, None, False, False
+    is_parked = bool(err_https and "Non-authentic catalog" in err_https)
+    return False, err_https, is_parked, False
+
+
 def check_mirror(hostname: str) -> str | None:
     """Check if a mirror is reachable via HEAD or GET request and update tracking stats.
 
     Verifies authentic catalog structure to protect users against parked domains,
-    malware landers, and broken proxy mirrors.
-    Uses a zero-retry thread-local session to fail fast.
+    malware landers, and broken proxy mirrors. Evaluates HTTPS first, falling back to HTTP.
+    Uses a zero-retry thread-local session to fail fast. Returns the hostname if reachable,
+    or None if unreachable or parked.
     """
-    url = f"https://{hostname}/"
     headers = get_headers()
     session = get_ping_session()
     stat = get_mirror_stat(hostname)
     start_time = time.perf_counter()
 
-    # Try HTTPS HEAD fast probe
-    try:
-        response = session.head(url, headers=headers, timeout=2.5, allow_redirects=True)
-        if response.status_code == 200:  # noqa: PLR2004
-            ok, err = _probe_catalog_endpoint(session, url, headers)
-            if ok:
-                latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                stat.record_success(latency_ms)
-                return hostname
-            stat.record_failure(err or "Inauthentic catalog")
-            return None
+    # 1. Try HTTPS probes first
+    ok_https, err_https, is_parked_https, head_failed_hard = _probe_https_mirror(session, hostname, headers)
+    if ok_https:
+        latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        stat.record_success(latency_ms, protocol="https")
+        return hostname
 
-        # Cloudflare / Anti-DDoS may return 403/405 on HEAD but permit GET
-        if response.status_code not in (403, 405):
-            stat.record_failure(f"HTTP {response.status_code}")
-            return None
+    if is_parked_https or head_failed_hard:
+        stat.record_failure(err_https, is_parked=is_parked_https)
+        return None
 
-    except (requests.Timeout, requests.ConnectionError) as e:
-        logger.debug(f"Mirror HEAD probe exception for {hostname}: {e}")
-    except requests.RequestException as e:
-        logger.debug(f"Mirror check HEAD failed for {hostname}: {e}")
+    # 2. Fallback to HTTP (Port 80)
+    http_url = f"http://{hostname}/"
+    ok_http, err_http = _probe_catalog_endpoint(session, http_url, headers)
+    if ok_http:
+        latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        stat.record_success(latency_ms, protocol="http")
+        return hostname
 
-    # Fallback probes: try HTTPS GET then HTTP GET
-    last_err: str | None = None
-    for target_url in (url, f"http://{hostname}/"):
-        ok, err = _probe_catalog_endpoint(session, target_url, headers)
-        if ok:
-            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            stat.record_success(latency_ms)
-            return hostname
-        last_err = err
-
-    stat.record_failure(last_err or "Endpoint unreachable")
+    is_parked = bool(err_http and "Non-authentic catalog" in err_http)
+    stat.record_failure(err_http or err_https or "Endpoint unreachable", is_parked=is_parked)
     return None
+
+
+def get_mirror_base_url(hostname: str) -> str:
+    """Return the complete base URL with scheme ('https://' or 'http://') for a mirror."""
+    stat = get_mirror_stat(hostname)
+    protocol = getattr(stat, "protocol", "https")
+    return f"{protocol}://{hostname}"
 
 
 def find_best_mirror() -> str | None:
@@ -512,6 +555,11 @@ def find_best_mirror() -> str | None:
             with CACHE_LOCK:
                 mirror_cache[cache_key] = result
             return result
+
+    logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
+    with CACHE_LOCK:
+        failure_cache["failure"] = True
+    return None
 
     logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
     with CACHE_LOCK:

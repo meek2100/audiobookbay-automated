@@ -214,3 +214,8 @@ def test_core_get_search_url_taxonomy_and_queries() -> None:
     assert (
         get_search_url("base.com", "Dungeon Crawler Carl", page=1) == "https://base.com/page/1/?s=Dungeon Crawler Carl"
     )
+
+    # HTTP scheme preserved when stat indicates http protocol
+    with patch("audiobook_automated.scraper.network.get_mirror_stat") as mock_stat:
+        mock_stat.return_value.protocol = "http"
+        assert get_search_url("http-only.com", "Dungeon", page=1) == "http://http-only.com/page/1/?s=Dungeon"

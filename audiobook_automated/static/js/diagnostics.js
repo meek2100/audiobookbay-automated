@@ -69,17 +69,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 mirrorsList.forEach((m, index) => {
                     const metric = document.createElement("div");
                     metric.className = "diag-metric";
-                    const isCooling = m.cooling_down;
+                    const isParked = m.is_parked;
+                    const isCooling = m.cooling_down && !isParked;
                     const latencyText = m.reachable ? `${m.latency_ms} ms` : "Offline";
-                    const statusColor = isCooling ? "#f59e0b" : m.reachable ? "#4ade80" : "#f87171";
-                    const statusLabel = isCooling ? "Cooldown" : m.reachable ? latencyText : "Offline";
-                    const isTopRanked = index < 3 && m.reachable && !isCooling;
+                    const statusColor = isParked
+                        ? "#ef4444"
+                        : isCooling
+                          ? "#f59e0b"
+                          : m.reachable
+                            ? "#4ade80"
+                            : "#f87171";
+                    const statusLabel = isParked
+                        ? "Parked / Invalid"
+                        : isCooling
+                          ? "Cooldown"
+                          : m.reachable
+                            ? latencyText
+                            : "Offline";
+                    const isTopRanked = index < 3 && m.reachable && !isCooling && !isParked;
                     const rankBadgeColor = isTopRanked ? "#38bdf8" : "var(--text-muted, #94a3b8)";
+                    const protoLabel = (m.protocol || "https").toUpperCase();
+                    const protoColor = protoLabel === "HTTPS" ? "#38bdf8" : "#fbbf24";
 
                     metric.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                             <span class="diag-label" style="font-weight: 700; color: ${rankBadgeColor}">#${index + 1} Rank</span>
-                            <span class="diag-badge" style="font-size: 0.75rem; padding: 2px 8px;">Score: ${m.score !== undefined ? m.score : "-"}</span>
+                            <div style="display: flex; gap: 4px; align-items: center;">
+                                <span class="diag-badge" style="font-size: 0.7rem; padding: 2px 6px; color: ${protoColor}; border-color: ${protoColor}40;">${protoLabel}</span>
+                                <span class="diag-badge" style="font-size: 0.75rem; padding: 2px 8px;">Score: ${m.score !== undefined ? m.score : "-"}</span>
+                            </div>
                         </div>
                         <span class="diag-label" style="word-break: break-all; color: #fff; font-size: 0.9rem;">${m.hostname}</span>
                         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
@@ -87,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 ${statusLabel}
                             </span>
                             <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8);">
-                                Rate: ${m.success_rate || 100}%
+                                Rate: ${m.success_rate || 0}%
                             </span>
                         </div>
                     `;

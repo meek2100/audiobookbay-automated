@@ -81,6 +81,8 @@ def _probe_candidate_mirrors(candidate_mirrors: list[str]) -> list[dict[str, Any
                 "success_rate": round(stat.success_rate * 100, 1),
                 "cooling_down": stat.is_cooling_down,
                 "score": round(stat.score, 1),
+                "protocol": stat.protocol,
+                "is_parked": stat.is_parked_or_invalid,
             }
         )
     return mirror_results

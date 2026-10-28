@@ -45,9 +45,12 @@ def get_search_url(base_url: str, query: str | None, page: int = 1) -> str:
       - Browse mode (no query):
           None                  -> /page/<N>/
     """
-    # Ensure scheme
-    if not base_url.startswith("http"):
-        base_url = f"https://{base_url}"
+    # Ensure scheme: if not specified in base_url, check network mirror stat or fallback to https
+    if not base_url.startswith("http://") and not base_url.startswith("https://"):
+        host_clean = base_url.split("/", maxsplit=1)[0]
+        stat = network.get_mirror_stat(host_clean)
+        scheme = getattr(stat, "protocol", "https")
+        base_url = f"{scheme}://{base_url}"
     base_url = base_url.rstrip("/")
 
     if not query:
@@ -215,7 +218,12 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
     # 1. Normalize relative URLs from search results (e.g., /abss/book-title/)
     if url.startswith("/"):
         active_mirror = network.find_best_mirror() or network.get_mirrors()[0]
-        url = urljoin(f"https://{active_mirror}", url)
+        if not active_mirror.startswith("http://") and not active_mirror.startswith("https://"):
+            host_clean = active_mirror.split("/")[0]
+            stat = network.get_mirror_stat(host_clean)
+            scheme = getattr(stat, "protocol", "https")
+            active_mirror = f"{scheme}://{active_mirror}"
+        url = urljoin(active_mirror, url)
 
     # 2. Check Cache
     if not refresh:

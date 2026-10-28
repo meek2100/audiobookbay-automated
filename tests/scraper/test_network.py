@@ -604,6 +604,47 @@ def test_check_mirror_https_get_inauthentic_and_http_fallback() -> None:
         assert network.check_mirror("fake3.mirror") is None
 
 
+def test_get_mirror_base_url_and_protocol_scoring(app: Flask) -> None:
+    """Test get_mirror_base_url and HTTPS vs HTTP score weighting."""
+    stat_https = network.get_mirror_stat("https-mirror.com")
+    stat_https.record_success(latency_ms=100.0, protocol="https")
+    assert network.get_mirror_base_url("https-mirror.com") == "https://https-mirror.com"
+
+    stat_http = network.get_mirror_stat("http-mirror.com")
+    stat_http.record_success(latency_ms=100.0, protocol="http")
+    assert network.get_mirror_base_url("http-mirror.com") == "http://http-mirror.com"
+
+    # With similar success rate and latency, HTTPS scores higher due to protocol bonus
+    assert stat_https.score > stat_http.score
+
+    # Accuracy > Speed > Security:
+    # A fast HTTP mirror (80% rate, 580ms latency) MUST rank higher than
+    # a slow HTTPS mirror (100% rate, 40,000ms latency).
+    stat_fast_http = network.get_mirror_stat("fast-http.com")
+    stat_fast_http.record_success(latency_ms=580.0, protocol="http")
+    # Simulate 80% success (4 success, 1 failure)
+    stat_fast_http.success_count = 4
+    stat_fast_http.failure_count = 1
+    stat_fast_http.cooldown_until = 0.0  # not in cooldown for test comparison
+
+    stat_slow_https = network.get_mirror_stat("slow-https.com")
+    stat_slow_https.record_success(latency_ms=40000.0, protocol="https")
+    stat_slow_https.success_count = 10
+    stat_slow_https.failure_count = 0
+
+    assert stat_fast_http.score > stat_slow_https.score
+    assert stat_fast_http.score > 700.0
+    assert stat_slow_https.score < 0.0
+
+    # Parked mirror has 0 success_rate and large negative score
+    stat_parked = network.get_mirror_stat("parked-domain.com")
+    stat_parked.record_failure("Non-authentic catalog", is_parked=True)
+    assert stat_parked.is_parked_or_invalid is True
+    assert stat_parked.success_rate == 0.0
+    assert stat_parked.score == -9999.0
+    assert stat_parked.is_cooling_down is True
+
+
 def test_get_active_search_mirrors(app: Flask) -> None:
     """Test pruning candidate mirrors to top 3 search mirrors and fallback when all cool down."""
     with patch(
