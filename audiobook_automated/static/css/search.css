@@ -48,24 +48,43 @@
     left: 14px;
     pointer-events: none;
     color: var(--text-muted, #94a3b8);
-    opacity: 0.8;
+    opacity: 0.85;
+    z-index: 2;
+    display: flex;
+    align-items: center;
 }
 
-.search-omnibar .search-bar {
+.search-omnibar .search-bar,
+.search-input-wrapper .search-bar {
     width: 100%;
-    padding: 10px 14px 10px 42px;
-    font-size: 0.98rem;
+    padding: 11px 36px 11px 44px !important;
+    font-size: 0.95rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
     background: rgba(0, 0, 0, 0.28);
     color: var(--text-main, #ffffff);
     box-shadow: none;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    text-overflow: ellipsis;
     transition: all 0.2s ease;
+}
+
+.search-omnibar .search-bar::-webkit-calendar-picker-indicator,
+.search-input-wrapper .search-bar::-webkit-calendar-picker-indicator {
+    display: none !important;
+    -webkit-appearance: none;
+    opacity: 0;
 }
 
 .search-omnibar .search-bar::placeholder {
     color: var(--text-muted, #94a3b8);
     opacity: 0.75;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .search-omnibar .search-bar:focus {
@@ -974,20 +993,40 @@ td.col-actions {
     .search-input-wrapper {
         width: 100%;
     }
+    .search-omnibar .search-bar,
+    .search-input-wrapper .search-bar {
+        font-size: 0.9rem;
+        padding: 10px 14px 10px 40px !important;
+    }
+    .search-input-icon {
+        left: 12px;
+        width: 16px;
+        height: 16px;
+    }
     .search-omnibar .search-button {
         width: 100%;
     }
 }
 
 /* Spinner */
-.button-spinner .spinner {
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top: 3px solid #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+.button-spinner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+    vertical-align: middle;
 }
+
+.button-spinner .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    display: inline-block;
+}
+
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -1089,17 +1128,6 @@ td.col-actions {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: translateX(-50%) translateY(0);
-}
-
-/* Auto-tuck when indicator is in immediate view to avoid occluding loading feedback */
-.floating-filter-hud.tucked {
-    opacity: 0.25;
-    transform: translateX(-50%) translateY(30px);
-}
-
-.floating-filter-hud.tucked:hover {
-    opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
 

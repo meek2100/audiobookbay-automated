@@ -340,4 +340,58 @@ test.describe('UI Layout & Alignment', () => {
     expect(dBtnRadius).not.toBe('50%');
   });
 
+  test('Test Case G: Unified Omnibar & Icon Text Clearance', async ({ page }) => {
+    await page.route('/search-omnibar-test', async route => {
+        const html = `
+<!doctype html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="/static/css/search.css" />
+</head>
+<body>
+    <div class="search-omnibar-container" id="search-container">
+        <div id="filter-container" class="search-omnibar">
+            <form method="get" class="omnibar-search-form" id="search-form">
+                <div class="search-input-wrapper">
+                    <svg class="search-input-icon" viewBox="0 0 24 24" width="18" height="18"><circle cx="11" cy="11" r="8"></circle></svg>
+                    <input type="text" name="query" class="search-bar" value="The Expanse" />
+                </div>
+                <button type="submit" class="search-button">
+                    <span class="button-text">Search</span>
+                    <div class="button-spinner" id="button-spinner" style="display: none">
+                        <div class="spinner"></div>
+                    </div>
+                </button>
+            </form>
+            <div class="omnibar-controls">
+                <button id="toolbar-filter-toggle" class="toolbar-filter-btn">Filters</button>
+                <div class="view-toggle-container">
+                    <button class="view-btn" id="view-list-btn">List</button>
+                    <button class="view-btn active" id="view-grid-btn">Grid</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+        await route.fulfill({ status: 200, contentType: 'text/html', body: html });
+    });
+
+    await page.goto('/search-omnibar-test');
+
+    const searchBar = page.locator('.search-omnibar .search-bar');
+    const searchIcon = page.locator('.search-input-icon');
+    const omnibar = page.locator('.search-omnibar');
+
+    await expect(omnibar).toBeVisible();
+    await expect(searchBar).toBeVisible();
+    await expect(searchIcon).toBeVisible();
+
+    // Verify left padding on input prevents text from colliding with icon
+    const paddingLeft = await searchBar.evaluate(el => parseInt(getComputedStyle(el).paddingLeft, 10));
+    expect(paddingLeft).toBeGreaterThanOrEqual(44);
+  });
+
 });
