@@ -1,7 +1,6 @@
 # File: tests/functional/test_diagnostics.py
 """Tests for the diagnostics endpoints and dashboard."""
 
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
@@ -44,9 +43,7 @@ def test_diagnostics_health_api(app: Flask, client: FlaskClient) -> None:
     strat_fail = MagicMock()
     strat_fail.verify_credentials.side_effect = RuntimeError("Offline client")
 
-    with patch.object(
-        torrent_manager, "clients", {"client1": strat_mock, "client2": strat_fail}
-    ):
+    with patch.object(torrent_manager, "clients", {"client1": strat_mock, "client2": strat_fail}):
         with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
             resp = client.get("/api/diagnostics/health")
             assert resp.status_code == 200

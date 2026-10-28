@@ -1036,30 +1036,6 @@ td.col-actions {
     }
 }
 
-/* NoUiSlider */
-.noUi-target {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    height: 6px;
-    margin-bottom: 25px;
-}
-.noUi-connect {
-    background: var(--accent-color);
-}
-.noUi-handle {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #fff;
-    border: none;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    right: -10px;
-    top: -7px;
-    cursor: grab;
-}
-.noUi-handle:active {
-    cursor: grabbing;
-}
 /* --- Progressive Search Stream & Infinite Scroll Indicator --- */
 .load-more-container {
     display: flex;

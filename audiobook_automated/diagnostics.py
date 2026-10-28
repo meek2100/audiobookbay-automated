@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 import platform
+import resource
 import time
 from typing import Any
 
@@ -54,8 +55,6 @@ def diagnostics_health() -> Response:
 
     # 1. System & Environment Metrics
     try:
-        import resource
-
         memory_usage_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 2)
     except Exception:
         memory_usage_mb = 0.0
@@ -93,10 +92,10 @@ def diagnostics_health() -> Response:
     clients_info: list[dict[str, Any]] = []
     configured_clients = getattr(torrent_manager, "clients", {})
     if configured_clients:
-        for name, strat in configured_clients.items():
+        for name, strategy_inst in configured_clients.items():
             c_start = time.perf_counter()
             try:
-                connected = bool(strat.verify_credentials())
+                connected = bool(strategy_inst.verify_credentials())
                 c_err = None
             except Exception as e:
                 connected = False
@@ -108,7 +107,7 @@ def diagnostics_health() -> Response:
                     "connected": connected,
                     "latency_ms": c_latency,
                     "error": c_err,
-                    "strategy_class": strat.__class__.__name__,
+                    "strategy_class": strategy_inst.__class__.__name__,
                 }
             )
     else:

@@ -54,8 +54,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         "default-src": ["'self'"],
         "img-src": ["'self'", "*", "data:"],
         "style-src": ["'self'", "'unsafe-inline'"],
-        # Add 'unsafe-eval' only if strictly needed by libraries like Flatpickr,
-        # otherwise keep strict.
+        # Restrict scripts strictly to 'self' without unsafe-eval
         "script-src": ["'self'"],
     }
     talisman.init_app(
