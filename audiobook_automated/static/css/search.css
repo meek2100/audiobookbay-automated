@@ -649,10 +649,14 @@ td.col-info {
 
 .view-grid .action-buttons .btn-glass,
 .view-grid .action-buttons .btn-primary {
-    flex: 1;
-    padding: 10px 12px;
-    font-size: 0.85rem;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 0.8rem;
     height: 38px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Categories Area */
@@ -780,12 +784,26 @@ td.col-actions {
     }
 
     .view-grid tbody {
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
         gap: 15px;
     }
 
     .view-grid td.col-cover {
         height: 220px;
+    }
+
+    .view-grid td.col-actions {
+        padding: 10px 12px 14px;
+    }
+
+    .view-grid .action-buttons {
+        gap: 6px;
+    }
+
+    .view-grid .action-buttons .btn-glass,
+    .view-grid .action-buttons .btn-primary {
+        padding: 8px 4px;
+        font-size: 0.8rem;
     }
 }
 
@@ -832,6 +850,20 @@ td.col-actions {
     }
     .property-results-container {
         justify-content: center;
+    }
+    .view-grid tbody {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+    .view-grid .action-buttons {
+        flex-direction: column;
+        gap: 6px;
+    }
+    .view-grid .action-buttons .btn-glass,
+    .view-grid .action-buttons .btn-primary {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 0.85rem;
     }
 }
 

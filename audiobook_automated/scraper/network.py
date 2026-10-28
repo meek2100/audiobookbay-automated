@@ -210,7 +210,7 @@ def check_mirror(hostname: str) -> str | None:
     session = get_ping_session()
 
     try:
-        response = session.head(url, headers=headers, timeout=5, allow_redirects=True)
+        response = session.head(url, headers=headers, timeout=2.5, allow_redirects=True)
         if response.status_code == 200:  # noqa: PLR2004
             return hostname
 
@@ -230,7 +230,7 @@ def check_mirror(hostname: str) -> str | None:
         logger.debug(f"Mirror check HEAD failed for {hostname}: {e}")
 
     try:
-        response = session.get(url, headers=headers, timeout=5, stream=True)
+        response = session.get(url, headers=headers, timeout=2.5, stream=True)
         response.close()
         if response.status_code == 200:  # noqa: PLR2004
             return hostname

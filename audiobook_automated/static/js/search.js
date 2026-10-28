@@ -447,7 +447,7 @@ function createResultRowElement(book) {
     row.innerHTML = `
         <td class="col-cover">
             <a href="${detailsUrl}">
-                <img src="${coverSrc}" alt="Cover Art" class="cover" width="100" data-default-cover="${defaultCover}" />
+                <img src="${coverSrc}" alt="Cover Art" class="cover" width="100" loading="lazy" decoding="async" data-default-cover="${defaultCover}" />
             </a>
         </td>
         <td class="col-info">
