@@ -1105,6 +1105,14 @@ td.col-actions {
     transform: translateY(-1px);
 }
 
+.load-more-end {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 24px 20px calc(110px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+}
+
 /* --- Floating Condensed Filter & Search HUD --- */
 .floating-filter-hud {
     position: fixed;

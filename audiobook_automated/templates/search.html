@@ -28,6 +28,10 @@
                     placeholder="Search audiobooks by title, author, or keyword..."
                     class="search-bar"
                     value="{{ query }}"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    enterkeyhint="search"
                     required
                 />
             </div>
@@ -547,6 +551,7 @@
         </div>
         <button id="load-more-btn" class="btn-glass load-more-btn" style="display: none">Load More Results</button>
     </div>
+    <p id="load-more-end" class="load-more-end" style="display: none">You've reached the end of the results.</p>
     {% endif %}
 </div>
 
