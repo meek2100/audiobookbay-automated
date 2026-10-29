@@ -28,9 +28,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Animated Splash Screen Morph:** Added video splash screen with smooth transition that shrinks and fades into the
   top-left header logo.
 - **Custom Trackers Example:** Added `examples/trackers.json` demonstrating custom tracker override formats.
+- **Auto-Refresh Controls:** Added toggleable auto-refresh switches and 5-second countdown timer buttons across both
+  Active Downloads (`/status`) and System Diagnostics (`/diagnostics`), allowing users to pause polling anytime while
+  retaining on-demand manual refresh.
+- **Diagnostics Test Suite:** Added comprehensive Jest test suite (`tests/js/diagnostics.test.js`) verifying dashboard
+  polling, metric rendering, and log filtering.
 
 ### Changed
 
+- **User-Centric Client Terminology:** Replaced developer jargon "Strategy" across the codebase, tests, docstrings, and
+  documentation with clear Download Client plugin names (`TorrentClientPlugin`, `QBittorrentClient`, `DelugeClient`,
+  `TransmissionClient`, `PutioClient`, `CustomClient`), removing obsolete backwards-compatibility aliases prior to 1.0.
+- **Diagnostics Mobile Interface:** Upgraded `/diagnostics` with responsive glass hero headers, fluid metric cards, and
+  touch-friendly controls that adapt seamlessly to phone screens.
 - **Layman-Friendly Documentation:** Completely updated `README.md` with clear, accessible guides for non-technical
   users, including deep dives into path mapping (`SAVE_PATH_BASE`), download client setups, and Audiobookshelf
   integration.
