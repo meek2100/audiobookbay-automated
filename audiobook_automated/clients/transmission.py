@@ -97,7 +97,7 @@ class TransmissionClient(TorrentClientPlugin):
             if category in labels:
                 # transmission-rpc 'progress' property returns percentage (0.0-100.0)
                 # NOT 0.0-1.0 like qBittorrent.
-                # FIX: Explicitly handle None to prevent runtime crashes (Pyright strictness)
+                # tx_torrent.progress may be None; default to 0.0 to prevent runtime crashes
                 progress = tx_torrent.progress or 0.0
 
                 results.append(

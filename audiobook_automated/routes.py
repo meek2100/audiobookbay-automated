@@ -443,8 +443,7 @@ def delete_torrent() -> Response | tuple[Response, int]:
         raise InvalidRequestError("Torrent ID is required")
 
     try:
-        # Core Task 4: Verify category before deletion
-        # Security: Prevent deleting torrents not managed by this application
+        # Security: only delete torrents managed by this application (matched by our category label)
         torrents = torrent_manager.get_status()
         target_torrent = next((t for t in torrents if str(t.id) == str(torrent_id)), None)
 

@@ -190,8 +190,7 @@ def test_calculate_static_hash_oserror(tmp_path: Path) -> None:
     # Capture the real Path.open to pass through for the readable file
     original_open = Path.open
 
-    # Added typing to arguments to satisfy mypy [no-untyped-def]
-    # FIX: Added specific types for self, args, kwargs
+    # Explicit types needed on side_effect to satisfy mypy [no-untyped-def]
     def side_effect(self: Any, *args: Any, **kwargs: Any) -> Any:
         # Trigger OSError only for the specific unreadable file
         # We check self.name which should exist on the Path object passed as self

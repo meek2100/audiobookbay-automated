@@ -5,7 +5,7 @@ import importlib
 import inspect
 import logging
 import re
-from typing import Any, cast
+from typing import Any
 
 from flask import Flask
 
@@ -114,8 +114,7 @@ class TorrentManager:
             scheme = app.config.get("DL_SCHEME", "http")
             timeout = app.config.get("CLIENT_TIMEOUT") or app.config.get("DL_TIMEOUT", 30)
 
-            # Explicitly typecast check (though logic ensures it is a class)
-            client_cls = cast(type[TorrentClientPlugin], client_class)  # type: ignore[redundant-cast]
+            client_cls: type[TorrentClientPlugin] = client_class
 
             token = app.config.get("PUTIO_TOKEN")
             folder_id = app.config.get("PUTIO_FOLDER_ID", "0")

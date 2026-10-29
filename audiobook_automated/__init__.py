@@ -62,9 +62,9 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         app,
         content_security_policy=csp,
         content_security_policy_nonce_in=["script-src"],
-        # FIX: Allow HTTP in dev/test, force HTTPS in prod if needed (usually handled by proxy)
+        # HTTPS enforcement is handled upstream by the reverse proxy; honour the config flag
         force_https=app.config["FORCE_HTTPS"],
-        # FIX: Ensure Talisman respects the config for Secure cookies (needed for HTTP access)
+        # Secure cookies require HTTPS; honour the config so HTTP dev setups are not broken
         session_cookie_secure=app.config["SESSION_COOKIE_SECURE"],
     )
 
@@ -126,9 +126,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             response.headers["Cache-Control"] = "public, max-age=31536000"
         return response
 
-    # FIX: CSRF 400 Error - Zero Cookies Issue
-    # Force Flask to set the session cookie on the first request if it's missing.
-    # This addresses cases where the browser doesn't send the cookie back (e.g. IP access).
+    # Inject the CSRF cookie on every response so the JS token is always present.
+    # Addresses browsers that do not send cookies on first request (e.g. direct IP access).
     @app.after_request
     def ensure_session_cookie(response: Response) -> Response:  # pyright: ignore[reportUnusedFunction]
         """Ensure session cookie is set if missing."""

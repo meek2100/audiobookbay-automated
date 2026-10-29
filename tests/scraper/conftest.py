@@ -8,7 +8,8 @@ from collections.abc import Generator
 
 import pytest
 
-# FIX: Import caches directly from network where they are defined to avoid mypy export errors
+# Import caches from network directly — they are defined there and re-exported via __init__
+# to avoid mypy re-export errors when imported from the package root
 from audiobook_automated.scraper.network import details_cache, mirror_cache, search_cache
 
 

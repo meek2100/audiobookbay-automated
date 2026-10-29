@@ -99,7 +99,7 @@ class TorrentStatus:
     progress: float
     state: str
     size: str
-    # Core Task 4: Add category field to allow validation before deletion
+    # Category allows validating that a torrent belongs to our label before deletion
     category: str | None = None
     # Client identifier for multi-client support (e.g., 'qbittorrent', 'putio')
     client: str | None = None

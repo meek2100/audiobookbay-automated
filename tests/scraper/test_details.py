@@ -283,7 +283,7 @@ def test_get_book_details_info_hash_method_2(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        details = get_book_details("https://audiobookbay.lu/strat2")
+        details = get_book_details("https://audiobookbay.lu/method2")
         assert details is not None
         assert details["info_hash"] == "1111111111222222222233333333334444444444"
 
@@ -305,7 +305,7 @@ def test_get_book_details_info_hash_method_3(mock_sleep: Any) -> None:
     mock_session.get.return_value = mock_response
 
     with patch("audiobook_automated.scraper.core.network.get_session", return_value=mock_session):
-        details = get_book_details("https://audiobookbay.lu/strat3")
+        details = get_book_details("https://audiobookbay.lu/method3")
         assert details is not None
         assert details["info_hash"] == "5555555555666666666677777777778888888888"
 

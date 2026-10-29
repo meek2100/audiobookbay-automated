@@ -131,7 +131,7 @@ def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -
 
 def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Test that non-integer PAGE_LIMIT defaults to 3."""
-    # FIX: Use underscore for unused variables to satisfy pyright 'reportUnusedVariable'
+    # Assign to _ to satisfy pyright reportUnusedVariable — fixture is needed for its side effects
     _ = mock_flask_factory
     monkeypatch.setenv("PAGE_LIMIT", "invalid_string")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
@@ -187,7 +187,7 @@ def test_create_app_calculates_runtime_static_version(monkeypatch: Any, mock_fla
 
     with (
         patch("audiobook_automated.utils.calculate_static_hash", return_value=expected_hash) as mock_calc,
-        # FIX: Patch torrent_manager to prevent real connection attempt during startup
+        # Patch torrent_manager to prevent a real connection attempt during startup
         patch("audiobook_automated.extensions.torrent_manager") as mock_torrent_manager,
     ):
         # Mock the verify_credentials return to avoid warnings
@@ -205,9 +205,7 @@ def test_app_entry_point() -> None:
 
     Reloading ensures coverage captures the top-level code execution.
     """
-    # FIX: Use sys.modules to retrieve the actual module object.
-    # We assign the result to 'reloaded_module' to ensure we are asserting
-    # on the module itself, not the 'app' variable inside the 'app' package.
+    # Use sys.modules to get the already-loaded module object so importlib.reload() works correctly
     # Check if loaded, if not import it
     if "audiobook_automated.app" not in sys.modules:
         importlib.import_module("audiobook_automated.app")
