@@ -14,9 +14,9 @@ from audiobook_automated.scraper import network
 
 
 @pytest.fixture(autouse=True)
-def _resetprobe_cache() -> None:
+def _reset_probe_cache() -> None:
     """Expire the external probe cache so each test starts with a fresh probe."""
-    diagnostics.probe_cache.update({"expires": 0.0, "taken": 0.0, "mirrors": [], "clients": []})
+    diagnostics.probe_cache.update({"expires": 0.0, "taken": 0.0, "clients": []})
 
 
 def _fresh_get(client: FlaskClient) -> Any:
