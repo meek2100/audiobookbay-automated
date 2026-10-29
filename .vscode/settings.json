@@ -2,7 +2,8 @@
     // -------------------------------------------------------------------------
     // CORE PYTHON CONFIGURATION
     // -------------------------------------------------------------------------
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+    // "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
 
     // Testing: Uses pytest as configured in pyproject.toml
     "python.testing.pytestEnabled": true,
