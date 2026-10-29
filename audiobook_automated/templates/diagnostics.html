@@ -6,16 +6,16 @@ endblock %} {% block extra_css %}
 {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='js/diagnostics.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
-<div class="diag-header-glass">
-    <div class="diag-header-main">
-        <div class="diag-header-title-wrap">
-            <h1 class="diag-main-title">System Diagnostics</h1>
+<div class="status-header-glass">
+    <div class="status-header-main">
+        <div class="status-header-title-wrap">
+            <h1 class="status-title">System Diagnostics</h1>
             <span class="status-client-pill" id="diag-status-pill">
                 <span class="pulse-dot"></span>
                 <span class="client-pill-text">Live System</span>
             </span>
         </div>
-        <div class="diag-header-meta">
+        <div class="status-header-meta">
             <span id="last-updated-badge" class="diag-badge">Last updated: -</span>
             <label class="auto-refresh-label" for="auto-refresh-toggle" title="Toggle 5-second automatic refresh">
                 <input type="checkbox" id="auto-refresh-toggle" checked />

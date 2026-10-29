@@ -514,6 +514,32 @@ def get_mirror_base_url(hostname: str) -> str:
     return f"{protocol}://{hostname}"
 
 
+def _check_mirror_after(hostname: str, delay_seconds: float) -> str | None:
+    """Wait a jittered delay, then probe a mirror (skipped entirely if its future was cancelled first)."""
+    if delay_seconds > 0:
+        time.sleep(delay_seconds)
+    return check_mirror(hostname)
+
+
+def record_request_outcome(url: str, success: bool, latency_ms: float = 0.0, error: str | None = None) -> None:
+    """Feed the outcome of a real search/details request back into mirror ranking.
+
+    A failure puts the mirror on backoff and drops it from the active-mirror cache so the next
+    request re-ranks instead of repeatedly hitting a mirror that is failing or blocking us.
+    """
+    parsed = urlparse(url)
+    if not parsed.netloc:
+        return
+    stat = get_mirror_stat(parsed.netloc)
+    with CACHE_LOCK:
+        if success:
+            stat.record_success(latency_ms, protocol="http" if parsed.scheme == "http" else "https")
+            return
+        stat.record_failure(error)
+        if mirror_cache.get("active_mirror") == parsed.netloc:
+            del mirror_cache["active_mirror"]
+
+
 def find_best_mirror() -> str | None:
     """Find the first reachable AudiobookBay mirror using concurrent checks."""
     # 1. Check Negative Cache (Backoff)
@@ -544,7 +570,12 @@ def find_best_mirror() -> str | None:
     failover_mirrors = mirrors[1:] if len(mirrors) > 1 else mirrors
     logger.debug(f"Primary down. Checking failover connectivity for {len(failover_mirrors)} mirrors...")
 
-    futures = [_mirror_executor.submit(check_mirror, host) for host in failover_mirrors]
+    # Stagger probes with random delays so failover never fires a simultaneous burst at every mirror.
+    futures = []
+    delay = 0.0
+    for host in failover_mirrors:
+        futures.append(_mirror_executor.submit(_check_mirror_after, host, delay))
+        delay += random.uniform(0.15, 0.5)  # noqa: S311
 
     for future in concurrent.futures.as_completed(futures):
         result = future.result()
@@ -556,11 +587,6 @@ def find_best_mirror() -> str | None:
             with CACHE_LOCK:
                 mirror_cache[cache_key] = result
             return result
-
-    logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
-    with CACHE_LOCK:
-        failure_cache["failure"] = True
-    return None
 
     logger.error("No working AudiobookBay mirrors found! Caching failure for 30s.")
     with CACHE_LOCK:
@@ -584,6 +610,7 @@ __all__ = [
     "details_cache",
     "fetch_remote_mirrors",
     "find_best_mirror",
+    "record_request_outcome",
     "get_active_search_mirrors",
     "get_all_mirror_stats",
     "get_mirror_stat",

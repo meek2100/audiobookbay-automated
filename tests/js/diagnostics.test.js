@@ -170,7 +170,7 @@ describe("diagnostics.js - Dashboard Controller", () => {
         toggle.checked = false;
         toggle.dispatchEvent(new Event("change"));
 
-        expect(countdownNum.textContent).toBe("↻");
+        expect(countdownNum.textContent).toBe("");
 
         mockFetch.mockClear();
         jest.advanceTimersByTime(10000);
@@ -190,7 +190,7 @@ describe("diagnostics.js - Dashboard Controller", () => {
         mockFetch.mockClear();
 
         pollBtn.dispatchEvent(new Event("click"));
-        expect(mockFetch).toHaveBeenCalledWith("/api/diagnostics/health");
+        expect(mockFetch).toHaveBeenCalledWith("/api/diagnostics/health?refresh=1");
         expect(mockFetch).toHaveBeenCalledWith("/api/diagnostics/logs?limit=150");
     });
 

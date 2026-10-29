@@ -9,7 +9,9 @@ from __future__ import annotations
 import logging
 import os
 import platform
+import random
 import resource
+import threading
 import time
 from typing import Any
 
@@ -22,6 +24,33 @@ from audiobook_automated.scraper import core, network
 logger = logging.getLogger(__name__)
 
 diagnostics_bp = Blueprint("diagnostics", __name__)
+
+# Download client logins are cached with a randomized TTL so the
+# page's frequent local polling never produces a fixed, bot-like cadence of outbound requests.
+PROBE_TTL_RANGE_SECONDS = (240.0, 480.0)
+MANUAL_REFRESH_MIN_INTERVAL_SECONDS = 30.0
+_probe_lock = threading.Lock()
+probe_cache: dict[str, Any] = {"expires": 0.0, "taken": 0.0, "clients": []}
+
+
+def _get_external_probes(force: bool) -> tuple[list[dict[str, Any]], list[dict[str, Any]], float]:
+    """Return (mirror results, client results, client probe age seconds).
+
+    Mirror data is a passive snapshot of the stats the app already collected from real traffic, so
+    polling never sends requests to mirrors. An explicit, throttled manual refresh actively probes them.
+    Download client checks are cached for a randomized TTL.
+    """
+    with _probe_lock:
+        now = time.monotonic()
+        throttled = now - probe_cache["taken"] < MANUAL_REFRESH_MIN_INTERVAL_SECONDS
+        manual = force and not throttled
+        if manual or now >= probe_cache["expires"]:
+            probe_cache["clients"] = _collect_client_diagnostics(torrent_manager)
+            probe_cache["taken"] = time.monotonic()
+            probe_cache["expires"] = probe_cache["taken"] + random.uniform(*PROBE_TTL_RANGE_SECONDS)  # noqa: S311
+        candidates = network.get_mirrors()[:8]
+        mirrors = _probe_candidate_mirrors(candidates) if manual else _snapshot_candidate_mirrors(candidates)
+        return mirrors, probe_cache["clients"], round(time.monotonic() - probe_cache["taken"], 1)
 
 
 def is_diagnostics_enabled() -> bool:
@@ -62,6 +91,27 @@ def _collect_system_info() -> dict[str, Any]:
         "pid": os.getpid(),
         "memory_rss_mb": memory_usage_mb,
     }
+
+
+def _snapshot_candidate_mirrors(candidate_mirrors: list[str]) -> list[dict[str, Any]]:
+    """Describe candidate mirrors from already-collected stats without sending any requests."""
+    snapshot: list[dict[str, Any]] = []
+    for mirror in candidate_mirrors:
+        stat = network.get_mirror_stat(mirror)
+        snapshot.append(
+            {
+                "hostname": mirror,
+                "reachable": stat.success_count > 0 and not stat.is_cooling_down,
+                "latency_ms": stat.last_latency_ms,
+                "ema_latency_ms": stat.ema_latency_ms,
+                "success_rate": round(stat.success_rate * 100, 1),
+                "cooling_down": stat.is_cooling_down,
+                "score": round(stat.score, 1),
+                "protocol": stat.protocol,
+                "is_parked": stat.is_parked_or_invalid,
+            }
+        )
+    return snapshot
 
 
 def _probe_candidate_mirrors(candidate_mirrors: list[str]) -> list[dict[str, Any]]:
@@ -153,8 +203,7 @@ def diagnostics_health() -> Response:
     t0 = time.perf_counter()
 
     sys_info = _collect_system_info()
-    candidate_mirrors = network.get_mirrors()[:8]
-    mirror_results = _probe_candidate_mirrors(candidate_mirrors)
+    mirror_results, clients_info, probe_age = _get_external_probes(request.args.get("refresh") == "1")
 
     with network.CACHE_LOCK:
         active_mirror = network.mirror_cache.get("active_mirror")
@@ -165,13 +214,13 @@ def diagnostics_health() -> Response:
     if not active_mirror and top_search_mirrors:
         active_mirror = top_search_mirrors[0]
 
-    clients_info = _collect_client_diagnostics(torrent_manager)
     elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     return jsonify(
         {
             "status": "healthy",
             "diagnostics_elapsed_ms": elapsed_ms,
+            "probe_age_seconds": probe_age,
             "system": sys_info,
             "mirrors": {
                 "active_mirror": active_mirror,

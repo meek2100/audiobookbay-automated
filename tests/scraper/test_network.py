@@ -659,3 +659,40 @@ def test_get_active_search_mirrors(app: Flask) -> None:
             network.get_mirror_stat(m).record_failure("error")
         fallback_active = network.get_active_search_mirrors(limit=2)
         assert len(fallback_active) == 2
+
+
+def test_record_request_outcome_success_and_failure(app: Flask) -> None:
+    """Real request outcomes update mirror stats; a failure backs off and drops the cached mirror."""
+    host = "outcome.example"
+    with app.app_context():
+        network.record_request_outcome("not-a-url", True)  # no netloc -> ignored
+        network.record_request_outcome(f"http://{host}/x", True, 120.0)
+        stat = network.get_mirror_stat(host)
+        assert stat.protocol == "http"
+        assert stat.success_count == 1
+
+        network.mirror_cache["active_mirror"] = host
+        network.record_request_outcome(f"https://{host}/x", False, error="boom")
+        assert stat.failure_count == 1
+        assert stat.is_cooling_down
+        assert "active_mirror" not in network.mirror_cache
+
+        # Failure on a different mirror leaves the cached active mirror alone.
+        network.mirror_cache["active_mirror"] = "other.example"
+        network.record_request_outcome(f"https://{host}/x", False)
+        assert network.mirror_cache["active_mirror"] == "other.example"
+        network.mirror_cache.clear()
+
+
+def test_check_mirror_after_delays_then_probes() -> None:
+    """The staggered failover probe sleeps its jittered delay before checking."""
+    with (
+        patch("audiobook_automated.scraper.network.time.sleep") as sleep,
+        patch("audiobook_automated.scraper.network.check_mirror", return_value="m.example") as check,
+    ):
+        assert network._check_mirror_after("m.example", 0.3) == "m.example"  # pyright: ignore[reportPrivateUsage]
+        sleep.assert_called_once_with(0.3)
+        sleep.reset_mock()
+        network._check_mirror_after("m.example", 0.0)  # pyright: ignore[reportPrivateUsage]
+        sleep.assert_not_called()
+        assert check.call_count == 2
