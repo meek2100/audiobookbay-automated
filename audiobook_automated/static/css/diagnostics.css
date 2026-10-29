@@ -1,7 +1,7 @@
 /* File: audiobook_automated/static/css/diagnostics.css */
 /**
  * Dedicated styles for the System Diagnostics & Health Dashboard.
- * Includes desktop glass aesthetics and full responsive layouts for mobile screens.
+ * Harmonized with Status, Search, and Details pages for consistent glass aesthetics and responsive viewports.
  */
 
 /* --- Diagnostics Header Hero (matches Status page glass header) --- */
@@ -29,7 +29,6 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    flex-wrap: wrap;
 }
 
 .diag-main-title {
@@ -43,8 +42,7 @@
 .diag-header-meta {
     display: flex;
     align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .auto-refresh-label,
@@ -66,7 +64,7 @@
 
 .auto-refresh-label input[type="checkbox"],
 .auto-scroll-label input[type="checkbox"] {
-    accent-color: var(--accent-color, #f7d070);
+    accent-color: var(--accent-color, #38bdf8);
     cursor: pointer;
     width: 15px;
     height: 15px;
@@ -76,6 +74,7 @@
 .diag-container {
     max-width: 1200px;
     margin: 0 auto;
+    width: 100%;
     padding: 0 0 40px 0;
     display: flex;
     flex-direction: column;
@@ -89,7 +88,7 @@
     padding: 24px;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow-soft, 0 10px 30px rgba(0, 0, 0, 0.35));
 }
 
 .diag-header {
@@ -106,7 +105,7 @@
 .diag-title {
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--text-color, #ffffff);
+    color: var(--text-main, #ffffff);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -160,6 +159,13 @@
     flex-direction: column;
     gap: 6px;
     min-width: 0;
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.diag-metric:hover {
+    border-color: rgba(255, 255, 255, 0.14);
 }
 
 .diag-label {
@@ -172,7 +178,7 @@
 .diag-val {
     font-size: 1.35rem;
     font-weight: 700;
-    color: var(--text-color, #ffffff);
+    color: var(--text-main, #ffffff);
     word-break: break-word;
 }
 
@@ -208,7 +214,7 @@
 
 .inspect-input:focus {
     outline: none;
-    border-color: var(--accent-color, #f7d070);
+    border-color: var(--accent-color, #38bdf8);
 }
 
 .inspect-btn {
@@ -222,7 +228,7 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     padding: 16px;
-    color: #38bdf8;
+    color: var(--accent-color, #38bdf8);
     max-height: 400px;
     overflow-y: auto;
     font-family: monospace;
@@ -243,7 +249,7 @@
     height: 14px;
     border: 2px solid rgba(255, 255, 255, 0.25);
     border-radius: 50%;
-    border-top-color: var(--accent-color, #f7d070);
+    border-top-color: var(--accent-color, #38bdf8);
     animation: diag-spin 0.8s linear infinite;
     vertical-align: middle;
 }
@@ -268,7 +274,7 @@
     .diag-header-main {
         flex-direction: column;
         align-items: flex-start;
-        gap: 14px;
+        gap: 12px;
     }
 
     .diag-header-meta {
@@ -277,7 +283,7 @@
     }
 
     .diag-container {
-        padding: 0 14px 30px 14px;
+        padding: 0 0 30px 0;
         gap: 18px;
     }
 
@@ -337,7 +343,7 @@
     }
 
     .diag-container {
-        padding: 0 10px 24px 10px;
+        padding: 0 0 24px 0;
         gap: 14px;
     }
 

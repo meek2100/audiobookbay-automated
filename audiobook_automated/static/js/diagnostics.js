@@ -53,7 +53,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Status & Environment
             const statusEl = document.getElementById("diag-status");
-            if (statusEl) statusEl.textContent = (data.status || "OK").toUpperCase();
+            const statusText = (data.status || "OK").toUpperCase();
+            if (statusEl) statusEl.textContent = statusText;
+
+            // Harmonize top status pill with health status
+            const statusPill = document.getElementById("diag-status-pill");
+            if (statusPill) {
+                const pillText = statusPill.querySelector(".client-pill-text");
+                if (statusText === "HEALTHY" || statusText === "OK") {
+                    statusPill.className = "status-client-pill";
+                    if (pillText) pillText.textContent = "Live System";
+                } else if (statusText === "DEGRADED" || statusText === "WARNING") {
+                    statusPill.className = "status-client-pill warning";
+                    if (pillText) pillText.textContent = "System Degraded";
+                } else {
+                    statusPill.className = "status-client-pill disconnected";
+                    if (pillText) pillText.textContent = "System Issue";
+                }
+            }
 
             const memEl = document.getElementById("diag-memory");
             if (memEl && data.system) memEl.textContent = data.system.memory_rss_mb + " MB";
