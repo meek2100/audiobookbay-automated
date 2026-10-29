@@ -118,6 +118,28 @@
     }
 }
 
+.auto-refresh-label {
+    font-size: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--text-muted, rgba(255, 255, 255, 0.7));
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.auto-refresh-label:hover {
+    color: var(--text-main, #ffffff);
+}
+
+.auto-refresh-label input[type="checkbox"] {
+    accent-color: var(--accent-color, #f7d070);
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+}
+
 .status-poll-indicator {
     display: inline-flex;
     align-items: center;

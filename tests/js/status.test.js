@@ -233,4 +233,26 @@ describe("status.js - Polling Mechanism", () => {
         jest.advanceTimersByTime(5000);
         expect(mockFetch).not.toHaveBeenCalled();
     });
+
+    test("Toggling auto-refresh off should pause polling", async () => {
+        document.body.innerHTML = `
+            <input type="checkbox" id="auto-refresh-toggle" checked />
+            <span id="poll-countdown-num">5</span>
+            <table><tbody id="status-table-body"></tbody></table>
+        `;
+        document.dispatchEvent(new Event("DOMContentLoaded"));
+        await flushPromises();
+
+        const toggle = document.getElementById("auto-refresh-toggle");
+        const countdownNum = document.getElementById("poll-countdown-num");
+
+        toggle.checked = false;
+        toggle.dispatchEvent(new Event("change"));
+
+        expect(countdownNum.textContent).toBe("↻");
+
+        mockFetch.mockClear();
+        jest.advanceTimersByTime(10000);
+        expect(mockFetch).not.toHaveBeenCalled();
+    });
 });
