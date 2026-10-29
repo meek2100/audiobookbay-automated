@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from flask import Flask
 
 from audiobook_automated.scraper import get_book_details
 from audiobook_automated.scraper.parser import BookDetails
@@ -329,3 +330,18 @@ def test_get_book_details_relative_url(mock_sleep: Any) -> None:
             details = get_book_details("/abss/relative-book/")
             assert details is not None
             assert details["title"] == "Relative URL Book"
+
+
+def test_get_book_details_network_failure_records_outcome(app: Flask) -> None:
+    """A connection failure while fetching details is fed back into mirror ranking."""
+    session = MagicMock()
+    session.get.side_effect = requests.ConnectionError("down")
+    with (
+        app.app_context(),
+        patch("audiobook_automated.scraper.core.network.get_session", return_value=session),
+        patch("audiobook_automated.scraper.core.network.get_mirrors", return_value=["audiobookbay.lu"]),
+        patch("audiobook_automated.scraper.core.network.record_request_outcome") as record,
+    ):
+        assert get_book_details("https://audiobookbay.lu/abss/x/", refresh=True) is None
+        record.assert_called_once()
+        assert record.call_args.args[:2] == ("https://audiobookbay.lu/abss/x/", False)

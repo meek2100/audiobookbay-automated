@@ -36,18 +36,19 @@ document.addEventListener("DOMContentLoaded", () => {
     let isFetchingLogs = false;
     let currentLogs = [];
     let countdown = 5;
+    let initialLoadDone = false;
 
     function formatTime(date) {
         return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     }
 
-    async function loadHealth() {
+    async function loadHealth(force = false) {
         if (isFetchingHealth) return;
         isFetchingHealth = true;
-        if (healthSpinner) healthSpinner.style.display = "inline-block";
+        if (healthSpinner && !initialLoadDone) healthSpinner.style.display = "inline-block";
 
         try {
-            const res = await fetch("/api/diagnostics/health");
+            const res = await fetch(force ? "/api/diagnostics/health?refresh=1" : "/api/diagnostics/health");
             if (!res.ok) throw new Error("Health check returned status " + res.status);
             const data = await res.json();
 
@@ -182,7 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadLogs() {
         if (!logViewer || isFetchingLogs) return;
         isFetchingLogs = true;
-        if (logsSpinner) logsSpinner.style.display = "inline-block";
+        if (logsSpinner && !initialLoadDone) logsSpinner.style.display = "inline-block";
 
         try {
             const res = await fetch("/api/diagnostics/logs?limit=150");
@@ -213,17 +214,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function refreshAll() {
+    async function refreshAll(force = false) {
         if (window.diagState.isFetching) return;
         window.diagState.isFetching = true;
         countdown = 5;
         window.diagState.countdown = countdown;
 
-        if (pollCountdownNum) pollCountdownNum.textContent = "↻";
+        if (pollCountdownNum) pollCountdownNum.textContent = "";
         if (pollIndicator) pollIndicator.classList.add("polling");
 
         try {
-            await Promise.all([loadHealth(), loadLogs()]);
+            await Promise.all([loadHealth(force === true), loadLogs()]);
+            initialLoadDone = true;
         } finally {
             window.diagState.isFetching = false;
             countdown = 5;
@@ -231,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (pollCountdownNum) {
                 const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
-                pollCountdownNum.textContent = isAuto ? "5" : "↻";
+                pollCountdownNum.textContent = isAuto ? "5" : "";
             }
             if (pollIndicator) {
                 setTimeout(() => pollIndicator.classList.remove("polling"), 400);
@@ -267,8 +269,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const countdownInterval = setInterval(() => {
         const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
         if (!isAuto) {
-            if (pollCountdownNum && pollCountdownNum.textContent !== "↻") {
-                pollCountdownNum.textContent = "↻";
+            if (pollCountdownNum && pollCountdownNum.textContent !== "") {
+                pollCountdownNum.textContent = "";
             }
             return;
         }
@@ -288,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (pollIndicator) {
         pollIndicator.addEventListener("click", () => {
-            refreshAll();
+            refreshAll(true);
         });
     }
 
@@ -302,7 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     pollIndicator.title = "Click to refresh diagnostics immediately (auto-refreshes every 5s)";
                 }
             } else {
-                if (pollCountdownNum) pollCountdownNum.textContent = "↻";
+                if (pollCountdownNum) pollCountdownNum.textContent = "";
                 if (pollIndicator) {
                     pollIndicator.title = "Click to refresh diagnostics immediately (auto-refresh paused)";
                 }

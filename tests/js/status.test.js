@@ -249,7 +249,7 @@ describe("status.js - Polling Mechanism", () => {
         toggle.checked = false;
         toggle.dispatchEvent(new Event("change"));
 
-        expect(countdownNum.textContent).toBe("↻");
+        expect(countdownNum.textContent).toBe("");
 
         mockFetch.mockClear();
         jest.advanceTimersByTime(10000);

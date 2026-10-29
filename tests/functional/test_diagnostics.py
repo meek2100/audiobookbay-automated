@@ -1,12 +1,27 @@
 # File: tests/functional/test_diagnostics.py
 """Tests for the diagnostics endpoints and dashboard."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
+from audiobook_automated import diagnostics
 from audiobook_automated.extensions import torrent_manager
+
+
+@pytest.fixture(autouse=True)
+def _resetprobe_cache() -> None:
+    """Expire the external probe cache so each test starts with a fresh probe."""
+    diagnostics.probe_cache.update({"expires": 0.0, "taken": 0.0, "mirrors": [], "clients": []})
+
+
+def _fresh_get(client: FlaskClient) -> Any:
+    """GET the health endpoint after expiring the probe cache."""
+    diagnostics.probe_cache["expires"] = 0.0
+    return client.get("/api/diagnostics/health")
 
 
 def test_diagnostics_disabled_by_default(app: Flask, client: FlaskClient) -> None:
@@ -52,7 +67,7 @@ def test_diagnostics_health_api(app: Flask, client: FlaskClient) -> None:
 
     with patch.object(torrent_manager, "clients", {"client1": strat_mock, "client2": strat_fail}):
         with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
-            resp = client.get("/api/diagnostics/health")
+            resp = _fresh_get(client)
             assert resp.status_code == 200
             data = resp.get_json()
             assert data["status"] == "healthy"
@@ -80,7 +95,7 @@ def test_diagnostics_health_api_single_client_statuses(app: Flask, client: Flask
         with patch.object(torrent_manager, "client", client_inst):
             with patch.object(torrent_manager, "verify_credentials", return_value=False):
                 with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
-                    resp = client.get("/api/diagnostics/health")
+                    resp = _fresh_get(client)
                     assert resp.status_code == 200
                     data = resp.get_json()
                     assert data["clients"][0]["status"] == "IP Banned"
@@ -92,7 +107,7 @@ def test_diagnostics_health_api_single_client_statuses(app: Flask, client: Flask
         with patch.object(torrent_manager, "client", client_inst):
             with patch.object(torrent_manager, "verify_credentials", return_value=False):
                 with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
-                    resp = client.get("/api/diagnostics/health")
+                    resp = _fresh_get(client)
                     assert resp.status_code == 200
                     data = resp.get_json()
                     assert data["clients"][0]["status"] == "Auth Cooldown"
@@ -104,7 +119,7 @@ def test_diagnostics_health_api_single_client_statuses(app: Flask, client: Flask
         with patch.object(torrent_manager, "client", client_inst):
             with patch.object(torrent_manager, "verify_credentials", return_value=False):
                 with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
-                    resp = client.get("/api/diagnostics/health")
+                    resp = _fresh_get(client)
                     assert resp.status_code == 200
                     data = resp.get_json()
                     assert data["clients"][0]["status"] == "Auth Failed"
@@ -157,7 +172,7 @@ def test_diagnostics_health_api_configured_clients_statuses(app: Flask, client: 
 
     with patch.object(torrent_manager, "clients", clients_dict):
         with patch("audiobook_automated.scraper.network.check_mirror", return_value="audiobookbay.lu"):
-            resp = client.get("/api/diagnostics/health")
+            resp = _fresh_get(client)
             assert resp.status_code == 200
             data = resp.get_json()
             assert data["clients"][0]["status"] == "IP Banned"
@@ -175,7 +190,7 @@ def test_diagnostics_health_api_resource_exception(app: Flask, client: FlaskClie
     with patch.object(torrent_manager, "clients", {}):
         with patch("resource.getrusage", side_effect=Exception("ru_maxrss error")):
             with patch("audiobook_automated.scraper.network.check_mirror", return_value=None):
-                resp = client.get("/api/diagnostics/health")
+                resp = _fresh_get(client)
                 assert resp.status_code == 200
                 data = resp.get_json()
                 assert data["system"]["memory_rss_mb"] == 0.0
@@ -260,3 +275,37 @@ def test_diagnostics_logs_endpoints(app: Flask, client: FlaskClient) -> None:
     assert "Content-Disposition" in resp_dl.headers
     assert "audiobookbay-automated-logs.txt" in resp_dl.headers["Content-Disposition"]
     assert b"Test log entry for diagnostics endpoint" in resp_dl.data
+
+
+def test_diagnostics_health_polling_is_passive_and_manual_refresh_probes(app: Flask, client: FlaskClient) -> None:
+    """Polling never probes mirrors; only a throttled manual refresh does. Client checks use a jittered TTL."""
+    app.config["ENABLE_DIAGNOSTICS"] = True
+    with (
+        patch("audiobook_automated.diagnostics._probe_candidate_mirrors", return_value=[]) as mirrors,
+        patch("audiobook_automated.diagnostics._collect_client_diagnostics", return_value=[]) as clients,
+        patch("audiobook_automated.diagnostics.network.get_mirrors", return_value=["a.example"]),
+    ):
+        assert client.get("/api/diagnostics/health").status_code == 200
+        body = client.get("/api/diagnostics/health").get_json()
+        assert mirrors.call_count == 0
+        assert clients.call_count == 1
+        assert body["mirrors"]["mirrors"][0]["hostname"] == "a.example"
+        assert "probe_age_seconds" in body
+
+        # Forced refresh inside the throttle window is ignored.
+        client.get("/api/diagnostics/health?refresh=1")
+        assert mirrors.call_count == 0
+
+        # Once the throttle window has passed, a forced refresh actively probes.
+        diagnostics.probe_cache["taken"] -= diagnostics.MANUAL_REFRESH_MIN_INTERVAL_SECONDS + 1
+        client.get("/api/diagnostics/health?refresh=1")
+        assert mirrors.call_count == 1
+        assert clients.call_count == 2
+
+
+def test_probe_candidate_mirrors_reports_stats() -> None:
+    """The active probe runs check_mirror and reports the resulting stats."""
+    with patch("audiobook_automated.diagnostics.network.check_mirror", return_value="p.example"):
+        results = diagnostics._probe_candidate_mirrors(["p.example"])  # pyright: ignore[reportPrivateUsage]
+    assert results[0]["hostname"] == "p.example"
+    assert results[0]["reachable"] is True

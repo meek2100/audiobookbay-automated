@@ -185,8 +185,10 @@ def fetch_page_results(url: str) -> list[BookSummary]:
         time.sleep(random.uniform(0.5, 1.5))  # noqa: S311
         try:
             session = network.get_session()
+            started = time.perf_counter()
             response = session.get(url, timeout=10)
             response.raise_for_status()
+            network.record_request_outcome(url, True, round((time.perf_counter() - started) * 1000, 2))
 
             soup = parser.parse_html(response.text)
             parsed_results = parser.parse_search_results(soup, url)
@@ -195,8 +197,10 @@ def fetch_page_results(url: str) -> list[BookSummary]:
         except (network.requests.ConnectionError, network.requests.Timeout):
             # Do not expose raw URL in logs if it contains sensitive info (unlikely here)
             logger.warning("Search: Connection error fetching page: %s", url)
+            network.record_request_outcome(url, False, error="Connection error or timeout")
             return []
-        except network.requests.HTTPError:
+        except network.requests.HTTPError as e:
+            network.record_request_outcome(url, False, error=str(e))
             # Re-raise HTTP errors (4xx/5xx) to allow search_audiobookbay to handle invalidation
             raise
         except Exception:
@@ -246,8 +250,10 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
         # 2. Fetch Page
         # Ensure we have a valid session with headers (User-Agent)
         session = network.get_session()
+        started = time.perf_counter()
         response = session.get(url, timeout=15)
         response.raise_for_status()
+        network.record_request_outcome(url, True, round((time.perf_counter() - started) * 1000, 2))
 
         # 3. Parse Content
         soup = parser.parse_html(response.text)
@@ -259,6 +265,9 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
                 network.details_cache[url] = book_details
             return cast(dict[str, Any], book_details)
 
+    except (network.requests.ConnectionError, network.requests.Timeout, network.requests.HTTPError) as e:
+        network.record_request_outcome(url, False, error=str(e))
+        logger.error("Details: Failed to fetch details for %s: %s", url, e)
     except Exception as e:
         logger.error("Details: Failed to fetch details for %s: %s", url, e)
 

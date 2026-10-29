@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isFetching) return;
         isFetching = true;
         countdown = 5;
-        if (pollCountdownNum) pollCountdownNum.textContent = "↻";
+        if (pollCountdownNum) pollCountdownNum.textContent = "";
         try {
             if (pollIndicator) pollIndicator.classList.add("polling");
             const response = await fetch("/status?json=1");
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
             countdown = 5;
             if (pollCountdownNum) {
                 const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
-                pollCountdownNum.textContent = isAuto ? "5" : "↻";
+                pollCountdownNum.textContent = isAuto ? "5" : "";
             }
             if (pollIndicator) {
                 setTimeout(() => pollIndicator.classList.remove("polling"), 400);
@@ -89,8 +89,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const countdownInterval = setInterval(() => {
         const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
         if (!isAuto) {
-            if (pollCountdownNum && pollCountdownNum.textContent !== "↻") {
-                pollCountdownNum.textContent = "↻";
+            if (pollCountdownNum && pollCountdownNum.textContent !== "") {
+                pollCountdownNum.textContent = "";
             }
             return;
         }
@@ -122,7 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     pollIndicator.title = "Click to refresh status immediately (auto-refreshes every 5s)";
                 }
             } else {
-                if (pollCountdownNum) pollCountdownNum.textContent = "↻";
+                if (pollCountdownNum) pollCountdownNum.textContent = "";
                 if (pollIndicator) {
                     pollIndicator.title = "Click to refresh status immediately (auto-refresh paused)";
                 }
