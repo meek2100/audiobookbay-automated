@@ -267,7 +267,7 @@ def test_get_book_details_info_hash_method_2(mock_sleep: Any) -> None:
     """Test info hash extraction method 2 (table row lookup)."""
     html = """
     <div class="post">
-        <div class="postTitle"><h1>Strategy 2 Book</h1></div>
+        <div class="postTitle"><h1>Method 2 Book</h1></div>
         <table>
             <tr>
                 <td>Info Hash:</td>
@@ -292,7 +292,7 @@ def test_get_book_details_info_hash_method_3(mock_sleep: Any) -> None:
     """Test info hash extraction method 3 (body text regex)."""
     html = """
     <div class="post">
-        <div class="postTitle"><h1>Strategy 3 Book</h1></div>
+        <div class="postTitle"><h1>Method 3 Book</h1></div>
         <div class="postContent">
             Some text containing the hash 5555555555666666666677777777778888888888 in the body.
         </div>
