@@ -10,6 +10,7 @@ from flask.testing import FlaskClient
 
 from audiobook_automated import diagnostics
 from audiobook_automated.extensions import torrent_manager
+from audiobook_automated.scraper import network
 
 
 @pytest.fixture(autouse=True)
@@ -280,8 +281,9 @@ def test_diagnostics_logs_endpoints(app: Flask, client: FlaskClient) -> None:
 def test_diagnostics_health_polling_is_passive_and_manual_refresh_probes(app: Flask, client: FlaskClient) -> None:
     """Polling never probes mirrors; only a throttled manual refresh does. Client checks use a jittered TTL."""
     app.config["ENABLE_DIAGNOSTICS"] = True
+    network.get_mirror_stat("a.example").record_success(50.0)  # already tested: no seeding probe
     with (
-        patch("audiobook_automated.diagnostics._probe_candidate_mirrors", return_value=[]) as mirrors,
+        patch("audiobook_automated.diagnostics._start_background_probe") as mirrors,
         patch("audiobook_automated.diagnostics._collect_client_diagnostics", return_value=[]) as clients,
         patch("audiobook_automated.diagnostics.network.get_mirrors", return_value=["a.example"]),
     ):
@@ -309,3 +311,47 @@ def test_probe_candidate_mirrors_reports_stats() -> None:
         results = diagnostics._probe_candidate_mirrors(["p.example"])  # pyright: ignore[reportPrivateUsage]
     assert results[0]["hostname"] == "p.example"
     assert results[0]["reachable"] is True
+
+
+def test_background_probe_runs_once_and_clears_flag() -> None:
+    """The background probe runs on a thread, ignores overlapping requests and always resets its flag."""
+    started: list[Any] = []
+
+    class _InlineThread:
+        def __init__(self, target: Any, **_: Any) -> None:
+            self.target = target
+
+        def start(self) -> None:
+            started.append(self)
+            self.target()
+
+    with (
+        patch("audiobook_automated.diagnostics.threading.Thread", _InlineThread),
+        patch("audiobook_automated.diagnostics._probe_candidate_mirrors") as probe,
+    ):
+        diagnostics._start_background_probe(["a.example"])  # pyright: ignore[reportPrivateUsage]
+        assert probe.call_count == 1
+        assert diagnostics.probe_state["running"] is False
+
+        probe.side_effect = RuntimeError("boom")
+        diagnostics._start_background_probe(["a.example"])  # pyright: ignore[reportPrivateUsage]
+        assert diagnostics.probe_state["running"] is False
+
+        diagnostics.probe_state["running"] = True
+        diagnostics._start_background_probe(["a.example"])  # pyright: ignore[reportPrivateUsage]
+        assert len(started) == 2
+        diagnostics.probe_state["running"] = False
+
+
+def test_snapshot_marks_untested_mirrors_and_seeds_probe(app: Flask, client: FlaskClient) -> None:
+    """Mirrors with no traffic report tested=False and trigger a single background probe."""
+    app.config["ENABLE_DIAGNOSTICS"] = True
+    with (
+        patch("audiobook_automated.diagnostics._start_background_probe") as probe,
+        patch("audiobook_automated.diagnostics._collect_client_diagnostics", return_value=[]),
+        patch("audiobook_automated.diagnostics.network.get_mirrors", return_value=["untested-zzz.example"]),
+    ):
+        body = client.get("/api/diagnostics/health").get_json()
+    assert body["mirrors"]["mirrors"][0]["tested"] is False
+    assert body["mirrors"]["mirrors"][0]["reachable"] is False
+    probe.assert_called_once()

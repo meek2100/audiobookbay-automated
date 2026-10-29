@@ -20,6 +20,8 @@
     /* --- Spacing & Dimensions --- */
     --max-content-width: 95vw;
     --header-height: 56px; /* Ultra-slim top bar with universal hamburger */
+    --edge-inset: 24px; /* Shared right-edge inset: hamburger, nav drawer and scroll-to-top button */
+    --fab-size: 44px; /* Shared size of the hamburger and scroll-to-top buttons */
     --border-radius: 16px;
     --btn-radius: 50px;
 }
@@ -281,8 +283,12 @@ body {
         font-size: 2.2rem;
     }
 
+    :root {
+        --edge-inset: 18px;
+    }
+
     .nav-container {
-        padding: 0 18px;
+        padding: 0 var(--edge-inset);
         gap: 12px;
     }
 
@@ -331,11 +337,10 @@ body {
 
 .nav-container {
     width: 100%;
-    max-width: var(--max-content-width);
     display: flex;
     justify-content: flex-end; /* Pushes hamburger button to the top right */
     align-items: center;
-    padding: 0 24px;
+    padding: 0 var(--edge-inset);
     position: relative;
     pointer-events: auto; /* Re-enables clicks for hamburger button */
 }
@@ -353,8 +358,8 @@ body {
     justify-content: center;
     align-items: center;
     gap: 5px;
-    width: 44px;
-    height: 44px;
+    width: var(--fab-size);
+    height: var(--fab-size);
     padding: 0;
     z-index: 1003;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -424,7 +429,7 @@ body {
 .nav-links {
     position: fixed;
     top: calc(var(--header-height) + 6px);
-    right: 24px;
+    right: var(--edge-inset);
     width: 320px;
     max-width: calc(100vw - 32px);
     background: var(--glass-bg);
@@ -1005,8 +1010,12 @@ a.category-tag:hover,
     }
 
     /* Navbar compacting */
+    :root {
+        --edge-inset: 16px;
+    }
+
     .nav-container {
-        padding: 0 16px;
+        padding: 0 var(--edge-inset);
     }
 
     /* Option 4 Masthead Mobile Scaling */
@@ -1073,20 +1082,17 @@ a.category-tag:hover,
 @media (max-width: 420px) {
     :root {
         --header-height: 50px;
+        --edge-inset: 12px;
+        --fab-size: 38px;
     }
 
     .nav-container {
-        padding: 0 12px;
+        padding: 0 var(--edge-inset);
     }
 
     .masthead-logo-img {
         height: 85px;
         max-height: 85px;
-    }
-
-    .mobile-menu-btn {
-        width: 38px;
-        height: 38px;
     }
 }
 
@@ -1137,9 +1143,9 @@ select option {
 .scroll-to-top-btn {
     position: fixed;
     bottom: calc(28px + env(safe-area-inset-bottom, 0px));
-    right: calc(28px + env(safe-area-inset-right, 0px));
-    width: 46px;
-    height: 46px;
+    right: calc(var(--edge-inset) + env(safe-area-inset-right, 0px));
+    width: var(--fab-size);
+    height: var(--fab-size);
     border-radius: 50%;
     background: var(--glass-bg, rgba(20, 25, 35, 0.85));
     border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.2));
@@ -1192,9 +1198,6 @@ select option {
 @media (max-width: 768px) {
     .scroll-to-top-btn {
         bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-        right: calc(18px + env(safe-area-inset-right, 0px));
-        width: 42px;
-        height: 42px;
     }
 }
 

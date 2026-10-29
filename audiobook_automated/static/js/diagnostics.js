@@ -96,21 +96,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     metric.className = "diag-metric";
                     const isParked = m.is_parked;
                     const isCooling = m.cooling_down && !isParked;
+                    const isUntested = m.tested === false;
                     const latencyText = m.reachable ? `${m.latency_ms} ms` : "Offline";
-                    const statusColor = isParked
-                        ? "#ef4444"
-                        : isCooling
-                          ? "#f59e0b"
-                          : m.reachable
-                            ? "#4ade80"
-                            : "#f87171";
-                    const statusLabel = isParked
-                        ? "Parked / Invalid"
-                        : isCooling
-                          ? "Cooldown"
-                          : m.reachable
-                            ? latencyText
-                            : "Offline";
+                    const statusColor = isUntested
+                        ? "var(--text-muted, #94a3b8)"
+                        : isParked
+                          ? "#ef4444"
+                          : isCooling
+                            ? "#f59e0b"
+                            : m.reachable
+                              ? "#4ade80"
+                              : "#f87171";
+                    const statusLabel = isUntested
+                        ? "Not tested yet"
+                        : isParked
+                          ? "Parked / Invalid"
+                          : isCooling
+                            ? "Cooldown"
+                            : m.reachable
+                              ? latencyText
+                              : "Offline";
                     const isTopRanked = index < 3 && m.reachable && !isCooling && !isParked;
                     const rankBadgeColor = isTopRanked ? "#38bdf8" : "var(--text-muted, #94a3b8)";
                     const protoLabel = (m.protocol || "https").toUpperCase();

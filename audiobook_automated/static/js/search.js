@@ -478,6 +478,13 @@ function createResultRowElement(book) {
  * @param {string} query - The search query term.
  * @returns {Promise<boolean>} - True if more results might exist, false if exhausted or errored.
  */
+function showEndOfResults() {
+    const indicator = document.getElementById("load-more-indicator");
+    const endNote = document.getElementById("load-more-end");
+    if (indicator) indicator.style.display = "none";
+    if (endNote) endNote.style.display = "block";
+}
+
 async function loadNextPage(query) {
     if (isLoadingMore || !hasMorePages || !query) return false;
 
@@ -505,7 +512,7 @@ async function loadNextPage(query) {
         const data = await response.json();
         if (!data.books || data.books.length === 0) {
             hasMorePages = false;
-            if (indicator) indicator.style.display = "none";
+            showEndOfResults();
             return false;
         }
 
@@ -523,11 +530,17 @@ async function loadNextPage(query) {
         applyFilters();
 
         if (!hasMorePages) {
-            if (indicator) indicator.style.display = "none";
+            showEndOfResults();
         } else {
             // Keep indicator visible so IntersectionObserver can trigger subsequent pages when user scrolls
             if (loadingSpinner) loadingSpinner.style.display = "none";
             if (loadMoreBtn) loadMoreBtn.style.display = "inline-block";
+            // IntersectionObserver only fires on visibility changes: re-observe so a sentinel that is
+            // still on screen after this page keeps loading automatically (the button is only a fallback).
+            if (infiniteScrollObserver && indicator) {
+                infiniteScrollObserver.unobserve(indicator);
+                infiniteScrollObserver.observe(indicator);
+            }
         }
 
         return hasMorePages;
@@ -635,7 +648,11 @@ async function streamRemainingPages(query, startPage = 2, maxPage = 5) {
         }
     }
 
-    if (indicator) indicator.style.display = "none";
+    if (!hasMorePages) {
+        showEndOfResults();
+    } else if (indicator) {
+        indicator.style.display = "none";
+    }
 }
 
 /**

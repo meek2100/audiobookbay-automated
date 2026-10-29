@@ -30,7 +30,28 @@ diagnostics_bp = Blueprint("diagnostics", __name__)
 PROBE_TTL_RANGE_SECONDS = (240.0, 480.0)
 MANUAL_REFRESH_MIN_INTERVAL_SECONDS = 30.0
 _probe_lock = threading.Lock()
+probe_state: dict[str, bool] = {"running": False}
 probe_cache: dict[str, Any] = {"expires": 0.0, "taken": 0.0, "clients": []}
+
+
+def _start_background_probe(candidates: list[str]) -> None:
+    """Probe mirrors on a worker thread so a slow or timing-out mirror never stalls the HTTP response.
+
+    The probe updates the shared mirror stats, so the next poll reports the fresh results.
+    """
+    if probe_state["running"]:
+        return
+    probe_state["running"] = True
+
+    def _run() -> None:
+        try:
+            _probe_candidate_mirrors(candidates)
+        except Exception:
+            logger.exception("Diagnostics: background mirror probe failed")
+        finally:
+            probe_state["running"] = False
+
+    threading.Thread(target=_run, name="diagnostics-mirror-probe", daemon=True).start()
 
 
 def _get_external_probes(force: bool) -> tuple[list[dict[str, Any]], list[dict[str, Any]], float]:
@@ -49,7 +70,11 @@ def _get_external_probes(force: bool) -> tuple[list[dict[str, Any]], list[dict[s
             probe_cache["taken"] = time.monotonic()
             probe_cache["expires"] = probe_cache["taken"] + random.uniform(*PROBE_TTL_RANGE_SECONDS)  # noqa: S311
         candidates = network.get_mirrors()[:8]
-        mirrors = _probe_candidate_mirrors(candidates) if manual else _snapshot_candidate_mirrors(candidates)
+        never_tested = not any(network.get_mirror_stat(m).total_requests for m in candidates)
+        if manual or never_tested:
+            # With no traffic yet every mirror is unknown; probe once in the background to seed real data.
+            _start_background_probe(candidates)
+        mirrors = _snapshot_candidate_mirrors(candidates)
         return mirrors, probe_cache["clients"], round(time.monotonic() - probe_cache["taken"], 1)
 
 
@@ -101,6 +126,7 @@ def _snapshot_candidate_mirrors(candidate_mirrors: list[str]) -> list[dict[str, 
         snapshot.append(
             {
                 "hostname": mirror,
+                "tested": stat.total_requests > 0,
                 "reachable": stat.success_count > 0 and not stat.is_cooling_down,
                 "latency_ms": stat.last_latency_ms,
                 "ema_latency_ms": stat.ema_latency_ms,
@@ -125,6 +151,7 @@ def _probe_candidate_mirrors(candidate_mirrors: list[str]) -> list[dict[str, Any
         mirror_results.append(
             {
                 "hostname": mirror,
+                "tested": True,
                 "reachable": active,
                 "latency_ms": latency_ms,
                 "ema_latency_ms": stat.ema_latency_ms,
@@ -221,6 +248,7 @@ def diagnostics_health() -> Response:
             "status": "healthy",
             "diagnostics_elapsed_ms": elapsed_ms,
             "probe_age_seconds": probe_age,
+            "mirror_probe_running": probe_state["running"],
             "system": sys_info,
             "mirrors": {
                 "active_mirror": active_mirror,
