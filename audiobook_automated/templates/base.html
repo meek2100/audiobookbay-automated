@@ -9,7 +9,11 @@
         <title>{% block title %}{{ site_title }}{% endblock %}</title>
         <script nonce="{{ csp_nonce() }}">
             // Immediate splash screen check to prevent FOUC
-            if (sessionStorage.getItem("splashShown") || localStorage.getItem("splashShown")) {
+            if (
+                {{ 'false' if splash_enabled else 'true' }} ||
+                sessionStorage.getItem("splashShown") ||
+                localStorage.getItem("splashShown")
+            ) {
                 document.documentElement.classList.add("no-splash");
             }
             window.APP_VERSION = "{{ static_version }}";

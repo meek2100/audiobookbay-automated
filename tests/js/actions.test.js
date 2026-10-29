@@ -391,6 +391,15 @@ describe("actions.js - Splash Screen & Morph Animation", () => {
         expect(overlay.style.display).toBe("none");
     });
 
+    test("initSplashScreen adds no-splash class if overlay is absent (e.g. diagnostics page)", () => {
+        document.documentElement.classList.remove("no-splash");
+        document.body.innerHTML = '<div class="content">Diagnostics</div>';
+
+        initSplashScreen();
+
+        expect(document.documentElement.classList.contains("no-splash")).toBe(true);
+    });
+
     test("initSplashScreen dismisses text splash after configured duration", () => {
         document.body.innerHTML += `
             <div id="splash-overlay" data-splash-duration="2000">
