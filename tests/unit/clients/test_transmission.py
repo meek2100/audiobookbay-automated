@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 
-from audiobook_automated.clients.transmission import Strategy as TransmissionClient
+from audiobook_automated.clients.transmission import TransmissionClient
 
 
 def test_transmission_add_magnet(app: Flask) -> None:
@@ -20,9 +20,9 @@ def test_transmission_add_magnet(app: Flask) -> None:
         current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        strategy.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        client.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
 
         mock_instance.add_torrent.assert_called_with(
             "magnet:?xt=urn:btih:DEF", download_dir="/downloads/Book", labels=["audiobooks"]
@@ -45,9 +45,9 @@ def test_transmission_add_magnet_fallback(app: Flask) -> None:
             None,  # Success on second call
         ]
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        strategy.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        client.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
 
         assert mock_instance.add_torrent.call_count == 2
         # First call has labels
@@ -70,11 +70,11 @@ def test_transmission_add_magnet_generic_error(app: Flask) -> None:
         mock_instance = MockTxClient.return_value
         mock_instance.add_torrent.side_effect = Exception("Disk Full")
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
 
         with pytest.raises(Exception) as exc:
-            strategy.add_magnet("magnet:...", "/path", "cat")
+            client.add_magnet("magnet:...", "/path", "cat")
         assert "Disk Full" in str(exc.value)
 
 
@@ -89,9 +89,9 @@ def test_remove_torrent_transmission_int_id(app: Flask) -> None:
         current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        strategy.remove_torrent("123")
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        client.remove_torrent("123")
 
         mock_instance.remove_torrent.assert_called_with(ids=[123], delete_data=False)
 
@@ -107,9 +107,9 @@ def test_remove_torrent_transmission_hash_id(app: Flask) -> None:
         current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        strategy.remove_torrent("hash123")
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        client.remove_torrent("hash123")
 
         mock_instance.remove_torrent.assert_called_with(ids=["hash123"], delete_data=False)
 
@@ -137,9 +137,9 @@ def test_get_status_transmission(app: Flask) -> None:
 
         mock_instance.get_torrents.return_value = [mock_torrent]
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        results = strategy.get_status("cat")
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        results = client.get_status("cat")
 
         mock_instance.get_torrents.assert_called_with(
             arguments=["id", "name", "percentDone", "status", "totalSize", "labels"]
@@ -173,9 +173,9 @@ def test_get_status_transmission_robustness(app: Flask) -> None:
 
         mock_instance.get_torrents.return_value = [mock_torrent_bad]
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        results = strategy.get_status("cat")
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        results = client.get_status("cat")
 
         assert len(results) == 1
         assert results[0].name == "Bad Torrent"
@@ -209,16 +209,16 @@ def test_get_status_transmission_filtering(app: Flask) -> None:
 
         mock_instance.get_torrents.return_value = [t1, t2]
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        results = strategy.get_status("cat1")
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        results = client.get_status("cat1")
 
         assert len(results) == 1
         assert results[0].name == "T1"
 
 
 def test_transmission_close(app: Flask) -> None:
-    """Test closing Transmission strategy."""
+    """Test closing Transmission client."""
     with (
         patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
         app.app_context(),
@@ -229,23 +229,23 @@ def test_transmission_close(app: Flask) -> None:
         # Mock successful connection
         MockTxClient.return_value = MagicMock()
 
-        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
-        strategy.connect()
-        assert strategy.client is not None
-        strategy.close()
-        assert strategy.client is None
+        client = TransmissionClient("localhost", 9091, "admin", "admin")
+        client.connect()
+        assert client.client is not None
+        client.close()
+        assert client.client is None
 
 
 def test_transmission_not_connected() -> None:
     """Test errors when client is not connected."""
-    strategy = TransmissionClient("localhost", 9091, "admin", "admin")
+    client = TransmissionClient("localhost", 9091, "admin", "admin")
     # Do NOT connect
 
     with pytest.raises(ConnectionError, match="Transmission client not connected"):
-        strategy.add_magnet("magnet:...", "/path", "cat")
+        client.add_magnet("magnet:...", "/path", "cat")
 
     with pytest.raises(ConnectionError, match="Transmission client not connected"):
-        strategy.remove_torrent("123")
+        client.remove_torrent("123")
 
     with pytest.raises(ConnectionError, match="Transmission client not connected"):
-        strategy.get_status("cat")
+        client.get_status("cat")

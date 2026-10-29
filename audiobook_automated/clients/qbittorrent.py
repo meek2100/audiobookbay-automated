@@ -237,8 +237,3 @@ class QBittorrentClient(TorrentClientPlugin):
                 )
             )
         return results
-
-
-# Backward compatibility aliases
-QbittorrentStrategy = QBittorrentClient
-Strategy = QBittorrentClient

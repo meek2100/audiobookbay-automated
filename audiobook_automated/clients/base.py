@@ -196,7 +196,3 @@ class TorrentClientPlugin(ABC):
         except Exception:  # noqa: S110
             # Swallow errors during GC to prevent noisy stderr output
             pass  # pragma: no cover
-
-
-# Backward compatibility alias
-TorrentClientStrategy = TorrentClientPlugin

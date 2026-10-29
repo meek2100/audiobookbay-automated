@@ -110,8 +110,3 @@ class TransmissionClient(TorrentClientPlugin):
                     )
                 )
         return results
-
-
-# Backward compatibility aliases
-TransmissionStrategy = TransmissionClient
-Strategy = TransmissionClient

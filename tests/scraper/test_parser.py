@@ -498,8 +498,8 @@ def test_get_text_after_label_not_found() -> None:
     assert get_text_after_label(container, re.compile(r"Missing:")) == "Unknown"
 
 
-def test_get_text_after_label_strategy2_fallback() -> None:
-    """Test Strategy 2 (text split) fallbacks."""
+def test_get_text_after_label_method2_fallback() -> None:
+    """Test method 2 (text split) fallbacks."""
     # Case 1: No colon
     html_no_colon = "<p>Format MP3</p>"
     soup = BeautifulSoup(html_no_colon, "lxml")

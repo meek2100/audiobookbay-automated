@@ -6,11 +6,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from audiobook_automated.clients.base import TorrentClientStrategy, TorrentStatus
+from audiobook_automated.clients.base import TorrentClientPlugin, TorrentStatus
 from audiobook_automated.utils import format_size
 
 
-class MockStrategy(TorrentClientStrategy):
+class MockClient(TorrentClientPlugin):
     """Minimal implementation of abstract base class for testing."""
 
     @override
@@ -74,46 +74,46 @@ def test_format_size_parameterized(input_bytes: Any, expected: str) -> None:
     assert format_size(input_bytes) == expected
 
 
-def test_strategy_cleanup() -> None:
+def test_client_cleanup() -> None:
     """Test that __del__ calls close()."""
-    strategy = MockStrategy("host", 80, "u", "p")
-    strategy.close = MagicMock()  # type: ignore
+    client = MockClient("host", 80, "u", "p")
+    client.close = MagicMock()  # type: ignore
 
     # Simulate garbage collection
-    strategy.__del__()
-    strategy.close.assert_called_once()
+    client.__del__()
+    client.close.assert_called_once()
 
 
-def test_strategy_cleanup_error() -> None:
+def test_client_cleanup_error() -> None:
     """Test that errors in __del__ are suppressed."""
-    strategy = MockStrategy("host", 80, "u", "p")
-    strategy.close = MagicMock(side_effect=Exception("Close Error"))  # type: ignore
+    client = MockClient("host", 80, "u", "p")
+    client.close = MagicMock(side_effect=Exception("Close Error"))  # type: ignore
 
     # Should not raise
-    strategy.__del__()
-    strategy.close.assert_called_once()
+    client.__del__()
+    client.close.assert_called_once()
 
 
 def test_base_verify_credentials_failure() -> None:
     """Test verify_credentials returns False on exception."""
-    strategy = MockStrategy("h", 1, "u", "p")
-    strategy.connect = MagicMock(side_effect=Exception("Connection Failed"))  # type: ignore
-    assert strategy.verify_credentials() is False
+    client = MockClient("h", 1, "u", "p")
+    client.connect = MagicMock(side_effect=Exception("Connection Failed"))  # type: ignore
+    assert client.verify_credentials() is False
 
 
 def test_base_verify_credentials_success() -> None:
     """Test verify_credentials returns True on success."""
-    strategy = MockStrategy("h", 1, "u", "p")
-    # connect is a pass in MockStrategy, so it succeeds
-    assert strategy.verify_credentials() is True
+    client = MockClient("h", 1, "u", "p")
+    # connect is a pass in MockClient, so it succeeds
+    assert client.verify_credentials() is True
 
 
 def test_base_teardown() -> None:
     """Test teardown calls close."""
-    strategy = MockStrategy("h", 1, "u", "p")
-    strategy.close = MagicMock()  # type: ignore
-    strategy.teardown()
-    strategy.close.assert_called_once()
+    client = MockClient("h", 1, "u", "p")
+    client.close = MagicMock()  # type: ignore
+    client.teardown()
+    client.close.assert_called_once()
 
 
 def test_torrent_status_state_normalization() -> None:

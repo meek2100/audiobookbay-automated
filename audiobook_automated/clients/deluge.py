@@ -159,8 +159,3 @@ class DelugeClient(TorrentClientPlugin):
         else:
             logger.warning("Deluge returned empty or invalid result payload.")
         return results
-
-
-# Backward compatibility aliases
-DelugeStrategy = DelugeClient
-Strategy = DelugeClient

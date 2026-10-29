@@ -9,7 +9,7 @@ from typing import Any, cast
 
 from flask import Flask
 
-from .base import TorrentClientPlugin, TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -37,21 +37,6 @@ class TorrentManager:
     def client(self) -> None:
         """Deleter for client."""
         self._client = None  # pragma: no cover
-
-    @property
-    def strategy(self) -> TorrentClientPlugin | None:
-        """Backward compatibility alias for client."""
-        return self._client
-
-    @strategy.setter
-    def strategy(self, value: TorrentClientPlugin | None) -> None:
-        """Backward compatibility setter for client."""
-        self._client = value
-
-    @strategy.deleter
-    def strategy(self) -> None:
-        """Backward compatibility deleter for client."""
-        self._client = None
 
     @property
     def client_type(self) -> str:
@@ -97,7 +82,7 @@ class TorrentManager:
             for _, obj in inspect.getmembers(module, inspect.isclass):
                 # Ensure it is a class before issubclass to satisfy MyPy/Pyright strict checks
                 # pyright: ignore[reportUnnecessaryIsInstance]
-                if issubclass(obj, TorrentClientPlugin) and obj not in (TorrentClientPlugin, TorrentClientStrategy):
+                if issubclass(obj, TorrentClientPlugin) and obj is not TorrentClientPlugin:
                     client_class = obj
                     break
 
@@ -153,10 +138,6 @@ class TorrentManager:
             logger.exception("Plugin: Failed to load client '%s'. Error: %s", client_name, e)
             return None
 
-    def _instantiate_strategy(self, app: Flask, client_name: str) -> TorrentClientPlugin | None:
-        """Backward compatibility alias for _instantiate_client."""
-        return self._instantiate_client(app, client_name)  # pragma: no cover
-
     def _load_clients(self, app: Flask) -> None:
         """Dynamically load the configured torrent download clients.
 
@@ -187,10 +168,6 @@ class TorrentManager:
             self._client = next(iter(self.clients.values()))
         else:
             self._client = None
-
-    def _load_strategy(self, app: Flask) -> None:
-        """Backward compatibility alias for _load_clients."""
-        self._load_clients(app)  # pragma: no cover
 
     def get_client(self, client_name: str | None = None) -> TorrentClientPlugin | None:
         """Get a specific download client by name, or the default primary client."""

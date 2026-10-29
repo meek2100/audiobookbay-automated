@@ -187,8 +187,3 @@ class PutioClient(TorrentClientPlugin):
         data = resp.json()
         if data.get("status") != "OK":
             raise RuntimeError(f"Put.io cancel transfer returned non-OK status: {data.get('error_message', data)}")
-
-
-# Backward compatibility aliases
-PutioStrategy = PutioClient
-Strategy = PutioClient

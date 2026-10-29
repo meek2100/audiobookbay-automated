@@ -263,8 +263,8 @@ def test_get_book_details_consistency_checks(mock_sleep: Any) -> None:
         assert details["file_size"] == "Unknown"
 
 
-def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
-    """Test info hash extraction strategy 2."""
+def test_get_book_details_info_hash_method_2(mock_sleep: Any) -> None:
+    """Test info hash extraction method 2 (table row lookup)."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Strategy 2 Book</h1></div>
@@ -288,8 +288,8 @@ def test_get_book_details_info_hash_strategy_2(mock_sleep: Any) -> None:
         assert details["info_hash"] == "1111111111222222222233333333334444444444"
 
 
-def test_get_book_details_info_hash_strategy_3(mock_sleep: Any) -> None:
-    """Test info hash extraction strategy 3."""
+def test_get_book_details_info_hash_method_3(mock_sleep: Any) -> None:
+    """Test info hash extraction method 3 (body text regex)."""
     html = """
     <div class="post">
         <div class="postTitle"><h1>Strategy 3 Book</h1></div>

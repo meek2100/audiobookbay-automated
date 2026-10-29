@@ -102,10 +102,6 @@ def _get_client_status(client_inst: Any, connected: bool, error_msg: str | None)
     return "Disconnected"
 
 
-# Backward compatibility alias
-_get_strategy_status = _get_client_status
-
-
 def _collect_client_diagnostics(manager: Any) -> list[dict[str, Any]]:
     """Check connectivity and collect detailed diagnostics for configured download clients."""
     clients_info: list[dict[str, Any]] = []
@@ -133,7 +129,7 @@ def _collect_client_diagnostics(manager: Any) -> list[dict[str, Any]]:
             )
     else:
         connected = bool(manager.verify_credentials())
-        primary_client = getattr(manager, "client", None) or getattr(manager, "strategy", None)
+        primary_client = getattr(manager, "client", None)
         c_err_str: str | None = None
         if primary_client:
             raw_err = getattr(primary_client, "last_auth_error", None)

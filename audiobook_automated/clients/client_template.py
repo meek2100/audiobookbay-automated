@@ -125,7 +125,3 @@ class CustomClient(TorrentClientPlugin):
         #     ))
 
         return results
-
-
-# Backward compatibility alias
-Strategy = CustomClient
