@@ -70,8 +70,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(app)
-    # RESOURCE SAFETY: Ensure thread-local sessions are closed after each request
-    # REMOVED: app.teardown_appcontext(torrent_manager.teardown_request) to prevent connection storm
+    # Note: Request teardown is handled per-client to prevent connection storms.
 
     # HEALTH CHECK: Verify torrent client connection at startup.
     # This allows admins to see immediate feedback in logs if the client is unreachable.

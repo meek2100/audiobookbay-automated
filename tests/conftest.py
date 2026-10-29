@@ -55,7 +55,7 @@ def mock_global_dependencies() -> Generator[None]:
     connect to a real torrent client during startup (verify_credentials)
     or request handling.
     """
-    # CRITICAL FIX: Patch the methods on the REAL instance object directly.
+    # Patch the methods on the REAL instance object directly.
     # Patching the module attribute ("audiobook_automated.extensions.torrent_manager")
     # fails because other modules (like __init__.py and routes.py) have already
     # imported the real instance reference before this fixture runs.

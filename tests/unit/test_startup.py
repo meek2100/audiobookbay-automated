@@ -71,8 +71,8 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
     monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
     monkeypatch.delenv("TESTING", raising=False)
 
-    # CRITICAL FIX: Patch torrent_manager inside this test scope.
-    # Since we reload modules, the global conftest patch is lost/overwritten.
+    # Patch torrent_manager inside this test scope because reloading modules
+    # resets module-level patches.
     with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
         mock_tm.verify_credentials.return_value = True
 

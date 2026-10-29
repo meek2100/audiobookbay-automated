@@ -372,7 +372,7 @@ def send() -> Response | tuple[Response, int]:
     logger.info(f"Received download request for '{sanitize_title(title)}'")
 
     try:
-        # SECURITY FIX: Use scraped title to prevent path spoofing
+        # Security: Use scraped title to prevent path spoofing
         # We fetch details explicitly to get the title. extract_magnet_link will hit cache.
         try:
             details = get_book_details(details_url)
