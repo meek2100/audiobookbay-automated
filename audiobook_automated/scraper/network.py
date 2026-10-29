@@ -305,6 +305,7 @@ def get_mirrors() -> list[str]:
     with CACHE_LOCK:
 
         def rank_key(host: str) -> tuple[int, float]:
+            """Sort key prioritizing active primary mirror followed by EMA latency score."""
             stat = _mirror_stats.get(host)
             if stat is None:
                 # Untried: prefer primary first, then others

@@ -32,8 +32,8 @@ class TestConfig(Config):
     """
 
     TESTING = True
-    # CROSS-PLATFORM FIX: Use system temp directory instead of hardcoded /tmp
-    # This prevents permission issues or creation of C:\tmp on Windows.
+    # Use system temp directory instead of hardcoded /tmp for cross-platform compatibility
+    # (prevents permission issues or creation of C:\tmp on Windows).
     SAVE_PATH_BASE = os.path.join(tempfile.gettempdir(), "test_downloads")
     SECRET_KEY = "test-secret-key"
     WTF_CSRF_ENABLED = False

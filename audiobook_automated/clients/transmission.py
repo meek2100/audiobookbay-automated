@@ -54,8 +54,8 @@ class TransmissionClient(TorrentClientPlugin):
             self.client.add_torrent(magnet_link, download_dir=save_path, labels=[category])
         except Exception as e:
             # Fallback for older Transmission versions (< RPC 15) that don't support labels
-            # RESILIENCE FIX: Only fallback if error explicitly relates to invalid arguments/labels.
-            # Blindly catching Exception hides critical errors (e.g., Disk Full, Network Error).
+            # Only fallback if error explicitly relates to invalid arguments/labels.
+            # Catching all exceptions would hide critical errors (e.g., Disk Full, Network Error).
             error_str = str(e).lower()
             if "label" in error_str or "argument" in error_str or "method" in error_str:
                 logger.warning(

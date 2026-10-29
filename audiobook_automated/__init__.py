@@ -30,11 +30,11 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     if app.debug:
         app.logger.warning("Running in DEBUG mode. Security checks may be bypassed.")
 
-    # PRODUCTION FIX: Log Level Inheritance
+    # Configure logging level from application configuration
     configured_level = app.config.get("LOG_LEVEL")
     _configure_logging(app, configured_level)
 
-    # OPTIMIZATION: Static Asset Versioning Cache Busting
+    # Static asset versioning for cache busting
     # Priority:
     # 1. Config/Env Var (Developer Override)
     # 2. Dynamic Runtime Content Calculation (Busts caches on live swaps/mounts)
