@@ -20,6 +20,10 @@ async function flushPromises() {
 function setupDom() {
     document.body.innerHTML = `
         <div class="diag-header-glass">
+            <span class="status-client-pill" id="diag-status-pill">
+                <span class="pulse-dot"></span>
+                <span class="client-pill-text">Live System</span>
+            </span>
             <span id="last-updated-badge" class="diag-badge">Last updated: -</span>
             <input type="checkbox" id="auto-refresh-toggle" checked />
             <button id="diag-poll-indicator" class="status-poll-indicator">
@@ -103,6 +107,10 @@ describe("diagnostics.js - Dashboard Controller", () => {
         await flushPromises();
 
         expect(document.getElementById("diag-status").textContent).toBe("HEALTHY");
+        expect(document.getElementById("diag-status-pill").className).toBe("status-client-pill");
+        expect(document.getElementById("diag-status-pill").querySelector(".client-pill-text").textContent).toBe(
+            "Live System"
+        );
         expect(document.getElementById("diag-memory").textContent).toBe("45.2 MB");
         expect(document.getElementById("diag-active-mirror").textContent).toBe("audiobookbay.lu");
         expect(document.getElementById("diag-cache").textContent).toBe("12 / 200");
