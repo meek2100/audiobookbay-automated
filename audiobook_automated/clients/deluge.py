@@ -50,7 +50,7 @@ class DelugeClient(TorrentClientPlugin):
         try:
             plugins_resp = self.client.get_plugins()
             # Narrow the type: verify it is a list or dict before checking for membership
-            # GUARD: plugins_resp itself might be None if the client returns unexpected data
+            # plugins_resp itself might be None if the client returns unexpected data
             if plugins_resp and isinstance(plugins_resp.result, (list, dict)) and "Label" in plugins_resp.result:
                 self.label_plugin_enabled = True
                 logger.info("Deluge 'Label' plugin detected.")
@@ -137,7 +137,7 @@ class DelugeClient(TorrentClientPlugin):
                     progress_val = deluge_data.get("progress")
                     try:
                         # Deluge returns progress as 0-100 float
-                        # GUARD: Ensure progress_val is convertible to float
+                        # Ensure progress_val is convertible to float
                         progress = round(float(progress_val), 2) if progress_val is not None else 0.0
                     except (ValueError, TypeError):
                         # Log if conversion fails but don't crash

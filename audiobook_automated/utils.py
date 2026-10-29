@@ -26,7 +26,7 @@ from audiobook_automated.logging_buffer import log_ring_buffer
 
 logger = logging.getLogger(__name__)
 
-# OPTIMIZATION: Pre-compile regex for faster execution
+# Pre-compile regex for faster execution
 # Includes standard illegal chars AND control characters (\x00-\x1f)
 ILLEGAL_CHARS_RE = re.compile(r'[\x00-\x1f<>:"/\\|?*]')
 
@@ -175,7 +175,7 @@ def construct_safe_save_path(base_path: str | None, title: str) -> str:
         # Use constant for calculation: 260 - 10 - 1 = 249
         calculated_limit = WINDOWS_PATH_SAFE_LIMIT - base_len
 
-        # SAFETY: Explicitly fail if the base path is too deep to support even minimal filenames.
+        # Explicitly fail if the base path is too deep to support even minimal filenames.
         # This prevents silent failures where the truncation logic would produce unusable names.
         if calculated_limit < MIN_FILENAME_LENGTH:
             raise ValueError(
@@ -189,7 +189,7 @@ def construct_safe_save_path(base_path: str | None, title: str) -> str:
                 "Titles will be severely truncated to prevent file system errors."
             )
 
-        # SAFETY: Prioritize OS limits over "usable" length.
+        # Prioritize OS limits over "usable" length.
         # Enforce floor of MIN_FILENAME_LENGTH, cap at calculated limit.
         max_len = max(MIN_FILENAME_LENGTH, calculated_limit)
         # Cap at MAX_FILENAME_LENGTH to ensure we never allow massive paths if base is short

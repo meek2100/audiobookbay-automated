@@ -12,6 +12,6 @@ logger = logging.getLogger(__name__)
 app = create_app()
 
 if __name__ == "__main__":  # pragma: no cover
-    # NOTE: This block is for local debugging only. Production uses entrypoint.sh.
+    # This block is for local development only. Production uses entrypoint.sh with Gunicorn.
     # Local Development Entry Point
     app.run(host=app.config["LISTEN_HOST"], port=app.config["LISTEN_PORT"])

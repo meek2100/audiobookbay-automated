@@ -65,7 +65,7 @@ def inject_global_vars() -> dict[str, Any]:
     # Retrieve version hash from app config (calculated at startup)
     static_version = current_app.config.get("STATIC_VERSION", "v1")
 
-    # OPTIMIZATION: Retrieve pre-calculated flag from config instead of re-evaluating
+    # Retrieve pre-calculated flag from config instead of re-evaluating
     # Now uses the property defined in Config class
     library_reload_enabled = current_app.config.get("LIBRARY_RELOAD_ENABLED", False)
 
@@ -166,7 +166,7 @@ def search() -> str | Response:
         query = query.strip()
 
         if query:
-            # SAFETY: Minimum length check to prevent scraping spam
+            # Minimum length check to prevent scraping spam
             if len(query) < MIN_SEARCH_QUERY_LENGTH:
                 error_message = f"Search query must be at least {MIN_SEARCH_QUERY_LENGTH} characters long."
                 return render_template("search.html", books=[], error=error_message, query=query)
@@ -322,22 +322,22 @@ def _validate_send_payload(data: dict[str, Any]) -> tuple[str, str, str | None]:
     title = data.get("title") if data else None
     client_name = data.get("client") if data else None
 
-    # TYPE SAFETY: Ensure link and title are strings before proceeding.
+    # Ensure link and title are strings before proceeding.
     if details_url is not None and not isinstance(details_url, str):
         logger.warning(f"Invalid send request: Link is not a string (Type: {type(details_url)}).")
         raise InvalidRequestError("Invalid request: Link must be a string")
 
-    # VALIDATION: Ensure link starts with http:// or https://
+    # Ensure link starts with http:// or https://
     if details_url and not (details_url.startswith("http://") or details_url.startswith("https://")):
         logger.warning(f"Invalid send request: Link has invalid protocol ({details_url}).")
         raise InvalidRequestError("Invalid request: Link must start with http:// or https://")
 
-    # TYPE SAFETY: Ensure title is a string before calling string methods.
+    # Ensure title is a string before calling string methods.
     if title is not None and not isinstance(title, str):
         logger.warning(f"Invalid send request: Title is not a string (Type: {type(title)}).")
         raise InvalidRequestError("Invalid request: Title must be a string")
 
-    # TYPE SAFETY: Ensure client is a string if supplied
+    # Ensure client is a string if supplied
     if client_name is not None and not isinstance(client_name, str):
         logger.warning(f"Invalid send request: Client is not a string (Type: {type(client_name)}).")
         raise InvalidRequestError("Invalid request: Client must be a string")
@@ -394,7 +394,7 @@ def send() -> Response | tuple[Response, int]:
             status_code = 404 if error == ERROR_HASH_NOT_FOUND else 400
             raise TorrentClientError(f"Download failed: {error}", status_code=status_code)
 
-        # DELEGATION: Path construction logic moved to utils.py
+        # Construct and validate final destination path
         save_path_base = current_app.config.get("SAVE_PATH_BASE")
         save_path = construct_safe_save_path(save_path_base, title)
         if client_name:
@@ -485,7 +485,7 @@ def reload_library() -> Response | tuple[Response, int]:
     try:
         url = f"{abs_url}/api/libraries/{abs_lib}/scan"
         headers = {"Authorization": f"Bearer {abs_key}"}
-        # TIMEOUT: Explicit timeout constant used to prevent hanging
+        # Explicit timeout used to prevent hanging
         response = requests.post(url, headers=headers, timeout=ABS_TIMEOUT_SECONDS)
         response.raise_for_status()
         logger.info("Audiobookshelf library scan initiated successfully.")

@@ -72,7 +72,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     torrent_manager.init_app(app)
     # Note: Request teardown is handled per-client to prevent connection storms.
 
-    # HEALTH CHECK: Verify torrent client connection at startup.
+    # Verify torrent client connection at startup.
     # This allows admins to see immediate feedback in logs if the client is unreachable.
     # We do NOT block startup, as the app should remain accessible for debugging.
     if not torrent_manager.verify_credentials():
@@ -81,10 +81,10 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Initialize Scraper Executor
     executor.init_app(app)
 
-    # GRACEFUL SHUTDOWN: Register signal handlers
+    # Register signal handlers for graceful shutdown
     register_shutdown_handlers(app)
 
-    # SYNCHRONIZATION: Initialize Global Request Semaphore
+    # Initialize Global Request Semaphore
     # This must be done here to avoid circular imports in extensions.py
     max_workers = app.config.get("SCRAPER_THREADS", 3)
     network.init_semaphore(max_workers)
@@ -115,7 +115,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             "flask_debug": bool(app.config.get("FLASK_DEBUG", False) or app.config.get("TESTING", False)),
         }
 
-    # OPTIMIZATION: Aggressive caching for static assets
+    # Aggressive caching for static assets
     # Since we use versioning (?v=hash) in templates, we can safely tell
     # the browser to cache static files for a year (31536000 seconds).
     @app.after_request

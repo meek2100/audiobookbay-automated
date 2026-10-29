@@ -173,7 +173,7 @@ def test_create_app_calculates_runtime_static_version(monkeypatch: Any, mock_fla
     """Test that create_app computes STATIC_VERSION at runtime via calculate_static_hash."""
     mock_class, _ = mock_flask_factory
 
-    # CRITICAL: Reload app module so it imports the patched Flask class from the fixture.
+    # Reload app module so it imports the patched Flask class from the fixture.
     # Without this, app.create_app() uses the real Flask class, causing the mock assertions to fail.
     importlib.reload(audiobook_automated)
 

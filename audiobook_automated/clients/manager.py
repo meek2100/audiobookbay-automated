@@ -64,7 +64,7 @@ class TorrentManager:
         Returns:
             TorrentClientPlugin | None: The loaded client instance or None on error.
         """
-        # SECURITY: Validate client_name to prevent arbitrary code execution
+        # Validate client_name to prevent arbitrary code execution
         # Only allow alphanumeric characters, underscores, and hyphens
         if not re.match(r"^[a-zA-Z0-9_\-]+$", client_name):
             logger.error("Security: Invalid DL_CLIENT name '%s'. Falling back to 'transmission'.", client_name)

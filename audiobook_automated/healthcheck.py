@@ -30,11 +30,11 @@ def health_check(timeout: int = 3) -> None:
     else:
         host = listen_host
 
-    # OPTIMIZATION: Use dedicated health endpoint (lighter than hitting the home page)
+    # Use dedicated health endpoint (lighter than hitting the home page)
     url = f"http://{host}:{port}/health"
 
     try:
-        # TIMEOUT ADDED: Prevents the healthcheck from hanging indefinitely
+        # Explicit timeout prevents the healthcheck from hanging indefinitely
         # nosec B310: URL is constructed from trusted local env vars (localhost/loopback)
         with urllib.request.urlopen(url, timeout=timeout) as response:  # nosec B310  # noqa: S310
             if response.status == 200:  # noqa: PLR2004
