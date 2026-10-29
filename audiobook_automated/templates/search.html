@@ -498,9 +498,9 @@
                         {# Render individual pills for both Grid and List views #} {% for raw_cat in book.category %} {%
                         for cat in raw_cat.split(',') %} {% if cat.strip() and cat.strip() != "Unknown" %}
                         <a
-                            href="{{ url_for('main.search', query=cat.strip()) }}"
+                            href="{{ url_for('main.search', query='type:' + cat.strip()) }}"
                             class="category-tag category-link"
-                            title="Search {{ cat.strip() }} audiobooks"
+                            title="Browse {{ cat.strip() }} category"
                             >{{ cat.strip() }}</a
                         >
                         {% endif %} {% endfor %} {% endfor %}

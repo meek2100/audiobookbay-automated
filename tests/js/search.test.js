@@ -380,7 +380,9 @@ describe("search.js Unit Tests - Progressive Search & Prefetch", () => {
         expect(row.dataset.category).toBe("Sci-Fi, Fantasy");
         expect(row.dataset.language).toBe("English");
         expect(row.querySelector(".book-title").textContent).toBe("Dune");
-        expect(row.querySelector(".category-link").textContent).toBe("Sci-Fi");
+        const catLink = row.querySelector(".category-link");
+        expect(catLink.textContent).toBe("Sci-Fi");
+        expect(catLink.getAttribute("href")).toBe("/?query=type%3ASci-Fi");
         expect(row.querySelector(".send-torrent-btn").dataset.title).toBe("Dune");
     });
 
