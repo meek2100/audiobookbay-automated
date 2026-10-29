@@ -197,7 +197,10 @@ document.addEventListener("DOMContentLoaded", function () {
  */
 function initSplashScreen() {
     const splashOverlay = document.getElementById("splash-overlay");
-    if (!splashOverlay) return;
+    if (!splashOverlay) {
+        document.documentElement.classList.add("no-splash");
+        return;
+    }
 
     // If "no-splash" is present on HTML (handled by inline script),
     // we ensure overlay is hidden and return.

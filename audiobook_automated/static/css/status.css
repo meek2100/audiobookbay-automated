@@ -32,6 +32,10 @@
     font-weight: 700;
     color: var(--text-main, #ffffff);
     letter-spacing: -0.5px;
+    text-align: left;
+    text-shadow: none;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .status-count-badge {
