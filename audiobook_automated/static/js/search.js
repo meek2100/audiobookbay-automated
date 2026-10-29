@@ -438,7 +438,7 @@ function createResultRowElement(book) {
             parts.forEach((cat) => {
                 const clean = cat.trim();
                 if (clean && clean !== "Unknown") {
-                    categoryHtml += `<a href="/?query=${encodeURIComponent(clean)}" class="category-tag category-link" title="Search ${escapeHtml(clean)} audiobooks">${escapeHtml(clean)}</a>\n`;
+                    categoryHtml += `<a href="/?query=${encodeURIComponent("type:" + clean)}" class="category-tag category-link" title="Browse ${escapeHtml(clean)} category">${escapeHtml(clean)}</a>\n`;
                 }
             });
         });
