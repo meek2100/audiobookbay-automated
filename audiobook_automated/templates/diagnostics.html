@@ -6,6 +6,47 @@ endblock %} {% block extra_css %}
 {% endblock %} {% block extra_js %}
 <script src="{{ url_for('static', filename='js/diagnostics.js', v=static_version) }}" defer></script>
 {% endblock %} {% block content %}
+<div class="diag-header-glass">
+    <div class="diag-header-main">
+        <div class="diag-header-title-wrap">
+            <h1 class="diag-main-title">System Diagnostics</h1>
+            <span class="status-client-pill" id="diag-status-pill">
+                <span class="pulse-dot"></span>
+                <span class="client-pill-text">Live System</span>
+            </span>
+        </div>
+        <div class="diag-header-meta">
+            <span id="last-updated-badge" class="diag-badge">Last updated: -</span>
+            <label class="auto-refresh-label" for="auto-refresh-toggle" title="Toggle 5-second automatic refresh">
+                <input type="checkbox" id="auto-refresh-toggle" checked />
+                <span>Auto-refresh</span>
+            </label>
+            <button
+                type="button"
+                class="status-poll-indicator"
+                id="diag-poll-indicator"
+                title="Click to refresh diagnostics immediately (auto-refreshes every 5s)"
+                aria-label="Refresh diagnostics"
+            >
+                <div class="poll-dial-wrap">
+                    <svg
+                        class="poll-icon poll-spinner-ring"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                        stroke-linecap="round"
+                        aria-hidden="true"
+                    >
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                    </svg>
+                    <span class="poll-countdown-num" id="poll-countdown-num">5</span>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="diag-container">
     <div class="diag-card">
         <div class="diag-header">
@@ -13,25 +54,6 @@ endblock %} {% block extra_css %}
                 <span>⚡ System Health & Environment</span>
                 <span id="health-spinner" class="card-spinner" style="display: none"></span>
             </span>
-            <div class="diag-actions">
-                <span id="last-updated-badge" class="diag-badge">Last updated: -</span>
-                <label
-                    style="
-                        font-size: 0.85rem;
-                        display: flex;
-                        align-items: center;
-                        gap: 6px;
-                        cursor: pointer;
-                        color: var(--text-muted, #94a3b8);
-                    "
-                >
-                    <input type="checkbox" id="auto-refresh-toggle" checked />
-                    Auto-refresh (5s)
-                </label>
-                <button id="refresh-diag-btn" class="btn-primary" style="padding: 8px 16px; font-size: 0.85rem">
-                    Refresh Health
-                </button>
-            </div>
         </div>
         <div class="diag-grid" id="system-metrics">
             <div class="diag-metric">
@@ -82,34 +104,18 @@ endblock %} {% block extra_css %}
                 <span>📜 Real-Time Scrubbed Application Logs</span>
                 <span id="logs-spinner" class="card-spinner" style="display: none"></span>
             </span>
-            <div class="diag-actions">
-                <span id="logs-updated-badge" class="diag-badge">Last updated: -</span>
+            <div class="diag-actions diag-logs-actions">
                 <input
                     type="text"
                     id="log-filter-input"
                     placeholder="Filter logs..."
-                    class="inspect-input"
-                    style="padding: 6px 10px; font-size: 0.8rem; width: 160px"
+                    class="inspect-input log-filter-input"
                 />
-                <label
-                    style="
-                        font-size: 0.85rem;
-                        display: flex;
-                        align-items: center;
-                        gap: 6px;
-                        cursor: pointer;
-                        color: var(--text-muted, #94a3b8);
-                    "
-                >
+                <label class="auto-scroll-label" for="auto-scroll-toggle" title="Auto-scroll to latest log entries">
                     <input type="checkbox" id="auto-scroll-toggle" checked />
-                    Auto-scroll
+                    <span>Auto-scroll</span>
                 </label>
-                <button id="refresh-logs-btn" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem">
-                    Refresh Logs
-                </button>
-                <button id="download-logs-btn" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem">
-                    Download (.txt)
-                </button>
+                <button id="download-logs-btn" class="btn-primary log-download-btn">Download (.txt)</button>
             </div>
         </div>
         <pre id="log-viewer-pre" class="log-viewer-pre">Loading application logs...</pre>
@@ -122,7 +128,7 @@ endblock %} {% block extra_css %}
             </span>
         </div>
         <div class="inspect-box">
-            <p style="color: var(--text-muted); font-size: 0.9rem">
+            <p class="inspect-desc">
                 Inspect tag parsing, title, author, format, and bitrate fidelity on any AudiobookBay search query or
                 detail URL.
             </p>
@@ -133,7 +139,7 @@ endblock %} {% block extra_css %}
                     class="inspect-input"
                     placeholder="Enter search query (e.g. 'Martian') or URL (/abss/...)"
                 />
-                <button id="run-inspect-btn" class="btn-primary">Inspect</button>
+                <button id="run-inspect-btn" class="btn-primary inspect-btn">Inspect</button>
             </div>
             <pre id="inspect-output" class="inspect-results-pre" style="display: none"></pre>
         </div>

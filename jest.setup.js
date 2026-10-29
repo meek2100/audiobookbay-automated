@@ -18,3 +18,8 @@ global.actionsJsContent = actionsJsContent;
 const statusJsPath = path.resolve(__dirname, "audiobook_automated/static/js/status.js");
 const statusJsContent = fs.readFileSync(statusJsPath, "utf8");
 global.statusJsContent = statusJsContent;
+
+// --- diagnostics.js Setup ---
+const diagnosticsJsPath = path.resolve(__dirname, "audiobook_automated/static/js/diagnostics.js");
+const diagnosticsJsContent = fs.readFileSync(diagnosticsJsPath, "utf8");
+global.diagnosticsJsContent = diagnosticsJsContent;

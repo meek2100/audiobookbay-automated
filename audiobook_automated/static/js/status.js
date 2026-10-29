@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const clientPill = document.getElementById("status-client-pill");
     const clientPillText = clientPill ? clientPill.querySelector(".client-pill-text") : null;
     const pollCountdownNum = document.getElementById("poll-countdown-num");
+    const autoRefreshToggle = document.getElementById("auto-refresh-toggle");
 
     let countdown = 5;
     let isFetching = false;
@@ -74,7 +75,10 @@ document.addEventListener("DOMContentLoaded", () => {
         } finally {
             isFetching = false;
             countdown = 5;
-            if (pollCountdownNum) pollCountdownNum.textContent = "5";
+            if (pollCountdownNum) {
+                const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
+                pollCountdownNum.textContent = isAuto ? "5" : "↻";
+            }
             if (pollIndicator) {
                 setTimeout(() => pollIndicator.classList.remove("polling"), 400);
             }
@@ -83,6 +87,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Countdown timer ticking every second
     const countdownInterval = setInterval(() => {
+        const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
+        if (!isAuto) {
+            if (pollCountdownNum && pollCountdownNum.textContent !== "↻") {
+                pollCountdownNum.textContent = "↻";
+            }
+            return;
+        }
+
         if (!isFetching) {
             countdown -= 1;
             if (countdown <= 0) {
@@ -98,6 +110,23 @@ document.addEventListener("DOMContentLoaded", () => {
     if (pollIndicator) {
         pollIndicator.addEventListener("click", () => {
             pollStatus();
+        });
+    }
+
+    if (autoRefreshToggle) {
+        autoRefreshToggle.addEventListener("change", () => {
+            if (autoRefreshToggle.checked) {
+                countdown = 5;
+                if (pollCountdownNum) pollCountdownNum.textContent = "5";
+                if (pollIndicator) {
+                    pollIndicator.title = "Click to refresh status immediately (auto-refreshes every 5s)";
+                }
+            } else {
+                if (pollCountdownNum) pollCountdownNum.textContent = "↻";
+                if (pollIndicator) {
+                    pollIndicator.title = "Click to refresh status immediately (auto-refresh paused)";
+                }
+            }
         });
     }
 

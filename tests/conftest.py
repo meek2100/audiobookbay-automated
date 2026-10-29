@@ -32,8 +32,8 @@ class TestConfig(Config):
     """
 
     TESTING = True
-    # CROSS-PLATFORM FIX: Use system temp directory instead of hardcoded /tmp
-    # This prevents permission issues or creation of C:\tmp on Windows.
+    # Use system temp directory instead of hardcoded /tmp for cross-platform compatibility
+    # (prevents permission issues or creation of C:\tmp on Windows).
     SAVE_PATH_BASE = os.path.join(tempfile.gettempdir(), "test_downloads")
     SECRET_KEY = "test-secret-key"
     WTF_CSRF_ENABLED = False
@@ -55,7 +55,7 @@ def mock_global_dependencies() -> Generator[None]:
     connect to a real torrent client during startup (verify_credentials)
     or request handling.
     """
-    # CRITICAL FIX: Patch the methods on the REAL instance object directly.
+    # Patch the methods on the REAL instance object directly.
     # Patching the module attribute ("audiobook_automated.extensions.torrent_manager")
     # fails because other modules (like __init__.py and routes.py) have already
     # imported the real instance reference before this fixture runs.

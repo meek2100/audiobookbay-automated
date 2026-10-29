@@ -30,11 +30,11 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     if app.debug:
         app.logger.warning("Running in DEBUG mode. Security checks may be bypassed.")
 
-    # PRODUCTION FIX: Log Level Inheritance
+    # Configure logging level from application configuration
     configured_level = app.config.get("LOG_LEVEL")
     _configure_logging(app, configured_level)
 
-    # OPTIMIZATION: Static Asset Versioning Strategy
+    # Static asset versioning for cache busting
     # Priority:
     # 1. Config/Env Var (Developer Override)
     # 2. Dynamic Runtime Content Calculation (Busts caches on live swaps/mounts)
@@ -62,18 +62,17 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         app,
         content_security_policy=csp,
         content_security_policy_nonce_in=["script-src"],
-        # FIX: Allow HTTP in dev/test, force HTTPS in prod if needed (usually handled by proxy)
+        # HTTPS enforcement is handled upstream by the reverse proxy; honour the config flag
         force_https=app.config["FORCE_HTTPS"],
-        # FIX: Ensure Talisman respects the config for Secure cookies (needed for HTTP access)
+        # Secure cookies require HTTPS; honour the config so HTTP dev setups are not broken
         session_cookie_secure=app.config["SESSION_COOKIE_SECURE"],
     )
 
     # Initialize TorrentManager with app configuration
     torrent_manager.init_app(app)
-    # RESOURCE SAFETY: Ensure thread-local sessions are closed after each request
-    # REMOVED: app.teardown_appcontext(torrent_manager.teardown_request) to prevent connection storm
+    # Note: Request teardown is handled per-client to prevent connection storms.
 
-    # HEALTH CHECK: Verify torrent client connection at startup.
+    # Verify torrent client connection at startup.
     # This allows admins to see immediate feedback in logs if the client is unreachable.
     # We do NOT block startup, as the app should remain accessible for debugging.
     if not torrent_manager.verify_credentials():
@@ -82,10 +81,10 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # Initialize Scraper Executor
     executor.init_app(app)
 
-    # GRACEFUL SHUTDOWN: Register signal handlers
+    # Register signal handlers for graceful shutdown
     register_shutdown_handlers(app)
 
-    # SYNCHRONIZATION: Initialize Global Request Semaphore
+    # Initialize Global Request Semaphore
     # This must be done here to avoid circular imports in extensions.py
     max_workers = app.config.get("SCRAPER_THREADS", 3)
     network.init_semaphore(max_workers)
@@ -116,7 +115,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             "flask_debug": bool(app.config.get("FLASK_DEBUG", False) or app.config.get("TESTING", False)),
         }
 
-    # OPTIMIZATION: Aggressive caching for static assets
+    # Aggressive caching for static assets
     # Since we use versioning (?v=hash) in templates, we can safely tell
     # the browser to cache static files for a year (31536000 seconds).
     @app.after_request
@@ -126,9 +125,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             response.headers["Cache-Control"] = "public, max-age=31536000"
         return response
 
-    # FIX: CSRF 400 Error - Zero Cookies Issue
-    # Force Flask to set the session cookie on the first request if it's missing.
-    # This addresses cases where the browser doesn't send the cookie back (e.g. IP access).
+    # Inject the CSRF cookie on every response so the JS token is always present.
+    # Addresses browsers that do not send cookies on first request (e.g. direct IP access).
     @app.after_request
     def ensure_session_cookie(response: Response) -> Response:  # pyright: ignore[reportUnusedFunction]
         """Ensure session cookie is set if missing."""

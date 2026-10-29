@@ -305,6 +305,7 @@ def get_mirrors() -> list[str]:
     with CACHE_LOCK:
 
         def rank_key(host: str) -> tuple[int, float]:
+            """Sort key prioritizing active primary mirror followed by EMA latency score."""
             stat = _mirror_stats.get(host)
             if stat is None:
                 # Untried: prefer primary first, then others
@@ -331,13 +332,13 @@ def get_session() -> Session:
     """Configure and return a requests Session with retry logic."""
     session = requests.Session()
     session.headers.update({"User-Agent": get_random_user_agent()})
-    retry_strategy = Retry(
+    retry_policy = Retry(
         total=5,
         backoff_factor=1,
         status_forcelist=[429, 500, 502, 503, 504],
         allowed_methods=["HEAD", "GET", "OPTIONS"],
     )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
+    adapter = HTTPAdapter(max_retries=retry_policy)
     session.mount("https://", adapter)
     session.mount("http://", adapter)
     return session
@@ -355,13 +356,13 @@ def get_ping_session() -> Session:
     if _local.ping_session is None:
         session = requests.Session()
         session.headers.update({"User-Agent": get_random_user_agent()})
-        retry_strategy = Retry(
+        retry_policy = Retry(
             total=0,
             backoff_factor=0,
             status_forcelist=[],
             allowed_methods=["HEAD", "GET"],
         )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
+        adapter = HTTPAdapter(max_retries=retry_policy)
         session.mount("https://", adapter)
         session.mount("http://", adapter)
         _local.ping_session = session

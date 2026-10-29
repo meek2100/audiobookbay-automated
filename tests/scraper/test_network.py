@@ -343,7 +343,7 @@ def test_check_mirror_timeout_fallback() -> None:
         result = network.check_mirror("timeout.mirror")
 
         assert result == "timeout.mirror"
-        # CRITICAL ASSERTION: GET SHOULD BE CALLED
+        # Verify GET was called
         mock_session.get.assert_called()
 
 

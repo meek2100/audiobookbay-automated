@@ -45,7 +45,7 @@ pre-commit run --all-files
 - **First-Line File Headers:** The first line of every source file must comment the relative file path prefixed with
   `File:` (e.g., `# File: audiobook_automated/app.py` or `<!-- File: README.md -->`).
 - **User-Centric Terminology:** Always use clear end-user terminology (e.g. `Download Client`, plugin name like
-  `qBittorrent`) rather than developer jargon like `Strategy` across docs, logs, and UI.
+  `qBittorrent`) rather than developer jargon like `Strategy` across codebase, documentation, logs, and UI.
 - **Proxy Environment Safety:** When routing through a remote VPN/proxy (such as Gluetun), `NO_PROXY` must explicitly
   bypass local and internal RFC-1918 subnets (`localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16`) to prevent
   client connectivity and local Gunicorn bindings from timing out through the external proxy.

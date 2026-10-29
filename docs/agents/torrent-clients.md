@@ -4,7 +4,7 @@
 
 ## Download Client Plugin Interface
 
-- All client implementations reside in `audiobook_automated/clients/` and inherit from `TorrentClientStrategy`.
+- All client implementations reside in `audiobook_automated/clients/` and inherit from `TorrentClientPlugin`.
 - `TorrentManager` acts strictly as a facade and contains no client-specific code.
 - Every client must implement `close()` to release sockets and sessions.
 - Multi-client capability: `TorrentManager` manages multiple download clients configured via `DL_CLIENT` and

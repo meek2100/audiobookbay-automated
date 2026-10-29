@@ -1,29 +1,41 @@
 // File: audiobook_automated/static/js/diagnostics.js
 /**
  * Real-time Diagnostics Dashboard Controller
- * Handles auto-refresh, badge updates, logs streaming, and log file download.
+ * Handles auto-refresh countdown indicator, unified polling, logs streaming, and inspector.
  */
 
+// Expose state and functions globally for testing
+window.diagState = {
+    countdown: 5,
+    isFetching: false,
+    interval: null,
+};
+window.loadHealth = null;
+window.loadLogs = null;
+window.refreshAll = null;
+
 document.addEventListener("DOMContentLoaded", () => {
-    const refreshBtn = document.getElementById("refresh-diag-btn");
-    const refreshLogsBtn = document.getElementById("refresh-logs-btn");
-    const inspectBtn = document.getElementById("run-inspect-btn");
-    const inspectInput = document.getElementById("inspect-input");
-    const inspectOutput = document.getElementById("inspect-output");
+    const diagContainer = document.querySelector(".diag-container");
+    if (!diagContainer) return;
+
+    const pollIndicator = document.getElementById("diag-poll-indicator");
+    const pollCountdownNum = document.getElementById("poll-countdown-num");
     const autoRefreshToggle = document.getElementById("auto-refresh-toggle");
     const lastUpdatedBadge = document.getElementById("last-updated-badge");
-    const logsUpdatedBadge = document.getElementById("logs-updated-badge");
     const healthSpinner = document.getElementById("health-spinner");
     const logsSpinner = document.getElementById("logs-spinner");
     const logViewer = document.getElementById("log-viewer-pre");
     const downloadLogsBtn = document.getElementById("download-logs-btn");
     const autoScrollToggle = document.getElementById("auto-scroll-toggle");
     const logFilterInput = document.getElementById("log-filter-input");
+    const inspectBtn = document.getElementById("run-inspect-btn");
+    const inspectInput = document.getElementById("inspect-input");
+    const inspectOutput = document.getElementById("inspect-output");
 
-    let autoRefreshInterval = null;
     let isFetchingHealth = false;
     let isFetchingLogs = false;
     let currentLogs = [];
+    let countdown = 5;
 
     function formatTime(date) {
         return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -33,10 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isFetchingHealth) return;
         isFetchingHealth = true;
         if (healthSpinner) healthSpinner.style.display = "inline-block";
-        if (refreshBtn) {
-            refreshBtn.disabled = true;
-            refreshBtn.textContent = "Updating...";
-        }
 
         try {
             const res = await fetch("/api/diagnostics/health");
@@ -63,7 +71,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (mirrorContainer) {
                 mirrorContainer.innerHTML = "";
                 const mirrorsList = [...(data.mirrors.mirrors || [])];
-                // Sort mirrors by score descending
                 mirrorsList.sort((a, b) => (b.score || 0) - (a.score || 0));
 
                 mirrorsList.forEach((m, index) => {
@@ -113,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
-            // Clients (Clean naming: no Strategy or Download Client suffixes)
+            // Download Clients
             const clientContainer = document.getElementById("client-metrics");
             if (clientContainer) {
                 clientContainer.innerHTML = "";
@@ -152,10 +159,6 @@ document.addEventListener("DOMContentLoaded", () => {
         } finally {
             isFetchingHealth = false;
             if (healthSpinner) healthSpinner.style.display = "none";
-            if (refreshBtn) {
-                refreshBtn.disabled = false;
-                refreshBtn.textContent = "Refresh Health";
-            }
         }
     }
 
@@ -163,10 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!logViewer || isFetchingLogs) return;
         isFetchingLogs = true;
         if (logsSpinner) logsSpinner.style.display = "inline-block";
-        if (refreshLogsBtn) {
-            refreshLogsBtn.disabled = true;
-            refreshLogsBtn.textContent = "Updating...";
-        }
 
         try {
             const res = await fetch("/api/diagnostics/logs?limit=150");
@@ -174,21 +173,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
             currentLogs = data.logs || [];
             renderLogs();
-            if (logsUpdatedBadge) {
-                logsUpdatedBadge.textContent = "Last updated: " + formatTime(new Date());
-            }
         } catch (e) {
             console.error("Failed to fetch logs", e);
-            if (logsUpdatedBadge) {
-                logsUpdatedBadge.textContent = "Update failed: " + formatTime(new Date());
-            }
         } finally {
             isFetchingLogs = false;
             if (logsSpinner) logsSpinner.style.display = "none";
-            if (refreshLogsBtn) {
-                refreshLogsBtn.disabled = false;
-                refreshLogsBtn.textContent = "Refresh Logs";
-            }
         }
     }
 
@@ -204,6 +193,32 @@ document.addEventListener("DOMContentLoaded", () => {
         logViewer.textContent = filtered.join("\n") || "(No logs recorded yet)";
         if (autoScrollToggle && autoScrollToggle.checked) {
             logViewer.scrollTop = logViewer.scrollHeight;
+        }
+    }
+
+    async function refreshAll() {
+        if (window.diagState.isFetching) return;
+        window.diagState.isFetching = true;
+        countdown = 5;
+        window.diagState.countdown = countdown;
+
+        if (pollCountdownNum) pollCountdownNum.textContent = "↻";
+        if (pollIndicator) pollIndicator.classList.add("polling");
+
+        try {
+            await Promise.all([loadHealth(), loadLogs()]);
+        } finally {
+            window.diagState.isFetching = false;
+            countdown = 5;
+            window.diagState.countdown = countdown;
+
+            if (pollCountdownNum) {
+                const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
+                pollCountdownNum.textContent = isAuto ? "5" : "↻";
+            }
+            if (pollIndicator) {
+                setTimeout(() => pollIndicator.classList.remove("polling"), 400);
+            }
         }
     }
 
@@ -231,43 +246,51 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function setupAutoRefresh() {
-        if (autoRefreshToggle && autoRefreshToggle.checked) {
-            if (!autoRefreshInterval) {
-                autoRefreshInterval = setInterval(() => {
-                    loadHealth();
-                    loadLogs();
-                }, 5000);
+    // Countdown interval timer
+    const countdownInterval = setInterval(() => {
+        const isAuto = autoRefreshToggle ? autoRefreshToggle.checked : true;
+        if (!isAuto) {
+            if (pollCountdownNum && pollCountdownNum.textContent !== "↻") {
+                pollCountdownNum.textContent = "↻";
             }
-        } else {
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
+            return;
+        }
+
+        if (!window.diagState.isFetching) {
+            countdown -= 1;
+            window.diagState.countdown = countdown;
+            if (countdown <= 0) {
+                refreshAll();
+            } else if (pollCountdownNum) {
+                pollCountdownNum.textContent = String(countdown);
             }
         }
-    }
+    }, 1000);
 
-    if (refreshBtn) {
-        refreshBtn.addEventListener("click", () => {
-            loadHealth();
-        });
-    }
+    window.diagState.interval = countdownInterval;
 
-    if (refreshLogsBtn) {
-        refreshLogsBtn.addEventListener("click", () => {
-            loadLogs();
-        });
-    }
-
-    if (inspectBtn) inspectBtn.addEventListener("click", runInspect);
-    if (inspectInput) {
-        inspectInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") runInspect();
+    if (pollIndicator) {
+        pollIndicator.addEventListener("click", () => {
+            refreshAll();
         });
     }
 
     if (autoRefreshToggle) {
-        autoRefreshToggle.addEventListener("change", setupAutoRefresh);
+        autoRefreshToggle.addEventListener("change", () => {
+            if (autoRefreshToggle.checked) {
+                countdown = 5;
+                window.diagState.countdown = countdown;
+                if (pollCountdownNum) pollCountdownNum.textContent = "5";
+                if (pollIndicator) {
+                    pollIndicator.title = "Click to refresh diagnostics immediately (auto-refreshes every 5s)";
+                }
+            } else {
+                if (pollCountdownNum) pollCountdownNum.textContent = "↻";
+                if (pollIndicator) {
+                    pollIndicator.title = "Click to refresh diagnostics immediately (auto-refresh paused)";
+                }
+            }
+        });
     }
 
     if (logFilterInput) {
@@ -280,8 +303,18 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    if (inspectBtn) inspectBtn.addEventListener("click", runInspect);
+    if (inspectInput) {
+        inspectInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") runInspect();
+        });
+    }
+
+    // Expose helpers for testing
+    window.loadHealth = loadHealth;
+    window.loadLogs = loadLogs;
+    window.refreshAll = refreshAll;
+
     // Initial load
-    loadHealth();
-    loadLogs();
-    setupAutoRefresh();
+    refreshAll();
 });

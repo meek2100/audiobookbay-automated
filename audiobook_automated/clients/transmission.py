@@ -1,5 +1,5 @@
 # File: audiobook_automated/clients/transmission.py
-"""Strategy implementation for Transmission."""
+"""Download client plugin for Transmission."""
 
 import logging
 from typing import Any, Literal, cast, override
@@ -8,18 +8,18 @@ from transmission_rpc import Client as TxClient
 
 from audiobook_automated.utils import format_size
 
-from .base import TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
 
-class Strategy(TorrentClientStrategy):
-    """Strategy implementation for Transmission."""
+class TransmissionClient(TorrentClientPlugin):
+    """Download client plugin for Transmission."""
 
     DEFAULT_PORT = 9091
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the Transmission strategy."""
+        """Initialize the Transmission client plugin."""
         super().__init__(*args, **kwargs)
         self.client: TxClient | None = None
 
@@ -54,8 +54,8 @@ class Strategy(TorrentClientStrategy):
             self.client.add_torrent(magnet_link, download_dir=save_path, labels=[category])
         except Exception as e:
             # Fallback for older Transmission versions (< RPC 15) that don't support labels
-            # RESILIENCE FIX: Only fallback if error explicitly relates to invalid arguments/labels.
-            # Blindly catching Exception hides critical errors (e.g., Disk Full, Network Error).
+            # Only fallback if error explicitly relates to invalid arguments/labels.
+            # Catching all exceptions would hide critical errors (e.g., Disk Full, Network Error).
             error_str = str(e).lower()
             if "label" in error_str or "argument" in error_str or "method" in error_str:
                 logger.warning(
@@ -97,7 +97,7 @@ class Strategy(TorrentClientStrategy):
             if category in labels:
                 # transmission-rpc 'progress' property returns percentage (0.0-100.0)
                 # NOT 0.0-1.0 like qBittorrent.
-                # FIX: Explicitly handle None to prevent runtime crashes (Pyright strictness)
+                # tx_torrent.progress may be None; default to 0.0 to prevent runtime crashes
                 progress = tx_torrent.progress or 0.0
 
                 results.append(

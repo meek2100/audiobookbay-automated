@@ -32,7 +32,7 @@ def test_static_assets_cache_control(client: Any) -> None:
 
 def test_nav_link_injection(client: Any) -> None:
     """Test that injected variables correctly appear in the template."""
-    # FIX: Update config directly on the app instance, not via module monkeypatch
+    # Update config directly on the app instance — monkeypatching the module would not affect an already-created app
     client.application.config["NAV_LINK_NAME"] = "My Player"
     client.application.config["NAV_LINK_URL"] = "http://player.local"
 
@@ -47,8 +47,7 @@ def test_library_reload_injection(client: Any) -> None:
     client.application.config["ABS_URL"] = "http://abs"
     client.application.config["ABS_KEY"] = "key"
     client.application.config["ABS_LIB"] = "lib"
-    # FIX: The app calculates this at startup. We must manually update it for the test
-    # to simulate the state derived from the env vars above.
+    # LIBRARY_RELOAD_ENABLED is derived from env vars at startup; set it directly for the test
     client.application.config["LIBRARY_RELOAD_ENABLED"] = True
 
     response = client.get("/")
@@ -56,7 +55,6 @@ def test_library_reload_injection(client: Any) -> None:
 
     # Case 2: Not Configured -> Link should be absent
     client.application.config["ABS_URL"] = None
-    # FIX: Manually update to False
     client.application.config["LIBRARY_RELOAD_ENABLED"] = False
 
     response = client.get("/")
@@ -67,7 +65,7 @@ def test_status_page(client: Any) -> None:
     """Test that the status page renders active downloads correctly."""
     from audiobook_automated.clients.base import TorrentStatus
 
-    # FIX: Patch where it is imported in routes.py
+    # Patch where torrent_manager is imported (routes.py) rather than at its definition site
     with patch("audiobook_automated.routes.torrent_manager") as mock_tm:
         mock_tm.get_status.return_value = [
             TorrentStatus(id="1", name="Book 1", progress=50, state="Downloading", size="100 MB")

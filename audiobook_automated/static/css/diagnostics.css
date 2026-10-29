@@ -1,12 +1,82 @@
 /* File: audiobook_automated/static/css/diagnostics.css */
 /**
  * Dedicated styles for the System Diagnostics & Health Dashboard.
+ * Includes desktop glass aesthetics and full responsive layouts for mobile screens.
  */
 
+/* --- Diagnostics Header Hero (matches Status page glass header) --- */
+.diag-header-glass {
+    max-width: 1200px;
+    margin: 0 auto 24px auto;
+    padding: 20px 28px;
+    background: var(--glass-bg, rgba(20, 20, 30, 0.65));
+    border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.12));
+    border-radius: var(--border-radius, 16px);
+    box-shadow: var(--shadow-soft, 0 8px 32px rgba(0, 0, 0, 0.35));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+.diag-header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.diag-header-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.diag-main-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-main, #ffffff);
+    letter-spacing: -0.5px;
+}
+
+.diag-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.auto-refresh-label,
+.auto-scroll-label {
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--text-muted, #94a3b8);
+    user-select: none;
+    transition: color 0.2s ease;
+}
+
+.auto-refresh-label:hover,
+.auto-scroll-label:hover {
+    color: var(--text-main, #ffffff);
+}
+
+.auto-refresh-label input[type="checkbox"],
+.auto-scroll-label input[type="checkbox"] {
+    accent-color: var(--accent-color, #f7d070);
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+}
+
+/* --- Main Layout Container --- */
 .diag-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 0 0 40px 0;
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -46,6 +116,23 @@
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
+}
+
+.diag-logs-actions {
+    gap: 10px;
+}
+
+.log-filter-input {
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    width: 180px;
+}
+
+.log-download-btn {
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    white-space: nowrap;
 }
 
 .diag-badge {
@@ -55,11 +142,12 @@
     background: rgba(255, 255, 255, 0.08);
     color: var(--text-muted, #94a3b8);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
 }
 
 .diag-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 16px;
 }
 
@@ -71,6 +159,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0;
 }
 
 .diag-label {
@@ -84,12 +173,20 @@
     font-size: 1.35rem;
     font-weight: 700;
     color: var(--text-color, #ffffff);
+    word-break: break-word;
 }
 
 .inspect-box {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.inspect-desc {
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.9rem;
+    margin: 0;
+    line-height: 1.5;
 }
 
 .inspect-input-row {
@@ -99,12 +196,24 @@
 
 .inspect-input {
     flex: 1;
+    min-width: 0;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 8px;
     padding: 10px 14px;
     color: #fff;
     font-size: 0.95rem;
+    transition: border-color 0.2s ease;
+}
+
+.inspect-input:focus {
+    outline: none;
+    border-color: var(--accent-color, #f7d070);
+}
+
+.inspect-btn {
+    white-space: nowrap;
+    padding: 10px 20px;
 }
 
 .inspect-results-pre,
@@ -124,7 +233,8 @@
 
 .log-viewer-pre {
     color: #cbd5e1;
-    max-height: 350px;
+    max-height: 380px;
+    line-height: 1.45;
 }
 
 .card-spinner {
@@ -133,7 +243,7 @@
     height: 14px;
     border: 2px solid rgba(255, 255, 255, 0.25);
     border-radius: 50%;
-    border-top-color: var(--accent-color, #38bdf8);
+    border-top-color: var(--accent-color, #f7d070);
     animation: diag-spin 0.8s linear infinite;
     vertical-align: middle;
 }
@@ -141,5 +251,139 @@
 @keyframes diag-spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+/* --- Responsive & Mobile Viewports --- */
+@media (max-width: 850px) {
+    .diag-header-glass {
+        padding: 16px 20px;
+        margin-bottom: 18px;
+    }
+
+    .diag-main-title {
+        font-size: 1.3rem;
+    }
+
+    .diag-header-main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .diag-header-meta {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .diag-container {
+        padding: 0 14px 30px 14px;
+        gap: 18px;
+    }
+
+    .diag-card {
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    .diag-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    .diag-title {
+        font-size: 1.15rem;
+    }
+
+    .log-filter-input {
+        width: 100%;
+    }
+
+    .diag-logs-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 580px) {
+    .diag-header-glass {
+        padding: 14px 16px;
+        margin-bottom: 14px;
+    }
+
+    .diag-header-title-wrap {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .diag-main-title {
+        font-size: 1.2rem;
+    }
+
+    .diag-header-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .diag-badge {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+    }
+
+    .auto-refresh-label {
+        font-size: 0.8rem;
+    }
+
+    .diag-container {
+        padding: 0 10px 24px 10px;
+        gap: 14px;
+    }
+
+    .diag-card {
+        padding: 14px 12px;
+        border-radius: 12px;
+    }
+
+    .diag-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .diag-val {
+        font-size: 1.2rem;
+    }
+
+    .diag-header {
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+    }
+
+    .diag-logs-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .log-download-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .inspect-input-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .inspect-btn {
+        width: 100%;
+    }
+
+    .inspect-results-pre,
+    .log-viewer-pre {
+        padding: 12px;
+        font-size: 0.78rem;
+        max-height: 280px;
     }
 }

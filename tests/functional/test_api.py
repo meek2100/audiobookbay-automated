@@ -126,7 +126,7 @@ def test_send_success(client: FlaskClient) -> None:
                 assert "Download added successfully" in response.json["message"]
                 mock_tm.add_magnet.assert_called_once()
 
-                # VERIFY: The save path must use the Scraped Title, not the user provided one
+                # The save path must use the Scraped Title, not the user provided one
                 args, _ = mock_tm.add_magnet.call_args
                 save_path = args[1]
                 assert "Real Scraped Title" in save_path

@@ -71,8 +71,8 @@ def test_startup_missing_save_path(monkeypatch: Any, mock_flask_factory: Any) ->
     monkeypatch.delenv("SAVE_PATH_BASE", raising=False)
     monkeypatch.delenv("TESTING", raising=False)
 
-    # CRITICAL FIX: Patch torrent_manager inside this test scope.
-    # Since we reload modules, the global conftest patch is lost/overwritten.
+    # Patch torrent_manager inside this test scope because reloading modules
+    # resets module-level patches.
     with patch("audiobook_automated.extensions.torrent_manager") as mock_tm:
         mock_tm.verify_credentials.return_value = True
 
@@ -131,7 +131,7 @@ def test_startup_invalid_page_limit(monkeypatch: Any, mock_flask_factory: Any) -
 
 def test_startup_invalid_page_limit_type(monkeypatch: Any, mock_flask_factory: Any) -> None:
     """Test that non-integer PAGE_LIMIT defaults to 3."""
-    # FIX: Use underscore for unused variables to satisfy pyright 'reportUnusedVariable'
+    # Assign to _ to satisfy pyright reportUnusedVariable — fixture is needed for its side effects
     _ = mock_flask_factory
     monkeypatch.setenv("PAGE_LIMIT", "invalid_string")
     monkeypatch.setenv("SAVE_PATH_BASE", "/tmp")
@@ -173,7 +173,7 @@ def test_create_app_calculates_runtime_static_version(monkeypatch: Any, mock_fla
     """Test that create_app computes STATIC_VERSION at runtime via calculate_static_hash."""
     mock_class, _ = mock_flask_factory
 
-    # CRITICAL: Reload app module so it imports the patched Flask class from the fixture.
+    # Reload app module so it imports the patched Flask class from the fixture.
     # Without this, app.create_app() uses the real Flask class, causing the mock assertions to fail.
     importlib.reload(audiobook_automated)
 
@@ -187,7 +187,7 @@ def test_create_app_calculates_runtime_static_version(monkeypatch: Any, mock_fla
 
     with (
         patch("audiobook_automated.utils.calculate_static_hash", return_value=expected_hash) as mock_calc,
-        # FIX: Patch torrent_manager to prevent real connection attempt during startup
+        # Patch torrent_manager to prevent a real connection attempt during startup
         patch("audiobook_automated.extensions.torrent_manager") as mock_torrent_manager,
     ):
         # Mock the verify_credentials return to avoid warnings
@@ -205,9 +205,7 @@ def test_app_entry_point() -> None:
 
     Reloading ensures coverage captures the top-level code execution.
     """
-    # FIX: Use sys.modules to retrieve the actual module object.
-    # We assign the result to 'reloaded_module' to ensure we are asserting
-    # on the module itself, not the 'app' variable inside the 'app' package.
+    # Use sys.modules to get the already-loaded module object so importlib.reload() works correctly
     # Check if loaded, if not import it
     if "audiobook_automated.app" not in sys.modules:
         importlib.import_module("audiobook_automated.app")
@@ -245,7 +243,7 @@ def test_startup_connection_warning(caplog: Any) -> None:
         # But we do want init_app to run to set up the client_type, so we assume it works or mock it?
         # If we use StartupConfig with DL_CLIENT, init_app will try to load plugin.
         # We should probably mock init_app to do nothing, but verify_credentials depends on it?
-        # verify_credentials calls _get_strategy.
+        # verify_credentials calls get_client.
         # It's simpler to just force verify_credentials to False.
 
         audiobook_automated.create_app(StartupConfig)

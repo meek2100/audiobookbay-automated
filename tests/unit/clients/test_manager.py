@@ -7,12 +7,12 @@ from unittest.mock import MagicMock, patch
 from flask import Flask
 from pytest import LogCaptureFixture
 
-from audiobook_automated.clients.base import TorrentClientStrategy, TorrentStatus
+from audiobook_automated.clients.base import TorrentClientPlugin, TorrentStatus
 from audiobook_automated.clients.manager import TorrentManager
 
 
-class MockStrategy(TorrentClientStrategy):
-    """Mock strategy for testing."""
+class MockClient(TorrentClientPlugin):
+    """Mock client plugin for testing."""
 
     def connect(self) -> None:
         """Mock connect."""
@@ -41,15 +41,15 @@ class MockStrategy(TorrentClientStrategy):
     DEFAULT_PORT = 1234
 
 
-def test_manager_load_strategy_success(app: Flask, caplog: LogCaptureFixture) -> None:
-    """Test successful strategy loading."""
+def test_manager_load_client_success(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test successful client plugin loading."""
     import logging
 
     caplog.set_level(logging.INFO)
     manager = TorrentManager()
 
     mock_module = MagicMock()
-    mock_module.MockStrategy = MockStrategy
+    mock_module.MockClient = MockClient
 
     with patch("importlib.import_module", return_value=mock_module):
         app.config["DL_CLIENT"] = "mock_client"
@@ -60,21 +60,21 @@ def test_manager_load_strategy_success(app: Flask, caplog: LogCaptureFixture) ->
 
         manager.init_app(app)
 
-        assert isinstance(manager.strategy, MockStrategy)
-        assert manager.strategy.host == "1.2.3.4"
-        assert manager.strategy.port == 9999
-        assert manager.strategy.username == "testuser"
-        assert manager.strategy.password == "testpass"
+        assert isinstance(manager.client, MockClient)
+        assert manager.client.host == "1.2.3.4"
+        assert manager.client.port == 9999
+        assert manager.client.username == "testuser"
+        assert manager.client.password == "testpass"
 
         assert "Successfully loaded 'mock_client'" in caplog.text
 
 
-def test_manager_load_strategy_default_port(app: Flask, caplog: LogCaptureFixture) -> None:
+def test_manager_load_client_default_port(app: Flask, caplog: LogCaptureFixture) -> None:
     """Test default port loading."""
     manager = TorrentManager()
 
     mock_module = MagicMock()
-    mock_module.MockStrategy = MockStrategy
+    mock_module.MockClient = MockClient
 
     with patch("importlib.import_module", return_value=mock_module):
         app.config["DL_CLIENT"] = "mock_client"
@@ -84,16 +84,16 @@ def test_manager_load_strategy_default_port(app: Flask, caplog: LogCaptureFixtur
 
         manager.init_app(app)
 
-        assert isinstance(manager.strategy, MockStrategy)
-        assert manager.strategy.port == 1234  # MockStrategy.DEFAULT_PORT
+        assert isinstance(manager.client, MockClient)
+        assert manager.client.port == 1234  # MockClient.DEFAULT_PORT
 
 
-def test_manager_load_strategy_invalid_port(app: Flask, caplog: LogCaptureFixture) -> None:
+def test_manager_load_client_invalid_port(app: Flask, caplog: LogCaptureFixture) -> None:
     """Test invalid port loading."""
     manager = TorrentManager()
 
     mock_module = MagicMock()
-    mock_module.MockStrategy = MockStrategy
+    mock_module.MockClient = MockClient
 
     with patch("importlib.import_module", return_value=mock_module):
         app.config["DL_CLIENT"] = "mock_client"
@@ -102,11 +102,11 @@ def test_manager_load_strategy_invalid_port(app: Flask, caplog: LogCaptureFixtur
 
         manager.init_app(app)
 
-        assert isinstance(manager.strategy, MockStrategy)
-        assert manager.strategy.port == 8080  # Fallback from exception block
+        assert isinstance(manager.client, MockClient)
+        assert manager.client.port == 8080  # Fallback from exception block
 
 
-def test_manager_load_strategy_invalid_name(app: Flask, caplog: LogCaptureFixture) -> None:
+def test_manager_load_client_invalid_name(app: Flask, caplog: LogCaptureFixture) -> None:
     """Test invalid client name."""
     manager = TorrentManager()
     app.config["DL_CLIENT"] = "invalid$name"
@@ -121,20 +121,20 @@ def test_manager_load_strategy_invalid_name(app: Flask, caplog: LogCaptureFixtur
         mock_import.assert_called_with("audiobook_automated.clients.transmission")
 
 
-def test_manager_load_strategy_import_error(app: Flask, caplog: LogCaptureFixture) -> None:
-    """Test strategy import error."""
+def test_manager_load_client_import_error(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test client plugin import error."""
     manager = TorrentManager()
     app.config["DL_CLIENT"] = "missing_client"
 
     with patch("importlib.import_module", side_effect=ImportError("No module")):
         manager.init_app(app)
 
-        assert manager.strategy is None
+        assert manager.client is None
         assert "Failed to load client 'missing_client'" in caplog.text
 
 
-def test_manager_load_strategy_no_class(app: Flask, caplog: LogCaptureFixture) -> None:
-    """Test strategy with no class."""
+def test_manager_load_client_no_class(app: Flask, caplog: LogCaptureFixture) -> None:
+    """Test with no valid plugin class."""
     manager = TorrentManager()
     app.config["DL_CLIENT"] = "empty_client"
 
@@ -143,14 +143,14 @@ def test_manager_load_strategy_no_class(app: Flask, caplog: LogCaptureFixture) -
     with patch("importlib.import_module", return_value=mock_module):
         manager.init_app(app)
 
-    assert manager.strategy is None
+    assert manager.client is None
     assert "Failed to load client 'empty_client'" in caplog.text
 
 
-def test_manager_proxy_methods_no_strategy() -> None:
-    """Test proxy methods with no strategy."""
+def test_manager_proxy_methods_no_client() -> None:
+    """Test proxy methods with no client."""
     manager = TorrentManager()
-    manager.strategy = None
+    manager.client = None
 
     assert manager.verify_credentials() is False
     # Don't assert None return for void function to satisfy Mypy
@@ -160,51 +160,51 @@ def test_manager_proxy_methods_no_strategy() -> None:
     manager.close()
 
 
-def test_manager_proxy_methods_with_strategy(app: Flask) -> None:
-    """Test proxy methods with strategy."""
+def test_manager_proxy_methods_with_client(app: Flask) -> None:
+    """Test proxy methods with client."""
     manager = TorrentManager()
     app.config["DL_CATEGORY"] = "abb-automated"
     # Access private member via public method or fixture?
     # Or just ignore lint for test
     manager._app = app  # pyright: ignore[reportPrivateUsage]
 
-    strategy = MagicMock()
-    manager.strategy = strategy
+    client = MagicMock()
+    manager.client = client
 
-    strategy.verify_credentials.return_value = True
+    client.verify_credentials.return_value = True
     assert manager.verify_credentials() is True
 
     manager.add_magnet("link", "path")
     # Verify add_magnet called. It returns None so we check assertion side effect only.
-    strategy.add_magnet.assert_called_with("link", "path", "abb-automated")
+    client.add_magnet.assert_called_with("link", "path", "abb-automated")
 
-    strategy.get_status.return_value = ["status"]
+    client.get_status.return_value = ["status"]
     # We use cast(Any, ...) to bypass Mypy's strict check on return type vs string list comparison
     assert cast(Any, manager.get_status()) == ["status"]
-    strategy.get_status.assert_called_with("abb-automated")
+    client.get_status.assert_called_with("abb-automated")
 
-    strategy.remove_torrent.return_value = True
+    client.remove_torrent.return_value = True
     assert manager.remove_torrent("id") is True
 
     # Exception handling
-    strategy.remove_torrent.side_effect = Exception("Fail")
+    client.remove_torrent.side_effect = Exception("Fail")
     assert manager.remove_torrent("id") is False
 
     manager.close()
-    strategy.close.assert_called_once()
+    client.close.assert_called_once()
 
 
 def test_manager_teardown_request() -> None:
     """Test teardown request."""
     manager = TorrentManager()
-    strategy = MagicMock()
-    manager.strategy = strategy
+    client = MagicMock()
+    manager.client = client
 
     manager.teardown_request()
 
-    strategy.teardown = MagicMock()
+    client.teardown = MagicMock()
     manager.teardown_request()
-    strategy.teardown.assert_called_once()
+    client.teardown.assert_called_once()
 
 
 def test_manager_client_type() -> None:
@@ -212,8 +212,8 @@ def test_manager_client_type() -> None:
     manager = TorrentManager()
     assert manager.client_type == "None"
 
-    manager.strategy = MockStrategy("h", 1, None, None)
-    assert manager.client_type == "MockStrategy"
+    manager.client = MockClient("h", 1, None, None)
+    assert manager.client_type == "MockClient"
 
 
 def test_manager_multi_client_loading(app: Flask, caplog: LogCaptureFixture) -> None:
@@ -221,7 +221,7 @@ def test_manager_multi_client_loading(app: Flask, caplog: LogCaptureFixture) -> 
     manager = TorrentManager()
 
     mock_module = MagicMock()
-    mock_module.MockStrategy = MockStrategy
+    mock_module.MockClient = MockClient
 
     with patch("importlib.import_module", return_value=mock_module):
         app.config["DL_CLIENT"] = "client_a"
@@ -235,7 +235,7 @@ def test_manager_multi_client_loading(app: Flask, caplog: LogCaptureFixture) -> 
         assert manager.list_clients() == ["client_a", "client_b"]
         assert manager.get_client("client_a") is not None
         assert manager.get_client("client_b") is not None
-        assert manager.get_client("nonexistent") == manager.strategy
+        assert manager.get_client("nonexistent") == manager.client
 
 
 def test_manager_multi_client_add_and_status(app: Flask) -> None:
@@ -244,19 +244,19 @@ def test_manager_multi_client_add_and_status(app: Flask) -> None:
     app.config["DL_CATEGORY"] = "abb-automated"
     manager._app = app  # pyright: ignore[reportPrivateUsage]
 
-    strat_a = MagicMock()
-    strat_b = MagicMock()
-    strat_a.get_status.return_value = [
+    client_a = MagicMock()
+    client_b = MagicMock()
+    client_a.get_status.return_value = [
         TorrentStatus(id="1", name="Book A", progress=50.0, state="downloading", size="500MB")
     ]
-    strat_b.get_status.return_value = [
+    client_b.get_status.return_value = [
         TorrentStatus(id="2", name="Book B", progress=100.0, state="seeding", size="1GB")
     ]
-    strat_a.verify_credentials.return_value = True
-    strat_b.verify_credentials.return_value = False
+    client_a.verify_credentials.return_value = True
+    client_b.verify_credentials.return_value = False
 
-    manager.clients = {"client_a": strat_a, "client_b": strat_b}
-    manager.strategy = strat_a
+    manager.clients = {"client_a": client_a, "client_b": client_b}
+    manager.client = client_a
 
     # Verify credentials targeted
     assert manager.verify_credentials("client_a") is True
@@ -264,8 +264,8 @@ def test_manager_multi_client_add_and_status(app: Flask) -> None:
 
     # Targeted add_magnet
     manager.add_magnet("magnet:?xt=test", "/save/path", client_name="client_b")
-    strat_b.add_magnet.assert_called_with("magnet:?xt=test", "/save/path", "abb-automated")
-    strat_a.add_magnet.assert_not_called()
+    client_b.add_magnet.assert_called_with("magnet:?xt=test", "/save/path", "abb-automated")
+    client_a.add_magnet.assert_not_called()
 
     # Aggregated status (no filter)
     all_statuses = manager.get_status()
@@ -279,17 +279,17 @@ def test_manager_multi_client_add_and_status(app: Flask) -> None:
     assert status_a[0].name == "Book A"
 
     # Multi-client removal across clients
-    strat_b.remove_torrent.side_effect = Exception("Not here")
-    strat_a.remove_torrent.return_value = True
+    client_b.remove_torrent.side_effect = Exception("Not here")
+    client_a.remove_torrent.return_value = True
     assert manager.remove_torrent("1") is True
 
     # Multi-client teardown and close
     manager.close()
-    strat_a.close.assert_called_once()
-    strat_b.close.assert_called_once()
+    client_a.close.assert_called_once()
+    client_b.close.assert_called_once()
     manager.teardown_request()
-    strat_a.teardown.assert_called_once()
-    strat_b.teardown.assert_called_once()
+    client_a.teardown.assert_called_once()
+    client_b.teardown.assert_called_once()
 
 
 def test_manager_multi_client_aggregation_error(app: Flask) -> None:
@@ -297,15 +297,15 @@ def test_manager_multi_client_aggregation_error(app: Flask) -> None:
     manager = TorrentManager()
     manager._app = app  # pyright: ignore[reportPrivateUsage]
 
-    strat_good = MagicMock()
-    strat_good.get_status.return_value = [
+    good_client = MagicMock()
+    good_client.get_status.return_value = [
         TorrentStatus(id="1", name="Good Book", progress=10.0, state="downloading", size="10MB")
     ]
-    strat_bad = MagicMock()
-    strat_bad.get_status.side_effect = RuntimeError("Client unreachable")
+    bad_client = MagicMock()
+    bad_client.get_status.side_effect = RuntimeError("Client unreachable")
 
-    manager.clients = {"good": strat_good, "bad": strat_bad}
-    manager.strategy = strat_good
+    manager.clients = {"good": good_client, "bad": bad_client}
+    manager.client = good_client
 
     statuses = manager.get_status()
     assert len(statuses) == 1
@@ -318,7 +318,7 @@ def test_manager_primary_fallback(app: Flask) -> None:
     manager = TorrentManager()
 
     mock_module = MagicMock()
-    mock_module.MockStrategy = MockStrategy
+    mock_module.MockClient = MockClient
 
     def mock_import(name: str) -> Any:
         if "client_a" in name:
@@ -330,21 +330,21 @@ def test_manager_primary_fallback(app: Flask) -> None:
         app.config["DL_CLIENTS"] = "client_a"
 
         manager.init_app(app)
-        assert manager.strategy is not None
+        assert manager.client is not None
         assert "client_a" in manager.clients
-        assert manager.strategy == manager.clients["client_a"]
+        assert manager.client == manager.clients["client_a"]
 
 
 def test_manager_status_single_client_tagging(app: Flask) -> None:
     """Test get_status populates client attribute when only one client configured."""
     manager = TorrentManager()
     manager._app = app  # pyright: ignore[reportPrivateUsage]
-    strategy_instance = MagicMock()
-    strategy_instance.get_status.return_value = [
+    client_instance = MagicMock()
+    client_instance.get_status.return_value = [
         TorrentStatus(id="1", name="Single Book", progress=100.0, state="seeding", size="1GB")
     ]
-    manager.strategy = strategy_instance
-    manager.clients = {"qbittorrent": strategy_instance}
+    manager.client = client_instance
+    manager.clients = {"qbittorrent": client_instance}
 
     statuses = manager.get_status()
     assert len(statuses) == 1
@@ -352,19 +352,19 @@ def test_manager_status_single_client_tagging(app: Flask) -> None:
 
 
 def test_manager_remove_torrent_fallback_loop(app: Flask) -> None:
-    """Test remove_torrent iterates across clients when client_name is None and strategy has no target."""
+    """Test remove_torrent iterates across clients when client_name is None and client has no target."""
     manager = TorrentManager()
-    strat_a = MagicMock()
-    strat_b = MagicMock()
-    strat_a.remove_torrent.side_effect = RuntimeError("Not found")
-    strat_b.remove_torrent.return_value = True
+    client_a = MagicMock()
+    client_b = MagicMock()
+    client_a.remove_torrent.side_effect = RuntimeError("Not found")
+    client_b.remove_torrent.return_value = True
 
-    manager.clients = {"a": strat_a, "b": strat_b}
-    manager.strategy = None
+    manager.clients = {"a": client_a, "b": client_b}
+    manager.client = None
 
     assert manager.remove_torrent("hash123") is True
-    strat_a.remove_torrent.assert_called_once_with("hash123")
-    strat_b.remove_torrent.assert_called_once_with("hash123")
+    client_a.remove_torrent.assert_called_once_with("hash123")
+    client_b.remove_torrent.assert_called_once_with("hash123")
 
-    strat_b.remove_torrent.side_effect = RuntimeError("Failed too")
+    client_b.remove_torrent.side_effect = RuntimeError("Failed too")
     assert manager.remove_torrent("hash456") is False

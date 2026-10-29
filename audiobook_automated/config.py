@@ -150,7 +150,7 @@ class Config:
     LOG_LEVEL: int | None = getattr(logging, LOG_LEVEL_STR, logging.INFO) if _log_level_env else None
 
     # Scraper Configuration
-    # ROBUSTNESS: Support single host or comma-separated list in ABB_HOSTNAME
+    # Support single host or comma-separated list in ABB_HOSTNAME
     _hostname_raw: str = os.getenv("ABB_HOSTNAME", "audiobookbay.lu").strip(" \"'")
     _parsed_hostnames: list[str] = [h.strip() for h in _hostname_raw.split(",") if h.strip()]
     ABB_HOSTNAME: str = _parsed_hostnames[0] if _parsed_hostnames else "audiobookbay.lu"
@@ -242,7 +242,7 @@ class Config:
             )
 
         # Validate DL_CLIENT
-        # RELAXED VALIDATION: We now allow any string to support drop-in plugins.
+        # Allow any string identifier to support drop-in client plugins without hardcoded enum restriction.
         # The Manager will fail later if the module doesn't exist.
         if not cls.DL_CLIENT:
             logger.critical("Configuration Error: DL_CLIENT is missing.")

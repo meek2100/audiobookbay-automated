@@ -19,6 +19,10 @@
                     >{{ client_status_label if client_status_label else 'Client Connected' }}</span
                 >
             </div>
+            <label class="auto-refresh-label" for="auto-refresh-toggle" title="Toggle 5-second automatic refresh">
+                <input type="checkbox" id="auto-refresh-toggle" checked />
+                <span>Auto-refresh</span>
+            </label>
             <button
                 type="button"
                 class="status-poll-indicator"

@@ -1,5 +1,5 @@
 # File: audiobook_automated/clients/deluge.py
-"""Strategy implementation for Deluge."""
+"""Download client plugin for Deluge."""
 
 import logging
 from typing import Any, override
@@ -9,18 +9,18 @@ from deluge_web_client.schema import TorrentOptions
 
 from audiobook_automated.utils import format_size
 
-from .base import TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
 
-class Strategy(TorrentClientStrategy):
-    """Strategy implementation for Deluge."""
+class DelugeClient(TorrentClientPlugin):
+    """Download client plugin for Deluge."""
 
     DEFAULT_PORT = 8112
 
     def __init__(self, dl_url: str | None = None, *args: Any, **kwargs: Any) -> None:
-        """Initialize the Deluge strategy.
+        """Initialize the Deluge client plugin.
 
         Args:
             dl_url: Optional override for the Deluge URL.
@@ -50,7 +50,7 @@ class Strategy(TorrentClientStrategy):
         try:
             plugins_resp = self.client.get_plugins()
             # Narrow the type: verify it is a list or dict before checking for membership
-            # GUARD: plugins_resp itself might be None if the client returns unexpected data
+            # plugins_resp itself might be None if the client returns unexpected data
             if plugins_resp and isinstance(plugins_resp.result, (list, dict)) and "Label" in plugins_resp.result:
                 self.label_plugin_enabled = True
                 logger.info("Deluge 'Label' plugin detected.")
@@ -137,7 +137,7 @@ class Strategy(TorrentClientStrategy):
                     progress_val = deluge_data.get("progress")
                     try:
                         # Deluge returns progress as 0-100 float
-                        # GUARD: Ensure progress_val is convertible to float
+                        # Ensure progress_val is convertible to float
                         progress = round(float(progress_val), 2) if progress_val is not None else 0.0
                     except (ValueError, TypeError):
                         # Log if conversion fails but don't crash
@@ -150,7 +150,6 @@ class Strategy(TorrentClientStrategy):
                             name=deluge_data.get("name", "Unknown"),
                             progress=progress,
                             state=deluge_data.get("state", "Unknown"),
-                            # FIX: Use public utility format_size
                             size=format_size(deluge_data.get("total_size")),
                         )
                     )
