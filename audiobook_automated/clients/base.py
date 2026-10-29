@@ -110,8 +110,8 @@ class TorrentStatus:
             self.state = str(normalize_torrent_state(self.state).value)
 
 
-class TorrentClientStrategy(ABC):
-    """Abstract base class for torrent client strategies."""
+class TorrentClientPlugin(ABC):
+    """Abstract base class for download client plugins."""
 
     # Plugin Configuration Contracts
     # Subclasses should override this to define their default port.
@@ -127,7 +127,7 @@ class TorrentClientStrategy(ABC):
         timeout: int = 30,
         **kwargs: Any,
     ) -> None:
-        """Initialize the client strategy configuration.
+        """Initialize the client plugin configuration.
 
         Accepts **kwargs to allow subclasses to accept extra parameters
         without breaking the common interface.
@@ -181,13 +181,13 @@ class TorrentClientStrategy(ABC):
 
         This method is called by the TorrentManager at the end of each request.
         The default implementation calls close() to ensure resources are released.
-        Strategies that maintain persistent connections may override this to do nothing
+        Plugins that maintain persistent connections may override this to do nothing
         or perform lighter cleanup.
         """
         self.close()
 
     def __del__(self) -> None:
-        """Ensure resources are released when the strategy instance is garbage collected.
+        """Ensure resources are released when the plugin instance is garbage collected.
 
         This acts as a safety net for thread-local instances that might not be explicitly closed.
         """
@@ -196,3 +196,7 @@ class TorrentClientStrategy(ABC):
         except Exception:  # noqa: S110
             # Swallow errors during GC to prevent noisy stderr output
             pass  # pragma: no cover
+
+
+# Backward compatibility alias
+TorrentClientStrategy = TorrentClientPlugin

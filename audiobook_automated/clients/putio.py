@@ -1,5 +1,5 @@
 # File: audiobook_automated/clients/putio.py
-"""Strategy implementation for Put.io cloud torrent client."""
+"""Download client plugin for Put.io cloud torrent client."""
 
 import logging
 import os
@@ -10,13 +10,13 @@ from requests.sessions import Session
 
 from audiobook_automated.utils import format_size
 
-from .base import TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
 
-class Strategy(TorrentClientStrategy):
-    """Strategy implementation for Put.io."""
+class PutioClient(TorrentClientPlugin):
+    """Download client plugin for Put.io."""
 
     DEFAULT_PORT = 443
 
@@ -27,10 +27,10 @@ class Strategy(TorrentClientStrategy):
         folder_id: str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize the Put.io strategy.
+        """Initialize the Put.io client plugin.
 
         Args:
-            *args: Standard strategy arguments (host, port, username, password, scheme, timeout).
+            *args: Standard client arguments (host, port, username, password, scheme, timeout).
             token: Put.io OAuth access token.
             folder_id: Optional Put.io destination folder ID (defaults to root '0').
             **kwargs: Extra arbitrary arguments.
@@ -187,3 +187,8 @@ class Strategy(TorrentClientStrategy):
         data = resp.json()
         if data.get("status") != "OK":
             raise RuntimeError(f"Put.io cancel transfer returned non-OK status: {data.get('error_message', data)}")
+
+
+# Backward compatibility aliases
+PutioStrategy = PutioClient
+Strategy = PutioClient

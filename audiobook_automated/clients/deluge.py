@@ -1,5 +1,5 @@
 # File: audiobook_automated/clients/deluge.py
-"""Strategy implementation for Deluge."""
+"""Download client plugin for Deluge."""
 
 import logging
 from typing import Any, override
@@ -9,18 +9,18 @@ from deluge_web_client.schema import TorrentOptions
 
 from audiobook_automated.utils import format_size
 
-from .base import TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
 
-class Strategy(TorrentClientStrategy):
-    """Strategy implementation for Deluge."""
+class DelugeClient(TorrentClientPlugin):
+    """Download client plugin for Deluge."""
 
     DEFAULT_PORT = 8112
 
     def __init__(self, dl_url: str | None = None, *args: Any, **kwargs: Any) -> None:
-        """Initialize the Deluge strategy.
+        """Initialize the Deluge client plugin.
 
         Args:
             dl_url: Optional override for the Deluge URL.
@@ -159,3 +159,8 @@ class Strategy(TorrentClientStrategy):
         else:
             logger.warning("Deluge returned empty or invalid result payload.")
         return results
+
+
+# Backward compatibility aliases
+DelugeStrategy = DelugeClient
+Strategy = DelugeClient

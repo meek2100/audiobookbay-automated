@@ -1,5 +1,5 @@
 # File: audiobook_automated/clients/qbittorrent.py
-"""Strategy implementation for qBittorrent."""
+"""Download client plugin for qBittorrent."""
 
 import logging
 import time
@@ -10,7 +10,7 @@ from qbittorrentapi.exceptions import Forbidden403Error, LoginFailed, Unauthoriz
 
 from audiobook_automated.utils import format_size
 
-from .base import TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +25,15 @@ class QbTorrentProtocol(Protocol):
     progress: float
 
 
-class Strategy(TorrentClientStrategy):
-    """Strategy implementation for qBittorrent."""
+class QBittorrentClient(TorrentClientPlugin):
+    """Download client plugin for qBittorrent."""
 
     DEFAULT_PORT = 8080
     AUTH_FAIL_LIMIT = 3
     AUTH_BACKOFF_SECONDS = 300.0  # 5 minutes backoff to prevent IP ban
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the qBittorrent strategy."""
+        """Initialize the qBittorrent client plugin."""
         super().__init__(*args, **kwargs)
         self.api_key: str | None = kwargs.get("api_key")
         # If password looks like an API key (e.g. qbt_ prefix), allow using it as api_key
@@ -237,3 +237,8 @@ class Strategy(TorrentClientStrategy):
                 )
             )
         return results
+
+
+# Backward compatibility aliases
+QbittorrentStrategy = QBittorrentClient
+Strategy = QBittorrentClient

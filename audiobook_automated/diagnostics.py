@@ -88,13 +88,13 @@ def _probe_candidate_mirrors(candidate_mirrors: list[str]) -> list[dict[str, Any
     return mirror_results
 
 
-def _get_strategy_status(strategy_inst: Any, connected: bool, error_msg: str | None) -> str:
-    """Determine friendly status label for a torrent client strategy."""
+def _get_client_status(client_inst: Any, connected: bool, error_msg: str | None) -> str:
+    """Determine friendly status label for a torrent download client."""
     if connected:
         return "Connected"
-    if getattr(strategy_inst, "is_ip_banned", False) is True:
+    if getattr(client_inst, "is_ip_banned", False) is True:
         return "IP Banned"
-    cooldown = getattr(strategy_inst, "auth_cooldown_until", 0)
+    cooldown = getattr(client_inst, "auth_cooldown_until", 0)
     if isinstance(cooldown, (int, float)) and cooldown > time.time():
         return "Auth Cooldown"
     if error_msg:
@@ -102,21 +102,25 @@ def _get_strategy_status(strategy_inst: Any, connected: bool, error_msg: str | N
     return "Disconnected"
 
 
+# Backward compatibility alias
+_get_strategy_status = _get_client_status
+
+
 def _collect_client_diagnostics(manager: Any) -> list[dict[str, Any]]:
     """Check connectivity and collect detailed diagnostics for configured download clients."""
     clients_info: list[dict[str, Any]] = []
     configured_clients = getattr(manager, "clients", {})
     if configured_clients:
-        for name, strategy_inst in configured_clients.items():
+        for name, client_inst in configured_clients.items():
             c_start = time.perf_counter()
             try:
-                connected = bool(strategy_inst.verify_credentials())
-                raw_err = getattr(strategy_inst, "last_auth_error", None)
+                connected = bool(client_inst.verify_credentials())
+                raw_err = getattr(client_inst, "last_auth_error", None)
                 c_err = str(raw_err) if raw_err is not None else None
             except Exception as e:
                 connected = False
                 c_err = str(e)
-            c_status_label = _get_strategy_status(strategy_inst, connected, c_err)
+            c_status_label = _get_client_status(client_inst, connected, c_err)
             c_latency = round((time.perf_counter() - c_start) * 1000, 2)
             clients_info.append(
                 {
@@ -129,12 +133,12 @@ def _collect_client_diagnostics(manager: Any) -> list[dict[str, Any]]:
             )
     else:
         connected = bool(manager.verify_credentials())
-        primary_strat = getattr(manager, "strategy", None)
+        primary_client = getattr(manager, "client", None) or getattr(manager, "strategy", None)
         c_err_str: str | None = None
-        if primary_strat:
-            raw_err = getattr(primary_strat, "last_auth_error", None)
+        if primary_client:
+            raw_err = getattr(primary_client, "last_auth_error", None)
             c_err_str = str(raw_err) if raw_err is not None else None
-        c_status = _get_strategy_status(primary_strat, connected, c_err_str)
+        c_status = _get_client_status(primary_client, connected, c_err_str)
 
         clients_info.append(
             {

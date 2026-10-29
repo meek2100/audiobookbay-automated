@@ -1,16 +1,16 @@
 # File: tests/unit/clients/test_qbittorrent.py
-"""Unit tests for QbittorrentStrategy."""
+"""Unit tests for QBittorrentClient."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
-from audiobook_automated.clients.qbittorrent import Strategy as QbittorrentStrategy
+from audiobook_automated.clients.qbittorrent import QBittorrentClient
 
 
 def test_qbittorrent_add_magnet(app: Flask) -> None:
-    """Test QbittorrentStrategy add_magnet."""
+    """Test QBittorrentClient add_magnet."""
     with (
         patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
         app.app_context(),
@@ -24,9 +24,9 @@ def test_qbittorrent_add_magnet(app: Flask) -> None:
         # Mock add return (modern API returns JSON/Dict usually)
         mock_instance.torrents_add.return_value = "Ok."
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        strategy.add_magnet("magnet:?xt=urn:btih:ABC", "/downloads/Book", "audiobooks")
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
+        client.add_magnet("magnet:?xt=urn:btih:ABC", "/downloads/Book", "audiobooks")
 
         mock_instance.auth_log_in.assert_called_once()
         mock_instance.torrents_add.assert_called_with(
@@ -49,11 +49,11 @@ def test_qbittorrent_add_magnet_legacy_fail(app: Flask) -> None:
         mock_instance = MockQbClient.return_value
         mock_instance.torrents_add.return_value = "Fails."
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
 
         with pytest.raises(ConnectionError, match="qBittorrent returned failure response: Fails."):
-            strategy.add_magnet("magnet:...", "/path", "cat")
+            client.add_magnet("magnet:...", "/path", "cat")
 
 
 def test_remove_torrent_qbittorrent(app: Flask) -> None:
@@ -68,9 +68,9 @@ def test_remove_torrent_qbittorrent(app: Flask) -> None:
 
         mock_instance = MockQbClient.return_value
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        strategy.remove_torrent("hash123")
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
+        client.remove_torrent("hash123")
 
         mock_instance.torrents_delete.assert_called_with(torrent_hashes="hash123", delete_files=False)
 
@@ -96,9 +96,9 @@ def test_get_status_qbittorrent(app: Flask) -> None:
 
         mock_instance.torrents_info.return_value = [mock_torrent]
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        results = strategy.get_status("cat")
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
+        results = client.get_status("cat")
 
         assert len(results) == 1
         assert results[0].name == "Test Book"
@@ -123,9 +123,9 @@ def test_qbittorrent_stalledup_maps_to_seeding(app: Flask) -> None:
 
         mock_instance.torrents_info.return_value = [mock_torrent]
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        results = strategy.get_status("cat")
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
+        results = client.get_status("cat")
 
         assert len(results) == 1
         assert results[0].state == "Seeding"
@@ -133,7 +133,7 @@ def test_qbittorrent_stalledup_maps_to_seeding(app: Flask) -> None:
 
 
 def test_qbittorrent_close(app: Flask) -> None:
-    """Test closing the qBittorrent strategy."""
+    """Test closing the qBittorrent client."""
     with (
         patch("audiobook_automated.clients.qbittorrent.QbClient", autospec=True) as MockQbClient,
         app.app_context(),
@@ -144,21 +144,21 @@ def test_qbittorrent_close(app: Flask) -> None:
 
         mock_instance = MockQbClient.return_value
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        assert strategy.client is not None
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
+        assert client.client is not None
 
-        strategy.close()
+        client.close()
         mock_instance.auth_log_out.assert_called_once()
-        assert strategy.client is None
+        assert client.client is None
 
         # Also test closing when client has an active _http_session
-        strategy.connect()
+        client.connect()
         mock_session = MagicMock()
         mock_instance._http_session = mock_session
-        strategy.close()
+        client.close()
         mock_session.close.assert_called_once()
-        assert strategy.client is None
+        assert client.client is None
 
 
 def test_qbittorrent_close_exception(app: Flask) -> None:
@@ -174,15 +174,15 @@ def test_qbittorrent_close_exception(app: Flask) -> None:
         mock_instance = MockQbClient.return_value
         mock_instance.auth_log_out.side_effect = Exception("Logout Failed")
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
 
         with patch("audiobook_automated.clients.qbittorrent.logger") as mock_logger:
-            strategy.close()
+            client.close()
             mock_logger.debug.assert_called()
             assert "Error closing qBittorrent connection" in str(mock_logger.debug.call_args[0])
 
-        assert strategy.client is None
+        assert client.client is None
 
 
 def test_get_status_qbittorrent_robustness(app: Flask) -> None:
@@ -206,9 +206,9 @@ def test_get_status_qbittorrent_robustness(app: Flask) -> None:
 
         mock_instance.torrents_info.return_value = [mock_torrent]
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
-        strategy.connect()
-        results = strategy.get_status("cat")
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
+        client.connect()
+        results = client.get_status("cat")
 
         assert len(results) == 1
         assert results[0].progress == 0.0
@@ -217,17 +217,17 @@ def test_get_status_qbittorrent_robustness(app: Flask) -> None:
 
 def test_qbittorrent_not_connected() -> None:
     """Test errors when client is not connected."""
-    strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+    client = QBittorrentClient("localhost", 8080, "admin", "admin")
     # Do NOT connect
 
     with pytest.raises(ConnectionError, match="qBittorrent client not connected"):
-        strategy.add_magnet("magnet:...", "/path", "cat")
+        client.add_magnet("magnet:...", "/path", "cat")
 
     with pytest.raises(ConnectionError, match="qBittorrent client not connected"):
-        strategy.remove_torrent("123")
+        client.remove_torrent("123")
 
     with pytest.raises(ConnectionError, match="qBittorrent client not connected"):
-        strategy.get_status("cat")
+        client.get_status("cat")
 
 
 def test_qbittorrent_api_key_auth(app: Flask) -> None:
@@ -239,9 +239,9 @@ def test_qbittorrent_api_key_auth(app: Flask) -> None:
         mock_instance = MockQbClient.return_value
         mock_instance.app.version = "v5.3.0"
 
-        strategy = QbittorrentStrategy("localhost", 8080, "meek2100", "", api_key="test_api_key")
-        strategy.connect()
-        assert strategy.api_key == "test_api_key"
+        client = QBittorrentClient("localhost", 8080, "meek2100", "", api_key="test_api_key")
+        client.connect()
+        assert client.api_key == "test_api_key"
         MockQbClient.assert_called_with(
             host="localhost",
             port=8080,
@@ -249,9 +249,9 @@ def test_qbittorrent_api_key_auth(app: Flask) -> None:
             api_key="test_api_key",
             REQUESTS_ARGS={"timeout": 30},
         )
-        assert strategy.client is not None
-        strategy.close()
-        assert strategy.client is None
+        assert client.client is not None
+        client.close()
+        assert client.client is None
 
 
 def test_qbittorrent_password_prefixed_api_key(app: Flask) -> None:
@@ -263,9 +263,9 @@ def test_qbittorrent_password_prefixed_api_key(app: Flask) -> None:
         mock_instance = MockQbClient.return_value
         mock_instance.app.version = "v5.3.0"
 
-        strategy = QbittorrentStrategy("localhost", 8080, "meek2100", "qbt_abc123key")
-        strategy.connect()
-        assert strategy.api_key == "qbt_abc123key"
+        client = QBittorrentClient("localhost", 8080, "meek2100", "qbt_abc123key")
+        client.connect()
+        assert client.api_key == "qbt_abc123key"
         MockQbClient.assert_called_with(
             host="localhost",
             port=8080,
@@ -286,27 +286,27 @@ def test_qbittorrent_auth_failure_cooldown(app: Flask) -> None:
         mock_instance = MockQbClient.return_value
         mock_instance.auth_log_in.side_effect = LoginFailed("Auth failed")
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "wrong_pass")
+        client = QBittorrentClient("localhost", 8080, "admin", "wrong_pass")
 
         # 1st failure
         with pytest.raises(ConnectionError, match="Incorrect username or password"):
-            strategy.connect()
-        assert strategy.consecutive_auth_failures == 1
+            client.connect()
+        assert client.consecutive_auth_failures == 1
 
         # 2nd failure
         with pytest.raises(ConnectionError, match="Incorrect username or password"):
-            strategy.connect()
-        assert strategy.consecutive_auth_failures == 2
+            client.connect()
+        assert client.consecutive_auth_failures == 2
 
         # 3rd failure triggers backoff
         with pytest.raises(ConnectionError, match="Incorrect username or password"):
-            strategy.connect()
-        assert strategy.consecutive_auth_failures == 3
-        assert strategy.auth_cooldown_until > 0
+            client.connect()
+        assert client.consecutive_auth_failures == 3
+        assert client.auth_cooldown_until > 0
 
         # 4th attempt should be blocked by cooldown without hitting server
         with pytest.raises(ConnectionError, match="authentication cooldown active"):
-            strategy.connect()
+            client.connect()
 
 
 def test_qbittorrent_ip_banned_detection(app: Flask) -> None:
@@ -322,15 +322,15 @@ def test_qbittorrent_ip_banned_detection(app: Flask) -> None:
             "Your IP address has been banned after too many failed authentication attempts."
         )
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
 
         with pytest.raises(ConnectionError, match="IP address banned"):
-            strategy.connect()
-        assert strategy.is_ip_banned is True
+            client.connect()
+        assert client.is_ip_banned is True
 
         # Subsequent attempts are instantly blocked
         with pytest.raises(ConnectionError, match="IP address is banned"):
-            strategy.connect()
+            client.connect()
 
 
 def test_qbittorrent_generic_forbidden(app: Flask) -> None:
@@ -344,8 +344,8 @@ def test_qbittorrent_generic_forbidden(app: Flask) -> None:
         mock_instance = MockQbClient.return_value
         mock_instance.auth_log_in.side_effect = Forbidden403Error("Access denied")
 
-        strategy = QbittorrentStrategy("localhost", 8080, "admin", "admin")
+        client = QBittorrentClient("localhost", 8080, "admin", "admin")
 
         with pytest.raises(ConnectionError, match="Invalid API key or credentials"):
-            strategy.connect()
-        assert strategy.consecutive_auth_failures == 1
+            client.connect()
+        assert client.consecutive_auth_failures == 1

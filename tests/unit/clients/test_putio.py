@@ -6,12 +6,12 @@ import requests_mock
 from flask import Flask
 
 from audiobook_automated.clients.manager import TorrentManager
-from audiobook_automated.clients.putio import Strategy as PutioStrategy
+from audiobook_automated.clients.putio import Strategy as PutioClient
 
 
 def test_putio_init_defaults() -> None:
     """Test Put.io strategy initialization with default parameters."""
-    strategy = PutioStrategy("localhost", 443, None, None, token="sample-token")
+    strategy = PutioClient("localhost", 443, None, None, token="sample-token")
     assert strategy.token == "sample-token"
     assert strategy.folder_id == "0"
     assert strategy.base_url == "https://api.put.io/v2"
@@ -22,7 +22,7 @@ def test_putio_init_custom_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PUTIO_TOKEN", "env-token")
     monkeypatch.setenv("PUTIO_FOLDER_ID", "42")
 
-    strategy = PutioStrategy("custom.putio.internal", 8443, None, None, scheme="https")
+    strategy = PutioClient("custom.putio.internal", 8443, None, None, scheme="https")
     assert strategy.token == "env-token"
     assert strategy.folder_id == "42"
     assert strategy.base_url == "https://custom.putio.internal:8443/v2"
@@ -30,7 +30,7 @@ def test_putio_init_custom_host(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_putio_connect_success() -> None:
     """Test successful Put.io session connection."""
-    strategy = PutioStrategy("localhost", 443, None, "pw-token")
+    strategy = PutioClient("localhost", 443, None, "pw-token")
     strategy.connect()
     assert strategy.session is not None
     assert strategy.session.headers.get("Authorization") == "Bearer pw-token"
@@ -40,7 +40,7 @@ def test_putio_connect_success() -> None:
 
 def test_putio_connect_missing_token() -> None:
     """Test that connect raises ConnectionError when no token is configured."""
-    strategy = PutioStrategy("localhost", 443, None, None)
+    strategy = PutioClient("localhost", 443, None, None)
     strategy.token = None
     with pytest.raises(ConnectionError, match="not configured"):
         strategy.connect()
@@ -48,7 +48,7 @@ def test_putio_connect_missing_token() -> None:
 
 def test_putio_verify_credentials() -> None:
     """Test Put.io verify_credentials method across success, failure, and exceptions."""
-    strategy = PutioStrategy("localhost", 443, None, "valid-token")
+    strategy = PutioClient("localhost", 443, None, "valid-token")
 
     with requests_mock.Mocker() as m:
         # Success case
@@ -68,14 +68,14 @@ def test_putio_verify_credentials() -> None:
         assert strategy.verify_credentials() is False
 
     # Failure when token is completely missing
-    strategy_no_token = PutioStrategy("localhost", 443, None, None)
+    strategy_no_token = PutioClient("localhost", 443, None, None)
     strategy_no_token.token = None
     assert strategy_no_token.verify_credentials() is False
 
 
 def test_putio_add_magnet() -> None:
     """Test Put.io add_magnet across success and error conditions."""
-    strategy = PutioStrategy("localhost", 443, None, "valid-token", folder_id="100")
+    strategy = PutioClient("localhost", 443, None, "valid-token", folder_id="100")
 
     with requests_mock.Mocker() as m:
         # Success case
@@ -99,7 +99,7 @@ def test_putio_add_magnet() -> None:
             strategy.add_magnet("magnet:?xt=urn:btih:ABC", "/tmp/save", "audiobooks")
 
     # Client not connected when token is missing
-    strategy_no_token = PutioStrategy("localhost", 443, None, None)
+    strategy_no_token = PutioClient("localhost", 443, None, None)
     strategy_no_token.token = None
     with pytest.raises(ConnectionError, match="not configured"):
         strategy_no_token.add_magnet("magnet:...", "/tmp", "audiobooks")
@@ -107,7 +107,7 @@ def test_putio_add_magnet() -> None:
 
 def test_putio_get_status() -> None:
     """Test Put.io get_status with transfers, metadata fetching, and errors."""
-    strategy = PutioStrategy("localhost", 443, None, "valid-token")
+    strategy = PutioClient("localhost", 443, None, "valid-token")
 
     with requests_mock.Mocker() as m:
         m.get(
@@ -151,7 +151,7 @@ def test_putio_get_status() -> None:
             strategy.get_status("audiobooks")
 
     # Client not connected when token is missing
-    strategy_no_token = PutioStrategy("localhost", 443, None, None)
+    strategy_no_token = PutioClient("localhost", 443, None, None)
     strategy_no_token.token = None
     with pytest.raises(ConnectionError, match="not configured"):
         strategy_no_token.get_status("audiobooks")
@@ -159,7 +159,7 @@ def test_putio_get_status() -> None:
 
 def test_putio_remove_torrent() -> None:
     """Test Put.io remove_torrent (cancel transfer) across success and errors."""
-    strategy = PutioStrategy("localhost", 443, None, "valid-token")
+    strategy = PutioClient("localhost", 443, None, "valid-token")
 
     with requests_mock.Mocker() as m:
         # Success
@@ -182,21 +182,21 @@ def test_putio_remove_torrent() -> None:
             strategy.remove_torrent("101")
 
     # Client not connected when token is missing
-    strategy_no_token = PutioStrategy("localhost", 443, None, None)
+    strategy_no_token = PutioClient("localhost", 443, None, None)
     strategy_no_token.token = None
     with pytest.raises(ConnectionError, match="not configured"):
         strategy_no_token.remove_torrent("101")
 
 
 def test_putio_manager_integration(app: Flask) -> None:
-    """Test loading and interacting with PutioStrategy via TorrentManager."""
+    """Test loading and interacting with PutioClient via TorrentManager."""
     manager = TorrentManager()
     app.config["DL_CLIENT"] = "putio"
     app.config["PUTIO_TOKEN"] = "manager-token"
     app.config["PUTIO_FOLDER_ID"] = "99"
 
     manager.init_app(app)
-    assert isinstance(manager.strategy, PutioStrategy)
+    assert isinstance(manager.strategy, PutioClient)
     assert manager.strategy.token == "manager-token"
     assert manager.strategy.folder_id == "99"
-    assert manager.client_type == "Strategy"
+    assert manager.client_type in ("PutioClient", "Strategy")

@@ -34,7 +34,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     configured_level = app.config.get("LOG_LEVEL")
     _configure_logging(app, configured_level)
 
-    # OPTIMIZATION: Static Asset Versioning Strategy
+    # OPTIMIZATION: Static Asset Versioning Cache Busting
     # Priority:
     # 1. Config/Env Var (Developer Override)
     # 2. Dynamic Runtime Content Calculation (Busts caches on live swaps/mounts)

@@ -12,20 +12,20 @@ Instructions for Developers:
 import logging
 from typing import Any, override
 
-from .base import TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
 
-class Strategy(TorrentClientStrategy):
-    """Strategy implementation for [INSERT CLIENT NAME]."""
+class CustomClient(TorrentClientPlugin):
+    """Client plugin implementation for [INSERT CLIENT NAME]."""
 
     # MANDATORY: Define the default WebUI/RPC port for this client.
     # This allows the app to configure itself automatically if DL_PORT is missing.
     DEFAULT_PORT = 0000
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the client strategy.
+        """Initialize the client plugin.
 
         Args:
             *args: Standard arguments passed by TorrentManager (host, port, etc).
@@ -125,3 +125,7 @@ class Strategy(TorrentClientStrategy):
         #     ))
 
         return results
+
+
+# Backward compatibility alias
+Strategy = CustomClient

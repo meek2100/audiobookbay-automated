@@ -245,7 +245,7 @@ def test_startup_connection_warning(caplog: Any) -> None:
         # But we do want init_app to run to set up the client_type, so we assume it works or mock it?
         # If we use StartupConfig with DL_CLIENT, init_app will try to load plugin.
         # We should probably mock init_app to do nothing, but verify_credentials depends on it?
-        # verify_credentials calls _get_strategy.
+        # verify_credentials calls get_client.
         # It's simpler to just force verify_credentials to False.
 
         audiobook_automated.create_app(StartupConfig)

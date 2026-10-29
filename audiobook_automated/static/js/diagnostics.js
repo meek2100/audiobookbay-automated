@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
-            // Clients (Clean naming: no Strategy or Download Client suffixes)
+            // Clients (Clean naming: no internal plugin suffixes)
             const clientContainer = document.getElementById("client-metrics");
             if (clientContainer) {
                 clientContainer.innerHTML = "";

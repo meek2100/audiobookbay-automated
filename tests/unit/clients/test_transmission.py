@@ -1,16 +1,16 @@
 # File: tests/unit/clients/test_transmission.py
-"""Unit tests for TransmissionStrategy."""
+"""Unit tests for TransmissionClient."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
-from audiobook_automated.clients.transmission import Strategy as TransmissionStrategy
+from audiobook_automated.clients.transmission import Strategy as TransmissionClient
 
 
 def test_transmission_add_magnet(app: Flask) -> None:
-    """Test TransmissionStrategy add_magnet."""
+    """Test TransmissionClient add_magnet."""
     with (
         patch("audiobook_automated.clients.transmission.TxClient") as MockTxClient,
         app.app_context(),
@@ -20,7 +20,7 @@ def test_transmission_add_magnet(app: Flask) -> None:
         current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         strategy.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
 
@@ -45,7 +45,7 @@ def test_transmission_add_magnet_fallback(app: Flask) -> None:
             None,  # Success on second call
         ]
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         strategy.add_magnet("magnet:?xt=urn:btih:DEF", "/downloads/Book", "audiobooks")
 
@@ -70,7 +70,7 @@ def test_transmission_add_magnet_generic_error(app: Flask) -> None:
         mock_instance = MockTxClient.return_value
         mock_instance.add_torrent.side_effect = Exception("Disk Full")
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
 
         with pytest.raises(Exception) as exc:
@@ -89,7 +89,7 @@ def test_remove_torrent_transmission_int_id(app: Flask) -> None:
         current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         strategy.remove_torrent("123")
 
@@ -107,7 +107,7 @@ def test_remove_torrent_transmission_hash_id(app: Flask) -> None:
         current_app.config["CLIENT_TIMEOUT"] = 30
         mock_instance = MockTxClient.return_value
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         strategy.remove_torrent("hash123")
 
@@ -137,7 +137,7 @@ def test_get_status_transmission(app: Flask) -> None:
 
         mock_instance.get_torrents.return_value = [mock_torrent]
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         results = strategy.get_status("cat")
 
@@ -173,7 +173,7 @@ def test_get_status_transmission_robustness(app: Flask) -> None:
 
         mock_instance.get_torrents.return_value = [mock_torrent_bad]
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         results = strategy.get_status("cat")
 
@@ -209,7 +209,7 @@ def test_get_status_transmission_filtering(app: Flask) -> None:
 
         mock_instance.get_torrents.return_value = [t1, t2]
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         results = strategy.get_status("cat1")
 
@@ -229,7 +229,7 @@ def test_transmission_close(app: Flask) -> None:
         # Mock successful connection
         MockTxClient.return_value = MagicMock()
 
-        strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+        strategy = TransmissionClient("localhost", 9091, "admin", "admin")
         strategy.connect()
         assert strategy.client is not None
         strategy.close()
@@ -238,7 +238,7 @@ def test_transmission_close(app: Flask) -> None:
 
 def test_transmission_not_connected() -> None:
     """Test errors when client is not connected."""
-    strategy = TransmissionStrategy("localhost", 9091, "admin", "admin")
+    strategy = TransmissionClient("localhost", 9091, "admin", "admin")
     # Do NOT connect
 
     with pytest.raises(ConnectionError, match="Transmission client not connected"):

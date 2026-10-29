@@ -1,5 +1,5 @@
 # File: audiobook_automated/clients/transmission.py
-"""Strategy implementation for Transmission."""
+"""Download client plugin for Transmission."""
 
 import logging
 from typing import Any, Literal, cast, override
@@ -8,18 +8,18 @@ from transmission_rpc import Client as TxClient
 
 from audiobook_automated.utils import format_size
 
-from .base import TorrentClientStrategy, TorrentStatus
+from .base import TorrentClientPlugin, TorrentStatus
 
 logger = logging.getLogger(__name__)
 
 
-class Strategy(TorrentClientStrategy):
-    """Strategy implementation for Transmission."""
+class TransmissionClient(TorrentClientPlugin):
+    """Download client plugin for Transmission."""
 
     DEFAULT_PORT = 9091
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize the Transmission strategy."""
+        """Initialize the Transmission client plugin."""
         super().__init__(*args, **kwargs)
         self.client: TxClient | None = None
 
@@ -110,3 +110,8 @@ class Strategy(TorrentClientStrategy):
                     )
                 )
         return results
+
+
+# Backward compatibility aliases
+TransmissionStrategy = TransmissionClient
+Strategy = TransmissionClient
