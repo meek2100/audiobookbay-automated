@@ -74,6 +74,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Use working catalog keyword searches for authors/narrators; normalize dotted initials and retain healthy mirrors
+  when a search page returns 404.
+- Show one inline loading indicator during pagination, and split narrator lists that include a full-cast credit.
+
 - Isolated Download Client connections per request thread so cleanup cannot close another request's session.
 - Corrected the default client host when its setting is empty, including Put.io cloud setup.
 
