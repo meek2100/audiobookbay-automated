@@ -264,10 +264,12 @@ def get_book_details(url: str, refresh: bool = False) -> dict[str, Any] | None:
         # 2. Fetch Page
         # Ensure we have a valid session with headers (User-Agent)
         session = network.get_session()
-        started = time.perf_counter()
-        response = session.get(url, timeout=15)
-        response.raise_for_status()
-        network.record_request_outcome(url, True, round((time.perf_counter() - started) * 1000, 2))
+        with network.get_semaphore():
+            time.sleep(random.uniform(0.5, 1.5))  # noqa: S311
+            started = time.perf_counter()
+            response = session.get(url, timeout=15)
+            response.raise_for_status()
+            network.record_request_outcome(url, True, round((time.perf_counter() - started) * 1000, 2))
 
         # 3. Parse Content
         soup = parser.parse_html(response.text)
