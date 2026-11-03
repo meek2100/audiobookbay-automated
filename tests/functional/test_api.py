@@ -48,7 +48,7 @@ def test_search_endpoint_short_query(client: FlaskClient) -> None:
     """Test search with a query that is too short."""
     response = client.get("/?query=a")
     assert response.status_code == 200
-    assert b"Search query must be at least" in response.data
+    assert b"Enter at least" in response.data
 
 
 def test_search_endpoint_connection_error(client: FlaskClient) -> None:
@@ -101,7 +101,7 @@ def test_details_fetch_error(client: FlaskClient) -> None:
     ):
         response = client.get("/details?link=http://test")
         assert response.status_code == 200
-        assert b"Could not load details" in response.data
+        assert b"Could not load book details" in response.data
 
 
 def test_send_success(client: FlaskClient) -> None:
@@ -123,7 +123,7 @@ def test_send_success(client: FlaskClient) -> None:
 
                 assert response.status_code == 200
                 assert response.json is not None
-                assert "Download added successfully" in response.json["message"]
+                assert "Sent to your Download Client" in response.json["message"]
                 mock_tm.add_magnet.assert_called_once()
 
                 # The save path must use the Scraped Title, not the user provided one
@@ -337,7 +337,7 @@ def test_send_with_client_selection(client: FlaskClient) -> None:
                 )
                 assert response.status_code == 200
                 assert response.json is not None
-                assert "Download added successfully" in response.json["message"]
+                assert "Sent to your Download Client" in response.json["message"]
                 mock_tm.add_magnet.assert_called_once()
                 _, kwargs = mock_tm.add_magnet.call_args
                 assert kwargs.get("client_name") == "putio"
@@ -645,7 +645,7 @@ def test_send_get_book_details_exception(client: FlaskClient) -> None:
                 )
                 assert response.status_code == 200
                 assert response.json is not None
-                assert "Download added successfully" in response.json["message"]
+                assert "Sent to your Download Client" in response.json["message"]
                 mock_tm.add_magnet.assert_called_once()
 
 
@@ -777,3 +777,56 @@ def test_api_search_endpoint_exception(client: FlaskClient) -> None:
         assert "Timeout" in data["error"]
         assert data["books"] == []
         assert data["has_more"] is False
+
+
+def test_delete_routes_to_selected_client_and_rejects_ambiguous_ids(client: FlaskClient) -> None:
+    """Do not remove a same-ID download from a different Download Client."""
+    from audiobook_automated.clients.base import TorrentStatus
+
+    with patch("audiobook_automated.routes.torrent_manager") as manager:
+        manager.get_status.return_value = [
+            TorrentStatus("same", "Book", 10, "Downloading", "1 GB", client="qbittorrent"),
+            TorrentStatus("same", "Book", 20, "Downloading", "1 GB", client="transmission"),
+        ]
+        manager.remove_torrent.return_value = True
+        assert client.post("/delete", json={"id": "same"}).status_code == 409
+        manager.remove_torrent.assert_not_called()
+        assert client.post("/delete", json={"id": "same", "client": "transmission"}).status_code == 200
+        manager.remove_torrent.assert_called_once_with("same", client_name="transmission")
+        manager.remove_torrent.return_value = False
+        assert client.post("/delete", json={"id": "same", "client": "transmission"}).status_code == 502
+
+
+def test_delete_rejects_invalid_client_values(client: FlaskClient) -> None:
+    """Validate optional Download Client values before accessing integrations."""
+    values: tuple[object, ...] = ([], 4, "", " ")
+    for value in values:
+        assert client.post("/delete", json={"id": "same", "client": value}).status_code == 400
+
+
+def test_missing_details_shows_recoverable_error(client: FlaskClient) -> None:
+    """A failed scraper response must not render a blank Details page."""
+    with patch("audiobook_automated.routes.get_book_details", return_value=None):
+        response = client.get("/details?link=https://audiobookbay.lu/book")
+    assert response.status_code == 200
+    assert b"Audiobook details unavailable" in response.data
+    assert b"Back to Search" in response.data
+
+
+def test_catalog_credit_does_not_fetch_details_or_change_raw_title(client: FlaskClient) -> None:
+    """Derive credit locally and leave cached search objects unmodified."""
+    book = {"title": "A series - A subtitle - Anna Elliott,Charles Veley", "link": "/book"}
+    with (
+        patch("audiobook_automated.routes.search_audiobookbay", return_value=[book]) as search,
+        patch("audiobook_automated.routes.get_book_details") as details,
+    ):
+        response = client.get("/api/search?query=books&page=2")
+        assert response.status_code == 200
+        assert response.json is not None
+        result = response.json["books"][0]
+        assert result["title"] == book["title"]
+        assert result["display_title"] == "A series - A subtitle"
+        assert result["credited_contributors"] == ["Anna Elliott", "Charles Veley"]
+        assert "author_credit" not in book
+        search.assert_called_once_with("books", max_pages=1, start_page=2)
+        details.assert_not_called()
