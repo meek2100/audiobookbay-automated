@@ -23,8 +23,10 @@
 
 - `npm run test:e2e` starts the isolated Flask fixture through Playwright on 127.0.0.1:5090. Tests render the actual
   templates, styles and JavaScript in Chromium, Firefox and WebKit. For Download contracts, replace only catalog HTTP
-  transport and the qBittorrent SDK. Run the real parser, core search/Details/magnet extraction, routes, manager and
+  transport and Download Client SDKs. Run the real parser, core search/Details/magnet extraction, routes, manager and
   client adapter. Never replace those steps with unconditional successful return values.
+- Multi-client cases must verify per-client connectivity, disabled offline choices, correct dispatch/removal routing,
+  single-client direct dispatch and optional destination settings.
 - Client unit contracts must also execute the installed SDK against an isolated HTTP boundary, using documented
   request/response shapes. Browser SDK doubles alone cannot prove API arguments, authentication or serialization.
 - The isolated browser fixture uses advancing monotonic signing time to avoid development-VM clock rollback.
