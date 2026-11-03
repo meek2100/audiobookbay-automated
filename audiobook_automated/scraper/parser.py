@@ -417,7 +417,8 @@ def parse_search_results(soup: BeautifulSoup, base_url: str) -> list[BookSummary
     """
     results: list[BookSummary] = []
 
-    for post in soup.select(".post"):
+    for original_post in soup.select(".post"):
+        post = original_post
         # The catalog reveals these base64-encoded listings with browser JavaScript.
         # Decode only its explicit post marker; parse the fragment without executing scripts.
         if "re-ab" in (post.get("class") or []) and not post.select_one(".postTitle"):
