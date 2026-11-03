@@ -84,7 +84,7 @@ jobs:
             -e LISTEN_HOST=0.0.0.0 audiobookbay-automated:ci
       - name: Wait for a healthy HTTP response
         run: |
-          for attempt in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             if curl --fail --silent --max-time 5 http://127.0.0.1:5078/health; then
               exit 0
             fi

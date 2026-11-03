@@ -30,3 +30,6 @@
 - Pre-commit checks Markdown with markdownlint and tilde fences; Prettier handles code/templates including TypeScript.
 - For release changes, validate workflow syntax, the lockfile, Compose examples, the built wheel and the container's
   HTTP health endpoint. GitHub publishing/deployment remain explicit actions; local checks do not prove a remote run.
+
+- Workflow validation must include embedded shell scripts. Ensure ShellCheck is installed, then run
+  `actionlint -shellcheck shellcheck`. A local actionlint run without ShellCheck does not match CI's container check.
