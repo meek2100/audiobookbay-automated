@@ -2,6 +2,7 @@
 """Functional tests for API endpoints."""
 
 import os
+import re
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import patch
@@ -11,6 +12,7 @@ from flask import Flask
 from flask.testing import FlaskClient
 
 from audiobook_automated import create_app
+from audiobook_automated.config import Config
 from audiobook_automated.scraper.parser import BookDetails
 
 
@@ -402,8 +404,7 @@ def test_send_endpoint_requires_csrf(csrf_app: Flask) -> None:
 
     # Should fail with 400 Bad Request (The CSRF token is missing)
     assert response.status_code == 400
-    # Updated text to match what Flask-WTF usually returns or what we expect
-    assert b"The CSRF token is missing" in response.data or b"CSRF token missing" in response.data
+    assert response.json == {"message": "Page expired. Refresh and try again.", "code": "page_expired"}
 
 
 def test_delete_endpoint_requires_csrf(csrf_app: Flask) -> None:
@@ -830,3 +831,61 @@ def test_catalog_credit_does_not_fetch_details_or_change_raw_title(client: Flask
         assert "author_credit" not in book
         search.assert_called_once_with("books", max_pages=1, start_page=2)
         details.assert_not_called()
+
+
+class SessionConfig(Config):
+    """Keep production session and CSRF behavior with isolated integrations."""
+
+    TESTING = False
+    SAVE_PATH_BASE = "/tmp/test_session_security"
+    DL_CLIENT = "qbittorrent"
+    SECRET_KEY = ""
+    WTF_CSRF_ENABLED = True
+    RATELIMIT_ENABLED = False
+    SPLASH_ENABLED = False
+
+
+def page_token(client: FlaskClient) -> str:
+    """Read the token supplied to the real browser action controls."""
+    response = client.get("/")
+    assert response.status_code == 200
+    token = re.search(rb'name="csrf-token" content="([^"]+)"', response.data)
+    assert token is not None
+    return token.group(1).decode()
+
+
+@pytest.mark.parametrize("fixed_key", [False, True])
+def test_restart_signing_and_page_recovery(fixed_key: bool) -> None:
+    """Reject old automatic-key tokens, support explicit keys and recover after refresh."""
+
+    class SigningConfig(SessionConfig):
+        SECRET_KEY = "test-explicit-restart-key" if fixed_key else ""
+
+    original: Flask = create_app(SigningConfig)
+    restarted: Flask = create_app(SigningConfig)
+    if fixed_key:
+        assert original.secret_key == restarted.secret_key == SigningConfig.SECRET_KEY
+    else:
+        assert isinstance(original.secret_key, str)
+        assert len(bytes.fromhex(original.secret_key)) == 32
+        assert original.secret_key != restarted.secret_key
+        assert SigningConfig.SECRET_KEY == ""
+
+    before = original.test_client()
+    token = page_token(before)
+    # A missing download returns 404 only after the real CSRF gate accepts the request.
+    assert before.post("/delete", json={"id": "absent"}, headers={"X-CSRFToken": token}).status_code == 404
+    cookie_name = original.config["SESSION_COOKIE_NAME"]
+    cookie = before.get_cookie(cookie_name)
+    assert cookie is not None
+    after = restarted.test_client()
+    after.set_cookie(cookie_name, cookie.value)
+    response = after.post("/delete", json={"id": "absent"}, headers={"X-CSRFToken": token})
+    if fixed_key:
+        assert response.status_code == 404
+    else:
+        assert response.status_code == 400
+        assert response.json == {"message": "Page expired. Refresh and try again.", "code": "page_expired"}
+    fresh_token = page_token(after)
+    assert after.post("/delete", json={"id": "absent"}, headers={"X-CSRFToken": fresh_token}).status_code == 404
+    assert after.post("/delete", json={"id": "absent"}, headers={"X-CSRFToken": "forged"}).status_code == 400
