@@ -57,7 +57,8 @@ Before the first release, use the [source-build instructions](docs/development.m
 
 ### 4. Check the connection
 
-Open **Downloads** in the menu. If the app reports that your Download Client is disconnected, check its address, port,
+Open **Status** in the menu to view your downloads.
+If the app reports that your Download Client is disconnected, check its address, port,
 username, and password in `.env`. Then apply the settings:
 
 ~~~shell
@@ -73,7 +74,8 @@ no sign-in screen of its own.
 2. Open **Details** to read about a book, or choose **Download** to send it to your Download Client.
    With several clients configured, choose a connected client in the download dialog. Offline clients cannot be selected.
    With one client, Download sends directly without this dialog.
-3. Open **Downloads** to follow its progress. Your Download Client controls where files are stored and when they finish.
+3. Open **Status** in the menu to follow download progress.
+   Your Download Client controls where files are stored and when they finish.
 
 Near the bottom, more results load automatically. **Load more audiobooks** also lets you request the next page manually.
 While a request is running, one spinner and **Loading audiobooks…** message replace the button. If it fails, select
