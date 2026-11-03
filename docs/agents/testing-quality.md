@@ -18,6 +18,9 @@
   `tests/scraper/test_network.py`) rather than introducing one-off files.
 - Mocking: Always mock network calls and `time.sleep`.
 - Frontend Tests: Executed with Jest and JSDOM (`npx jest`). Load scripts via `eval()` in `jest.setup.js`.
+- Fake-timer tests must use awaited `jest.advanceTimersByTimeAsync` to settle asynchronous work; do not flush promises
+  using real timers. Check immediate refresh, exact poll boundaries, pending requests, pause/resume and retries, and
+  clear scheduled work in teardown even when assertions fail.
 
 ## Browser and Release Checks
 

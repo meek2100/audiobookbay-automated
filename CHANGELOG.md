@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Make polling tests deterministic with one mocked clock; verify exact refresh cadence, slow requests and retry recovery.
+
 - Disable transitions for reduced motion so WebKit does not leave navigation controls hidden.
 
 - Honor Deluge reverse-proxy URLs, daemon Label detection, request timeouts and session cleanup; request new transfers
