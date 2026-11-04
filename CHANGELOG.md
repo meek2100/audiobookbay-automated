@@ -9,32 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
-### Fixed
-
-- Make client connection guidance independent of VPN products and recognize when a local address is already selected.
-  Omitted client hosts use IPv4 loopback automatically with each plugin's standard port.
-
-- Show actionable Download Client connection help in the chooser, page banner and Status, including partial failures.
-
-- Bound Download Client request waits by default, explain unreachable client settings in logs, and report an error
-  when all clients are unreachable instead of showing a healthy empty download list.
-- Keep LAN HTTP sessions and Download actions working when `PUBLIC_URL` configures a separate public HTTPS domain.
-
-- Start the website and answer health checks without waiting for Download Clients. Explain missing login settings
-  in startup logs without revealing credentials; check actual connectivity through Status.
-
-- Ignore untrusted forwarded headers; optional `TRUSTED_PROXIES` enables one allowlisted proxy hop. Select Secure
-  cookies per request and preserve internal HTTP health checks behind an HTTPS public URL.
-
-- Make polling tests deterministic with one mocked clock; verify exact refresh cadence, slow requests and retry recovery.
-
-- Disable transitions for reduced motion so WebKit does not leave navigation controls hidden.
-
-- Honor Deluge reverse-proxy URLs, daemon Label detection, request timeouts and session cleanup; request new transfers
-  unpaused and isolate plugin observations between request threads.
-- Honor the configured qBittorrent HTTP/HTTPS scheme and close Transmission HTTP sessions. Reject Transmission label
-  failures instead of retrying with an untracked download. Report Put.io API failures instead of an empty healthy list.
-- Surface catalog connection failures and timeouts as retryable search errors instead of caching empty results.
+## [1.0.0] - 2026-11-04
 
 ### Added
 
@@ -121,6 +96,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Route every catalog probe, redirect and retry through the shared request budget. Reject foreign redirects and
+  catalog lookalikes; recover expired mirror cooldowns and rank verified mirrors by observed network latency.
+- Keep passive Diagnostics responses independent of slow client connections and remote mirror-list requests.
+  Show background refresh state, escape client messages and preserve shared navigation and asset versions.
+- Avoid caching partial or malformed search responses. Encode and deduplicate magnet trackers.
+- Replace empty scraper tests with dispatch, cache, validation and extraction regression checks.
+
 - Make client connection guidance independent of VPN products and recognize when a local address is already selected.
   Omitted client hosts use IPv4 loopback automatically with each plugin's standard port.
 
@@ -129,6 +111,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Bound Download Client request waits by default, explain unreachable client settings in logs, and report an error
   when all clients are unreachable instead of showing a healthy empty download list.
 - Keep LAN HTTP sessions and Download actions working when `PUBLIC_URL` configures a separate public HTTPS domain.
+
+- Start the website and answer health checks without waiting for Download Clients. Explain missing login settings
+  in startup logs without revealing credentials; check actual connectivity through Status.
+
+- Ignore untrusted forwarded headers; optional `TRUSTED_PROXIES` enables one allowlisted proxy hop. Select Secure
+  cookies per request and preserve internal HTTP health checks behind an HTTPS public URL.
+
+- Make polling tests deterministic with one mocked clock; verify exact refresh cadence, slow requests and retry recovery.
+
+- Disable transitions for reduced motion so WebKit does not leave navigation controls hidden.
+
+- Honor Deluge reverse-proxy URLs, daemon Label detection, request timeouts and session cleanup; request new transfers
+  unpaused and isolate plugin observations between request threads.
+- Honor the configured qBittorrent HTTP/HTTPS scheme and close Transmission HTTP sessions. Reject Transmission label
+  failures instead of retrying with an untracked download. Report Put.io API failures instead of an empty healthy list.
+- Surface catalog connection failures and timeouts as retryable search errors instead of caching empty results.
 
 - Decode catalog `post re-ab` listings so JavaScript-revealed books are included without additional requests.
 - Stop cookie-less background responses from deleting an existing page session and invalidating CSRF tokens.
