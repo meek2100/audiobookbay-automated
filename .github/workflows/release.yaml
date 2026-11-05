@@ -151,12 +151,14 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
           TARGET_COMMIT: ${{ needs.prepare.outputs.release_commit }}
         run: |
-          NOTES_ARG="--notes-file release_notes.md"
-          if [ ! -s release_notes.md ]; then
-            NOTES_ARG="--generate-notes"
+          if [ -s release_notes.md ]; then
+            gh release create "v$VERSION" dist/* \
+              --target "$TARGET_COMMIT" \
+              --title "Release v$VERSION" \
+              --notes-file release_notes.md
+          else
+            gh release create "v$VERSION" dist/* \
+              --target "$TARGET_COMMIT" \
+              --title "Release v$VERSION" \
+              --generate-notes
           fi
-
-          gh release create "v$VERSION" dist/* \
-            --target "$TARGET_COMMIT" \
-            --title "Release v$VERSION" \
-            $NOTES_ARG
