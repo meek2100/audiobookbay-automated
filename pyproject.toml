@@ -109,18 +109,7 @@ convention = "google"
 [tool.basedpyright]
 pythonVersion = "3.14"
 include = ["audiobook_automated", "tests"]
-typeCheckingMode = "strict"
-# Reduce noise from untyped libraries (handled by mypy overrides mostly)
-reportMissingImports = "none"
-reportMissingTypeStubs = "none"
-reportUntypedFunctionDecorator = "none"
-# Allow untyped variables from libraries (essential for Flask/Requests/BS4)
-reportUnknownMemberType = "none"
-reportUnknownVariableType = "none"
-reportUnknownArgumentType = "none"
-reportUnknownParameterType = "none"
-# Missing sources are inevitable for some libraries (like bs4 stubs issues)
-reportMissingModuleSource = "none"
+typeCheckingMode = "standard"
 
 [tool.coverage.report]
 exclude_lines = [
