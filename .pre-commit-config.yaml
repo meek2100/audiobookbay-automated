@@ -128,10 +128,10 @@ repos:
           - types-jsonschema
           - types-gunicorn
 
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.414
+  - repo: https://github.com/DetachHead/basedpyright-pre-commit-mirror
+    rev: 1.40.2
     hooks:
-      - id: pyright
+      - id: basedpyright
         additional_dependencies:
           - pytest
           - flask
